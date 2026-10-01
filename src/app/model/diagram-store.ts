@@ -6,6 +6,7 @@ import {
   EdgeKind,
   NodeType,
   Point,
+  Port,
   emptyDiagram,
   hasInput,
   hasOutput,
@@ -13,6 +14,12 @@ import {
 } from './diagram';
 
 const MAX_HISTORY = 100;
+
+/** Where an edge attaches to its source and target node; omitted ports use the defaults. */
+export interface EdgePorts {
+  sourcePort?: Port;
+  targetPort?: Port;
+}
 
 const DEFAULT_NAMES: Record<NodeType, string> = {
   start: 'Start',
@@ -90,15 +97,23 @@ export class DiagramStore {
   }
 
   /** Connects two nodes; returns the new edge id, or `null` if the connection is not allowed. */
-  connect(source: string, target: string, kind: EdgeKind = 'forward'): string | null {
+  connect(
+    source: string,
+    target: string,
+    kind: EdgeKind = 'forward',
+    ports: EdgePorts = {},
+  ): string | null {
     const { nodes, edges } = this._diagram();
-    const known = (id: string) => nodes.some((n) => n.id === id);
-    if (source === target || !known(source) || !known(target)) return null;
+    const from = nodes.find((n) => n.id === source);
+    const to = nodes.find((n) => n.id === target);
+    if (source === target || !from || !to || !hasOutput(from.type) || !hasInput(to.type)) {
+      return null;
+    }
     if (edges.some((e) => e.source === source && e.target === target && e.kind === kind)) {
       return null;
     }
     const id = nextId('edge', edges);
-    const edge: DiagramEdge = { id, source, target, kind };
+    const edge: DiagramEdge = { id, source, target, kind, ...ports };
     this.commit((d) => ({ ...d, edges: [...d.edges, edge] }));
     return id;
   }
@@ -107,13 +122,24 @@ export class DiagramStore {
    * Adds a node connected from `source` as a single undo step; returns the new node id,
    * or `null` if `source` is unknown or the connection is not allowed.
    */
-  addConnectedNode(source: string, type: NodeType, position: Point): string | null {
+  addConnectedNode(
+    source: string,
+    type: NodeType,
+    position: Point,
+    ports: EdgePorts = {},
+  ): string | null {
     const { nodes, edges } = this._diagram();
     const from = nodes.find((n) => n.id === source);
     if (!from || !hasOutput(from.type) || !hasInput(type)) return null;
     const id = nextId(type, nodes);
     const node: DiagramNode = { id, type, name: DEFAULT_NAMES[type], position };
-    const edge: DiagramEdge = { id: nextId('edge', edges), source, target: id, kind: 'forward' };
+    const edge: DiagramEdge = {
+      id: nextId('edge', edges),
+      source,
+      target: id,
+      kind: 'forward',
+      ...ports,
+    };
     this.commit((d) => ({ nodes: [...d.nodes, node], edges: [...d.edges, edge] }));
     return id;
   }

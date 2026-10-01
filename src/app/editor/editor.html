@@ -11,55 +11,12 @@
       }
     </span>
   </div>
-  <div class="group" role="group" aria-label="Edit">
-    <button
-      type="button"
-      [disabled]="!selectedStep()"
-      (click)="toggleCompensation()"
-      title="Add or remove the compensation action of the selected step"
-    >
-      {{ selectedStep()?.compensation ? 'Remove compensation' : 'Add compensation' }}
-    </button>
-    <button
-      type="button"
-      [disabled]="!store.canUndo()"
-      (click)="store.undo()"
-      title="Undo (Ctrl+Z)"
-    >
-      Undo
-    </button>
-    <button
-      type="button"
-      [disabled]="!store.canRedo()"
-      (click)="store.redo()"
-      title="Redo (Ctrl+Shift+Z)"
-    >
-      Redo
-    </button>
-  </div>
   @if (file.error(); as error) {
     <p class="error" role="alert">{{ error }}</p>
   }
 </div>
 
 <div class="workspace">
-  <aside class="palette" aria-label="Node palette">
-    @for (item of palette; track item.type) {
-      <button
-        type="button"
-        class="palette-item"
-        [class]="'palette-' + item.type"
-        fExternalItem
-        [fData]="item.type"
-        (click)="addNode(item.type)"
-        [attr.data-shape]="item.shape"
-        [title]="'Drag onto the canvas or click to add a ' + item.label + ' node'"
-      >
-        {{ item.label }}
-      </button>
-    }
-  </aside>
-
   <f-flow
     fDraggable
     class="editor-flow"
@@ -69,16 +26,25 @@
     (fDeleteSelected)="onDelete($event)"
     (fSelectionChange)="onSelection($event)"
   >
-    <f-line-alignment />
+    <f-background>
+      <f-circle-pattern />
+    </f-background>
+    <f-line-alignment [fAlignThreshold]="20" />
     <f-canvas fZoom>
       @for (edge of store.edges(); track edge.id) {
         <f-connection
           [fConnectionId]="edge.id"
-          [fSourceId]="outId(edge.source)"
-          [fTargetId]="inId(edge.target)"
-        />
+          [fSourceId]="edgeEnd(edge, 'source')"
+          [fTargetId]="edgeEnd(edge, 'target')"
+          fType="segment"
+          [fOffset]="24"
+        >
+          <f-connection-marker-arrow />
+        </f-connection>
       }
-      <f-connection-for-create />
+      <f-connection-for-create fType="segment" [fOffset]="24">
+        <f-connection-marker-arrow />
+      </f-connection-for-create>
       @for (node of store.nodes(); track node.id) {
         <div
           fNode
@@ -88,21 +54,23 @@
           class="node"
           [class]="'node-' + node.type"
         >
-          @if (hasInput(node.type)) {
+          @for (port of ports; track port) {
             <div
               fConnector
-              [fConnectorId]="inId(node.id)"
-              fConnectorType="target"
-              class="port in"
+              [fConnectorId]="connectorId(node.id, port)"
+              [fConnectorType]="connectorType(node.type)"
+              [fConnectorConnectableSide]="connectableSide(port)"
+              class="port"
+              [class]="'port-' + port"
             ></div>
           }
           @switch (node.type) {
             @case ('start') {
-              <span class="shape" aria-hidden="true">▶</span>
+              <app-icon name="start" class="shape" />
               <span class="label">{{ node.name }}</span>
             }
             @case ('end') {
-              <span class="shape" aria-hidden="true">■</span>
+              <app-icon name="end" class="shape" />
               <span class="label">{{ node.name }}</span>
             }
             @case ('decision') {
@@ -116,18 +84,117 @@
               }
             }
           }
-          @if (hasOutput(node.type)) {
-            <div
-              fConnector
-              [fConnectorId]="outId(node.id)"
-              fConnectorType="source"
-              class="port out"
-            ></div>
-          }
         </div>
       }
     </f-canvas>
     <f-selection-area />
-    <f-minimap class="minimap" />
+    <f-minimap class="minimap" [fMinSize]="2000" />
   </f-flow>
+
+  <aside class="palette floating" aria-label="Node palette">
+    @for (item of palette; track item.type) {
+      <button
+        type="button"
+        class="icon-button palette-item"
+        [class]="'palette-' + item.type"
+        fExternalItem
+        [fData]="item.type"
+        (click)="addNode(item.type)"
+        [attr.aria-label]="item.label"
+        [title]="item.label + ' — drag onto the canvas or click to add'"
+      >
+        <app-icon [name]="item.icon" />
+      </button>
+    }
+  </aside>
+
+  <div class="toolbox floating" role="toolbar" aria-label="Edit and view">
+    <button
+      type="button"
+      class="icon-button"
+      [disabled]="!hasSelection()"
+      (click)="deleteSelection()"
+      aria-label="Delete selection"
+      title="Delete (Del)"
+    >
+      <app-icon name="delete" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      [disabled]="!store.canUndo()"
+      (click)="store.undo()"
+      aria-label="Undo"
+      title="Undo (Ctrl+Z)"
+    >
+      <app-icon name="undo" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      [disabled]="!store.canRedo()"
+      (click)="store.redo()"
+      aria-label="Redo"
+      title="Redo (Ctrl+Shift+Z)"
+    >
+      <app-icon name="redo" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="selectAll()"
+      aria-label="Select all"
+      title="Select all"
+    >
+      <app-icon name="selectAll" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      [class.active]="selectedStep()?.compensation"
+      [disabled]="!selectedStep()"
+      (click)="toggleCompensation()"
+      [attr.aria-label]="selectedStep()?.compensation ? 'Remove compensation' : 'Add compensation'"
+      title="Add or remove the compensation action of the selected step"
+    >
+      <app-icon name="compensation" />
+    </button>
+    <div class="divider"></div>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="zoomIn()"
+      aria-label="Zoom in"
+      title="Zoom in"
+    >
+      <app-icon name="zoomIn" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="zoomOut()"
+      aria-label="Zoom out"
+      title="Zoom out"
+    >
+      <app-icon name="zoomOut" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="fitToScreen()"
+      aria-label="Fit to screen"
+      title="Fit to screen"
+    >
+      <app-icon name="fitScreen" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="resetZoom()"
+      aria-label="Reset zoom"
+      title="1:1"
+    >
+      <app-icon name="oneToOne" />
+    </button>
+  </div>
 </div>

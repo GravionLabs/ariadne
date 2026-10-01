@@ -24,11 +24,24 @@ export interface DiagramNode {
   timeout?: string;
 }
 
+/** Connection point on a node's outline, as a compass direction. */
+export type Port = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
+export const PORTS: readonly Port[] = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+
+/** Ports used when an edge does not name one (files written before ports existed). */
+export const DEFAULT_SOURCE_PORT: Port = 'e';
+export const DEFAULT_TARGET_PORT: Port = 'w';
+
+/** The port facing `port`, e.g. `w` for `e`. */
+export const oppositePort = (port: Port): Port => PORTS[(PORTS.indexOf(port) + 4) % 8];
+
 export interface DiagramEdge {
   id: string;
   source: string;
   target: string;
   kind: EdgeKind;
+  sourcePort?: Port;
+  targetPort?: Port;
 }
 
 export interface Diagram {
@@ -42,13 +55,14 @@ export const hasOutput = (type: NodeType): boolean => type !== 'end';
 
 export const emptyDiagram = (): Diagram => ({ nodes: [], edges: [] });
 
-/** Connector ids used by f-flow: every node exposes one `in` and one `out` connector. */
-export const inConnectorId = (nodeId: string): string => `${nodeId}:in`;
-export const outConnectorId = (nodeId: string): string => `${nodeId}:out`;
+/** Connector id used by f-flow: every node exposes one connector per {@link Port}. */
+export const connectorId = (nodeId: string, port: Port): string => `${nodeId}:${port}`;
 
-/** Inverse of {@link inConnectorId} / {@link outConnectorId}; returns the node id. */
-export const nodeIdOfConnector = (connectorId: string): string =>
-  connectorId.slice(0, connectorId.lastIndexOf(':'));
+/** Inverse of {@link connectorId}; returns the node id. */
+export const nodeIdOfConnector = (id: string): string => id.slice(0, id.lastIndexOf(':'));
+
+/** Inverse of {@link connectorId}; returns the port. */
+export const portOfConnector = (id: string): Port => id.slice(id.lastIndexOf(':') + 1) as Port;
 
 /** Next free id of the form `<prefix>-<n>` (stable, human-readable, git-friendly). */
 export function nextId(prefix: string, existing: readonly { id: string }[]): string {

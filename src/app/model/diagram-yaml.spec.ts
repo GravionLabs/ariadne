@@ -70,6 +70,17 @@ describe('diagram YAML', () => {
     `);
   });
 
+  it('round-trips edge ports and omits them when unset', () => {
+    const diagram: Diagram = {
+      ...sample,
+      edges: [{ ...sample.edges[0], sourcePort: 's', targetPort: 'nw' }, sample.edges[1]],
+    };
+    const text = serializeDiagram(diagram);
+    expect(text).toContain('    sourcePort: s\n    targetPort: nw\n');
+    expect(text.match(/Port:/g)).toHaveLength(2);
+    expect(parseDiagram(text)).toEqual(diagram);
+  });
+
   it('rounds positions to whole pixels', () => {
     const text = serializeDiagram({
       nodes: [{ id: 'step-1', type: 'step', name: 'S', position: { x: 10.4, y: 20.6 } }],
@@ -111,6 +122,10 @@ edges:
     [
       'version: 1\nnodes:\n  - { id: a, type: step, name: A, position: { x: 0, y: 0 } }\nedges:\n  - { id: e, source: a, target: zz }',
       /edges\[0\]\.target "zz" is not a node/,
+    ],
+    [
+      'version: 1\nnodes:\n  - { id: a, type: step, name: A, position: { x: 0, y: 0 } }\nedges:\n  - { id: e, source: a, target: a, targetPort: up }',
+      /edges\[0\]\.targetPort must be one of n, ne, e, se, s, sw, w, nw/,
     ],
   ])('rejects invalid input %#', (text, message) => {
     expect(() => parseDiagram(text)).toThrow(DiagramFormatError);

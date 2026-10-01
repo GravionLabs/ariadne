@@ -1,5 +1,5 @@
 import { parse, stringify } from 'yaml';
-import { Diagram, DiagramEdge, DiagramNode, EdgeKind, NodeType } from './diagram';
+import { Diagram, DiagramEdge, DiagramNode, EdgeKind, NodeType, PORTS, Port } from './diagram';
 
 /** Current version of the file format; see docs/specs/diagram-format.md. */
 export const FORMAT_VERSION = 1;
@@ -20,7 +20,9 @@ export function serializeDiagram(diagram: Diagram): string {
   const file = {
     version: FORMAT_VERSION,
     nodes: diagram.nodes.map(serializeNode),
-    edges: diagram.edges.map(({ id, source, target, kind }) => ({ id, source, target, kind })),
+    edges: diagram.edges.map(({ id, source, target, kind, sourcePort, targetPort }) =>
+      withoutUndefined({ id, source, target, kind, sourcePort, targetPort }),
+    ),
   };
   return stringify(file, { lineWidth: 0 });
 }
@@ -109,7 +111,22 @@ function parseEdge(value: unknown, index: number, nodeIds: Set<string>): Diagram
   ]) {
     if (!nodeIds.has(id)) throw new DiagramFormatError(`${at}.${field} "${id}" is not a node`);
   }
-  return { id: asString(edge['id'], `${at}.id`), source, target, kind: kind as EdgeKind };
+  return withoutUndefined({
+    id: asString(edge['id'], `${at}.id`),
+    source,
+    target,
+    kind: kind as EdgeKind,
+    sourcePort: optionalPort(edge['sourcePort'], `${at}.sourcePort`),
+    targetPort: optionalPort(edge['targetPort'], `${at}.targetPort`),
+  });
+}
+
+function optionalPort(value: unknown, at: string): Port | undefined {
+  if (value === undefined) return undefined;
+  if (!PORTS.includes(value as Port)) {
+    throw new DiagramFormatError(`${at} must be one of ${PORTS.join(', ')}`);
+  }
+  return value as Port;
 }
 
 function asRecord(value: unknown, at: string): Record<string, unknown> {

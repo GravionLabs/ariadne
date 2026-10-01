@@ -2,9 +2,12 @@ import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import {
   FCreateConnectionEvent,
+  FConnectionComponent,
+  FConnectorDirective,
   FCreateNodeEvent,
   FDraggableDirective,
   FFlowComponent,
+  FSelectionChangeEvent,
 } from '@foblex/flow';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
@@ -35,7 +38,7 @@ describe('Editor', () => {
     const store = TestBed.inject(DiagramStore);
     const click = async (label: string) => {
       const button = [...el.querySelectorAll('button')].find(
-        (b) => b.textContent?.trim() === label,
+        (b) => (b.getAttribute('aria-label') ?? b.textContent?.trim()) === label,
       );
       button!.click();
       await fixture.whenStable();
@@ -57,17 +60,40 @@ describe('Editor', () => {
     expect(store.nodes().map((n) => n.type)).toEqual(['start', 'step', 'decision', 'end']);
   });
 
-  it('renders connectors according to the node type', async () => {
-    const { el, store, click } = await setup();
+  it('renders eight connectors per node, typed by the node type', async () => {
+    const { fixture, store, click } = await setup();
     await click('Start');
     await click('End');
     await click('Step');
     expect(store.nodes()).toHaveLength(3);
-    expect(el.querySelectorAll('.node-start .port.in')).toHaveLength(0);
-    expect(el.querySelectorAll('.node-start .port.out')).toHaveLength(1);
-    expect(el.querySelectorAll('.node-end .port.in')).toHaveLength(1);
-    expect(el.querySelectorAll('.node-end .port.out')).toHaveLength(0);
-    expect(el.querySelectorAll('.node-step .port')).toHaveLength(2);
+    const ports = (type: string) =>
+      fixture.debugElement
+        .queryAll(By.css(`.node-${type} .port`))
+        .map((d) => d.injector.get(FConnectorDirective));
+    expect(ports('start').map((c) => c.fConnectorType())).toEqual(Array(8).fill('source'));
+    expect(ports('end').map((c) => c.fConnectorType())).toEqual(Array(8).fill('target'));
+    expect(ports('step').map((c) => c.fConnectorType())).toEqual(Array(8).fill('source-target'));
+    expect(ports('step').map((c) => c.fId())).toEqual(
+      ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'].map((p) => `step-1:${p}`),
+    );
+  });
+
+  it('attaches edges to their stored ports, defaulting to east → west', async () => {
+    const { fixture, store, click } = await setup();
+    await click('Step');
+    await click('Step');
+    store.connect('step-1', 'step-2');
+    store.connect('step-2', 'step-1', 'compensation', { sourcePort: 's', targetPort: 'ne' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const ends = fixture.debugElement
+      .queryAll(By.css('f-connection'))
+      .map((d) => d.componentInstance as FConnectionComponent)
+      .map((c) => [c.fSourceId(), c.fTargetId()]);
+    expect(ends).toEqual([
+      ['step-1:e', 'step-2:w'],
+      ['step-2:s', 'step-1:ne'],
+    ]);
   });
 
   it('shows the compensation action of a step', async () => {
@@ -92,15 +118,23 @@ describe('Editor', () => {
     } as ReturnType<FFlowComponent['getPositionInFlow']>);
     const draggable = flow.injector.get(FDraggableDirective);
     draggable.fCreateConnection.emit(
-      new FCreateConnectionEvent('start-1:out', undefined, { x: 10, y: 10 }),
+      new FCreateConnectionEvent('start-1:s', undefined, { x: 10, y: 10 }),
     );
+    // The new step's north port (top centre of its 160×44 box) lands under the cursor.
     expect(store.nodes().at(-1)).toMatchObject({
       id: 'step-1',
       type: 'step',
-      position: { x: 300 },
+      position: { x: 220, y: 200 },
     });
     expect(store.edges()).toEqual([
-      { id: 'edge-1', source: 'start-1', target: 'step-1', kind: 'forward' },
+      {
+        id: 'edge-1',
+        source: 'start-1',
+        target: 'step-1',
+        kind: 'forward',
+        sourcePort: 's',
+        targetPort: 'n',
+      },
     ]);
   });
 
@@ -112,10 +146,10 @@ describe('Editor', () => {
       .query(By.directive(FDraggableDirective))
       .injector.get(FDraggableDirective);
     draggable.fCreateConnection.emit(
-      new FCreateConnectionEvent('start-1:out', 'end-1:in', { x: 10, y: 10 }),
+      new FCreateConnectionEvent('start-1:ne', 'end-1:sw', { x: 10, y: 10 }),
     );
     expect(store.nodes()).toHaveLength(2);
-    expect(store.edges()).toHaveLength(1);
+    expect(store.edges()).toMatchObject([{ sourcePort: 'ne', targetPort: 'sw' }]);
   });
 
   it('adds a node where a palette item is dropped', async () => {
@@ -125,6 +159,23 @@ describe('Editor', () => {
       new FCreateNodeEvent({ x: 120, y: 340, width: 100, height: 40 } as never, 'decision'),
     );
     expect(store.nodes()).toMatchObject([{ type: 'decision', position: { x: 120, y: 340 } }]);
+  });
+
+  it('deletes the selection from the toolbox', async () => {
+    const { fixture, el, store, click } = await setup();
+    await click('Step');
+    await click('Step');
+    const deleteButton = el.querySelector<HTMLButtonElement>('[aria-label="Delete selection"]')!;
+    expect(deleteButton.disabled).toBe(true);
+    const draggable = fixture.debugElement
+      .query(By.directive(FDraggableDirective))
+      .injector.get(FDraggableDirective);
+    draggable.fSelectionChange.emit(new FSelectionChangeEvent(['step-1'], [], []));
+    fixture.detectChanges();
+    expect(deleteButton.disabled).toBe(false);
+    await click('Delete selection');
+    expect(store.nodes().map((n) => n.id)).toEqual(['step-2']);
+    expect(deleteButton.disabled).toBe(true);
   });
 
   it('saves with Ctrl+S and opens with Ctrl+O', async () => {

@@ -40,6 +40,8 @@ edges:
     source: step-1
     target: end-1
     kind: forward
+    sourcePort: e
+    targetPort: w
 ```
 
 ## Fields
@@ -65,12 +67,18 @@ edges:
 
 ### Edge
 
-| Field    | Type                        | Required | Notes                  |
-| -------- | --------------------------- | -------- | ---------------------- |
-| `id`     | string                      | yes      | e.g. `edge-4`.         |
-| `source` | string                      | yes      | Node id.               |
-| `target` | string                      | yes      | Node id.               |
-| `kind`   | `forward` \| `compensation` | no       | Defaults to `forward`. |
+| Field        | Type                        | Required | Notes                                        |
+| ------------ | --------------------------- | -------- | -------------------------------------------- |
+| `id`         | string                      | yes      | e.g. `edge-4`.                               |
+| `source`     | string                      | yes      | Node id.                                     |
+| `target`     | string                      | yes      | Node id.                                     |
+| `kind`       | `forward` \| `compensation` | no       | Defaults to `forward`.                       |
+| `sourcePort` | port                        | no       | Where the edge leaves `source`; default `e`. |
+| `targetPort` | port                        | no       | Where the edge enters `target`; default `w`. |
+
+A **port** is one of eight points on the node's outline, named by compass direction:
+`n`, `ne`, `e`, `se`, `s`, `sw`, `w`, `nw`. Files written before ports existed have no port fields
+and keep their original look (east → west).
 
 ## Determinism
 

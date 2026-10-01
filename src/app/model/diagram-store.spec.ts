@@ -37,6 +37,24 @@ describe('DiagramStore', () => {
     expect(store.edges()).toHaveLength(2);
   });
 
+  it('records the ports an edge attaches to', () => {
+    store.addNode('step', { x: 0, y: 0 });
+    store.addNode('step', { x: 0, y: 0 });
+    store.connect('step-1', 'step-2', 'forward', { sourcePort: 's', targetPort: 'nw' });
+    expect(store.edges()[0]).toMatchObject({ sourcePort: 's', targetPort: 'nw' });
+    store.addConnectedNode('step-2', 'end', { x: 0, y: 0 }, { sourcePort: 'e', targetPort: 'w' });
+    expect(store.edges()[1]).toMatchObject({ target: 'end-1', sourcePort: 'e', targetPort: 'w' });
+  });
+
+  it('rejects edges out of end nodes or into start nodes', () => {
+    store.addNode('start', { x: 0, y: 0 });
+    store.addNode('end', { x: 0, y: 0 });
+    store.addNode('step', { x: 0, y: 0 });
+    expect(store.connect('end-1', 'step-1')).toBeNull();
+    expect(store.connect('step-1', 'start-1')).toBeNull();
+    expect(store.edges()).toHaveLength(0);
+  });
+
   it('adds a connected node as a single undo step', () => {
     store.addNode('step', { x: 0, y: 0 });
     expect(store.addConnectedNode('step-1', 'step', { x: 200, y: 0 })).toBe('step-2');
