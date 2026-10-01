@@ -10,6 +10,8 @@ import {
   nextId,
 } from './diagram';
 
+const MAX_HISTORY = 100;
+
 const DEFAULT_NAMES: Record<NodeType, string> = {
   start: 'Start',
   end: 'End',
@@ -21,25 +23,56 @@ const DEFAULT_NAMES: Record<NodeType, string> = {
 @Injectable({ providedIn: 'root' })
 export class DiagramStore {
   private readonly _diagram = signal<Diagram>(emptyDiagram());
+  private readonly _past = signal<Diagram[]>([]);
+  private readonly _future = signal<Diagram[]>([]);
 
   readonly diagram = this._diagram.asReadonly();
+  readonly canUndo = computed(() => this._past().length > 0);
+  readonly canRedo = computed(() => this._future().length > 0);
   readonly nodes = computed(() => this._diagram().nodes);
   readonly edges = computed(() => this._diagram().edges);
 
+  /** Replaces the whole diagram (e.g. after opening a file) and clears the undo history. */
   load(diagram: Diagram): void {
     this._diagram.set(diagram);
+    this._past.set([]);
+    this._future.set([]);
+  }
+
+  undo(): void {
+    const past = this._past();
+    if (past.length === 0) return;
+    this._future.update((f) => [this._diagram(), ...f]);
+    this._diagram.set(past[past.length - 1]);
+    this._past.set(past.slice(0, -1));
+  }
+
+  redo(): void {
+    const [next, ...rest] = this._future();
+    if (!next) return;
+    this._past.update((p) => [...p, this._diagram()]);
+    this._diagram.set(next);
+    this._future.set(rest);
+  }
+
+  /** Applies one edit as a single undo step. Every mutation goes through here. */
+  private commit(change: (d: Diagram) => Diagram): void {
+    const current = this._diagram();
+    this._diagram.set(change(current));
+    this._past.update((p) => [...p, current].slice(-MAX_HISTORY));
+    this._future.set([]);
   }
 
   addNode(type: NodeType, position: Point): string {
     const id = nextId(type, this._diagram().nodes);
     const node: DiagramNode = { id, type, name: DEFAULT_NAMES[type], position };
-    this._diagram.update((d) => ({ ...d, nodes: [...d.nodes, node] }));
+    this.commit((d) => ({ ...d, nodes: [...d.nodes, node] }));
     return id;
   }
 
   moveNodes(moves: readonly { id: string; position: Point }[]): void {
     const positions = new Map(moves.map((m) => [m.id, m.position]));
-    this._diagram.update((d) => ({
+    this.commit((d) => ({
       ...d,
       nodes: d.nodes.map((n) =>
         positions.has(n.id) ? { ...n, position: positions.get(n.id)! } : n,
@@ -57,7 +90,7 @@ export class DiagramStore {
     }
     const id = nextId('edge', edges);
     const edge: DiagramEdge = { id, source, target, kind };
-    this._diagram.update((d) => ({ ...d, edges: [...d.edges, edge] }));
+    this.commit((d) => ({ ...d, edges: [...d.edges, edge] }));
     return id;
   }
 
@@ -65,7 +98,8 @@ export class DiagramStore {
   remove(selection: { nodeIds?: readonly string[]; edgeIds?: readonly string[] }): void {
     const nodeIds = new Set(selection.nodeIds ?? []);
     const edgeIds = new Set(selection.edgeIds ?? []);
-    this._diagram.update((d) => ({
+    if (nodeIds.size === 0 && edgeIds.size === 0) return;
+    this.commit((d) => ({
       nodes: d.nodes.filter((n) => !nodeIds.has(n.id)),
       edges: d.edges.filter(
         (e) => !edgeIds.has(e.id) && !nodeIds.has(e.source) && !nodeIds.has(e.target),

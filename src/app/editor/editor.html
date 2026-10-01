@@ -1,5 +1,16 @@
 <div class="toolbar">
   <button type="button" (click)="addStep()">Add step</button>
+  <button type="button" [disabled]="!store.canUndo()" (click)="store.undo()" title="Undo (Ctrl+Z)">
+    Undo
+  </button>
+  <button
+    type="button"
+    [disabled]="!store.canRedo()"
+    (click)="store.redo()"
+    title="Redo (Ctrl+Shift+Z)"
+  >
+    Redo
+  </button>
 </div>
 
 <f-flow
