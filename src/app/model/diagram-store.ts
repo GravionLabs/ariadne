@@ -7,6 +7,8 @@ import {
   NodeType,
   Point,
   emptyDiagram,
+  hasInput,
+  hasOutput,
   nextId,
 } from './diagram';
 
@@ -70,6 +72,13 @@ export class DiagramStore {
     return id;
   }
 
+  updateNode(id: string, patch: Partial<Omit<DiagramNode, 'id' | 'type'>>): void {
+    this.commit((d) => ({
+      ...d,
+      nodes: d.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+    }));
+  }
+
   moveNodes(moves: readonly { id: string; position: Point }[]): void {
     const positions = new Map(moves.map((m) => [m.id, m.position]));
     this.commit((d) => ({
@@ -91,6 +100,21 @@ export class DiagramStore {
     const id = nextId('edge', edges);
     const edge: DiagramEdge = { id, source, target, kind };
     this.commit((d) => ({ ...d, edges: [...d.edges, edge] }));
+    return id;
+  }
+
+  /**
+   * Adds a node connected from `source` as a single undo step; returns the new node id,
+   * or `null` if `source` is unknown or the connection is not allowed.
+   */
+  addConnectedNode(source: string, type: NodeType, position: Point): string | null {
+    const { nodes, edges } = this._diagram();
+    const from = nodes.find((n) => n.id === source);
+    if (!from || !hasOutput(from.type) || !hasInput(type)) return null;
+    const id = nextId(type, nodes);
+    const node: DiagramNode = { id, type, name: DEFAULT_NAMES[type], position };
+    const edge: DiagramEdge = { id: nextId('edge', edges), source, target: id, kind: 'forward' };
+    this.commit((d) => ({ nodes: [...d.nodes, node], edges: [...d.edges, edge] }));
     return id;
   }
 

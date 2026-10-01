@@ -6,9 +6,76 @@
 
 .toolbar {
   display: flex;
-  gap: 0.5rem;
+  gap: 1.5rem;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid #d0d5dd;
+}
+
+.file-name {
+  align-self: center;
+  color: #475467;
+  font-size: 0.875rem;
+
+  &.dirty {
+    font-style: italic;
+  }
+}
+
+.error {
+  align-self: center;
+  margin: 0;
+  color: #b42318;
+  font-size: 0.875rem;
+}
+
+.workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-right: 1px solid #d0d5dd;
+  background: #f9fafb;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 7.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #98a2b3;
+  border-radius: 6px;
+  background: #fff;
+  cursor: grab;
+  text-align: left;
+
+  &::before {
+    content: attr(data-shape);
+    width: 1rem;
+    text-align: center;
+  }
+}
+
+.palette-start::before {
+  color: #079455;
+}
+
+.palette-step {
+  border-color: #2e90fa;
+}
+
+.palette-decision::before {
+  color: #7a5af8;
+}
+
+.palette-end::before {
+  color: #d92d20;
 }
 
 .editor-flow {
@@ -55,4 +122,85 @@
   height: 140px;
   background: #fff;
   border: 1px solid #d0d5dd;
+}
+
+.toolbar .group {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.node-start,
+.node-end {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.9rem;
+
+  .label {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-top: 4px;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 0.8rem;
+  }
+}
+
+.node-start {
+  background: #d1fadf;
+  border-color: #12b76a;
+  color: #027a48;
+}
+
+.node-end {
+  background: #fee4e2;
+  border-color: #f04438;
+  color: #b42318;
+}
+
+.node-step {
+  border-color: #2e90fa;
+}
+
+.compensation {
+  display: block;
+  margin-top: 0.4rem;
+  padding: 0.15rem 0.4rem;
+  border: 1px dashed #f79009;
+  border-radius: 4px;
+  background: #fffaeb;
+  color: #b54708;
+  font-size: 0.75rem;
+}
+
+.node-decision {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 110px;
+  height: 110px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+
+  .diamond {
+    position: absolute;
+    inset: 16px;
+    border: 1px solid #7a5af8;
+    background: #f4f3ff;
+    transform: rotate(45deg);
+  }
+
+  .decision-name {
+    position: relative;
+    max-width: 70px;
+    font-size: 0.8rem;
+  }
 }

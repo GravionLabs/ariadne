@@ -37,6 +37,31 @@ describe('DiagramStore', () => {
     expect(store.edges()).toHaveLength(2);
   });
 
+  it('adds a connected node as a single undo step', () => {
+    store.addNode('step', { x: 0, y: 0 });
+    expect(store.addConnectedNode('step-1', 'step', { x: 200, y: 0 })).toBe('step-2');
+    expect(store.nodes().at(-1)).toMatchObject({ id: 'step-2', position: { x: 200, y: 0 } });
+    expect(store.edges()).toEqual([
+      { id: 'edge-1', source: 'step-1', target: 'step-2', kind: 'forward' },
+    ]);
+    store.undo();
+    expect(store.nodes()).toHaveLength(1);
+    expect(store.edges()).toHaveLength(0);
+  });
+
+  it('rejects connected nodes from unknown sources, end nodes or to start nodes', () => {
+    store.addNode('step', { x: 0, y: 0 });
+    store.addNode('end', { x: 0, y: 0 });
+    expect(store.addConnectedNode('nope', 'step', { x: 0, y: 0 })).toBeNull();
+    expect(store.addConnectedNode('end-1', 'step', { x: 0, y: 0 })).toBeNull();
+    expect(store.addConnectedNode('step-1', 'start', { x: 0, y: 0 })).toBeNull();
+    expect(store.nodes()).toHaveLength(2);
+    expect(store.canUndo()).toBe(true);
+    store.undo();
+    store.undo();
+    expect(store.canUndo()).toBe(false);
+  });
+
   it('removing a node removes its edges', () => {
     store.addNode('step', { x: 0, y: 0 });
     store.addNode('step', { x: 0, y: 0 });
@@ -55,6 +80,14 @@ describe('DiagramStore', () => {
     store.remove({ edgeIds: ['edge-1'] });
     expect(store.edges()).toEqual([]);
     expect(store.nodes()).toHaveLength(2);
+  });
+
+  it('updates a node and can undo it', () => {
+    store.addNode('step', { x: 0, y: 0 });
+    store.updateNode('step-1', { name: 'Reserve stock', timeout: '30s' });
+    expect(store.nodes()[0]).toMatchObject({ name: 'Reserve stock', timeout: '30s' });
+    store.undo();
+    expect(store.nodes()[0].name).toBe('Step');
   });
 
   describe('history', () => {

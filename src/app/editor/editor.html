@@ -1,53 +1,133 @@
 <div class="toolbar">
-  <button type="button" (click)="addStep()">Add step</button>
-  <button type="button" [disabled]="!store.canUndo()" (click)="store.undo()" title="Undo (Ctrl+Z)">
-    Undo
-  </button>
-  <button
-    type="button"
-    [disabled]="!store.canRedo()"
-    (click)="store.redo()"
-    title="Redo (Ctrl+Shift+Z)"
-  >
-    Redo
-  </button>
+  <div class="group" role="group" aria-label="File">
+    <button type="button" (click)="newDiagram()">New</button>
+    <button type="button" (click)="open()" title="Open a YAML diagram (Ctrl+O)">Open…</button>
+    <button type="button" (click)="file.save()" title="Save (Ctrl+S)">Save</button>
+    <button type="button" (click)="file.saveAs()" title="Save as (Ctrl+Shift+S)">Save as…</button>
+    <span class="file-name" [class.dirty]="file.dirty()">
+      {{ file.name() }}
+      @if (file.dirty()) {
+        <span aria-label="unsaved changes"> •</span>
+      }
+    </span>
+  </div>
+  <div class="group" role="group" aria-label="Edit">
+    <button
+      type="button"
+      [disabled]="!selectedStep()"
+      (click)="toggleCompensation()"
+      title="Add or remove the compensation action of the selected step"
+    >
+      {{ selectedStep()?.compensation ? 'Remove compensation' : 'Add compensation' }}
+    </button>
+    <button
+      type="button"
+      [disabled]="!store.canUndo()"
+      (click)="store.undo()"
+      title="Undo (Ctrl+Z)"
+    >
+      Undo
+    </button>
+    <button
+      type="button"
+      [disabled]="!store.canRedo()"
+      (click)="store.redo()"
+      title="Redo (Ctrl+Shift+Z)"
+    >
+      Redo
+    </button>
+  </div>
+  @if (file.error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
 </div>
 
-<f-flow
-  fDraggable
-  class="editor-flow"
-  (fMoveNodes)="onMove($event)"
-  (fCreateConnection)="onCreateConnection($event)"
-  (fDeleteSelected)="onDelete($event)"
->
-  <f-line-alignment />
-  <f-canvas fZoom>
-    @for (edge of store.edges(); track edge.id) {
-      <f-connection
-        [fConnectionId]="edge.id"
-        [fSourceId]="outId(edge.source)"
-        [fTargetId]="inId(edge.target)"
-      />
+<div class="workspace">
+  <aside class="palette" aria-label="Node palette">
+    @for (item of palette; track item.type) {
+      <button
+        type="button"
+        class="palette-item"
+        [class]="'palette-' + item.type"
+        fExternalItem
+        [fData]="item.type"
+        (click)="addNode(item.type)"
+        [attr.data-shape]="item.shape"
+        [title]="'Drag onto the canvas or click to add a ' + item.label + ' node'"
+      >
+        {{ item.label }}
+      </button>
     }
-    <f-connection-for-create />
-    @for (node of store.nodes(); track node.id) {
-      <div fNode fDragHandle [fNodeId]="node.id" [fNodePosition]="node.position" class="node">
+  </aside>
+
+  <f-flow
+    fDraggable
+    class="editor-flow"
+    (fMoveNodes)="onMove($event)"
+    (fCreateConnection)="onCreateConnection($event)"
+    (fCreateNode)="onCreateNode($event)"
+    (fDeleteSelected)="onDelete($event)"
+    (fSelectionChange)="onSelection($event)"
+  >
+    <f-line-alignment />
+    <f-canvas fZoom>
+      @for (edge of store.edges(); track edge.id) {
+        <f-connection
+          [fConnectionId]="edge.id"
+          [fSourceId]="outId(edge.source)"
+          [fTargetId]="inId(edge.target)"
+        />
+      }
+      <f-connection-for-create />
+      @for (node of store.nodes(); track node.id) {
         <div
-          fConnector
-          [fConnectorId]="inId(node.id)"
-          fConnectorType="target"
-          class="port in"
-        ></div>
-        <span class="node-name">{{ node.name }}</span>
-        <div
-          fConnector
-          [fConnectorId]="outId(node.id)"
-          fConnectorType="source"
-          class="port out"
-        ></div>
-      </div>
-    }
-  </f-canvas>
-  <f-selection-area />
-  <f-minimap class="minimap" />
-</f-flow>
+          fNode
+          fDragHandle
+          [fNodeId]="node.id"
+          [fNodePosition]="node.position"
+          class="node"
+          [class]="'node-' + node.type"
+        >
+          @if (hasInput(node.type)) {
+            <div
+              fConnector
+              [fConnectorId]="inId(node.id)"
+              fConnectorType="target"
+              class="port in"
+            ></div>
+          }
+          @switch (node.type) {
+            @case ('start') {
+              <span class="shape" aria-hidden="true">▶</span>
+              <span class="label">{{ node.name }}</span>
+            }
+            @case ('end') {
+              <span class="shape" aria-hidden="true">■</span>
+              <span class="label">{{ node.name }}</span>
+            }
+            @case ('decision') {
+              <span class="diamond"></span>
+              <span class="decision-name">{{ node.name }}</span>
+            }
+            @default {
+              <span class="node-name">{{ node.name }}</span>
+              @if (node.compensation; as comp) {
+                <span class="compensation">↩ {{ comp.name }}</span>
+              }
+            }
+          }
+          @if (hasOutput(node.type)) {
+            <div
+              fConnector
+              [fConnectorId]="outId(node.id)"
+              fConnectorType="source"
+              class="port out"
+            ></div>
+          }
+        </div>
+      }
+    </f-canvas>
+    <f-selection-area />
+    <f-minimap class="minimap" />
+  </f-flow>
+</div>

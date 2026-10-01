@@ -1,9 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
+import { BrowserFileStorage } from './storage/browser-file-storage';
+import { FileStorage } from './storage/file-storage';
 
 describe('App', () => {
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [App] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [App],
+      providers: [{ provide: FileStorage, useClass: BrowserFileStorage }],
+    }).compileComponents();
   });
 
   it('renders the title and the editor canvas', async () => {

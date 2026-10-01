@@ -6,11 +6,22 @@ export interface Point {
 export type NodeType = 'start' | 'end' | 'step' | 'decision';
 export type EdgeKind = 'forward' | 'compensation';
 
+/** Undo action that runs when a later step of the saga fails. Only steps can have one. */
+export interface Compensation {
+  name: string;
+  description?: string;
+}
+
 export interface DiagramNode {
   id: string;
   type: NodeType;
   name: string;
   position: Point;
+  description?: string;
+  compensation?: Compensation;
+  /** Free-text notes, e.g. "3 attempts, exponential backoff" / "30s". Documentation only. */
+  retry?: string;
+  timeout?: string;
 }
 
 export interface DiagramEdge {
@@ -24,6 +35,10 @@ export interface Diagram {
   nodes: DiagramNode[];
   edges: DiagramEdge[];
 }
+
+/** A start node has no incoming connections, an end node no outgoing ones. */
+export const hasInput = (type: NodeType): boolean => type !== 'start';
+export const hasOutput = (type: NodeType): boolean => type !== 'end';
 
 export const emptyDiagram = (): Diagram => ({ nodes: [], edges: [] });
 
