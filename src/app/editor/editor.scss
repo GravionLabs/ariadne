@@ -1,9 +1,58 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
   height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #d0d5dd;
 }
 
 .editor-flow {
   display: block;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.node {
+  position: relative;
+  min-width: 7rem;
+  padding: 0.75rem 1.25rem;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #98a2b3;
+  border-radius: 6px;
+  cursor: grab;
+}
+
+.port {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #475467;
+
+  &.in {
+    left: -6px;
+  }
+
+  &.out {
+    right: -6px;
+  }
+}
+
+.minimap {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  width: 200px;
+  height: 140px;
+  background: #fff;
+  border: 1px solid #d0d5dd;
 }

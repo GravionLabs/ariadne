@@ -1,3 +1,42 @@
-<f-flow fDraggable class="editor-flow">
-  <f-canvas fZoom></f-canvas>
+<div class="toolbar">
+  <button type="button" (click)="addStep()">Add step</button>
+</div>
+
+<f-flow
+  fDraggable
+  class="editor-flow"
+  (fMoveNodes)="onMove($event)"
+  (fCreateConnection)="onCreateConnection($event)"
+  (fDeleteSelected)="onDelete($event)"
+>
+  <f-line-alignment />
+  <f-canvas fZoom>
+    @for (edge of store.edges(); track edge.id) {
+      <f-connection
+        [fConnectionId]="edge.id"
+        [fSourceId]="outId(edge.source)"
+        [fTargetId]="inId(edge.target)"
+      />
+    }
+    <f-connection-for-create />
+    @for (node of store.nodes(); track node.id) {
+      <div fNode fDragHandle [fNodeId]="node.id" [fNodePosition]="node.position" class="node">
+        <div
+          fConnector
+          [fConnectorId]="inId(node.id)"
+          fConnectorType="target"
+          class="port in"
+        ></div>
+        <span class="node-name">{{ node.name }}</span>
+        <div
+          fConnector
+          [fConnectorId]="outId(node.id)"
+          fConnectorType="source"
+          class="port out"
+        ></div>
+      </div>
+    }
+  </f-canvas>
+  <f-selection-area />
+  <f-minimap class="minimap" />
 </f-flow>
