@@ -38,6 +38,30 @@
   --node-color: var(--c-end);
 }
 
+// Accent bar along the top edge, in the node's color.
+:host(.f-node)::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--node-color);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  pointer-events: none;
+}
+
+:host(.f-node.compact)::before {
+  display: none;
+}
+
+:host([data-color='red']) { --node-color: var(--c-node-red); }
+:host([data-color='orange']) { --node-color: var(--c-node-orange); }
+:host([data-color='amber']) { --node-color: var(--c-node-amber); }
+:host([data-color='green']) { --node-color: var(--c-node-green); }
+:host([data-color='teal']) { --node-color: var(--c-node-teal); }
+:host([data-color='blue']) { --node-color: var(--c-node-blue); }
+:host([data-color='purple']) { --node-color: var(--c-node-purple); }
+:host([data-color='pink']) { --node-color: var(--c-node-pink); }
+
 :host(.f-node.compact) {
   display: flex;
   align-items: center;
@@ -47,9 +71,49 @@
 
 .heading {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
+}
+
+.toggle {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  place-items: center;
+  color: var(--c-text-subtle);
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--c-text);
+    background: color-mix(in srgb, var(--node-color) 14%, transparent);
+  }
+
+  app-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// Same metrics as DESCRIPTION_* in diagram-layout.ts.
+.description {
+  box-sizing: border-box;
+  max-height: calc(8 * 17px + 16px);
+  margin: 10px 0 0;
+  padding: 8px;
+  overflow-y: auto;
+  color: var(--c-text);
+  background: color-mix(in srgb, var(--node-color) 7%, transparent);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 17px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
 }
 
 .badge {

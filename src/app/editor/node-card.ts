@@ -1,6 +1,7 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { EFConnectableSide, FFlowModule } from '@foblex/flow';
 import { DiagramNode, Direction, hasInput, hasOutput, inputId, outputId } from '../model/diagram';
+import { canExpand } from './diagram-layout';
 import { Icon } from './icon';
 import { DECISION, NODE_TYPES } from './node-types';
 
@@ -13,8 +14,10 @@ import { DECISION, NODE_TYPES } from './node-types';
   imports: [FFlowModule, Icon],
   host: {
     '[attr.data-type]': "decision() ? 'decision' : node().type",
+    '[attr.data-color]': 'palette()',
+    '[style.--node-color]': 'custom()',
     '[class.compact]': 'compact()',
-    '[attr.title]': 'node().description || null',
+    '[attr.title]': 'open() ? null : node().description || null',
   },
   templateUrl: './node-card.html',
   styleUrl: './node-card.scss',
@@ -24,7 +27,20 @@ export class NodeCard {
   readonly direction = input.required<Direction>();
   /** Several transitions leave this state: it is drawn as a decision. */
   readonly decision = input(false);
+  /** The description is unfolded under the heading. */
+  readonly expanded = input(false);
+  readonly expandToggled = output<void>();
 
+  protected readonly palette = computed(() => {
+    const c = this.node().color;
+    return c && !c.startsWith('#') ? c : null;
+  });
+  protected readonly custom = computed(() => {
+    const c = this.node().color;
+    return c?.startsWith('#') ? c : null;
+  });
+  protected readonly canExpand = computed(() => canExpand(this.node()));
+  protected readonly open = computed(() => this.canExpand() && this.expanded());
   protected readonly info = computed(() =>
     this.decision() ? DECISION : NODE_TYPES[this.node().type],
   );

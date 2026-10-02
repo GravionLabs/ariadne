@@ -16,6 +16,18 @@
     }
     <strong class="name">{{ node().name }}</strong>
   </div>
+  @if (canExpand()) {
+    <button
+      type="button"
+      class="toggle"
+      [attr.aria-expanded]="open()"
+      [attr.aria-label]="open() ? 'Hide description' : 'Show description'"
+      (click)="expandToggled.emit(); $event.stopPropagation()"
+      (pointerdown)="$event.stopPropagation()"
+    >
+      <app-icon [name]="open() ? 'expandLess' : 'expandMore'" />
+    </button>
+  }
 </div>
 
 @if (node().compensation; as compensation) {
@@ -25,6 +37,10 @@
       <span>{{ compensation.name }}</span>
     </li>
   </ul>
+}
+
+@if (open()) {
+  <p class="description">{{ node().description }}</p>
 }
 
 @if (hasOutput()) {

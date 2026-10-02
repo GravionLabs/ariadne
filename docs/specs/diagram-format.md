@@ -80,6 +80,7 @@ edges:
 | `type`         | `start` \| `state` \| `end`              | yes      | Initial state (no incoming transitions), state, final state (no outgoing). |
 | `name`         | string                                   | yes      | Label shown on the canvas.                                                 |
 | `description`  | string                                   | no       | Documentation only.                                                        |
+| `color`        | `red` \| `orange` \| `amber` \| `green` \| `teal` \| `blue` \| `purple` \| `pink` \| `#rrggbb` | no | Accent color at the top of the card: a palette name or a custom hex value. Defaults to the color of the node's type. |
 | `retry`        | string                                   | no       | Free text, e.g. `3 attempts`. Documentation only.                          |
 | `timeout`      | string                                   | no       | Free text, e.g. `30s`. Documentation only.                                 |
 | `compensation` | `{ name: string, description?: string }` | no       | Undo action for the work done to reach this state.                         |

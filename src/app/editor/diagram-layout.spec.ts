@@ -33,6 +33,15 @@ const saga: Diagram = {
 };
 
 describe('diagram layout', () => {
+  it('grows a state card only when its description is unfolded', () => {
+    const node = { id: 'a', type: 'state', name: 'a', description: 'one\ntwo' } as never;
+    const folded = nodeSize(node);
+    expect(nodeSize(node, true).height).toBeGreaterThan(folded.height);
+    expect(nodeSize({ id: 'b', type: 'state', name: 'b' } as never, true)).toEqual(
+      nodeSize({ id: 'b', type: 'state', name: 'b' } as never),
+    );
+  });
+
   it('gives slots to states nothing follows and to decisions, never to final states', () => {
     expect(slotSources(saga).map((n) => n.id)).toEqual(['state-2', 'state-3']);
   });

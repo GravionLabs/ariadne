@@ -8,6 +8,9 @@ import {
   MESSAGE_KINDS,
   Activity,
   MessageKind,
+  NODE_COLORS,
+  NodeColor,
+  isNodeColor,
   NodeType,
 } from './diagram';
 
@@ -63,6 +66,7 @@ function serializeNode(node: DiagramNode): Record<string, unknown> {
     type: node.type,
     name: node.name,
     description: node.description,
+    color: node.color,
     retry: node.retry,
     timeout: node.timeout,
     compensation: node.compensation && withoutUndefined({ ...node.compensation }),
@@ -106,6 +110,10 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
   if (!NODE_TYPES.includes(type as NodeType)) {
     throw new DiagramFormatError(`${at}.type must be one of ${NODE_TYPES.join(', ')}`);
   }
+  const color = node['color'];
+  if (color !== undefined &&   !isNodeColor(color)) {
+      throw new DiagramFormatError(`${at}.color must be one of ${NODE_COLORS.join(', ')} or a #rrggbb value`);
+  }
   const compensation =
     node['compensation'] === undefined
       ? undefined
@@ -115,6 +123,7 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     type: type as NodeType,
     name: asString(node['name'], `${at}.name`),
     description: optionalString(node['description'], `${at}.description`),
+    color: color as NodeColor | undefined,
     retry: optionalString(node['retry'], `${at}.retry`),
     timeout: optionalString(node['timeout'], `${at}.timeout`),
     compensation:

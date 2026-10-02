@@ -14,6 +14,8 @@ import {
   DiagramNode,
   EdgeKind,
   MessageKind,
+  NODE_COLORS,
+  NodeColor,
   NodeType,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
@@ -52,6 +54,21 @@ export class Inspector {
   readonly transitionAdded = output<NodeType>();
 
   protected readonly namingHint = namingHint;
+  protected readonly colors = NODE_COLORS;
+
+  protected readonly customColor = computed(() => {
+    const c = this.node()?.color;
+    return c?.startsWith('#') ? c : '#3b82f6';
+  });
+
+  protected pickColor(event: Event): void {
+    this.setColor((event.target as HTMLInputElement).value as NodeColor);
+  }
+
+  protected setColor(color: NodeColor | undefined): void {
+    const node = this.node();
+    if (node && color !== node.color) this.store.updateNode(node.id, { color });
+  }
 
   protected readonly nodeInfo = computed(() => {
     const node = this.node();

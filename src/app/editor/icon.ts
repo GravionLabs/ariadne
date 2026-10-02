@@ -48,6 +48,8 @@ const PATHS = {
   trigger: 'M7 2v11h3v9l7-12h-4l4-8z',
   directionDown: 'M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z',
   directionRight: 'M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z',
+  expandMore: 'M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z',
+  expandLess: 'M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z',
 } as const;
 
 export type IconName = keyof typeof PATHS;
