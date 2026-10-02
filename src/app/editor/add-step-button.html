@@ -1,0 +1,47 @@
+<button
+  #origin="cdkOverlayOrigin"
+  type="button"
+  class="add-trigger"
+  cdkOverlayOrigin
+  fDragBlocker
+  [attr.aria-label]="label()"
+  [attr.aria-expanded]="types().length > 1 ? isOpen() : null"
+  [title]="label()"
+  (pointerdown)="$event.stopPropagation()"
+  (click)="toggle($event)"
+>
+  <app-icon name="add" />
+</button>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="origin"
+  [cdkConnectedOverlayOpen]="isOpen()"
+  [cdkConnectedOverlayPositions]="positions"
+  [cdkConnectedOverlayHasBackdrop]="true"
+  [cdkConnectedOverlayPush]="true"
+  [cdkConnectedOverlayViewportMargin]="12"
+  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+  (backdropClick)="close()"
+  (detach)="close()"
+  (overlayKeydown)="onOverlayKeydown($event)"
+>
+  <section class="picker" role="menu" [attr.aria-label]="label()">
+    <header>{{ label() }}</header>
+    @for (type of types(); track type) {
+      <button
+        type="button"
+        role="menuitem"
+        class="option"
+        [attr.data-type]="type"
+        (click)="pick(type)"
+      >
+        <span class="option-icon"><app-icon [name]="info[type].icon" /></span>
+        <span class="option-copy">
+          <strong>{{ info[type].label }}</strong>
+          <small>{{ info[type].description }}</small>
+        </span>
+      </button>
+    }
+  </section>
+</ng-template>

@@ -1,0 +1,130 @@
+// Sizes follow labelSize() in diagram-layout.ts: the card, then the "+" overhanging it by half
+// along the line (below it top-bottom, right of it left-right).
+:host {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+}
+
+:host([data-direction='left-right']) {
+  flex-direction: row;
+  align-items: center;
+}
+
+:host(.floating) {
+  width: max-content;
+  max-width: 240px;
+  height: auto;
+}
+
+:host(.empty) {
+  align-items: center;
+  justify-content: center;
+}
+
+.card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0 10px;
+  color: var(--c-text);
+  text-align: left;
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+
+  :host([data-direction='left-right']) & {
+    flex: 1;
+    margin-right: 13px;
+  }
+
+  &:hover {
+    border-color: var(--c-border-muted);
+  }
+
+  &:focus-visible,
+  &.selected {
+    outline: none;
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 3px var(--c-primary-soft);
+  }
+}
+
+.row {
+  --row-color: var(--c-event);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  min-width: 0;
+  font-size: 11px;
+
+  app-icon {
+    flex: none;
+    width: 13px;
+    height: 13px;
+    color: var(--row-color);
+  }
+}
+
+.text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event .text {
+  color: color-mix(in srgb, var(--row-color) 75%, var(--c-text));
+  font-weight: 600;
+}
+
+.event.external {
+  --row-color: var(--c-external);
+}
+
+.source {
+  --row-color: var(--c-external);
+  color: var(--c-text-subtle);
+  font-style: italic;
+}
+
+.activity {
+  &[data-kind='command'] {
+    --row-color: var(--c-command);
+  }
+
+  .verb {
+    color: var(--c-text-subtle);
+  }
+}
+
+// The "+" sits on the line, half over the card's edge.
+.insert {
+  position: absolute;
+  bottom: 0;
+  left: calc(50% - 13px);
+
+  :host([data-direction='left-right']) & {
+    top: calc(50% - 13px);
+    right: 0;
+    bottom: auto;
+    left: auto;
+  }
+
+  :host(.empty) & {
+    position: static;
+  }
+}

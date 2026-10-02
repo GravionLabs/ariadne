@@ -1,0 +1,306 @@
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark"><app-icon name="brand" /></span>
+    <h1>Ariadne</h1>
+  </div>
+
+  <span class="topbar-divider" aria-hidden="true"></span>
+
+  <nav class="file-actions" aria-label="File">
+    <button type="button" class="menu-button" (click)="newDiagram()" title="New diagram">
+      <app-icon name="newFile" /><span>New</span>
+    </button>
+    <button type="button" class="menu-button" (click)="open()" title="Open a YAML diagram (Ctrl+O)">
+      <app-icon name="open" /><span>Open…</span>
+    </button>
+    <button
+      type="button"
+      class="menu-button"
+      [class.primary]="file.dirty()"
+      (click)="file.save()"
+      title="Save (Ctrl+S)"
+    >
+      <app-icon name="save" /><span>Save</span>
+    </button>
+    <button
+      type="button"
+      class="menu-button"
+      (click)="file.saveAs()"
+      title="Save as (Ctrl+Shift+S)"
+    >
+      <app-icon name="saveAs" /><span>Save as…</span>
+    </button>
+  </nav>
+
+  <div class="topbar-end">
+    @if (file.error(); as error) {
+      <p class="error-pill" role="alert">
+        <span>{{ error }}</span>
+        <button type="button" aria-label="Dismiss error" (click)="file.error.set(null)">
+          <app-icon name="close" />
+        </button>
+      </p>
+    }
+    <span class="file-name" [class.dirty]="file.dirty()" [title]="file.name()">
+      <app-icon name="file" />
+      <span class="file-label">{{ file.name() }}</span>
+      @if (file.dirty()) {
+        <span
+          class="dirty-dot"
+          role="img"
+          aria-label="Unsaved changes"
+          title="Unsaved changes"
+        ></span>
+      }
+    </span>
+  </div>
+</header>
+
+<div class="workspace" [attr.data-direction]="store.direction()">
+  <f-flow
+    fDraggable
+    class="editor-flow"
+    aria-label="Saga diagram"
+    (fFullRendered)="onFirstRender()"
+    (fCreateConnection)="onCreateConnection($event)"
+    (fDeleteSelected)="onDelete($event)"
+    (fSelectionChange)="onSelection($event)"
+  >
+    <f-background>
+      <f-circle-pattern />
+    </f-background>
+    <f-canvas fZoom [fZoomMinimum]="0.25" [fZoomMaximum]="1.8">
+      @for (edge of store.edges(); track edge.id) {
+        <f-connection
+          [fConnectionId]="edge.id"
+          [fSourceId]="outputId(edge.source)"
+          [fTargetId]="inputId(edge.target)"
+          fType="segment"
+          fBehavior="fixed"
+          [fOffset]="24"
+          [fRadius]="8"
+          [fReassignDisabled]="true"
+          [class.compensation]="edge.kind === 'compensation'"
+        >
+          <f-connection-marker-arrow />
+          @if (edge.kind === 'compensation') {
+            <!-- Compensation transitions are not laid out, so their label rides on the line. -->
+            <app-transition-label
+              fConnectionContent
+              [position]="0.5"
+              [insertable]="false"
+              [edge]="edge"
+              [direction]="store.direction()"
+              [selected]="selectedEdge()?.id === edge.id"
+              [external]="!!edge.event && !published().has(edge.event)"
+              (selectRequested)="selectEdge(edge.id)"
+            />
+          }
+        </f-connection>
+      }
+      @for (slot of layout.slots(); track slot.id) {
+        <f-connection
+          class="slot-connection"
+          [fConnectionId]="'link:' + slot.id"
+          [fSourceId]="outputId(slot.sourceId)"
+          [fTargetId]="slotInputId(slot.id)"
+          fType="segment"
+          fBehavior="fixed"
+          [fReassignDisabled]="true"
+          [fSelectionDisabled]="true"
+        />
+      }
+      <f-connection-for-create fType="segment" fBehavior="fixed" [fOffset]="24">
+        <f-connection-marker-arrow />
+      </f-connection-for-create>
+      @for (node of store.nodes(); track node.id) {
+        <app-node-card
+          fNode
+          [fNodeId]="node.id"
+          [fNodePosition]="layout.positions().get(node.id) ?? { x: 0, y: 0 }"
+          [fNodeSize]="nodeSize(node)"
+          [fNodeDraggingDisabled]="true"
+          [fConnectOnNode]="false"
+          [node]="node"
+          [decision]="layout.decisions().has(node.id)"
+          [direction]="store.direction()"
+          [attr.aria-label]="node.name"
+        />
+      }
+      @for (label of layout.labels(); track label.id) {
+        <div
+          fNode
+          class="transition"
+          [fNodeId]="label.id"
+          [fNodePosition]="label.position"
+          [fNodeSize]="label.size"
+          [fNodeDraggingDisabled]="true"
+          [fNodeSelectionDisabled]="true"
+          [fConnectOnNode]="false"
+        >
+          @if (edgesById().get(label.edgeId); as edge) {
+            <app-transition-label
+              [edge]="edge"
+              [direction]="store.direction()"
+              [selected]="selectedEdge()?.id === edge.id"
+              [external]="!!edge.event && !published().has(edge.event)"
+              (selectRequested)="selectEdge(edge.id)"
+              (inserted)="insert(edge.id, $event)"
+            />
+          }
+        </div>
+      }
+      @for (slot of layout.slots(); track slot.id) {
+        <div
+          fNode
+          class="slot"
+          [fNodeId]="slot.id"
+          [fNodePosition]="slot.position"
+          [fNodeSize]="slotSize"
+          [fNodeDraggingDisabled]="true"
+          [fNodeSelectionDisabled]="true"
+          [fConnectOnNode]="false"
+        >
+          <span
+            fConnector
+            fConnectorType="target"
+            class="slot-in"
+            [fConnectorId]="slotInputId(slot.id)"
+            [fConnectorDisabled]="true"
+          ></span>
+          <app-add-step-button
+            [types]="appendTypes"
+            label="Add the next state"
+            (picked)="append(slot.sourceId, $event)"
+          />
+        </div>
+      }
+    </f-canvas>
+    <f-minimap class="minimap" [fMinSize]="2000" />
+  </f-flow>
+
+  @if (store.nodes().length === 0) {
+    <div class="empty-state">
+      <strong>This diagram is empty</strong>
+      <span>Every saga starts in its initial state.</span>
+      <button type="button" class="menu-button primary" (click)="addStart()">
+        <app-icon name="start" /><span>Add the initial state</span>
+      </button>
+    </div>
+  }
+
+  @if (selectedNode(); as node) {
+    <app-inspector
+      class="inspector"
+      [node]="node"
+      [decision]="layout.decisions().has(node.id)"
+      (closed)="clearSelection()"
+      (deleted)="deleteSelection()"
+      (transitionAdded)="append(node.id, $event)"
+    />
+  } @else if (selectedEdge(); as edge) {
+    <app-inspector
+      class="inspector"
+      [edge]="edge"
+      (closed)="clearSelection()"
+      (deleted)="deleteSelection()"
+    />
+  }
+
+  <div class="toolbox floating" role="toolbar" aria-label="Edit and view">
+    <button
+      type="button"
+      class="icon-button"
+      [disabled]="!hasSelection()"
+      (click)="deleteSelection()"
+      aria-label="Delete selection"
+      title="Delete (Del)"
+    >
+      <app-icon name="delete" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      [disabled]="!store.canUndo()"
+      (click)="store.undo()"
+      aria-label="Undo"
+      title="Undo (Ctrl+Z)"
+    >
+      <app-icon name="undo" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      [disabled]="!store.canRedo()"
+      (click)="store.redo()"
+      aria-label="Redo"
+      title="Redo (Ctrl+Shift+Z)"
+    >
+      <app-icon name="redo" />
+    </button>
+    <div class="divider"></div>
+    <div class="segmented" role="radiogroup" aria-label="Layout direction">
+      <button
+        type="button"
+        class="icon-button"
+        role="radio"
+        [class.active]="store.direction() === 'top-bottom'"
+        [attr.aria-checked]="store.direction() === 'top-bottom'"
+        (click)="setDirection('top-bottom')"
+        aria-label="Top to bottom"
+        title="Top to bottom"
+      >
+        <app-icon name="directionDown" />
+      </button>
+      <button
+        type="button"
+        class="icon-button"
+        role="radio"
+        [class.active]="store.direction() === 'left-right'"
+        [attr.aria-checked]="store.direction() === 'left-right'"
+        (click)="setDirection('left-right')"
+        aria-label="Left to right"
+        title="Left to right"
+      >
+        <app-icon name="directionRight" />
+      </button>
+    </div>
+    <div class="divider"></div>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="zoomIn()"
+      aria-label="Zoom in"
+      title="Zoom in"
+    >
+      <app-icon name="zoomIn" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="zoomOut()"
+      aria-label="Zoom out"
+      title="Zoom out"
+    >
+      <app-icon name="zoomOut" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="fitToScreen()"
+      aria-label="Fit to screen"
+      title="Fit to screen"
+    >
+      <app-icon name="fitScreen" />
+    </button>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="resetZoom()"
+      aria-label="Reset zoom"
+      title="1:1"
+    >
+      <app-icon name="oneToOne" />
+    </button>
+  </div>
+</div>
