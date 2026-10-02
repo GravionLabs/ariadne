@@ -1,97 +1,138 @@
-# Diagram file format (version 1)
+# Diagram file format (version 2)
 
 Ariadne stores one diagram per YAML file (`.yaml` / `.yml`). Files are meant to be committed to git.
-The format is designed so that an unchanged diagram is written byte-for-byte identically.
+The format is designed so that an unchanged diagram is written byte-for-byte identically. Layout is
+computed by the editor, so files hold the graph only: no positions, and a diff only shows what
+changed in the saga.
+
+A diagram is a saga **state machine**, in the sense of MassTransit sagas:
+
+- **Nodes** are states.
+- **Edges** are transitions. While the saga is in the source state, the transition's event moves it on:
+  the transition runs its activities (send commands, publish events) and enters the target state.
+
+A state left by several transitions is a decision: which way the saga goes depends on the event it
+receives.
 
 ## Example
 
 ```yaml
-version: 1
+version: 2
+direction: top-bottom
 nodes:
   - id: start-1
     type: start
-    name: Start
-    position:
-      x: 0
-      y: 0
-  - id: step-1
-    type: step
-    name: Charge card
-    position:
-      x: 200
-      y: 10
-    description: Calls the payment provider
+    name: Initial
+  - id: state-1
+    type: state
+    name: Charging payment
+    description: Waits for the payment provider
     retry: 3 attempts, exponential backoff
     timeout: 30s
     compensation:
-      name: Refund
+      name: RefundPayment
   - id: end-1
     type: end
-    name: End
-    position:
-      x: 400
-      y: 0
+    name: Completed
+  - id: end-2
+    type: end
+    name: Cancelled
 edges:
   - id: edge-1
     source: start-1
-    target: step-1
+    target: state-1
     kind: forward
+    event: OrderSubmitted
+    eventSource: Shop API
+    activities:
+      - command: ChargePayment
   - id: edge-2
-    source: step-1
+    source: state-1
     target: end-1
     kind: forward
-    sourcePort: e
-    targetPort: w
+    event: PaymentCharged
+    activities:
+      - command: ShipOrder
+      - event: OrderAccepted
+  - id: edge-3
+    source: state-1
+    target: end-2
+    kind: forward
+    event: PaymentFailed
+    activities:
+      - event: OrderRejected
 ```
 
 ## Fields
 
-| Field     | Type    | Required | Notes                                                         |
-| --------- | ------- | -------- | ------------------------------------------------------------- |
-| `version` | integer | yes      | Must be `1`. Files with another version are rejected.         |
-| `nodes`   | list    | no       | Defaults to empty.                                            |
-| `edges`   | list    | no       | Defaults to empty. Every `source`/`target` must be a node id. |
+| Field       | Type                         | Required | Notes                                                         |
+| ----------- | ---------------------------- | -------- | ------------------------------------------------------------- |
+| `version`   | integer                      | yes      | `2` (files with `1` are still read, see below).               |
+| `direction` | `top-bottom` \| `left-right` | no       | Layout direction. Defaults to `top-bottom`.                   |
+| `nodes`     | list                         | no       | Defaults to empty.                                            |
+| `edges`     | list                         | no       | Defaults to empty. Every `source`/`target` must be a node id. |
 
-### Node
+### Node (state)
 
-| Field          | Type                                     | Required | Notes                                                  |
-| -------------- | ---------------------------------------- | -------- | ------------------------------------------------------ |
-| `id`           | string                                   | yes      | Unique within the file, e.g. `step-3`.                 |
-| `type`         | `start` \| `step` \| `decision` \| `end` | yes      | `start` has no incoming, `end` no outgoing edges.      |
-| `name`         | string                                   | yes      | Label shown on the canvas.                             |
-| `position`     | `{ x: number, y: number }`               | yes      | Canvas position of the node's top-left corner (px).    |
-| `description`  | string                                   | no       | Documentation only.                                    |
-| `retry`        | string                                   | no       | Free text, e.g. `3 attempts`. Documentation only.      |
-| `timeout`      | string                                   | no       | Free text, e.g. `30s`. Documentation only.             |
-| `compensation` | `{ name: string, description?: string }` | no       | Undo action of a saga step (only meaningful on steps). |
+| Field          | Type                                     | Required | Notes                                                                      |
+| -------------- | ---------------------------------------- | -------- | -------------------------------------------------------------------------- |
+| `id`           | string                                   | yes      | Unique within the file, e.g. `state-3`.                                    |
+| `type`         | `start` \| `state` \| `end`              | yes      | Initial state (no incoming transitions), state, final state (no outgoing). |
+| `name`         | string                                   | yes      | Label shown on the canvas.                                                 |
+| `description`  | string                                   | no       | Documentation only.                                                        |
+| `retry`        | string                                   | no       | Free text, e.g. `3 attempts`. Documentation only.                          |
+| `timeout`      | string                                   | no       | Free text, e.g. `30s`. Documentation only.                                 |
+| `compensation` | `{ name: string, description?: string }` | no       | Undo action for the work done to reach this state.                         |
 
-### Edge
+### Edge (transition)
 
-| Field        | Type                        | Required | Notes                                        |
-| ------------ | --------------------------- | -------- | -------------------------------------------- |
-| `id`         | string                      | yes      | e.g. `edge-4`.                               |
-| `source`     | string                      | yes      | Node id.                                     |
-| `target`     | string                      | yes      | Node id.                                     |
-| `kind`       | `forward` \| `compensation` | no       | Defaults to `forward`.                       |
-| `sourcePort` | port                        | no       | Where the edge leaves `source`; default `e`. |
-| `targetPort` | port                        | no       | Where the edge enters `target`; default `w`. |
+| Field         | Type                        | Required | Notes                                                             |
+| ------------- | --------------------------- | -------- | ----------------------------------------------------------------- |
+| `id`          | string                      | yes      | e.g. `edge-4`.                                                    |
+| `source`      | string                      | yes      | Node id: the state the saga is in.                                |
+| `target`      | string                      | yes      | Node id: the state the transition enters.                         |
+| `kind`        | `forward` \| `compensation` | no       | Defaults to `forward`. Compensation transitions are not laid out. |
+| `event`       | string                      | no       | The event that triggers the transition, e.g. `PaymentCharged`.    |
+| `eventSource` | string                      | no       | Where an external event comes from, e.g. `Shop API`.              |
+| `activities`  | list of activities          | no       | What the transition does, in order, before entering `target`.     |
 
-A **port** is one of eight points on the node's outline, named by compass direction:
-`n`, `ne`, `e`, `se`, `s`, `sw`, `w`, `nw`. Files written before ports existed have no port fields
-and keep their original look (east → west).
+An event a transition reacts to is **internal** when some transition of the same diagram publishes it
+(an `event:` activity), and **external** otherwise. External events can arrive in any state, not only
+the initial one. `eventSource` names the system they come from. Ariadne derives internal or external
+from the diagram and does not store it.
+
+An **activity** is a mapping with exactly one key, the kind of message, following the
+[MassTransit conventions](https://masstransit.massient.com/concepts/messages):
+
+- `command: <Name>`: **send** an instruction to exactly one consumer. Named verb–noun in the
+  imperative, e.g. `SubmitOrder`, `ChargePayment`.
+- `event: <Name>`: **publish** a fact to any number of subscribers. Named noun–verb in the past tense,
+  e.g. `OrderSubmitted`, `PaymentCharged`.
+
+## Version 1
+
+Version 1 files are read without changes to their meaning:
+
+- Node `position` and edge `sourcePort`/`targetPort` are accepted and ignored.
+- Nodes of type `step` and `decision` become `state`.
+- `direction` defaults to `top-bottom`.
+
+Saving writes version 2.
 
 ## Determinism
 
 The writer (`src/app/model/diagram-yaml.ts`) guarantees stable output:
 
 - keys are always written in the order listed above;
-- nodes and edges keep their order in the diagram (new elements are appended);
-- positions are rounded to whole pixels;
-- optional fields that are not set are omitted;
+- nodes, edges and activities keep their order in the diagram (new elements are appended);
+- optional fields that are not set (or empty) are omitted;
 - lines are never wrapped.
 
 ## Errors
 
-Invalid files are rejected as a whole, and the current diagram is left unchanged. The error message names the
-offending path, e.g. `nodes[2].type must be one of start, end, step, decision` or
-`edges[0].target "step-9" is not a node`.
+Invalid files are rejected as a whole, and the current diagram is left unchanged. The error message
+names the offending path. For example:
+
+- `nodes[2].type must be one of start, end, state`
+- `edges[1].activities[0] must be "command: <Name>" or "event: <Name>"`
+- `edges[0].target "state-9" is not a node`

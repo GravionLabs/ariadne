@@ -1,0 +1,51 @@
+@if (rows() > 0) {
+  <button
+    type="button"
+    class="card"
+    [class.selected]="selected()"
+    [style.height.px]="cardHeight()"
+    [attr.aria-label]="'Transition' + (edge().event ? ' on ' + edge().event : '')"
+    (click)="selectRequested.emit()"
+  >
+    @if (edge().event; as event) {
+      <span
+        class="row event"
+        [class.external]="external()"
+        [title]="
+          external()
+            ? 'External event' + (edge().eventSource ? ' from ' + edge().eventSource : '')
+            : 'Event published by this saga'
+        "
+      >
+        <app-icon name="trigger" />
+        <span class="text">{{ event }}</span>
+      </span>
+      @if (edge().eventSource; as source) {
+        <span class="row source">
+          <app-icon name="external" />
+          <span class="text">from {{ source }}</span>
+        </span>
+      }
+    }
+    @for (activity of edge().activities ?? []; track $index) {
+      <span
+        class="row activity"
+        [attr.data-kind]="activity.kind"
+        [title]="verbs[activity.kind] + ' ' + activity.kind"
+      >
+        <app-icon [name]="activity.kind" />
+        <span class="text"
+          ><span class="verb">{{ verbs[activity.kind] }}</span> {{ activity.name }}</span
+        >
+      </span>
+    }
+  </button>
+}
+@if (insertable()) {
+  <app-add-step-button
+    class="insert"
+    [types]="insertTypes"
+    label="Insert a state here"
+    (picked)="inserted.emit($event)"
+  />
+}

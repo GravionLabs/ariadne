@@ -1,0 +1,38 @@
+@if (hasInput()) {
+  <span
+    fConnector
+    fConnectorType="target"
+    class="connector in"
+    [fConnectorId]="inputId()"
+    [fConnectorConnectableSide]="inSide()"
+  ></span>
+}
+
+<div class="heading">
+  <span class="badge"><app-icon [name]="info().icon" /></span>
+  <div class="title">
+    @if (!compact()) {
+      <span class="type">{{ info().label }}</span>
+    }
+    <strong class="name">{{ node().name }}</strong>
+  </div>
+</div>
+
+@if (node().compensation; as compensation) {
+  <ul class="chips">
+    <li class="chip chip-compensation" title="Compensation">
+      <app-icon name="compensation" />
+      <span>{{ compensation.name }}</span>
+    </li>
+  </ul>
+}
+
+@if (hasOutput()) {
+  <span
+    fConnector
+    fConnectorType="source"
+    class="connector out"
+    [fConnectorId]="outputId()"
+    [fConnectorConnectableSide]="outSide()"
+  ></span>
+}

@@ -3,6 +3,13 @@ import { App } from './app';
 import { BrowserFileStorage } from './storage/browser-file-storage';
 import { FileStorage } from './storage/file-storage';
 
+// jsdom has no ResizeObserver; f-flow uses it to track node sizes.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+};
+
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

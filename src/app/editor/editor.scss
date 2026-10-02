@@ -4,35 +4,206 @@
   height: 100%;
 }
 
-.toolbar {
-  display: flex;
-  gap: 1.5rem;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--c-border);
-  background: var(--c-surface-1);
+// Top bar: brand, file actions, file name.
 
-  .group {
-    display: flex;
-    gap: 0.35rem;
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 52px;
+  padding: 0 14px;
+  background: var(--c-surface-1);
+  border-bottom: 1px solid var(--c-border);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  z-index: 20;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  h1 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
   }
+}
+
+.brand-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--c-primary), var(--c-decision));
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+
+  app-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.topbar-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--c-border);
+}
+
+.file-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.menu-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  color: var(--c-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+
+  app-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--c-text-subtle);
+    transition: color var(--transition-fast);
+  }
+
+  &:hover {
+    background: var(--c-surface-3);
+
+    app-icon {
+      color: var(--c-text);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: 1px;
+  }
+
+  &.primary {
+    color: #fff;
+    background: var(--c-primary);
+    border-color: var(--c-primary);
+
+    app-icon {
+      color: #fff;
+    }
+
+    &:hover {
+      background: var(--c-primary-hover);
+    }
+  }
+}
+
+.topbar-end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-left: auto;
 }
 
 .file-name {
-  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 320px;
+  height: 30px;
+  padding: 0 12px 0 8px;
   color: var(--c-text-subtle);
-  font-size: 0.875rem;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  font-size: 13px;
+
+  app-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+  }
 
   &.dirty {
-    font-style: italic;
+    color: var(--c-text);
   }
 }
 
-.error {
-  align-self: center;
-  margin: 0;
-  color: #b42318;
-  font-size: 0.875rem;
+.file-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+.dirty-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--c-compensation);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-compensation) 20%, transparent);
+}
+
+.error-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 420px;
+  height: 30px;
+  margin: 0;
+  padding: 0 4px 0 12px;
+  color: var(--c-danger);
+  background: color-mix(in srgb, var(--c-danger) 8%, var(--c-surface-1));
+  border: 1px solid color-mix(in srgb, var(--c-danger) 30%, var(--c-border));
+  border-radius: 999px;
+  font-size: 12px;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  button {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    place-items: center;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+
+    &:hover {
+      background: color-mix(in srgb, var(--c-danger) 14%, transparent);
+    }
+
+    app-icon {
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+// Workspace: canvas with floating inspector, toolbox and minimap.
 
 .workspace {
   position: relative;
@@ -47,7 +218,36 @@
   outline: none;
 }
 
-// Floating panels over the canvas: palette (left) and toolbox (bottom centre).
+.inspector {
+  position: absolute;
+  z-index: 12;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  width: min(340px, calc(100% - 32px));
+}
+
+.empty-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 28px 32px;
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  transform: translate(-50%, -50%);
+
+  span {
+    margin-bottom: 10px;
+    color: var(--c-text-subtle);
+    font-size: 13px;
+  }
+}
+
 .floating {
   position: absolute;
   z-index: 10;
@@ -58,12 +258,6 @@
   border: 1px solid var(--c-border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
-}
-
-.palette {
-  top: 16px;
-  left: 16px;
-  flex-direction: column;
 }
 
 .toolbox {
@@ -79,6 +273,11 @@
   height: 18px;
   margin: 0 2px;
   background: var(--c-border);
+}
+
+.segmented {
+  display: flex;
+  gap: 2px;
 }
 
 .icon-button {
@@ -113,34 +312,15 @@
   }
 
   &.active {
-    color: var(--c-compensation);
+    color: var(--c-primary);
+    background: var(--c-primary-soft);
   }
-}
-
-.palette-item {
-  cursor: grab;
-}
-
-.palette-start {
-  color: var(--c-start);
-}
-
-.palette-step {
-  color: var(--c-step);
-}
-
-.palette-decision {
-  color: var(--c-decision);
-}
-
-.palette-end {
-  color: var(--c-end);
 }
 
 .minimap {
   position: absolute;
-  right: 16px;
   bottom: 16px;
+  left: 16px;
   width: 160px;
   height: 120px;
   background: var(--c-surface-1);
@@ -149,219 +329,39 @@
   box-shadow: var(--shadow);
 }
 
-// Nodes
+// Canvas content (f-flow renders it inside this component's view).
 
-.node {
-  position: relative;
-  color: var(--c-text);
-  background: var(--c-surface-1);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  cursor: grab;
-  transition: box-shadow var(--transition-fast);
+.transition.f-node,
+.slot.f-node {
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
 
-  &.f-selected {
-    box-shadow: var(--shadow-selected);
+.slot-in {
+  position: absolute;
+  opacity: 0;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 1px;
+
+  [data-direction='left-right'] & {
+    top: 50%;
+    left: 0;
   }
 }
 
-.node-step {
-  // Fixed box so a step created from a dropped connection lands with its port under the cursor
-  // (STEP_SIZE in editor.ts).
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  box-sizing: border-box;
-  min-width: 160px;
-  min-height: 44px;
-  padding: 0.5rem 1rem;
-  border-left: 3px solid var(--c-step);
-  text-align: center;
-  font-size: 0.9rem;
+.slot-connection {
+  --ff-connection-color: var(--c-border-muted);
+  stroke-dasharray: 4 4;
+  pointer-events: none;
 }
 
 .compensation {
-  display: block;
-  margin-top: 0.4rem;
-  padding: 0.15rem 0.4rem;
-  border: 1px dashed var(--c-compensation);
-  border-radius: 4px;
-  background: #fffaeb;
-  color: #b54708;
-  font-size: 0.75rem;
-}
-
-.node-start,
-.node-end {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-
-  .label {
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-top: 6px;
-    transform: translateX(-50%);
-    white-space: nowrap;
-    font-size: 0.8rem;
-  }
-}
-
-.node-start {
-  color: var(--c-start);
-  border-color: var(--c-start);
-}
-
-.node-end {
-  color: var(--c-end);
-  border-color: var(--c-end);
-}
-
-.node-decision {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 110px;
-  height: 110px;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-
-  .diamond {
-    position: absolute;
-    inset: 16px;
-    border: 1px solid var(--c-decision);
-    border-radius: 4px;
-    background: var(--c-surface-1);
-    box-shadow: var(--shadow);
-    transform: rotate(45deg);
-  }
-
-  &.f-selected {
-    box-shadow: none;
-
-    .diamond {
-      box-shadow: var(--shadow-selected);
-    }
-  }
-
-  .decision-name {
-    position: relative;
-    max-width: 70px;
-    font-size: 0.8rem;
-    text-align: center;
-  }
-}
-
-// Ports: eight per node, placed on the outline by compass direction. They are only visible
-// while hovering or selecting a node, or while a connection is being drawn. They must keep
-// their size when hidden (f-flow reads their geometry), so they fade instead of `display: none`.
-
-.port {
-  position: absolute;
-  z-index: 1;
-  width: 10px;
-  height: 10px;
-  box-sizing: border-box;
-  border: 1.5px solid var(--c-primary);
-  border-radius: 50%;
-  background: var(--c-surface-1);
-  opacity: 0;
-  cursor: crosshair;
-  transform: translate(-50%, -50%);
-  transition:
-    opacity var(--transition-fast),
-    transform var(--transition-fast);
-
-  &:hover,
-  &.f-connector-connectable:hover {
-    background: var(--c-primary);
-    transform: translate(-50%, -50%) scale(1.3);
-  }
-}
-
-.node:hover .port,
-.node.f-selected .port,
-:host .f-connections-dragging .port.f-connector-connectable {
-  opacity: 1;
-}
-
-// Rectangle (step): corners and edge midpoints.
-.port-n {
-  top: 0;
-  left: 50%;
-}
-.port-ne {
-  top: 0;
-  left: 100%;
-}
-.port-e {
-  top: 50%;
-  left: 100%;
-}
-.port-se {
-  top: 100%;
-  left: 100%;
-}
-.port-s {
-  top: 100%;
-  left: 50%;
-}
-.port-sw {
-  top: 100%;
-  left: 0;
-}
-.port-w {
-  top: 50%;
-  left: 0;
-}
-.port-nw {
-  top: 0;
-  left: 0;
-}
-
-// Circle (start/end): diagonal ports sit on the circle at 45°.
-.node-start,
-.node-end {
-  .port-ne {
-    top: 14.64%;
-    left: 85.36%;
-  }
-  .port-se {
-    top: 85.36%;
-    left: 85.36%;
-  }
-  .port-sw {
-    top: 85.36%;
-    left: 14.64%;
-  }
-  .port-nw {
-    top: 14.64%;
-    left: 14.64%;
-  }
-}
-
-// Diamond (decision): n/e/s/w are its vertices, diagonal ports the middle of its edges.
-.node-decision {
-  .port-ne {
-    top: 25%;
-    left: 75%;
-  }
-  .port-se {
-    top: 75%;
-    left: 75%;
-  }
-  .port-sw {
-    top: 75%;
-    left: 25%;
-  }
-  .port-nw {
-    top: 25%;
-    left: 25%;
-  }
+  --ff-connection-color: var(--c-compensation);
+  --ff-connection-hover-color: var(--c-compensation);
+  stroke-dasharray: 6 4;
 }

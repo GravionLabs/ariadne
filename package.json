@@ -14,11 +14,13 @@
   "private": true,
   "packageManager": "pnpm@11.9.0",
   "dependencies": {
+    "@angular/cdk": "^22.2.1",
     "@angular/common": "^22.2.0",
     "@angular/compiler": "^22.2.0",
     "@angular/core": "^22.2.0",
     "@angular/forms": "^22.2.0",
     "@angular/platform-browser": "^22.2.0",
+    "@dagrejs/dagre": "^3.1.1",
     "@foblex/2d": "^1.2.2",
     "@foblex/flow": "^19.3.0",
     "@foblex/mediator": "^1.1.3",

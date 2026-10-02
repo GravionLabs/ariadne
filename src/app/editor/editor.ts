@@ -1,40 +1,38 @@
-import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import {
-  EFConnectableSide,
   FCanvasComponent,
   FCreateConnectionEvent,
-  FCreateNodeEvent,
   FDeleteSelectedEvent,
   FFlowComponent,
   FFlowModule,
-  FMoveNodesEvent,
   FSelectionChangeEvent,
   FZoomDirective,
   provideFFlow,
   withA11y,
 } from '@foblex/flow';
 import {
-  DEFAULT_SOURCE_PORT,
-  DEFAULT_TARGET_PORT,
-  DiagramEdge,
+  Direction,
   NodeType,
-  PORTS,
-  Point,
-  Port,
-  connectorId,
-  hasInput,
-  hasOutput,
+  inputId,
   nodeIdOfConnector,
-  oppositePort,
-  portOfConnector,
+  outputId,
+  publishedEvents,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
-import { Icon, IconName } from './icon';
+import { AddStepButton } from './add-step-button';
+import { DiagramLayout, SLOT_SIZE, nodeSize } from './diagram-layout';
+import { Icon } from './icon';
+import { Inspector } from './inspector';
+import { NodeCard } from './node-card';
+import { APPEND_TYPES } from './node-types';
+import { TransitionLabel } from './transition-label';
+
+const FIT_PADDING = { x: 80, y: 80 };
 
 @Component({
-  imports: [FFlowModule, Icon],
-  providers: [provideFFlow(withA11y())],
+  imports: [AddStepButton, FFlowModule, Icon, Inspector, NodeCard, TransitionLabel],
+  providers: [provideFFlow(withA11y()), DiagramLayout],
   host: {
     '(window:keydown)': 'onKeydown($event)',
     '(window:beforeunload)': 'onBeforeUnload($event)',
@@ -46,54 +44,108 @@ import { Icon, IconName } from './icon';
 export class Editor {
   protected readonly store = inject(DiagramStore);
   protected readonly file = inject(DiagramDocument);
-  protected readonly palette: readonly { type: NodeType; label: string; icon: IconName }[] = [
-    { type: 'start', label: 'Start', icon: 'start' },
-    { type: 'step', label: 'Step', icon: 'step' },
-    { type: 'decision', label: 'Decision', icon: 'decision' },
-    { type: 'end', label: 'End', icon: 'end' },
-  ];
-  protected readonly ports = PORTS;
-  protected readonly connectorId = connectorId;
+  protected readonly layout = inject(DiagramLayout);
+  protected readonly appendTypes = APPEND_TYPES;
+  protected readonly slotSize = SLOT_SIZE;
+  protected readonly nodeSize = nodeSize;
+  protected readonly inputId = inputId;
+  protected readonly outputId = outputId;
+  protected readonly slotInputId = (slotId: string) => `${slotId}:in`;
 
   private readonly selection = signal<{ nodeIds: string[]; edgeIds: string[] }>({
     nodeIds: [],
     edgeIds: [],
   });
-  private nextSpawn = 0;
-  private readonly flow = viewChild.required(FFlowComponent);
-  private readonly canvas = viewChild.required(FCanvasComponent);
-  private readonly zoom = viewChild.required(FZoomDirective);
+  private readonly flow = viewChild(FFlowComponent);
+  private readonly canvas = viewChild(FCanvasComponent);
+  private readonly zoom = viewChild(FZoomDirective);
+  /** Set when the next layout should be fitted into view (new file, direction change). */
+  private fitPending = false;
+  /** Node to select in f-flow once the layout has placed it. */
+  private pendingSelect: string | null = null;
 
   protected readonly hasSelection = computed(() => {
     const { nodeIds, edgeIds } = this.selection();
     return nodeIds.length + edgeIds.length > 0;
   });
 
-  /** The selected node if exactly one step is selected. */
-  protected readonly selectedStep = computed(() => {
-    const { nodeIds } = this.selection();
-    if (nodeIds.length !== 1) return undefined;
-    const node = this.store.nodes().find((n) => n.id === nodeIds[0]);
-    return node?.type === 'step' ? node : undefined;
+  /** The selected node if exactly one node (and nothing else) is selected. */
+  protected readonly selectedNode = computed(() => {
+    const { nodeIds, edgeIds } = this.selection();
+    if (nodeIds.length !== 1 || edgeIds.length > 0) return undefined;
+    return this.store.nodes().find((n) => n.id === nodeIds[0]);
   });
 
-  protected addNode(type: NodeType): void {
-    const offset = (this.nextSpawn++ % 8) * 30;
-    this.store.addNode(type, { x: 120 + offset, y: 80 + offset });
+  /** Events the saga publishes itself; every other event comes from outside. */
+  protected readonly published = computed(() => publishedEvents(this.store.diagram()));
+
+  protected readonly edgesById = computed(() => new Map(this.store.edges().map((e) => [e.id, e])));
+
+  /** The selected edge if exactly one edge (and nothing else) is selected. */
+  protected readonly selectedEdge = computed(() => {
+    const { nodeIds, edgeIds } = this.selection();
+    if (edgeIds.length !== 1 || nodeIds.length > 0) return undefined;
+    return this.store.edges().find((e) => e.id === edgeIds[0]);
+  });
+
+  constructor() {
+    // Runs after every relayout: fit or select once the new geometry is on the canvas.
+    effect((onCleanup) => {
+      this.layout.positions();
+      if (!this.fitPending && !this.pendingSelect) return;
+      const timer = setTimeout(() => {
+        if (this.fitPending) this.fitToScreen();
+        if (this.pendingSelect) {
+          this.flow()?.select([this.pendingSelect], [], false);
+          // Keep the node being worked on in view as the graph grows.
+          if (!this.fitPending) this.canvas()?.centerGroupOrNode(this.pendingSelect, true);
+        }
+        this.fitPending = false;
+        this.pendingSelect = null;
+      });
+      onCleanup(() => clearTimeout(timer));
+    });
   }
 
-  /** A palette item was dragged onto the canvas. */
-  protected onCreateNode(event: FCreateNodeEvent<NodeType>): void {
-    const { x, y } = event.externalItemRect;
-    this.selectNode(this.store.addNode(event.data, { x, y }));
+  protected onFirstRender(): void {
+    this.fitToScreen(false);
+  }
+
+  /** "+" after a state: the picked state follows it. */
+  protected append(sourceId: string, type: NodeType): void {
+    const id = this.store.appendNode(sourceId, type);
+    if (id) this.selectNode(id);
+  }
+
+  /** "+" on a transition: the picked state goes between its two ends. */
+  protected insert(edgeId: string, type: NodeType): void {
+    const id = this.store.insertOnEdge(edgeId, type);
+    if (id) this.selectNode(id);
+  }
+
+  protected addStart(): void {
+    this.selectNode(this.store.addNode('start'));
+  }
+
+  protected setDirection(direction: Direction): void {
+    if (direction === this.store.direction()) return;
+    this.fitPending = true;
+    this.store.setDirection(direction);
   }
 
   protected newDiagram(): void {
-    if (this.confirmDiscard()) this.file.newDiagram();
+    if (!this.confirmDiscard()) return;
+    this.file.newDiagram();
+    this.afterReplace();
   }
 
   protected async open(): Promise<void> {
-    if (this.confirmDiscard()) await this.file.open();
+    if (this.confirmDiscard() && (await this.file.open())) this.afterReplace();
+  }
+
+  private afterReplace(): void {
+    this.clearSelection();
+    this.fitPending = true;
   }
 
   private confirmDiscard(): boolean {
@@ -102,14 +154,6 @@ export class Editor {
 
   protected onBeforeUnload(event: BeforeUnloadEvent): void {
     if (this.file.dirty()) event.preventDefault();
-  }
-
-  protected toggleCompensation(): void {
-    const step = this.selectedStep();
-    if (!step) return;
-    this.store.updateNode(step.id, {
-      compensation: step.compensation ? undefined : { name: `Undo ${step.name}` },
-    });
   }
 
   protected onSelection(event: FSelectionChangeEvent): void {
@@ -128,95 +172,62 @@ export class Editor {
     event.preventDefault();
   }
 
-  protected onMove(event: FMoveNodesEvent): void {
-    this.store.moveNodes(event.nodes);
-  }
-
+  /**
+   * A connection was dragged out of a state: onto another state it adds a transition between the
+   * two, onto empty canvas it adds a state after the source.
+   */
   protected onCreateConnection(event: FCreateConnectionEvent): void {
     const source = nodeIdOfConnector(event.sourceId);
-    const sourcePort = portOfConnector(event.sourceId);
     if (event.targetId) {
-      this.store.connect(source, nodeIdOfConnector(event.targetId), 'forward', {
-        sourcePort,
-        targetPort: portOfConnector(event.targetId),
-      });
+      this.store.connect(source, nodeIdOfConnector(event.targetId));
       return;
     }
-    // Dropped on empty canvas: create a step there, attached by the port facing the source.
-    const targetPort = oppositePort(sourcePort);
-    const drop = this.flow().getPositionInFlow(event.dropPosition);
-    const offset = stepPortOffset(targetPort);
-    const position = { x: drop.x - offset.x, y: drop.y - offset.y };
-    const id = this.store.addConnectedNode(source, 'step', position, { sourcePort, targetPort });
-    if (id) this.selectNode(id);
-  }
-
-  /** f-flow connector id of an edge's source or target end. */
-  protected edgeEnd(edge: DiagramEdge, end: 'source' | 'target'): string {
-    return end === 'source'
-      ? connectorId(edge.source, edge.sourcePort ?? DEFAULT_SOURCE_PORT)
-      : connectorId(edge.target, edge.targetPort ?? DEFAULT_TARGET_PORT);
-  }
-
-  /** Start nodes only emit, end nodes only receive; every other port does both. */
-  protected connectorType(type: NodeType): 'source' | 'target' | 'source-target' {
-    if (!hasInput(type)) return 'source';
-    if (!hasOutput(type)) return 'target';
-    return 'source-target';
-  }
-
-  /** Edge ports leave straight out of their side; corners pick the side facing the other end. */
-  protected connectableSide(port: Port): EFConnectableSide {
-    return port.length === 1 ? EFConnectableSide.AUTO : EFConnectableSide.CALCULATE;
+    this.append(source, 'state');
   }
 
   protected deleteSelection(): void {
     this.store.remove(this.selection());
-    this.selection.set({ nodeIds: [], edgeIds: [] });
-    this.flow().clearSelection();
+    this.clearSelection();
   }
 
-  protected selectAll(): void {
-    this.flow().selectAll();
-    const { fNodeIds, fConnectionIds } = this.flow().getSelection();
-    this.selection.set({ nodeIds: fNodeIds, edgeIds: fConnectionIds });
+  protected clearSelection(): void {
+    this.selection.set({ nodeIds: [], edgeIds: [] });
+    this.flow()?.clearSelection();
   }
 
   protected zoomIn(): void {
-    this.zoom().zoomIn();
+    this.zoom()?.zoomIn();
   }
 
   protected zoomOut(): void {
-    this.zoom().zoomOut();
+    this.zoom()?.zoomOut();
   }
 
-  protected fitToScreen(): void {
-    this.canvas().fitToScreen({ x: 80, y: 80 });
+  protected fitToScreen(animated = true): void {
+    // Never zoom in past 100%: a fresh diagram (one start node) would fill the screen.
+    this.canvas()?.fitToScreen(FIT_PADDING, animated, true, 1);
   }
 
   protected resetZoom(): void {
-    this.canvas().resetScaleAndCenter();
+    this.canvas()?.resetScaleAndCenter();
+  }
+
+  /** A transition label was clicked: select its transition, as clicking the line would. */
+  protected selectEdge(id: string): void {
+    this.selection.set({ nodeIds: [], edgeIds: [id] });
+    this.flow()?.select([], [id], false);
   }
 
   private selectNode(id: string): void {
     this.selection.set({ nodeIds: [id], edgeIds: [] });
-    // Wait until the new node is rendered before f-flow can select it.
-    setTimeout(() => this.flow().select([id], [], false));
+    // f-flow can only select the node once the layout has placed and rendered it.
+    this.pendingSelect = id;
   }
 
   protected onDelete(event: FDeleteSelectedEvent): void {
     this.store.remove({ nodeIds: event.nodeIds, edgeIds: event.connectionIds });
+    this.clearSelection();
   }
-}
-
-/** Rendered size of a new step node (see `.node-step` in editor.scss). */
-const STEP_SIZE = { width: 160, height: 44 };
-
-/** Position of `port` relative to a new step node's top-left corner. */
-function stepPortOffset(port: Port): Point {
-  const x = port.includes('w') ? 0 : port.includes('e') ? STEP_SIZE.width : STEP_SIZE.width / 2;
-  const y = port.includes('n') ? 0 : port.includes('s') ? STEP_SIZE.height : STEP_SIZE.height / 2;
-  return { x, y };
 }
 
 function isTextEntry(target: EventTarget | null): boolean {

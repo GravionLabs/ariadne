@@ -3,10 +3,29 @@ export interface Point {
   y: number;
 }
 
-export type NodeType = 'start' | 'end' | 'step' | 'decision';
+/**
+ * Nodes are the states of a saga state machine: the initial state (`start`), the final state
+ * (`end`) and the states in between. A state that several transitions leave is a decision.
+ */
+export type NodeType = 'start' | 'end' | 'state';
 export type EdgeKind = 'forward' | 'compensation';
+export type Direction = 'top-bottom' | 'left-right';
 
-/** Undo action that runs when a later step of the saga fails. Only steps can have one. */
+/**
+ * A message in the MassTransit sense: a command is an imperative instruction sent to exactly
+ * one consumer (`SubmitOrder`); an event is a past-tense fact published to any number of
+ * subscribers (`OrderSubmitted`).
+ */
+export type MessageKind = 'command' | 'event';
+export const MESSAGE_KINDS: readonly MessageKind[] = ['command', 'event'];
+
+/** Something a transition does: send a command or publish an event. */
+export interface Activity {
+  kind: MessageKind;
+  name: string;
+}
+
+/** Undo action that runs when a later part of the saga fails. Only states can have one. */
 export interface Compensation {
   name: string;
   description?: string;
@@ -16,7 +35,6 @@ export interface DiagramNode {
   id: string;
   type: NodeType;
   name: string;
-  position: Point;
   description?: string;
   compensation?: Compensation;
   /** Free-text notes, e.g. "3 attempts, exponential backoff" / "30s". Documentation only. */
@@ -24,45 +42,64 @@ export interface DiagramNode {
   timeout?: string;
 }
 
-/** Connection point on a node's outline, as a compass direction. */
-export type Port = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
-export const PORTS: readonly Port[] = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
-
-/** Ports used when an edge does not name one (files written before ports existed). */
-export const DEFAULT_SOURCE_PORT: Port = 'e';
-export const DEFAULT_TARGET_PORT: Port = 'w';
-
-/** The port facing `port`, e.g. `w` for `e`. */
-export const oppositePort = (port: Port): Port => PORTS[(PORTS.indexOf(port) + 4) % 8];
-
 export interface DiagramEdge {
   id: string;
   source: string;
   target: string;
   kind: EdgeKind;
-  sourcePort?: Port;
-  targetPort?: Port;
+  /** Event that triggers the transition while the source state is active, e.g. `PaymentCharged`. */
+  event?: string;
+  /**
+   * Where the event comes from when the saga does not publish it itself, e.g. `Shop API`. Events
+   * can arrive from outside in any state, not only the initial one.
+   */
+  eventSource?: string;
+  /** What the transition does, in order, before entering the target state. */
+  activities?: Activity[];
 }
 
+/** Node positions are not stored: the editor lays the graph out in `direction`. */
 export interface Diagram {
+  direction: Direction;
   nodes: DiagramNode[];
   edges: DiagramEdge[];
 }
 
-/** A start node has no incoming connections, an end node no outgoing ones. */
+/**
+ * Names of the events the saga publishes itself (an activity of some transition). Every other
+ * event a transition reacts to comes from outside.
+ */
+export function publishedEvents(diagram: Diagram): Set<string> {
+  return new Set(
+    diagram.edges.flatMap((e) =>
+      (e.activities ?? []).filter((a) => a.kind === 'event').map((a) => a.name),
+    ),
+  );
+}
+
+/** The initial state has no incoming transitions, the final state no outgoing ones. */
 export const hasInput = (type: NodeType): boolean => type !== 'start';
 export const hasOutput = (type: NodeType): boolean => type !== 'end';
 
-export const emptyDiagram = (): Diagram => ({ nodes: [], edges: [] });
+export const DEFAULT_NAMES: Record<NodeType, string> = {
+  start: 'Initial',
+  end: 'Final',
+  state: 'State',
+};
 
-/** Connector id used by f-flow: every node exposes one connector per {@link Port}. */
-export const connectorId = (nodeId: string, port: Port): string => `${nodeId}:${port}`;
+/** A new diagram: the initial state to build from. */
+export const emptyDiagram = (): Diagram => ({
+  direction: 'top-bottom',
+  nodes: [{ id: 'start-1', type: 'start', name: DEFAULT_NAMES.start }],
+  edges: [],
+});
 
-/** Inverse of {@link connectorId}; returns the node id. */
+/** f-flow connector ids: every node has one input and one output connector. */
+export const inputId = (nodeId: string): string => `${nodeId}:in`;
+export const outputId = (nodeId: string): string => `${nodeId}:out`;
+
+/** Inverse of {@link inputId} / {@link outputId}; returns the node id. */
 export const nodeIdOfConnector = (id: string): string => id.slice(0, id.lastIndexOf(':'));
-
-/** Inverse of {@link connectorId}; returns the port. */
-export const portOfConnector = (id: string): Port => id.slice(id.lastIndexOf(':') + 1) as Port;
 
 /** Next free id of the form `<prefix>-<n>` (stable, human-readable, git-friendly). */
 export function nextId(prefix: string, existing: readonly { id: string }[]): string {

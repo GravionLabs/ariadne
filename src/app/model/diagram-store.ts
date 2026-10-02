@@ -1,12 +1,12 @@
 import { Injectable, computed, signal } from '@angular/core';
 import {
+  DEFAULT_NAMES,
   Diagram,
   DiagramEdge,
   DiagramNode,
+  Direction,
   EdgeKind,
   NodeType,
-  Point,
-  Port,
   emptyDiagram,
   hasInput,
   hasOutput,
@@ -15,18 +15,8 @@ import {
 
 const MAX_HISTORY = 100;
 
-/** Where an edge attaches to its source and target node; omitted ports use the defaults. */
-export interface EdgePorts {
-  sourcePort?: Port;
-  targetPort?: Port;
-}
-
-const DEFAULT_NAMES: Record<NodeType, string> = {
-  start: 'Start',
-  end: 'End',
-  step: 'Step',
-  decision: 'Decision',
-};
+export type NodePatch = Partial<Omit<DiagramNode, 'id' | 'type'>>;
+export type EdgePatch = Partial<Pick<DiagramEdge, 'event' | 'eventSource' | 'activities' | 'kind'>>;
 
 /** App-owned diagram state (f-flow's "classic" mode): all edits go through this store. */
 @Injectable({ providedIn: 'root' })
@@ -40,6 +30,7 @@ export class DiagramStore {
   readonly canRedo = computed(() => this._future().length > 0);
   readonly nodes = computed(() => this._diagram().nodes);
   readonly edges = computed(() => this._diagram().edges);
+  readonly direction = computed(() => this._diagram().direction);
 
   /** Replaces the whole diagram (e.g. after opening a file) and clears the undo history. */
   load(diagram: Diagram): void {
@@ -72,37 +63,81 @@ export class DiagramStore {
     this._future.set([]);
   }
 
-  addNode(type: NodeType, position: Point): string {
-    const id = nextId(type, this._diagram().nodes);
-    const node: DiagramNode = { id, type, name: DEFAULT_NAMES[type], position };
+  private newNode(type: NodeType): DiagramNode {
+    return { id: nextId(type, this._diagram().nodes), type, name: DEFAULT_NAMES[type] };
+  }
+
+  /** Adds an unconnected node, e.g. the start of an empty diagram. */
+  addNode(type: NodeType): string {
+    const node = this.newNode(type);
     this.commit((d) => ({ ...d, nodes: [...d.nodes, node] }));
-    return id;
+    return node.id;
   }
 
-  updateNode(id: string, patch: Partial<Omit<DiagramNode, 'id' | 'type'>>): void {
+  /**
+   * Adds a node that follows `source`, connected by a forward edge, as a single undo step.
+   * Returns the new node id, or `null` if `source` is unknown or the connection is not allowed.
+   */
+  appendNode(source: string, type: NodeType): string | null {
+    const { nodes, edges } = this._diagram();
+    const from = nodes.find((n) => n.id === source);
+    if (!from || !hasOutput(from.type) || !hasInput(type)) return null;
+    const node = this.newNode(type);
+    const edge: DiagramEdge = {
+      id: nextId('edge', edges),
+      source,
+      target: node.id,
+      kind: 'forward',
+    };
+    this.commit((d) => ({ ...d, nodes: [...d.nodes, node], edges: [...d.edges, edge] }));
+    return node.id;
+  }
+
+  /**
+   * Splits edge A→B into A→X→B with a new state X. A→X keeps the edge's id, event (with its
+   * source) and activities, so the transition out of A behaves as before. Returns the new node
+   * id, or `null` if the edge is unknown or `type` cannot sit in the middle of a path (start, end).
+   */
+  insertOnEdge(edgeId: string, type: NodeType): string | null {
+    const { edges } = this._diagram();
+    const edge = edges.find((e) => e.id === edgeId);
+    if (!edge || !hasInput(type) || !hasOutput(type)) return null;
+    const node = this.newNode(type);
+    const next: DiagramEdge = {
+      id: nextId('edge', edges),
+      source: node.id,
+      target: edge.target,
+      kind: edge.kind,
+    };
     this.commit((d) => ({
       ...d,
-      nodes: d.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+      nodes: [...d.nodes, node],
+      edges: [...d.edges.map((e) => (e.id === edgeId ? { ...e, target: node.id } : e)), next],
+    }));
+    return node.id;
+  }
+
+  updateNode(id: string, patch: NodePatch): void {
+    this.commit((d) => ({
+      ...d,
+      nodes: d.nodes.map((n) => (n.id === id ? withoutUndefined({ ...n, ...patch }) : n)),
     }));
   }
 
-  moveNodes(moves: readonly { id: string; position: Point }[]): void {
-    const positions = new Map(moves.map((m) => [m.id, m.position]));
+  updateEdge(id: string, patch: EdgePatch): void {
     this.commit((d) => ({
       ...d,
-      nodes: d.nodes.map((n) =>
-        positions.has(n.id) ? { ...n, position: positions.get(n.id)! } : n,
-      ),
+      edges: d.edges.map((e) => (e.id === id ? withoutUndefined({ ...e, ...patch }) : e)),
     }));
+  }
+
+  setDirection(direction: Direction): void {
+    if (direction === this._diagram().direction) return;
+    this.commit((d) => ({ ...d, direction }));
   }
 
   /** Connects two nodes; returns the new edge id, or `null` if the connection is not allowed. */
-  connect(
-    source: string,
-    target: string,
-    kind: EdgeKind = 'forward',
-    ports: EdgePorts = {},
-  ): string | null {
+  connect(source: string, target: string, kind: EdgeKind = 'forward'): string | null {
     const { nodes, edges } = this._diagram();
     const from = nodes.find((n) => n.id === source);
     const to = nodes.find((n) => n.id === target);
@@ -113,47 +148,51 @@ export class DiagramStore {
       return null;
     }
     const id = nextId('edge', edges);
-    const edge: DiagramEdge = { id, source, target, kind, ...ports };
-    this.commit((d) => ({ ...d, edges: [...d.edges, edge] }));
+    this.commit((d) => ({ ...d, edges: [...d.edges, { id, source, target, kind }] }));
     return id;
   }
 
   /**
-   * Adds a node connected from `source` as a single undo step; returns the new node id,
-   * or `null` if `source` is unknown or the connection is not allowed.
+   * Removes nodes (and every edge attached to them) and edges. Removing a single node that sits
+   * on a path (one forward edge in, one out) closes the gap: A→X→B becomes A→B.
    */
-  addConnectedNode(
-    source: string,
-    type: NodeType,
-    position: Point,
-    ports: EdgePorts = {},
-  ): string | null {
-    const { nodes, edges } = this._diagram();
-    const from = nodes.find((n) => n.id === source);
-    if (!from || !hasOutput(from.type) || !hasInput(type)) return null;
-    const id = nextId(type, nodes);
-    const node: DiagramNode = { id, type, name: DEFAULT_NAMES[type], position };
-    const edge: DiagramEdge = {
-      id: nextId('edge', edges),
-      source,
-      target: id,
-      kind: 'forward',
-      ...ports,
-    };
-    this.commit((d) => ({ nodes: [...d.nodes, node], edges: [...d.edges, edge] }));
-    return id;
-  }
-
-  /** Removes nodes (and every edge attached to them) and edges. */
   remove(selection: { nodeIds?: readonly string[]; edgeIds?: readonly string[] }): void {
     const nodeIds = new Set(selection.nodeIds ?? []);
     const edgeIds = new Set(selection.edgeIds ?? []);
     if (nodeIds.size === 0 && edgeIds.size === 0) return;
-    this.commit((d) => ({
-      nodes: d.nodes.filter((n) => !nodeIds.has(n.id)),
-      edges: d.edges.filter(
+    this.commit((d) => {
+      const bridge = nodeIds.size === 1 ? bridgeOver([...nodeIds][0], d.edges, edgeIds) : null;
+      const edges = d.edges.filter(
         (e) => !edgeIds.has(e.id) && !nodeIds.has(e.source) && !nodeIds.has(e.target),
-      ),
-    }));
+      );
+      return {
+        ...d,
+        nodes: d.nodes.filter((n) => !nodeIds.has(n.id)),
+        edges: bridge ? [...edges, bridge] : edges,
+      };
+    });
   }
+}
+
+/** The edge that replaces node `id` on its path, or `null` if it is not on a single path. */
+function bridgeOver(
+  id: string,
+  edges: readonly DiagramEdge[],
+  removedEdges: ReadonlySet<string>,
+): DiagramEdge | null {
+  const live = edges.filter((e) => e.kind === 'forward' && !removedEdges.has(e.id));
+  const incoming = live.filter((e) => e.target === id);
+  const outgoing = live.filter((e) => e.source === id);
+  if (incoming.length !== 1 || outgoing.length !== 1) return null;
+  const [into] = incoming;
+  const [out] = outgoing;
+  if (into.source === out.target) return null;
+  const duplicate = edges.some(
+    (e) => e.source === into.source && e.target === out.target && e.kind === 'forward',
+  );
+  return duplicate ? null : { ...into, target: out.target };
+}
+
+function withoutUndefined<T extends object>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as T;
 }

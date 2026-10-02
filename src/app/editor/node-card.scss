@@ -1,0 +1,184 @@
+// `.f-node` in the selector: it must win over f-flow's node theme.
+:host(.f-node) {
+  --node-color: var(--c-step);
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  text-align: left;
+  border: 0;
+  color: var(--c-text);
+  background: var(--c-surface-1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+}
+
+:host(.f-node:hover) {
+  box-shadow: var(--shadow-md);
+}
+
+:host(.f-node.f-selected),
+:host(.f-node:focus-visible) {
+  outline: none;
+  box-shadow:
+    0 0 0 8px color-mix(in srgb, var(--node-color) 16%, transparent),
+    0 0 0 1px var(--node-color),
+    var(--shadow-md);
+}
+
+:host([data-type='start']) {
+  --node-color: var(--c-start);
+}
+:host([data-type='decision']) {
+  --node-color: var(--c-decision);
+}
+:host([data-type='end']) {
+  --node-color: var(--c-end);
+}
+
+:host(.f-node.compact) {
+  display: flex;
+  align-items: center;
+  padding: 0 14px 0 8px;
+  border-radius: 999px;
+}
+
+.heading {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.badge {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--node-color);
+  background: color-mix(in srgb, var(--node-color) 12%, transparent);
+  border-radius: 7px;
+
+  app-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  :host(.compact) & {
+    border-radius: 50%;
+  }
+}
+
+.title {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.type {
+  color: var(--node-color);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 13px;
+  text-transform: uppercase;
+}
+
+.name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// One chip per row; the row height matches CHIP_ROW in diagram-layout.ts.
+.chips {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  --chip-color: var(--c-compensation);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  min-width: 0;
+  padding: 0 8px;
+  color: color-mix(in srgb, var(--chip-color) 80%, var(--c-text));
+  background: color-mix(in srgb, var(--chip-color) 9%, transparent);
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+
+  app-icon {
+    flex: none;
+    width: 13px;
+    height: 13px;
+    color: var(--chip-color);
+  }
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.chip-compensation {
+  --chip-color: var(--c-compensation);
+}
+
+// One connector in, one out; placed by direction. Only visible while hovering or connecting.
+.connector {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  background: var(--c-surface-1);
+  border: 2px solid var(--node-color);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+
+  &.out {
+    cursor: crosshair;
+  }
+
+  :host(:hover) &,
+  :host(.f-selected) &,
+  :host-context(.f-connections-dragging) &.f-connector-connectable {
+    opacity: 1;
+  }
+}
+
+.in {
+  top: -5px;
+  left: calc(50% - 5px);
+}
+
+.out {
+  bottom: -5px;
+  left: calc(50% - 5px);
+}
+
+:host-context([data-direction='left-right']) {
+  .in {
+    top: calc(50% - 5px);
+    left: -5px;
+  }
+
+  .out {
+    top: calc(50% - 5px);
+    right: -5px;
+    bottom: auto;
+    left: auto;
+  }
+}

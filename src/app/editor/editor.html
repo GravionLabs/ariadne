@@ -1,112 +1,211 @@
-<div class="toolbar">
-  <div class="group" role="group" aria-label="File">
-    <button type="button" (click)="newDiagram()">New</button>
-    <button type="button" (click)="open()" title="Open a YAML diagram (Ctrl+O)">Open…</button>
-    <button type="button" (click)="file.save()" title="Save (Ctrl+S)">Save</button>
-    <button type="button" (click)="file.saveAs()" title="Save as (Ctrl+Shift+S)">Save as…</button>
-    <span class="file-name" [class.dirty]="file.dirty()">
-      {{ file.name() }}
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark"><app-icon name="brand" /></span>
+    <h1>Ariadne</h1>
+  </div>
+
+  <span class="topbar-divider" aria-hidden="true"></span>
+
+  <nav class="file-actions" aria-label="File">
+    <button type="button" class="menu-button" (click)="newDiagram()" title="New diagram">
+      <app-icon name="newFile" /><span>New</span>
+    </button>
+    <button type="button" class="menu-button" (click)="open()" title="Open a YAML diagram (Ctrl+O)">
+      <app-icon name="open" /><span>Open…</span>
+    </button>
+    <button
+      type="button"
+      class="menu-button"
+      [class.primary]="file.dirty()"
+      (click)="file.save()"
+      title="Save (Ctrl+S)"
+    >
+      <app-icon name="save" /><span>Save</span>
+    </button>
+    <button
+      type="button"
+      class="menu-button"
+      (click)="file.saveAs()"
+      title="Save as (Ctrl+Shift+S)"
+    >
+      <app-icon name="saveAs" /><span>Save as…</span>
+    </button>
+  </nav>
+
+  <div class="topbar-end">
+    @if (file.error(); as error) {
+      <p class="error-pill" role="alert">
+        <span>{{ error }}</span>
+        <button type="button" aria-label="Dismiss error" (click)="file.error.set(null)">
+          <app-icon name="close" />
+        </button>
+      </p>
+    }
+    <span class="file-name" [class.dirty]="file.dirty()" [title]="file.name()">
+      <app-icon name="file" />
+      <span class="file-label">{{ file.name() }}</span>
       @if (file.dirty()) {
-        <span aria-label="unsaved changes"> •</span>
+        <span
+          class="dirty-dot"
+          role="img"
+          aria-label="Unsaved changes"
+          title="Unsaved changes"
+        ></span>
       }
     </span>
   </div>
-  @if (file.error(); as error) {
-    <p class="error" role="alert">{{ error }}</p>
-  }
-</div>
+</header>
 
-<div class="workspace">
+<div class="workspace" [attr.data-direction]="store.direction()">
   <f-flow
     fDraggable
     class="editor-flow"
-    (fMoveNodes)="onMove($event)"
+    aria-label="Saga diagram"
+    (fFullRendered)="onFirstRender()"
     (fCreateConnection)="onCreateConnection($event)"
-    (fCreateNode)="onCreateNode($event)"
     (fDeleteSelected)="onDelete($event)"
     (fSelectionChange)="onSelection($event)"
   >
     <f-background>
       <f-circle-pattern />
     </f-background>
-    <f-line-alignment [fAlignThreshold]="20" />
-    <f-canvas fZoom>
+    <f-canvas fZoom [fZoomMinimum]="0.25" [fZoomMaximum]="1.8">
       @for (edge of store.edges(); track edge.id) {
         <f-connection
           [fConnectionId]="edge.id"
-          [fSourceId]="edgeEnd(edge, 'source')"
-          [fTargetId]="edgeEnd(edge, 'target')"
+          [fSourceId]="outputId(edge.source)"
+          [fTargetId]="inputId(edge.target)"
           fType="segment"
+          fBehavior="fixed"
           [fOffset]="24"
+          [fRadius]="8"
+          [fReassignDisabled]="true"
+          [class.compensation]="edge.kind === 'compensation'"
         >
           <f-connection-marker-arrow />
+          @if (edge.kind === 'compensation') {
+            <!-- Compensation transitions are not laid out, so their label rides on the line. -->
+            <app-transition-label
+              fConnectionContent
+              [position]="0.5"
+              [insertable]="false"
+              [edge]="edge"
+              [direction]="store.direction()"
+              [selected]="selectedEdge()?.id === edge.id"
+              [external]="!!edge.event && !published().has(edge.event)"
+              (selectRequested)="selectEdge(edge.id)"
+            />
+          }
         </f-connection>
       }
-      <f-connection-for-create fType="segment" [fOffset]="24">
+      @for (slot of layout.slots(); track slot.id) {
+        <f-connection
+          class="slot-connection"
+          [fConnectionId]="'link:' + slot.id"
+          [fSourceId]="outputId(slot.sourceId)"
+          [fTargetId]="slotInputId(slot.id)"
+          fType="segment"
+          fBehavior="fixed"
+          [fReassignDisabled]="true"
+          [fSelectionDisabled]="true"
+        />
+      }
+      <f-connection-for-create fType="segment" fBehavior="fixed" [fOffset]="24">
         <f-connection-marker-arrow />
       </f-connection-for-create>
       @for (node of store.nodes(); track node.id) {
+        <app-node-card
+          fNode
+          [fNodeId]="node.id"
+          [fNodePosition]="layout.positions().get(node.id) ?? { x: 0, y: 0 }"
+          [fNodeSize]="nodeSize(node)"
+          [fNodeDraggingDisabled]="true"
+          [fConnectOnNode]="false"
+          [node]="node"
+          [decision]="layout.decisions().has(node.id)"
+          [direction]="store.direction()"
+          [attr.aria-label]="node.name"
+        />
+      }
+      @for (label of layout.labels(); track label.id) {
         <div
           fNode
-          fDragHandle
-          [fNodeId]="node.id"
-          [fNodePosition]="node.position"
-          class="node"
-          [class]="'node-' + node.type"
+          class="transition"
+          [fNodeId]="label.id"
+          [fNodePosition]="label.position"
+          [fNodeSize]="label.size"
+          [fNodeDraggingDisabled]="true"
+          [fNodeSelectionDisabled]="true"
+          [fConnectOnNode]="false"
         >
-          @for (port of ports; track port) {
-            <div
-              fConnector
-              [fConnectorId]="connectorId(node.id, port)"
-              [fConnectorType]="connectorType(node.type)"
-              [fConnectorConnectableSide]="connectableSide(port)"
-              class="port"
-              [class]="'port-' + port"
-            ></div>
-          }
-          @switch (node.type) {
-            @case ('start') {
-              <app-icon name="start" class="shape" />
-              <span class="label">{{ node.name }}</span>
-            }
-            @case ('end') {
-              <app-icon name="end" class="shape" />
-              <span class="label">{{ node.name }}</span>
-            }
-            @case ('decision') {
-              <span class="diamond"></span>
-              <span class="decision-name">{{ node.name }}</span>
-            }
-            @default {
-              <span class="node-name">{{ node.name }}</span>
-              @if (node.compensation; as comp) {
-                <span class="compensation">↩ {{ comp.name }}</span>
-              }
-            }
+          @if (edgesById().get(label.edgeId); as edge) {
+            <app-transition-label
+              [edge]="edge"
+              [direction]="store.direction()"
+              [selected]="selectedEdge()?.id === edge.id"
+              [external]="!!edge.event && !published().has(edge.event)"
+              (selectRequested)="selectEdge(edge.id)"
+              (inserted)="insert(edge.id, $event)"
+            />
           }
         </div>
       }
+      @for (slot of layout.slots(); track slot.id) {
+        <div
+          fNode
+          class="slot"
+          [fNodeId]="slot.id"
+          [fNodePosition]="slot.position"
+          [fNodeSize]="slotSize"
+          [fNodeDraggingDisabled]="true"
+          [fNodeSelectionDisabled]="true"
+          [fConnectOnNode]="false"
+        >
+          <span
+            fConnector
+            fConnectorType="target"
+            class="slot-in"
+            [fConnectorId]="slotInputId(slot.id)"
+            [fConnectorDisabled]="true"
+          ></span>
+          <app-add-step-button
+            [types]="appendTypes"
+            label="Add the next state"
+            (picked)="append(slot.sourceId, $event)"
+          />
+        </div>
+      }
     </f-canvas>
-    <f-selection-area />
     <f-minimap class="minimap" [fMinSize]="2000" />
   </f-flow>
 
-  <aside class="palette floating" aria-label="Node palette">
-    @for (item of palette; track item.type) {
-      <button
-        type="button"
-        class="icon-button palette-item"
-        [class]="'palette-' + item.type"
-        fExternalItem
-        [fData]="item.type"
-        (click)="addNode(item.type)"
-        [attr.aria-label]="item.label"
-        [title]="item.label + ' — drag onto the canvas or click to add'"
-      >
-        <app-icon [name]="item.icon" />
+  @if (store.nodes().length === 0) {
+    <div class="empty-state">
+      <strong>This diagram is empty</strong>
+      <span>Every saga starts in its initial state.</span>
+      <button type="button" class="menu-button primary" (click)="addStart()">
+        <app-icon name="start" /><span>Add the initial state</span>
       </button>
-    }
-  </aside>
+    </div>
+  }
+
+  @if (selectedNode(); as node) {
+    <app-inspector
+      class="inspector"
+      [node]="node"
+      [decision]="layout.decisions().has(node.id)"
+      (closed)="clearSelection()"
+      (deleted)="deleteSelection()"
+      (transitionAdded)="append(node.id, $event)"
+    />
+  } @else if (selectedEdge(); as edge) {
+    <app-inspector
+      class="inspector"
+      [edge]="edge"
+      (closed)="clearSelection()"
+      (deleted)="deleteSelection()"
+    />
+  }
 
   <div class="toolbox floating" role="toolbar" aria-label="Edit and view">
     <button
@@ -139,26 +238,33 @@
     >
       <app-icon name="redo" />
     </button>
-    <button
-      type="button"
-      class="icon-button"
-      (click)="selectAll()"
-      aria-label="Select all"
-      title="Select all"
-    >
-      <app-icon name="selectAll" />
-    </button>
-    <button
-      type="button"
-      class="icon-button"
-      [class.active]="selectedStep()?.compensation"
-      [disabled]="!selectedStep()"
-      (click)="toggleCompensation()"
-      [attr.aria-label]="selectedStep()?.compensation ? 'Remove compensation' : 'Add compensation'"
-      title="Add or remove the compensation action of the selected step"
-    >
-      <app-icon name="compensation" />
-    </button>
+    <div class="divider"></div>
+    <div class="segmented" role="radiogroup" aria-label="Layout direction">
+      <button
+        type="button"
+        class="icon-button"
+        role="radio"
+        [class.active]="store.direction() === 'top-bottom'"
+        [attr.aria-checked]="store.direction() === 'top-bottom'"
+        (click)="setDirection('top-bottom')"
+        aria-label="Top to bottom"
+        title="Top to bottom"
+      >
+        <app-icon name="directionDown" />
+      </button>
+      <button
+        type="button"
+        class="icon-button"
+        role="radio"
+        [class.active]="store.direction() === 'left-right'"
+        [attr.aria-checked]="store.direction() === 'left-right'"
+        (click)="setDirection('left-right')"
+        aria-label="Left to right"
+        title="Left to right"
+      >
+        <app-icon name="directionRight" />
+      </button>
+    </div>
     <div class="divider"></div>
     <button
       type="button"

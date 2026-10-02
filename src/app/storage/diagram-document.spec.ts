@@ -36,20 +36,20 @@ describe('DiagramDocument', () => {
   it('starts clean and untitled, and becomes dirty on edits', () => {
     expect(doc.name()).toBe('untitled.yaml');
     expect(doc.dirty()).toBe(false);
-    store.addNode('step', { x: 0, y: 0 });
+    store.addNode('state');
     expect(doc.dirty()).toBe(true);
     store.undo();
     expect(doc.dirty()).toBe(false);
   });
 
   it('asks for a location on first save, then saves in place', async () => {
-    store.addNode('step', { x: 0, y: 0 });
+    store.addNode('state');
     expect(await doc.save()).toBe(true);
     expect(storage.saveAs).toHaveBeenCalledWith(expect.any(String), 'untitled.yaml');
     expect(doc.name()).toBe('chosen.yaml');
     expect(doc.dirty()).toBe(false);
 
-    store.addNode('end', { x: 0, y: 0 });
+    store.addNode('end');
     await doc.save();
     expect(storage.save).toHaveBeenCalledTimes(1);
     expect(storage.written.at(-1)).toEqual({
@@ -60,13 +60,13 @@ describe('DiagramDocument', () => {
 
   it('stays dirty when saving is cancelled', async () => {
     storage.saveAsName = null;
-    store.addNode('step', { x: 0, y: 0 });
+    store.addNode('state');
     expect(await doc.save()).toBe(false);
     expect(doc.dirty()).toBe(true);
   });
 
   it('opens a file into the store with a fresh history', async () => {
-    store.addNode('step', { x: 0, y: 0 });
+    store.addNode('state');
     storage.opened = {
       ref: { name: 'order.yaml' },
       content:
@@ -80,18 +80,18 @@ describe('DiagramDocument', () => {
   });
 
   it('reports invalid files and keeps the current diagram', async () => {
-    store.addNode('step', { x: 0, y: 0 });
+    store.addNode('state');
     storage.opened = { ref: { name: 'bad.yaml' }, content: 'version: 7' };
     expect(await doc.open()).toBe(false);
     expect(doc.error()).toMatch(/Unsupported format version 7/);
-    expect(store.nodes()).toHaveLength(1);
+    expect(store.nodes().map((n) => n.id)).toEqual(['start-1', 'state-1']);
     expect(doc.name()).toBe('untitled.yaml');
   });
 
-  it('starts a new empty diagram', () => {
-    store.addNode('step', { x: 0, y: 0 });
+  it('starts a new diagram with just a start node', () => {
+    store.addNode('state');
     doc.newDiagram();
-    expect(store.nodes()).toHaveLength(0);
+    expect(store.nodes().map((n) => n.type)).toEqual(['start']);
     expect(doc.dirty()).toBe(false);
   });
 });
