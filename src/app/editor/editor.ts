@@ -59,8 +59,17 @@ export class Editor {
   private readonly flow = viewChild(FFlowComponent);
   private readonly canvas = viewChild(FCanvasComponent);
   private readonly zoom = viewChild(FZoomDirective);
-  /** Set when the next layout should be fitted into view (new file, direction change). */
+  /** Set when the next layout should be fitted into view (new file, layout option change). */
   private fitPending = false;
+  /** The layout options seen by the last relayout; a change means the whole graph moved. */
+  private lastLayoutKey: string | null = null;
+
+  /**
+   * Everything that re-arranges the whole diagram, as one comparable value. Editing nodes or
+   * edges is deliberately not part of it, so adding a state never moves the user's viewport.
+   * New layout options (spacing, ranker) belong here.
+   */
+  private readonly layoutKey = computed(() => this.store.direction());
   /** Node to select in f-flow once the layout has placed it. */
   private pendingSelect: string | null = null;
 
@@ -92,6 +101,10 @@ export class Editor {
     // Runs after every relayout: fit or select once the new geometry is on the canvas.
     effect((onCleanup) => {
       this.layout.positions();
+      // Any layout option change (also via undo/redo) refits; plain edits do not.
+      const key = this.layoutKey();
+      if (this.lastLayoutKey !== null && key !== this.lastLayoutKey) this.fitPending = true;
+      this.lastLayoutKey = key;
       if (!this.fitPending && !this.pendingSelect) return;
       const timer = setTimeout(() => {
         if (this.fitPending) this.fitToScreen();
@@ -128,8 +141,6 @@ export class Editor {
   }
 
   protected setDirection(direction: Direction): void {
-    if (direction === this.store.direction()) return;
-    this.fitPending = true;
     this.store.setDirection(direction);
   }
 
