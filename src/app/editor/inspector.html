@@ -42,6 +42,47 @@
       ></textarea>
     </label>
 
+    <div class="field">
+      <span id="node-color-label">Color</span>
+      <div class="swatches" role="radiogroup" aria-labelledby="node-color-label">
+        <button
+          type="button"
+          role="radio"
+          class="swatch none"
+          title="Default"
+          aria-label="Default"
+          [attr.aria-checked]="!node.color"
+          (click)="setColor(undefined)"
+        ></button>
+        @for (c of colors; track c) {
+          <button
+            type="button"
+            role="radio"
+            class="swatch"
+            [style.background]="'var(--c-node-' + c + ')'"
+            [title]="c"
+            [attr.aria-label]="c"
+            [attr.aria-checked]="node.color === c"
+            (click)="setColor(c)"
+          ></button>
+        }
+        <label
+          class="custom-color"
+          [class.active]="node.color?.startsWith('#')"
+          [style.--picked]="node.color?.startsWith('#') ? node.color : null"
+        >
+          <span class="dot"></span>
+          <span>Custom…</span>
+          <input
+            type="color"
+            aria-label="Custom color"
+            [value]="customColor()"
+            (change)="pickColor($event)"
+          />
+        </label>
+      </div>
+    </div>
+
     @if (node.type === 'state') {
       <label class="field">
         <span>Compensation</span>

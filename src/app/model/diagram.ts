@@ -31,11 +31,21 @@ export interface Compensation {
   description?: string;
 }
 
+/** Accent colors a node can be given; the hex values live in styles.scss (`--c-node-<name>`). */
+export const NODE_COLORS = ['red', 'orange', 'amber', 'green', 'teal', 'blue', 'purple', 'pink'] as const;
+/** A palette name or a custom `#rrggbb` color. */
+export type NodeColor = (typeof NODE_COLORS)[number] | `#${string}`;
+export const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+export const isNodeColor = (v: unknown): v is NodeColor =>
+  typeof v === 'string' && ((NODE_COLORS as readonly string[]).includes(v) || HEX_COLOR.test(v));
+
 export interface DiagramNode {
   id: string;
   type: NodeType;
   name: string;
   description?: string;
+  /** Accent color shown at the top of the card; absent = the default of the node's type. */
+  color?: NodeColor;
   compensation?: Compensation;
   /** Free-text notes, e.g. "3 attempts, exponential backoff" / "30s". Documentation only. */
   retry?: string;

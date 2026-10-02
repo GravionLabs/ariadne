@@ -26,6 +26,15 @@
   --c-decision: #8b5cf6;
   --c-end: #f43f5e;
   --c-compensation: #f59e0b;
+  // Accent colors a node can be given.
+  --c-node-red: #ef4444;
+  --c-node-orange: #f97316;
+  --c-node-amber: #eab308;
+  --c-node-green: #22c55e;
+  --c-node-teal: #14b8a6;
+  --c-node-blue: #3b82f6;
+  --c-node-purple: #8b5cf6;
+  --c-node-pink: #ec4899;
   // Commands are sent to one consumer, events published to all subscribers.
   --c-command: #2563eb;
   --c-event: #9333ea;

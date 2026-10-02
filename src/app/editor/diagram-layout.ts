@@ -1,4 +1,4 @@
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import dagre from '@dagrejs/dagre';
 import { Diagram, DiagramEdge, DiagramNode, Direction, Point, hasOutput } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
@@ -34,6 +34,12 @@ export const SLOT_SIZE: Size = { width: 40, height: 40 };
 const CARD_WIDTH = 260;
 const CARD_HEADER = 58;
 const CHIP_ROW = 24;
+// Unfolded description: a text box under the heading; the card's scss uses the same numbers.
+const DESCRIPTION_GAP = 10;
+const DESCRIPTION_PADDING = 8;
+const DESCRIPTION_LINE = 17;
+const DESCRIPTION_LINE_CHARS = 32;
+const DESCRIPTION_MAX_LINES = 8;
 const NODE_GAP = 80;
 // dagre puts edge labels in their own rank, so this is the gap node → label → node.
 const LAYER_GAP = 60;
@@ -52,10 +58,24 @@ const LABEL_MAX_WIDTH = 240;
  * Rendered size of a node. Cards are sized here rather than measured so the layout is known
  * before anything is drawn; the editor passes the same size to f-flow.
  */
-export function nodeSize(node: DiagramNode): Size {
+export function nodeSize(node: DiagramNode, expanded = false): Size {
   if (node.type === 'start' || node.type === 'end') return { width: 180, height: 48 };
   const rows = node.compensation ? 1 : 0;
-  return { width: CARD_WIDTH, height: CARD_HEADER + (rows ? rows * CHIP_ROW + 6 : 0) };
+  const base = CARD_HEADER + (rows ? rows * CHIP_ROW + 6 : 0);
+  return { width: CARD_WIDTH, height: base + (expanded ? descriptionHeight(node) : 0) };
+}
+
+/** Whether a node's card can unfold its description. */
+export const canExpand = (node: DiagramNode): boolean =>
+  node.type === 'state' && !!node.description;
+
+/** Height the unfolded description adds; the card draws to the same numbers. */
+function descriptionHeight(node: DiagramNode): number {
+  if (!canExpand(node)) return 0;
+  const lines = node
+    .description!.split('\n')
+    .reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / DESCRIPTION_LINE_CHARS)), 0);
+  return DESCRIPTION_GAP + 2 * DESCRIPTION_PADDING + Math.min(lines, DESCRIPTION_MAX_LINES) * DESCRIPTION_LINE;
 }
 
 /** Rows of a transition label: the event and its source, then one per activity. */
@@ -111,7 +131,7 @@ export const labelId = (edgeId: string): string => `label:${edgeId}`;
  * edge labels, so they get room between the layers). Compensation transitions point backwards
  * and would distort the layers, so they are left out.
  */
-export function layoutDiagram(diagram: Diagram): DiagramLayoutResult {
+export function layoutDiagram(diagram: Diagram, expanded: ReadonlySet<string> = new Set()): DiagramLayoutResult {
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({
     rankdir: diagram.direction === 'left-right' ? 'LR' : 'TB',
@@ -125,7 +145,7 @@ export function layoutDiagram(diagram: Diagram): DiagramLayoutResult {
     sizes.set(id, size);
     graph.setNode(id, { ...size });
   };
-  diagram.nodes.forEach((n) => addNode(n.id, nodeSize(n)));
+  diagram.nodes.forEach((n) => addNode(n.id, nodeSize(n, expanded.has(n.id))));
   const forward = diagram.edges.filter((e) => e.kind === 'forward');
   const labelSizes = new Map(forward.map((e) => [e.id, labelSize(e, diagram.direction)]));
   forward.forEach((e) =>
@@ -164,7 +184,19 @@ export function layoutDiagram(diagram: Diagram): DiagramLayoutResult {
 @Injectable()
 export class DiagramLayout {
   private readonly store = inject(DiagramStore);
-  private readonly result = computed(() => layoutDiagram(this.store.diagram()));
+  /** Ids of nodes whose description is unfolded. View state: not saved, not undoable. */
+  private readonly _expanded = signal<ReadonlySet<string>>(new Set());
+  private readonly result = computed(() => layoutDiagram(this.store.diagram(), this._expanded()));
+
+  readonly expanded = this._expanded.asReadonly();
+
+  toggleExpanded(id: string): void {
+    this._expanded.update((s) => {
+      const next = new Set(s);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }
 
   readonly positions = computed(() => this.result().positions);
   readonly slots = computed(() => this.result().slots);

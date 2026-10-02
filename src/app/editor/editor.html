@@ -118,10 +118,12 @@
           fNode
           [fNodeId]="node.id"
           [fNodePosition]="layout.positions().get(node.id) ?? { x: 0, y: 0 }"
-          [fNodeSize]="nodeSize(node)"
+          [fNodeSize]="nodeSize(node, layout.expanded().has(node.id))"
           [fNodeDraggingDisabled]="true"
           [fConnectOnNode]="false"
           [node]="node"
+          [expanded]="layout.expanded().has(node.id)"
+          (expandToggled)="layout.toggleExpanded(node.id)"
           [decision]="layout.decisions().has(node.id)"
           [direction]="store.direction()"
           [attr.aria-label]="node.name"
