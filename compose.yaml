@@ -1,0 +1,16 @@
+# Self-hosting Ariadne: `docker compose up -d`, then open http://localhost:8080
+services:
+  ariadne:
+    image: ghcr.io/gravionlabs/ariadne:latest
+    # To build it from this checkout instead:
+    # build: .
+    ports:
+      - '8080:8080'
+    environment:
+      # Optional settings for the app, served as /config.json (a JSON object).
+      # ARIADNE_CONFIG: '{"flags": []}'
+      PORT: '8080'
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
