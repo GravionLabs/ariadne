@@ -76,6 +76,19 @@
   }
 }
 
+// A problem with the transition: a coloured edge on the card.
+.card[data-finding='error'] {
+  border-color: var(--c-error);
+}
+
+.card[data-finding='warning'] {
+  border-color: var(--c-warning-marker);
+}
+
+.card[data-finding='info'] {
+  border-left: 3px solid var(--c-info);
+}
+
 .row {
   --row-color: var(--c-event);
   display: flex;

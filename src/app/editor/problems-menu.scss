@@ -1,0 +1,137 @@
+// Same look as the other toolbox buttons (`.icon-button` in editor.scss); only what the badge
+// adds is here.
+:host {
+  display: inline-flex;
+}
+
+.problems {
+  width: auto;
+  gap: 4px;
+  padding: 0 6px;
+
+  &[data-severity='none'] app-icon {
+    color: var(--c-text-subtle);
+  }
+}
+
+.count {
+  min-width: 16px;
+  padding: 0 4px;
+  color: var(--c-surface-1);
+  background: var(--c-text-subtle);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.count[data-severity='error'] {
+  background: var(--c-error);
+}
+
+.count[data-severity='warning'] {
+  background: var(--c-warning-marker);
+}
+
+.count[data-severity='info'] {
+  background: var(--c-info);
+}
+
+.problems[data-severity='error'] app-icon {
+  color: var(--c-error);
+}
+
+.problems[data-severity='warning'] app-icon {
+  color: var(--c-warning-marker);
+}
+
+.problems[data-severity='info'] app-icon {
+  color: var(--c-info);
+}
+
+// The list lives in the CDK overlay container; emulated encapsulation still scopes these styles.
+.panel {
+  display: grid;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(60vh, 420px);
+  overflow: hidden;
+  color: var(--c-text);
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  grid-template-rows: auto minmax(0, 1fr);
+
+  header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--c-border);
+    font-weight: 600;
+  }
+
+  ul {
+    margin: 0;
+    padding: 6px;
+    overflow-y: auto;
+    list-style: none;
+  }
+
+  .empty {
+    margin: 0;
+    padding: 14px;
+    color: var(--c-text-subtle);
+  }
+}
+
+.finding {
+  --severity: var(--c-info);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  cursor: pointer;
+
+  &[data-severity='error'] {
+    --severity: var(--c-error);
+  }
+
+  &[data-severity='warning'] {
+    --severity: var(--c-warning-marker);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    background: var(--c-surface-3);
+    outline: none;
+  }
+
+  .dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-top: 5px;
+    background: var(--severity);
+    border-radius: 50%;
+  }
+
+  .severity {
+    margin-right: 4px;
+    color: var(--severity);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+}

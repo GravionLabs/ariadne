@@ -431,6 +431,17 @@ app-export-menu ::ng-deep .menu-button {
   pointer-events: none;
 }
 
+// A transition with an error or a warning (see the Problems list). Hints leave the line alone.
+f-connection[data-finding='error'] {
+  --ff-connection-color: var(--c-error);
+  --ff-connection-hover-color: var(--c-error);
+}
+
+f-connection[data-finding='warning'] {
+  --ff-connection-color: var(--c-warning-marker);
+  --ff-connection-hover-color: var(--c-warning-marker);
+}
+
 // A timeout firing: dashed amber, as it is time that moves the saga on, not a message.
 .timeout {
   --ff-connection-color: var(--c-timeout);

@@ -32,16 +32,18 @@ import {
   joinEventsOf,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
+import { Finding } from '../model/validation';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
 import { AddStepButton } from './add-step-button';
 import { DiagramDetails } from './diagram-details';
-import { DiagramLayout, SLOT_SIZE, backEdgeIds, nodeSize } from './diagram-layout';
+import { DiagramLayout, SLOT_SIZE, backEdgeIds, labelId, nodeSize } from './diagram-layout';
 import { EditorStore } from './editor-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
 import { NewDiagramDialog } from './new-diagram-dialog';
+import { ProblemsMenu } from './problems-menu';
 import { SourcePanel } from './source-panel';
 import { NodeCard } from './node-card';
 import { APPEND_TYPES, DECISION, NODE_TYPES } from './node-types';
@@ -59,6 +61,7 @@ const FIT_PADDING = { x: 80, y: 80 };
     Inspector,
     NewDiagramDialog,
     NodeCard,
+    ProblemsMenu,
     SourcePanel,
     TransitionLabel,
   ],
@@ -338,6 +341,26 @@ export class Editor {
 
   protected resetZoom(): void {
     this.canvas()?.resetScaleAndCenter();
+  }
+
+  /** A problem was picked: select the node or transition it is about and bring it into view. */
+  protected focusFinding(finding: Finding): void {
+    const id = finding.elementId;
+    if (!id) return;
+    const edge = this.edgesById().get(id);
+    if (edge) {
+      this.selectEdge(id);
+      // A laid-out transition has a label node to centre on; otherwise its source state.
+      const laidOut = this.layout.labels().some((l) => l.edgeId === id);
+      this.canvas()?.centerGroupOrNode(
+        laidOut ? labelId(id) : edge.source,
+        !prefersReducedMotion(),
+      );
+      return;
+    }
+    this.ui.setSelection([id], []);
+    this.flow()?.select([id], [], false);
+    this.canvas()?.centerGroupOrNode(id, !prefersReducedMotion());
   }
 
   /** A transition label was clicked: select its transition, as clicking the line would. */

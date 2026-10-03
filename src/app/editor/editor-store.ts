@@ -1,6 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { DiagramStore } from '../model/diagram-store';
+import { SEVERITIES, Severity, findingsByElement, validate, worst } from '../model/validation';
 
 interface EditorState {
   nodeIds: string[];
@@ -48,7 +49,28 @@ export const EditorStore = signalStore(
     /** The inspector shows while a single state or transition is selected. */
     inspectorOpen: computed(() => !!selectedNode() || !!selectedEdge()),
   })),
+  withComputed(() => {
+    const diagram = inject(DiagramStore);
+    const findings = computed(() => validate(diagram.diagram()));
+    const byElement = computed(() => findingsByElement(findings()));
+    return {
+      /** What is wrong or doubtful about the diagram (see `validate`). */
+      findings,
+      findingsByElement: byElement,
+      findingCounts: computed(
+        () =>
+          Object.fromEntries(
+            SEVERITIES.map((s) => [s, findings().filter((f) => f.severity === s).length]),
+          ) as Record<Severity, number>,
+      ),
+    };
+  }),
   withMethods((store) => ({
+    /** The worst severity of the findings on one node or transition. */
+    severityOf(id: string): Severity | undefined {
+      return worst(store.findingsByElement().get(id) ?? []);
+    },
+
     /** The canvas reported a new selection (or it was replaced from code). */
     setSelection(nodeIds: string[], edgeIds: string[]): void {
       patchState(store, { nodeIds, edgeIds });

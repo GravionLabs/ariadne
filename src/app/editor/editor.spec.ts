@@ -633,6 +633,68 @@ describe('Editor', () => {
     expect(el.querySelectorAll('f-connection-waypoints').length).toBe(3);
   });
 
+  it('counts the problems in the toolbox, lists them, shows the element and marks it', async () => {
+    const { el, store, settle } = await setup();
+    const button = () => el.querySelector<HTMLButtonElement>('app-problems-menu button')!;
+    expect(button().getAttribute('aria-label')).toBe('Problems: No problems');
+    expect(el.querySelector('app-node-card[data-finding]')).toBeNull();
+
+    // A state nothing leads to: unreachable (error) and a dead end (warning).
+    store.addNode('state');
+    await settle();
+    expect(button().getAttribute('aria-label')).toBe('Problems: 1 error, 1 warning');
+    expect(button().getAttribute('data-severity')).toBe('error');
+    const counts = [...button().querySelectorAll('.count')].map((c) => c.textContent?.trim());
+    expect(counts).toEqual(['1', '1']);
+    expect(el.querySelector('app-node-card[data-finding="error"]')?.textContent).toContain('State');
+
+    button().click();
+    await settle();
+    const items = () => [
+      ...document.querySelectorAll<HTMLButtonElement>('.cdk-overlay-container .finding'),
+    ];
+    expect(items().map((i) => i.querySelector('.severity')?.textContent?.trim())).toEqual([
+      'error',
+      'warning',
+    ]);
+    expect(items()[0].textContent).toContain('cannot be reached');
+
+    // Picking a finding selects the element, which opens its inspector.
+    items()[0].click();
+    await settle();
+    expect(el.querySelector('app-inspector')?.getAttribute('aria-label')).toBe('State settings');
+
+    // Fixing the problem clears the badge and the marker.
+    store.appendNode('start-1', 'end');
+    store.connect('start-1', 'state-1');
+    store.connect('state-1', 'end-1');
+    store.updateEdge('edge-2', { event: 'OrderPlaced', eventSource: 'Shop' });
+    store.updateEdge('edge-3', { event: 'OrderShipped', eventSource: 'Shop' });
+    await settle();
+    expect(button().getAttribute('aria-label')).toBe('Problems: No problems');
+    expect(el.querySelector('app-node-card[data-finding]')).toBeNull();
+  });
+
+  it('marks a transition with a problem and opens it from the list', async () => {
+    const { el, store, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    await settle();
+    // state-1 → end-1 has no event: a warning, drawn in the warning colour.
+    expect(el.querySelector('f-connection[data-finding="warning"]')).toBeTruthy();
+    expect(el.querySelectorAll('f-connection[data-finding]')).toHaveLength(1);
+
+    el.querySelector<HTMLButtonElement>('app-problems-menu button')!.click();
+    await settle();
+    const item = document.querySelector<HTMLButtonElement>('.cdk-overlay-container .finding')!;
+    expect(item.textContent).toContain('has no event');
+    item.click();
+    await settle();
+    expect(el.querySelector('app-inspector')?.getAttribute('aria-label')).toBe(
+      'Transition settings',
+    );
+  });
+
   it('adds the one Any state from the toolbox and opens it', async () => {
     const { el, store, settle } = await setup();
     const add = () => el.querySelector<HTMLButtonElement>('[aria-label="Add the Any state"]')!;
