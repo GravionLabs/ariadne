@@ -19,6 +19,7 @@ import {
   provideFFlow,
   withA11y,
 } from '@foblex/flow';
+import { EditorHost } from '../host/editor-host';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
@@ -110,6 +111,8 @@ export class Editor {
   private readonly sagaImport = inject(SagaImport);
   protected readonly layout = inject(DiagramLayout);
   protected readonly theme = inject(Theme);
+  /** Inside a host (VS Code): it owns files, saving and undo; those controls are not shown. */
+  protected readonly embedded = inject(EditorHost).embedded;
   protected readonly appendTypes = APPEND_TYPES;
   protected readonly slotSize = SLOT_SIZE;
   protected readonly nodeSize = nodeSize;
@@ -296,7 +299,7 @@ export class Editor {
   }
 
   protected onBeforeUnload(event: BeforeUnloadEvent): void {
-    if (this.file.dirty()) event.preventDefault();
+    if (!this.embedded && this.file.dirty()) event.preventDefault();
   }
 
   protected onSelection(event: FSelectionChangeEvent): void {
@@ -304,7 +307,8 @@ export class Editor {
   }
 
   protected onKeydown(event: KeyboardEvent): void {
-    if (!(event.ctrlKey || event.metaKey)) return;
+    // The host handles save, open and undo itself, on the document.
+    if (this.embedded || !(event.ctrlKey || event.metaKey)) return;
     const key = event.key.toLowerCase();
     // Typing in a text field has its own undo history, and Ctrl+Z there must not undo the diagram.
     const typing = isTextEntry(event.target);

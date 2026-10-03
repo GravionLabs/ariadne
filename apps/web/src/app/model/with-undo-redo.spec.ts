@@ -7,7 +7,7 @@ interface Counter {
   n: number;
 }
 
-function createStore(limit?: number) {
+function createStore(limit?: number | (() => number)) {
   const Store = signalStore(
     withState<{ value: Counter }>({ value: { n: 0 } }),
     withUndoRedo<'value', Counter>('value', { limit }),
@@ -87,6 +87,23 @@ describe('withUndoRedo', () => {
     for (let n = 1; n <= 150; n++) store.set(n);
     for (let i = 0; i < 200; i++) store.undo();
     expect(store.value()).toEqual({ n: 50 });
+  });
+
+  it('records no history with a limit of 0, and keeps the edit', () => {
+    const store = createStore(0);
+    store.set(1);
+    store.set(2);
+    expect(store.value()).toEqual({ n: 2 });
+    expect(store.canUndo()).toBe(false);
+  });
+
+  it('reads a limit given as a function', () => {
+    const store = createStore(() => 2);
+    for (let n = 1; n <= 5; n++) store.set(n);
+    store.undo();
+    store.undo();
+    store.undo();
+    expect(store.value()).toEqual({ n: 3 });
   });
 
   it('forgets history on reset', () => {

@@ -1,6 +1,7 @@
-import { computed } from '@angular/core';
+import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { withUndoRedo } from './with-undo-redo';
+import { EditorHost } from '../host/editor-host';
+import { DEFAULT_HISTORY_LIMIT, withUndoRedo } from './with-undo-redo';
 import {
   DetailsPatch,
   Diagram,
@@ -24,7 +25,10 @@ export type { DetailsPatch, EdgePatch, EventInfoPatch, NodePatch, SagaPatch };
 export const DiagramStore = signalStore(
   { providedIn: 'root' },
   withState<{ diagram: Diagram }>({ diagram: emptyDiagram() }),
-  withUndoRedo<'diagram', Diagram>('diagram'),
+  // The host of an embedded editor undoes on the document, so there is one history, not two.
+  withUndoRedo<'diagram', Diagram>('diagram', {
+    limit: () => (inject(EditorHost).embedded ? 0 : DEFAULT_HISTORY_LIMIT),
+  }),
   withComputed(({ diagram }) => ({
     nodes: computed(() => diagram().nodes),
     edges: computed(() => diagram().edges),

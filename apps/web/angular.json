@@ -58,6 +58,22 @@
               ],
               "outputHashing": "all"
             },
+            "embedded": {
+              "outputPath": { "base": "dist/embedded", "browser": "" },
+              "baseHref": "./",
+              "outputHashing": "none",
+              "optimization": {
+                "scripts": true,
+                "styles": { "minify": true, "inlineCritical": false },
+                "fonts": false
+              },
+              "fileReplacements": [
+                {
+                  "replace": "src/app/app.config.ts",
+                  "with": "src/app/app.config.embedded.ts"
+                }
+              ]
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,

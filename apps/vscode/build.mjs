@@ -16,7 +16,7 @@ await build({
   sourcemap: true,
 });
 
-const embedded = '../web/dist/embedded/browser';
+const embedded = '../web/dist/embedded';
 await rm('dist/webview', { recursive: true, force: true });
 if (existsSync(embedded)) {
   await mkdir('dist/webview', { recursive: true });

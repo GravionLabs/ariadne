@@ -12,7 +12,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/web/package.json apps/web/
 COPY apps/cli/package.json apps/cli/
 COPY apps/server/package.json apps/server/
+COPY apps/vscode/package.json apps/vscode/
 COPY packages/core/package.json packages/core/
+COPY packages/editor-protocol/package.json packages/editor-protocol/
 COPY packages/export/package.json packages/export/
 COPY packages/masstransit/package.json packages/masstransit/
 RUN pnpm install --frozen-lockfile
