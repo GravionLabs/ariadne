@@ -512,6 +512,24 @@ export class Inspector {
     return eventLabel(edge) || 'no event yet';
   }
 
+  /** What is known in code about the selected transition's event (shared by all with that event). */
+  protected readonly eventInfo = computed(() => {
+    const event = this.edge()?.event;
+    return event ? this.store.diagram().events?.find((e) => e.name === event) : undefined;
+  });
+
+  protected setMessageType(event: Event): void {
+    const name = this.edge()?.event;
+    if (name)
+      this.store.setEventInfo(name, { messageType: (event.target as HTMLInputElement).value });
+  }
+
+  protected setCorrelation(event: Event): void {
+    const name = this.edge()?.event;
+    if (name)
+      this.store.setEventInfo(name, { correlation: (event.target as HTMLInputElement).value });
+  }
+
   protected setGuard(event: Event): void {
     const edge = this.edge();
     const value = optional(event);

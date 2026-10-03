@@ -186,4 +186,23 @@ describe('renameMessage', () => {
     expect(next.edges[0].event).toBe('OrderCreated');
     expect(JSON.stringify(saga)).toBe(before);
   });
+
+  it('renames what is known in code about an event with it', () => {
+    const coded: Diagram = {
+      ...saga,
+      events: [
+        { name: 'OrderPlaced', messageType: 'SubmitOrder' },
+        { name: 'StockRequested', correlation: 'x => x.Id' },
+      ],
+    };
+    const next = renameMessage(coded, 'event', 'OrderPlaced', 'OrderCreated')!;
+    expect(next.events).toEqual([
+      { name: 'OrderCreated', messageType: 'SubmitOrder' },
+      { name: 'StockRequested', correlation: 'x => x.Id' },
+    ]);
+    // A command of that name is not the event.
+    expect(renameMessage(coded, 'command', 'ReserveStock', 'HoldStock')!.events).toEqual(
+      coded.events,
+    );
+  });
 });

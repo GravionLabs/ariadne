@@ -59,4 +59,57 @@ describe('DiagramDetails', () => {
     expect(store.diagram().description).toBeUndefined();
     expect(store.diagram().name).toBe('Order Saga');
   });
+
+  describe('code', () => {
+    const toggle = () => host.querySelector<HTMLButtonElement>('button.code-toggle')!;
+    const fields = () => [...host.querySelectorAll<HTMLInputElement>('.code input')];
+
+    beforeEach(() => {
+      // The code sits under the description: open the card first.
+      host.querySelector<HTMLButtonElement>('button.toggle')!.click();
+      refresh();
+      toggle().click();
+      refresh();
+    });
+
+    it('is folded away until opened, and lists the five fields', () => {
+      expect(fields().map((f) => f.getAttribute('aria-label'))).toEqual([
+        'State machine class',
+        'Namespace',
+        'Saga instance type',
+        'Current state property',
+        'Contracts namespace',
+      ]);
+      expect(toggle().getAttribute('aria-expanded')).toBe('true');
+      toggle().click();
+      refresh();
+      expect(fields()).toHaveLength(0);
+    });
+
+    it('edits the saga’s code metadata, one undo step each, and counts what is set', () => {
+      const set = (i: number, value: string) => {
+        fields()[i].value = value;
+        fields()[i].dispatchEvent(new Event('change'));
+        refresh();
+      };
+      set(0, 'OrderStateMachine');
+      set(1, 'Shop.Orders');
+      expect(store.diagram().saga).toEqual({
+        className: 'OrderStateMachine',
+        namespace: 'Shop.Orders',
+      });
+      expect(toggle().querySelector('.count')?.textContent?.trim()).toBe('2');
+      store.undo();
+      expect(store.diagram().saga).toEqual({ className: 'OrderStateMachine' });
+      set(0, '');
+      expect(store.diagram().saga).toBeUndefined();
+      expect(toggle().querySelector('.count')).toBeNull();
+    });
+
+    it('shows what the diagram has', () => {
+      store.setSaga({ instanceType: 'OrderState' });
+      refresh();
+      expect(fields()[2].value).toBe('OrderState');
+    });
+  });
 });

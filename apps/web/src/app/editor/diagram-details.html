@@ -32,4 +32,36 @@
     [value]="store.diagram().description ?? ''"
     (change)="setDescription($event)"
   ></textarea>
+
+  <button
+    type="button"
+    class="code-toggle"
+    aria-controls="saga-code"
+    [attr.aria-expanded]="codeOpen()"
+    (click)="toggleCode()"
+  >
+    <app-icon [name]="codeOpen() ? 'expandLess' : 'expandMore'" />
+    <span>Code</span>
+    @if (codeCount()) {
+      <span class="count">{{ codeCount() }}</span>
+    }
+  </button>
+  @if (codeOpen()) {
+    <div id="saga-code" class="code" role="group" aria-label="Saga in code">
+      @for (field of codeFields; track field.key) {
+        <label>
+          <span>{{ field.label }}</span>
+          <input
+            type="text"
+            [attr.aria-label]="field.label"
+            [placeholder]="field.placeholder"
+            [readOnly]="locked()"
+            [value]="saga()[field.key] ?? ''"
+            (change)="setCode(field.key, $event)"
+          />
+        </label>
+      }
+      <small>Used when C# is generated, and filled in when it is imported.</small>
+    </div>
+  }
 }

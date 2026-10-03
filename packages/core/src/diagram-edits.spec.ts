@@ -8,6 +8,8 @@ import {
   removeElements,
   retargetEdge,
   updateDetails,
+  updateEventInfo,
+  updateSaga,
   updateEdge,
   updateNode,
 } from './diagram-edits';
@@ -203,5 +205,53 @@ describe('diagram edits', () => {
   it('returns the same diagram when the target does not change', () => {
     const d = path();
     expect(retargetEdge(d, 'edge-1', 'state-1')).toBe(d);
+  });
+
+  describe('code metadata', () => {
+    it('sets and merges fields of the saga, trimmed', () => {
+      const first = updateSaga(path(), { className: ' OrderStateMachine ', namespace: 'Shop' });
+      expect(first.saga).toEqual({ className: 'OrderStateMachine', namespace: 'Shop' });
+      const second = updateSaga(first, { instanceType: 'OrderState' });
+      expect(second.saga).toEqual({
+        className: 'OrderStateMachine',
+        namespace: 'Shop',
+        instanceType: 'OrderState',
+      });
+    });
+
+    it('removes a field set to empty, and the block when nothing is left', () => {
+      const set = updateSaga(path(), { className: 'A', namespace: 'B' });
+      expect(updateSaga(set, { namespace: '  ' }).saga).toEqual({ className: 'A' });
+      const none = updateSaga(set, { className: '', namespace: undefined });
+      expect('saga' in none).toBe(false);
+    });
+
+    it('creates an event entry, keeps the order, and removes an entry that became empty', () => {
+      let d = updateEventInfo(path(), 'Go', { messageType: 'GoNow' });
+      d = updateEventInfo(d, 'Next', { correlation: 'x => x.Id' });
+      d = updateEventInfo(d, 'Go', { correlation: 'CorrelationId' });
+      expect(d.events).toEqual([
+        { name: 'Go', messageType: 'GoNow', correlation: 'CorrelationId' },
+        { name: 'Next', correlation: 'x => x.Id' },
+      ]);
+      d = updateEventInfo(d, 'Go', { messageType: '' });
+      expect(d.events?.[0]).toEqual({ name: 'Go', correlation: 'CorrelationId' });
+      d = updateEventInfo(d, 'Go', { correlation: undefined });
+      expect(d.events).toEqual([{ name: 'Next', correlation: 'x => x.Id' }]);
+      d = updateEventInfo(d, 'Next', { correlation: '' });
+      expect('events' in d).toBe(false);
+    });
+
+    it('does not create an entry for nothing', () => {
+      expect('events' in updateEventInfo(path(), 'Go', { messageType: ' ' })).toBe(false);
+    });
+
+    it('does not touch the input', () => {
+      const d = path();
+      const before = JSON.stringify(d);
+      updateSaga(d, { className: 'X' });
+      updateEventInfo(d, 'Go', { messageType: 'Y' });
+      expect(JSON.stringify(d)).toBe(before);
+    });
   });
 });

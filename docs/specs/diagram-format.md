@@ -181,7 +181,7 @@ Everything else is unchanged.
 
 The writer (`src/app/model/diagram-yaml.ts`) guarantees stable output:
 
-- keys are always written in the order listed above (`version`, `name`, `description`, `direction`, `nodes`, `edges`);
+- keys are always written in the order listed above (`version`, `name`, `description`, `saga`, `events`, `direction`, `nodes`, `edges`);
 - nodes, edges and activities keep their order in the diagram (new elements are appended);
 - optional fields that are not set (or empty) are omitted;
 - lines are never wrapped.
@@ -198,5 +198,7 @@ names the offending path. For example:
 - `nodes[1].requests[0] must be "request: <Name>"`
 - `nodes[1].timers[0] must be "schedule: <Name>" or "unschedule: <Name>"`
 - `There can be only one node of type "any"`
+- `saga.class must be a string`
+- `events[1]: the event "OrderReceived" is described twice`
 - `edges[0].activities is not allowed: activities belong to states (nodes[].activities)`
 - `edges[0].target "state-9" is not a node`

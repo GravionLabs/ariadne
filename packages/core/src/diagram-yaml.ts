@@ -1,6 +1,7 @@
 import { parse, stringify } from 'yaml';
 import {
   Diagram,
+  EventInfo,
   DiagramEdge,
   DiagramNode,
   Direction,
@@ -17,6 +18,7 @@ import {
   hasRequests,
   hasTimers,
   Request,
+  SagaInfo,
   Timer,
 } from './diagram';
 
@@ -50,6 +52,10 @@ export function serializeDiagram(diagram: Diagram): string {
     version: FORMAT_VERSION,
     name: diagram.name,
     description: diagram.description,
+    saga: serializeSaga(diagram.saga),
+    events: diagram.events?.length
+      ? diagram.events.map((e) => withoutUndefined({ ...e }))
+      : undefined,
     direction: diagram.direction,
     nodes: diagram.nodes.map(serializeNode),
     edges: diagram.edges.map(({ id, source, target, kind, event, eventSource, guard }) =>
@@ -57,6 +63,19 @@ export function serializeDiagram(diagram: Diagram): string {
     ),
   };
   return stringify(withoutUndefined(file), { lineWidth: 0 });
+}
+
+/** The saga block in the file: `class` for `className`, `instance` for `instanceType`. */
+function serializeSaga(saga: SagaInfo | undefined): Record<string, unknown> | undefined {
+  if (!saga) return undefined;
+  const block = withoutUndefined({
+    class: saga.className,
+    namespace: saga.namespace,
+    instance: saga.instanceType,
+    stateProperty: saga.stateProperty,
+    contractsNamespace: saga.contractsNamespace,
+  });
+  return Object.keys(block).length ? block : undefined;
 }
 
 function serializeNode(node: DiagramNode): Record<string, unknown> {
@@ -130,10 +149,14 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
   const notes = version < 3 ? moveActivitiesToStates(nodes, parsedEdges) : [];
   const name = optionalString(root['name'], 'name')?.trim() || undefined;
   const description = optionalString(root['description'], 'description')?.trim() || undefined;
+  const saga = parseSaga(root['saga']);
+  const events = parseEvents(root['events']);
   return {
     diagram: withoutUndefined({
       name,
       description,
+      saga,
+      events,
       direction: direction as Direction,
       nodes,
       edges,
@@ -182,6 +205,39 @@ function moveActivitiesToStates(nodes: DiagramNode[], parsed: ParsedEdge[]): str
     );
   }
   return notes;
+}
+
+function parseSaga(value: unknown): SagaInfo | undefined {
+  if (value === undefined) return undefined;
+  const block = asRecord(value, 'saga');
+  const text = (key: string) => optionalString(block[key], `saga.${key}`)?.trim() || undefined;
+  const saga = withoutUndefined<SagaInfo>({
+    className: text('class'),
+    namespace: text('namespace'),
+    instanceType: text('instance'),
+    stateProperty: text('stateProperty'),
+    contractsNamespace: text('contractsNamespace'),
+  });
+  return Object.keys(saga).length ? saga : undefined;
+}
+
+function parseEvents(value: unknown): EventInfo[] | undefined {
+  if (value === undefined) return undefined;
+  const seen = new Set<string>();
+  const events = asArray(value, 'events').map((item, i): EventInfo => {
+    const at = `events[${i}]`;
+    const entry = asRecord(item, at);
+    const name = asString(entry['name'], `${at}.name`);
+    if (seen.has(name))
+      throw new DiagramFormatError(`${at}: the event "${name}" is described twice`);
+    seen.add(name);
+    return withoutUndefined({
+      name,
+      messageType: optionalString(entry['messageType'], `${at}.messageType`)?.trim() || undefined,
+      correlation: optionalString(entry['correlation'], `${at}.correlation`)?.trim() || undefined,
+    });
+  });
+  return events.length ? events : undefined;
 }
 
 function parseNode(value: unknown, index: number, version: number): DiagramNode {

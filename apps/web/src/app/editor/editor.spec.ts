@@ -1043,6 +1043,44 @@ describe('Editor', () => {
     expect(config.diagnostics).toEqual({ maxNodePositionDrift: 0 });
   });
 
+  it('edits what is known in code about an event on its transition: shared by all with that event', async () => {
+    const { el, store, select, fill, expand } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'state');
+    store.appendNode('state-1', 'end');
+    store.updateEdge('edge-2', { event: 'PaymentCharged' });
+    store.updateEdge('edge-3', { event: 'PaymentCharged' });
+    await select([], ['edge-1']);
+    // No event, nothing to say about it in code.
+    expect(el.querySelector('app-inspector [aria-label="Event in code"]')).toBeNull();
+
+    await select([], ['edge-2']);
+    expect(el.querySelector('app-inspector [aria-label="Event in code"] input')).toBeNull();
+    await expand('Event in code');
+    const inputs = () => [
+      ...el.querySelectorAll<HTMLInputElement>('app-inspector [aria-label="Event in code"] input'),
+    ];
+    expect(inputs().map((i) => i.placeholder)).toEqual(['PaymentCharged', 'CorrelationId']);
+
+    await fill('[aria-label="Event in code"] input[placeholder="PaymentCharged"]', 'ChargePaid');
+    await fill('[aria-label="Event in code"] input[placeholder="CorrelationId"]', 'x => x.OrderId');
+    expect(store.diagram().events).toEqual([
+      { name: 'PaymentCharged', messageType: 'ChargePaid', correlation: 'x => x.OrderId' },
+    ]);
+
+    // The other transition on that event shows the same, already open: there is something in it.
+    await select([], ['edge-3']);
+    expect(inputs().map((i) => i.value)).toEqual(['ChargePaid', 'x => x.OrderId']);
+    expect(
+      el.querySelector('app-inspector [aria-label="Event in code"] .count')?.textContent,
+    ).toContain('2');
+
+    // Clearing both removes the entry.
+    await fill('[aria-label="Event in code"] input[placeholder="PaymentCharged"]', '');
+    await fill('[aria-label="Event in code"] input[placeholder="CorrelationId"]', '');
+    expect(store.diagram().events).toBeUndefined();
+  });
+
   it('adds the one Any state from the toolbox and opens it', async () => {
     const { el, store, settle } = await setup();
     const add = () => el.querySelector<HTMLButtonElement>('[aria-label="Add the Any state"]')!;

@@ -408,4 +408,32 @@ describe('DiagramStore', () => {
       expect(store.canUndo()).toBe(false);
     });
   });
+
+  describe('code metadata', () => {
+    it('sets the saga as one undo step and records nothing when it does not change', () => {
+      store.load(blank());
+      store.setSaga({ className: 'OrderStateMachine', namespace: 'Shop' });
+      expect(store.diagram().saga).toEqual({ className: 'OrderStateMachine', namespace: 'Shop' });
+      store.setSaga({ className: 'OrderStateMachine' });
+      store.setSaga({ namespace: ' Shop ' });
+      store.undo();
+      expect(store.diagram().saga).toBeUndefined();
+      expect(store.canUndo()).toBe(false);
+    });
+
+    it('sets the message type and correlation of an event as one undo step each', () => {
+      store.load(blank());
+      store.setEventInfo('OrderPlaced', { messageType: 'SubmitOrder' });
+      store.setEventInfo('OrderPlaced', { correlation: 'x => x.OrderId' });
+      store.setEventInfo('OrderPlaced', { correlation: 'x => x.OrderId' });
+      expect(store.diagram().events).toEqual([
+        { name: 'OrderPlaced', messageType: 'SubmitOrder', correlation: 'x => x.OrderId' },
+      ]);
+      store.undo();
+      expect(store.diagram().events).toEqual([{ name: 'OrderPlaced', messageType: 'SubmitOrder' }]);
+      store.undo();
+      expect(store.diagram().events).toBeUndefined();
+      expect(store.canUndo()).toBe(false);
+    });
+  });
 });
