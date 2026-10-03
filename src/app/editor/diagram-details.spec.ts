@@ -7,15 +7,10 @@ describe('DiagramDetails', () => {
   let store: DiagramStore;
   let host: HTMLElement;
 
-  const button = () => host.querySelector<HTMLButtonElement>('button')!;
-  const field = <T extends HTMLElement>(selector: string) =>
-    document.querySelector<T>(`.cdk-overlay-container ${selector}`);
-
-  async function open(): Promise<void> {
-    button().click();
-    TestBed.tick();
-    await Promise.resolve();
-  }
+  const name = () => host.querySelector<HTMLInputElement>('input.name')!;
+  const description = () => host.querySelector<HTMLTextAreaElement>('textarea');
+  const toggle = () => host.querySelector<HTMLButtonElement>('button.toggle')!;
+  const refresh = () => TestBed.tick();
 
   beforeEach(() => {
     store = TestBed.inject(DiagramStore);
@@ -24,21 +19,37 @@ describe('DiagramDetails', () => {
     fixture.detectChanges();
   });
 
-  it('shows "Details" until the saga has a name, then the name', () => {
-    expect(button().textContent).toContain('Details');
-    store.setDetails({ name: 'Order Saga' });
-    TestBed.tick();
-    expect(button().textContent).toContain('Order Saga');
+  it('shows the name, and the description only when expanded', () => {
+    store.setDetails({ name: 'Order Saga', description: 'About it' });
+    refresh();
+    expect(name().value).toBe('Order Saga');
+    expect(description()).toBeNull();
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
+
+    toggle().click();
+    refresh();
+    expect(description()!.value).toBe('About it');
+    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+
+    toggle().click();
+    refresh();
+    expect(description()).toBeNull();
   });
 
-  it('edits the name and description, one undo step each', async () => {
-    await open();
-    const name = field<HTMLInputElement>('input')!;
-    name.value = 'Order Saga';
-    name.dispatchEvent(new Event('change'));
-    const description = field<HTMLTextAreaElement>('textarea')!;
-    description.value = 'Takes an order to done.';
-    description.dispatchEvent(new Event('change'));
+  it('marks the collapsed card when there is a description', () => {
+    expect(toggle().classList.contains('filled')).toBe(false);
+    store.setDetails({ description: 'About it' });
+    refresh();
+    expect(toggle().classList.contains('filled')).toBe(true);
+  });
+
+  it('edits the name and description, one undo step each', () => {
+    name().value = 'Order Saga';
+    name().dispatchEvent(new Event('change'));
+    toggle().click();
+    refresh();
+    description()!.value = 'Takes an order to done.';
+    description()!.dispatchEvent(new Event('change'));
 
     expect(store.diagram()).toMatchObject({
       name: 'Order Saga',
@@ -47,12 +58,5 @@ describe('DiagramDetails', () => {
     store.undo();
     expect(store.diagram().description).toBeUndefined();
     expect(store.diagram().name).toBe('Order Saga');
-  });
-
-  it('shows the current values when opened', async () => {
-    store.setDetails({ name: 'Order Saga', description: 'About it' });
-    await open();
-    expect(field<HTMLInputElement>('input')!.value).toBe('Order Saga');
-    expect(field<HTMLTextAreaElement>('textarea')!.value).toBe('About it');
   });
 });

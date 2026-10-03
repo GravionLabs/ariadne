@@ -1,51 +1,33 @@
-<button
-  #origin="cdkOverlayOrigin"
-  type="button"
-  class="menu-button"
-  cdkOverlayOrigin
-  aria-haspopup="dialog"
-  title="Name and description of the saga"
-  [attr.aria-expanded]="isOpen()"
-  [class.open]="isOpen()"
-  (click)="toggle()"
->
-  <app-icon name="file" /><span class="label">{{ store.diagram().name || 'Details' }}</span
-  ><app-icon class="chevron" name="expandMore" />
-</button>
-
-<ng-template
-  cdkConnectedOverlay
-  [cdkConnectedOverlayOrigin]="origin"
-  [cdkConnectedOverlayOpen]="isOpen()"
-  [cdkConnectedOverlayPositions]="positions"
-  [cdkConnectedOverlayHasBackdrop]="true"
-  [cdkConnectedOverlayPush]="true"
-  [cdkConnectedOverlayViewportMargin]="12"
-  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
-  (backdropClick)="close()"
-  (detach)="close()"
-  (overlayKeydown)="onOverlayKeydown($event)"
->
-  <section class="panel" role="dialog" aria-label="Saga details">
-    <label>
-      <span>Name</span>
-      <input
-        type="text"
-        placeholder="e.g. Order Saga"
-        cdkFocusInitial
-        [value]="store.diagram().name ?? ''"
-        (change)="setName($event)"
-      />
-    </label>
-    <label>
-      <span>Description</span>
-      <textarea
-        rows="4"
-        placeholder="What the saga does"
-        [value]="store.diagram().description ?? ''"
-        (change)="setDescription($event)"
-      ></textarea>
-    </label>
-    <p class="hint">Shown in exports. The file name is used when there is no name.</p>
-  </section>
-</ng-template>
+<div class="head">
+  <input
+    type="text"
+    class="name"
+    aria-label="Saga name"
+    placeholder="Untitled saga"
+    [value]="store.diagram().name ?? ''"
+    (change)="setName($event)"
+  />
+  <button
+    type="button"
+    class="toggle"
+    aria-controls="saga-description"
+    [attr.aria-expanded]="expanded()"
+    [class.filled]="!!store.diagram().description"
+    [title]="expanded() ? 'Hide the description' : 'Show the description'"
+    [attr.aria-label]="expanded() ? 'Hide the description' : 'Show the description'"
+    (click)="toggle()"
+  >
+    <app-icon [name]="expanded() ? 'expandLess' : 'expandMore'" />
+  </button>
+</div>
+@if (expanded()) {
+  <textarea
+    id="saga-description"
+    class="description"
+    rows="4"
+    aria-label="Saga description"
+    placeholder="What the saga does"
+    [value]="store.diagram().description ?? ''"
+    (change)="setDescription($event)"
+  ></textarea>
+}
