@@ -7,8 +7,11 @@ import {
   FSelectionChangeEvent,
 } from '@foblex/flow';
 import { DiagramStore } from '../model/diagram-store';
+import { serializeDiagram } from '../model/diagram-yaml';
 import { DiagramDocument } from '../storage/diagram-document';
 import { FileStorage } from '../storage/file-storage';
+import type { Mock } from 'vitest';
+import { CODE_EDITOR_FACTORY, CodeEditor, CodeEditorOptions } from './code-editor';
 import { Editor } from './editor';
 
 // jsdom has no ResizeObserver; f-flow uses it to track node sizes.
@@ -18,8 +21,36 @@ globalThis.ResizeObserver ??= class {
   disconnect(): void {}
 };
 
+/** A stand-in for the CodeMirror editor, so specs don't load it. */
+interface FakeEditor extends CodeEditor {
+  text: string;
+  options: CodeEditorOptions;
+  setText: Mock<(text: string) => void>;
+  showError: Mock<CodeEditor['showError']>;
+  reveal: Mock<CodeEditor['reveal']>;
+  destroy: Mock<() => void>;
+}
+
 describe('Editor', () => {
+  beforeEach(() => localStorage.clear());
+
   async function setup() {
+    const editors: FakeEditor[] = [];
+    const editorFactory = vi.fn(async (_parent: HTMLElement, options: CodeEditorOptions) => {
+      const editor: FakeEditor = {
+        text: options.text,
+        options,
+        setText: vi.fn((text: string) => {
+          editor.text = text;
+        }),
+        focus: vi.fn(),
+        showError: vi.fn(),
+        reveal: vi.fn(),
+        destroy: vi.fn(),
+      };
+      editors.push(editor);
+      return editor;
+    });
     const storage = {
       open: vi.fn(async () => null),
       save: vi.fn(async () => null),
@@ -27,7 +58,10 @@ describe('Editor', () => {
     };
     await TestBed.configureTestingModule({
       imports: [Editor],
-      providers: [{ provide: FileStorage, useValue: storage }],
+      providers: [
+        { provide: FileStorage, useValue: storage },
+        { provide: CODE_EDITOR_FACTORY, useValue: editorFactory },
+      ],
     }).compileComponents();
     const fixture = TestBed.createComponent(Editor);
     const el = fixture.nativeElement as HTMLElement;
@@ -65,7 +99,7 @@ describe('Editor', () => {
       field.dispatchEvent(new Event('change'));
       await settle();
     };
-    return { fixture, el, store, storage, settle, draggable, pick, select, fill };
+    return { fixture, el, store, storage, editors, settle, draggable, pick, select, fill };
   }
 
   const slotButton = (el: HTMLElement) =>
@@ -400,5 +434,181 @@ describe('Editor', () => {
     el.querySelector<HTMLButtonElement>('[aria-label="Dismiss error"]')!.click();
     await settle();
     expect(el.querySelector('[role=alert]')).toBeNull();
+  });
+
+  describe('source view', () => {
+    const sourceButton = (el: HTMLElement) =>
+      el.querySelector<HTMLButtonElement>('[aria-label="Source"]')!;
+
+    it('opens next to the canvas with the diagram as YAML, and closes again', async () => {
+      const { el, store, editors, settle } = await setup();
+      expect(el.querySelector('app-source-panel')).toBeNull();
+      expect(sourceButton(el).getAttribute('aria-pressed')).toBe('false');
+
+      sourceButton(el).click();
+      await settle();
+      expect(el.querySelector('app-source-panel')).not.toBeNull();
+      expect(el.querySelector('.workspace')).not.toBeNull(); // the canvas stays
+      expect(sourceButton(el).getAttribute('aria-pressed')).toBe('true');
+      expect(editors).toHaveLength(1);
+      expect(editors[0].text).toBe(serializeDiagram(store.diagram()));
+
+      el.querySelector<HTMLButtonElement>('[aria-label="Close source"]')!.click();
+      await settle();
+      expect(el.querySelector('app-source-panel')).toBeNull();
+      expect(editors[0].destroy).toHaveBeenCalled();
+    });
+
+    it('applies text typed in the panel to the diagram, as one undo step', async () => {
+      const { el, store, editors, settle } = await setup();
+      sourceButton(el).click();
+      await settle();
+      const [editor] = editors;
+      const typed = editor.text.replace('name: Initial', 'name: Begin');
+      editor.options.onChange(typed);
+      editor.options.onBlur(); // leaving the editor applies the text without waiting
+      await settle();
+      expect(store.nodes()[0].name).toBe('Begin');
+      expect(el.querySelector('app-node-card')?.textContent).toContain('Begin');
+      expect(el.querySelector('app-source-panel [role=status]')?.textContent).toContain('Valid');
+      store.undo();
+      await settle();
+      expect(store.nodes()[0].name).toBe('Initial');
+      expect(editor.text).toContain('name: Initial');
+    });
+
+    it('shows what is wrong with invalid text and keeps the diagram', async () => {
+      const { el, store, editors, settle } = await setup();
+      sourceButton(el).click();
+      await settle();
+      const before = store.diagram();
+      editors[0].options.onChange('version: 3\nnodes: {}\n');
+      editors[0].options.onBlur();
+      await settle();
+      expect(store.diagram()).toBe(before);
+      const status = el.querySelector('app-source-panel [role=status]')!;
+      expect(status.textContent).toContain('nodes must be a list');
+      expect(status.textContent).toContain('keeps its last valid state');
+    });
+
+    it('names the line of a problem, marks it in the editor, and jumps there', async () => {
+      const { el, editors, settle } = await setup();
+      sourceButton(el).click();
+      await settle();
+      const [editor] = editors;
+      editor.options.onChange('version: 3\nnodes:\n  - { id: a, type: task, name: A }\n');
+      editor.options.onBlur();
+      await settle();
+      const status = el.querySelector('app-source-panel [role=status]')!;
+      expect(status.textContent).toContain('Line 3:20');
+      expect(editor.showError).toHaveBeenLastCalledWith({
+        message: expect.stringContaining('nodes[0].type must be one of'),
+        line: 3,
+        column: 20,
+      });
+
+      status.querySelector<HTMLButtonElement>('.where')!.click();
+      expect(editor.reveal).toHaveBeenCalledWith(3, 20);
+
+      // Fixing the text removes the mark.
+      editor.options.onChange(editor.text.replace('task', 'state'));
+      editor.options.onBlur();
+      await settle();
+      expect(editor.showError).toHaveBeenLastCalledWith(null);
+      expect(status.textContent).toContain('Valid');
+    });
+
+    it('has no line to show for a problem that cannot be placed', async () => {
+      const { el, editors, settle } = await setup();
+      sourceButton(el).click();
+      await settle();
+      editors[0].options.onChange('- 1\n');
+      editors[0].options.onBlur();
+      await settle();
+      const status = el.querySelector('app-source-panel [role=status]')!;
+      expect(status.textContent).toContain('file must be a mapping');
+      expect(status.querySelector('.where')).toBeNull();
+      expect(editors[0].showError).toHaveBeenLastCalledWith(null);
+    });
+
+    it('follows edits made on the canvas', async () => {
+      const { el, store, editors, settle } = await setup();
+      sourceButton(el).click();
+      await settle();
+      store.appendNode('start-1', 'state');
+      await settle();
+      expect(editors[0].text).toBe(serializeDiagram(store.diagram()));
+      expect(editors[0].text).toContain('id: state-1');
+    });
+
+    it('is remembered between visits, with its width', async () => {
+      const first = await setup();
+      first.el.querySelector<HTMLButtonElement>('[aria-label="Source"]')!.click();
+      await first.settle();
+      const divider = first.el.querySelector<HTMLElement>('[role=separator]')!;
+      divider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      await first.settle();
+      expect(localStorage.getItem('ariadne.source-open')).toBe('1');
+      expect(localStorage.getItem('ariadne.source-width')).toBe('464'); // 440 + one step of 24
+      first.fixture.destroy();
+      TestBed.resetTestingModule();
+
+      const second = await setup();
+      expect(second.el.querySelector('app-source-panel')).not.toBeNull();
+      expect(second.el.querySelector<HTMLElement>('app-source-panel')!.style.width).toBe('464px');
+    });
+
+    it('can be resized with the keyboard, within limits', async () => {
+      const { el, settle } = await setup();
+      sourceButton(el).click();
+      await settle();
+      const divider = el.querySelector<HTMLElement>('[role=separator]')!;
+      const panel = el.querySelector<HTMLElement>('app-source-panel')!;
+      const press = async (key: string, shiftKey = false) => {
+        divider.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, bubbles: true }));
+        await settle();
+      };
+      await press('End');
+      expect(panel.style.width).toBe('280px');
+      await press('ArrowRight');
+      expect(panel.style.width).toBe('280px'); // not narrower than the minimum
+      await press('ArrowLeft', true);
+      expect(panel.style.width).toBe('360px');
+    });
+
+    it('saves with Ctrl+S from inside the editor, after applying what was typed', async () => {
+      const { el, store, storage, editors, settle } = await setup();
+      sourceButton(el).click();
+      await settle();
+      const [editor] = editors;
+      editor.options.onChange(editor.text.replace('name: Initial', 'name: Begin'));
+      // The panel applies on blur; Ctrl+S in a text field leaves the field first.
+      const field = document.createElement('input');
+      field.addEventListener('blur', () => editor.options.onBlur());
+      el.append(field);
+      field.focus();
+      field.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }),
+      );
+      await settle();
+      expect(store.nodes()[0].name).toBe('Begin');
+      expect(storage.saveAs).toHaveBeenCalledWith(
+        expect.stringContaining('name: Begin'),
+        'untitled.yaml',
+      );
+    });
+
+    it('does not undo the diagram when Ctrl+Z is pressed while typing in a text field', async () => {
+      const { el, store, settle } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      const field = document.createElement('input');
+      el.append(field);
+      field.focus();
+      field.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true }),
+      );
+      expect(store.nodes()).toHaveLength(2);
+    });
   });
 });

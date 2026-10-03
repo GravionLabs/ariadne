@@ -1,0 +1,148 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--c-surface-1);
+  border-left: 1px solid var(--c-border);
+}
+
+.head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 6px 0 14px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+
+  app-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--c-text-subtle);
+  }
+}
+
+.note {
+  flex: 1;
+  color: var(--c-text-subtle);
+  font-size: 12px;
+}
+
+.icon-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  color: var(--c-text-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  app-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    color: var(--c-text);
+    background: var(--c-surface-3);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: -2px;
+  }
+}
+
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor {
+  height: 100%;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  margin: 0;
+  padding: 16px;
+  place-items: center;
+  color: var(--c-text-subtle);
+  font-size: 13px;
+  text-align: center;
+}
+
+.status {
+  --status-color: var(--c-start);
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-height: 30px;
+  box-sizing: border-box;
+  padding: 7px 14px;
+  color: var(--c-text-subtle);
+  background: var(--c-surface-2);
+  border-top: 1px solid var(--c-border);
+  font-size: 12px;
+  line-height: 16px;
+
+  &[data-kind='pending'] {
+    --status-color: var(--c-compensation);
+  }
+
+  &[data-kind='error'] {
+    --status-color: var(--c-danger);
+    color: var(--c-text);
+  }
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  align-self: center;
+  background: var(--status-color);
+  border-radius: 50%;
+}
+
+.message {
+  color: var(--c-danger);
+  font-weight: 500;
+}
+
+.keep {
+  color: var(--c-text-subtle);
+}
+
+.where {
+  padding: 0;
+  color: var(--c-danger);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: 2px;
+  }
+}

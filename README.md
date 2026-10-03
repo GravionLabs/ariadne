@@ -27,6 +27,7 @@ States do things; transitions react to events. A command is sent to exactly one 
 
 - **Build** a saga by clicking "+": after a state, or on a transition to insert a state into it. Dragging from a state's connector onto another state adds a transition. Nothing is placed by hand: the layout is automatic (top to bottom or left to right) and always tidy.
 - **Edit** the selection in the inspector: name, description, color, activities, compensation, retry and timeout for states; event, event source and kind for transitions.
+- **Edit the source** next to the diagram: the **Source** button in the toolbar opens the YAML in a split view. Typing updates the diagram a moment later, editing the diagram updates the text, and a problem in the text is shown with its line and column while the diagram keeps its last valid state. Drag the divider to resize the panel.
 - **Undo and redo** every edit (`Ctrl+Z`, `Ctrl+Shift+Z`).
 - **Open and save** diagrams as YAML (`Ctrl+O`, `Ctrl+S`, `Ctrl+Shift+S`). Where the browser allows it (Chrome, Edge) saving overwrites the opened file; otherwise it downloads a copy.
 - **Old files keep working.** Earlier file versions are migrated on open, and the app tells you what changed.
@@ -82,7 +83,7 @@ The full format, with every field and the migration rules, is in [docs/specs/dia
 ```
 src/app/
   model/      the diagram, its YAML format, the store with undo/redo (no UI)
-  editor/     the canvas, state cards, transition labels, inspector, auto-layout
+  editor/     the canvas, state cards, transition labels, inspector, auto-layout, source panel
   storage/    FileStorage (open/save behind an interface) and the document service
 docs/
   adr/        architecture decision records
@@ -90,7 +91,7 @@ docs/
   examples/   sample diagrams
 ```
 
-Decisions are recorded as ADRs: [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [activities belong to states](docs/adr/0005-activities-on-states.md).
+Decisions are recorded as ADRs: [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the source view](docs/adr/0008-source-view.md).
 
 ## Roadmap
 

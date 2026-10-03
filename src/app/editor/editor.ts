@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import {
   FCanvasComponent,
   FCreateConnectionEvent,
@@ -24,6 +24,7 @@ import { AddStepButton } from './add-step-button';
 import { DiagramLayout, SLOT_SIZE, nodeSize } from './diagram-layout';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
+import { SourcePanel } from './source-panel';
 import { NodeCard } from './node-card';
 import { APPEND_TYPES } from './node-types';
 import { TransitionLabel } from './transition-label';
@@ -31,7 +32,7 @@ import { TransitionLabel } from './transition-label';
 const FIT_PADDING = { x: 80, y: 80 };
 
 @Component({
-  imports: [AddStepButton, FFlowModule, Icon, Inspector, NodeCard, TransitionLabel],
+  imports: [AddStepButton, FFlowModule, Icon, Inspector, NodeCard, SourcePanel, TransitionLabel],
   providers: [provideFFlow(withA11y()), DiagramLayout],
   host: {
     '(window:keydown)': 'onKeydown($event)',
@@ -72,6 +73,13 @@ export class Editor {
   private readonly layoutKey = computed(() => this.store.direction());
   /** Node to select in f-flow once the layout has placed it. */
   private pendingSelect: string | null = null;
+
+  /** The source panel (the diagram as YAML) next to the canvas; open state and width are remembered. */
+  protected readonly sourceOpen = signal(remembered('source-open') === '1');
+  protected readonly sourceWidth = signal(
+    clamp(Number(remembered('source-width')) || SOURCE_DEFAULT_WIDTH, SOURCE_MIN_WIDTH, 4000),
+  );
+  private readonly body = viewChild<ElementRef<HTMLElement>>('body');
 
   protected readonly hasSelection = computed(() => {
     const { nodeIds, edgeIds } = this.selection();
@@ -172,15 +180,32 @@ export class Editor {
   }
 
   protected onKeydown(event: KeyboardEvent): void {
-    if (!(event.ctrlKey || event.metaKey) || isTextEntry(event.target)) return;
+    if (!(event.ctrlKey || event.metaKey)) return;
     const key = event.key.toLowerCase();
-    if (key === 's' && event.shiftKey) void this.file.saveAs();
-    else if (key === 's') void this.file.save();
-    else if (key === 'o') void this.open();
-    else if (key === 'z' && !event.shiftKey) this.store.undo();
+    // Typing in a text field has its own undo history, and Ctrl+Z there must not undo the diagram.
+    const typing = isTextEntry(event.target);
+    if (key === 's' || key === 'o') {
+      this.commitTyping(event.target);
+      if (key === 'o') void this.open();
+      else if (event.shiftKey) void this.file.saveAs();
+      else void this.file.save();
+    } else if (typing) {
+      return;
+    } else if (key === 'z' && !event.shiftKey) this.store.undo();
     else if ((key === 'z' && event.shiftKey) || key === 'y') this.store.redo();
     else return;
     event.preventDefault();
+  }
+
+  /**
+   * Saving or opening while a field has an edit that is not applied yet (the inspector commits on
+   * blur, the source editor after a pause): leave the field first, then come back to it.
+   */
+  private commitTyping(target: EventTarget | null): void {
+    if (!isTextEntry(target)) return;
+    const field = target as HTMLElement;
+    field.blur();
+    queueMicrotask(() => field.focus());
   }
 
   /**
@@ -199,6 +224,66 @@ export class Editor {
   protected deleteSelection(): void {
     this.store.remove(this.selection());
     this.clearSelection();
+  }
+
+  protected toggleSource(): void {
+    this.sourceOpen.update((open) => !open);
+    remember('source-open', this.sourceOpen() ? '1' : '0');
+  }
+
+  protected closeSource(): void {
+    this.sourceOpen.set(false);
+    remember('source-open', '0');
+  }
+
+  /** Dragging the divider between canvas and source panel. */
+  protected startResize(event: PointerEvent): void {
+    const handle = event.currentTarget as HTMLElement;
+    handle.setPointerCapture(event.pointerId);
+    const move = (e: PointerEvent) => this.resizeSource(e.clientX);
+    const stop = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', stop);
+      handle.removeEventListener('pointercancel', stop);
+      remember('source-width', String(this.sourceWidth()));
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
+    event.preventDefault();
+  }
+
+  /** The divider also works from the keyboard: arrows move it, Home/End jump. */
+  protected resizeKey(event: KeyboardEvent): void {
+    const step = event.shiftKey ? 80 : 24;
+    const max = this.maxSourceWidth();
+    const width = this.sourceWidth();
+    const next =
+      event.key === 'ArrowLeft'
+        ? width + step
+        : event.key === 'ArrowRight'
+          ? width - step
+          : event.key === 'Home'
+            ? max
+            : event.key === 'End'
+              ? SOURCE_MIN_WIDTH
+              : null;
+    if (next === null) return;
+    this.sourceWidth.set(clamp(next, SOURCE_MIN_WIDTH, max));
+    remember('source-width', String(this.sourceWidth()));
+    event.preventDefault();
+  }
+
+  private resizeSource(clientX: number): void {
+    const body = this.body()?.nativeElement.getBoundingClientRect();
+    if (!body) return;
+    this.sourceWidth.set(clamp(body.right - clientX, SOURCE_MIN_WIDTH, this.maxSourceWidth()));
+  }
+
+  /** The canvas keeps at least a third of the space. */
+  protected maxSourceWidth(): number {
+    const total = this.body()?.nativeElement.getBoundingClientRect().width || window.innerWidth;
+    return Math.max(SOURCE_MIN_WIDTH, Math.floor((total * 2) / 3));
   }
 
   protected clearSelection(): void {
@@ -238,6 +323,29 @@ export class Editor {
   protected onDelete(event: FDeleteSelectedEvent): void {
     this.store.remove({ nodeIds: event.nodeIds, edgeIds: event.connectionIds });
     this.clearSelection();
+  }
+}
+
+const SOURCE_MIN_WIDTH = 280;
+const SOURCE_DEFAULT_WIDTH = 440;
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(Math.max(value, min), max);
+
+/** Per-user conveniences in `localStorage`; the app works without it (private windows, blocked). */
+function remembered(key: string): string | null {
+  try {
+    return localStorage.getItem(`ariadne.${key}`);
+  } catch {
+    return null;
+  }
+}
+
+function remember(key: string, value: string): void {
+  try {
+    localStorage.setItem(`ariadne.${key}`, value);
+  } catch {
+    // Not remembered: fine.
   }
 }
 
