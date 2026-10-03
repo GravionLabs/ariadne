@@ -1,0 +1,44 @@
+<header class="head">
+  <span class="title"><app-icon name="code" /> Source</span>
+  <span class="note">YAML, as saved</span>
+  <button
+    type="button"
+    class="icon-button"
+    aria-label="Close source"
+    title="Close source"
+    (click)="closed.emit()"
+  >
+    <app-icon name="close" />
+  </button>
+</header>
+
+<div class="body">
+  <div #editor class="editor"></div>
+  @if (loading()) {
+    <p class="overlay">Loading editor…</p>
+  } @else if (failed()) {
+    <p class="overlay" role="alert">
+      The editor could not be loaded. Check your connection and reload the page.
+    </p>
+  }
+</div>
+
+<footer class="status" role="status" [attr.data-kind]="sync.status().kind">
+  @switch (sync.status().kind) {
+    @case ('synced') {
+      <span class="dot"></span> Valid: the diagram matches the text
+    }
+    @case ('pending') {
+      <span class="dot"></span> Applying…
+    }
+    @default {
+      @if (sync.status(); as status) {
+        @if (status.kind === 'error') {
+          <span class="dot"></span>
+          <span class="message">{{ status.error.message }}</span>
+          <span class="keep">The diagram keeps its last valid state.</span>
+        }
+      }
+    }
+  }
+</footer>
