@@ -10,6 +10,7 @@ namespace Shop.Orders;
 public record OrderSubmitted
 {
     public Guid CorrelationId { get; init; }
+    public Guid OrderId { get; init; } // TODO: check the type
     // TODO: add the properties of the message
 }
 

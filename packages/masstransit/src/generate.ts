@@ -251,6 +251,23 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     ]),
   ];
 
+  // The correlation expressions read properties of the messages and of the saga; they must exist.
+  const messageProps = new Map<string, Set<string>>();
+  const sagaProps = new Set<string>();
+  for (const e of eventNames) {
+    const text = eventInfo.get(e)?.correlation ?? '';
+    const props = messageProps.get(messageType(e)) ?? new Set<string>();
+    for (const m of text.matchAll(/\.Message\.(\w+)/g)) props.add(m[1]);
+    messageProps.set(messageType(e), props);
+    const saga = /\(\s*(\w+)\s*,\s*\w+\s*\)\s*=>/.exec(text)?.[1];
+    if (saga)
+      for (const m of text.matchAll(new RegExp(`\\b${saga}\\.(\\w+)`, 'g'))) sagaProps.add(m[1]);
+  }
+  const extra = (names: Iterable<string>, accessor: string): string[] =>
+    [...names]
+      .filter((n) => n !== 'CorrelationId' && n !== stateProperty)
+      .map((n) => `${indent(1)}public Guid ${n} { get; ${accessor}; } // TODO: check the type`);
+
   const instance = [
     ...header,
     'using System;',
@@ -261,6 +278,7 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       '{',
       `${indent(1)}public Guid CorrelationId { get; set; }`,
       `${indent(1)}public string ${stateProperty} { get; set; } = null!;`,
+      ...extra(sagaProps, 'set'),
       '}',
     ]),
   ];
@@ -280,6 +298,7 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       `public record ${c}`,
       '{',
       `${indent(1)}public Guid CorrelationId { get; init; }`,
+      ...extra(messageProps.get(c) ?? [], 'init'),
       `${indent(1)}// TODO: add the properties of the message`,
       '}',
     );
