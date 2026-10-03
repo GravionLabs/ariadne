@@ -1,0 +1,159 @@
+import { Diagram } from '../model/diagram';
+import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
+
+const orderSaga: Diagram = {
+  direction: 'top-bottom',
+  nodes: [
+    { id: 'start-1', type: 'start', name: 'Initial' },
+    { id: 'state-1', type: 'state', name: 'Awaiting order' },
+    {
+      id: 'state-2',
+      type: 'state',
+      name: 'Reserving stock',
+      activities: [{ kind: 'command', name: 'ReserveStock' }],
+      compensation: { name: 'ReleaseStock' },
+    },
+    {
+      id: 'state-3',
+      type: 'state',
+      name: 'Charging payment',
+      activities: [{ kind: 'command', name: 'ChargePayment' }],
+    },
+    {
+      id: 'state-4',
+      type: 'state',
+      name: 'Shipping',
+      activities: [
+        { kind: 'command', name: 'ShipOrder' },
+        { kind: 'event', name: 'OrderAccepted' },
+      ],
+    },
+    {
+      id: 'end-1',
+      type: 'end',
+      name: 'Cancelled',
+    },
+  ],
+  edges: [
+    { id: 'e1', source: 'start-1', target: 'state-1', kind: 'forward' },
+    {
+      id: 'e2',
+      source: 'state-1',
+      target: 'state-2',
+      kind: 'forward',
+      event: 'OrderReceived',
+      eventSource: 'Shop API',
+    },
+    { id: 'e3', source: 'state-2', target: 'state-3', kind: 'forward', event: 'StockReserved' },
+    { id: 'e4', source: 'state-3', target: 'state-4', kind: 'forward', event: 'PaymentCharged' },
+    { id: 'e5', source: 'state-3', target: 'end-1', kind: 'forward', event: 'PaymentFailed' },
+    { id: 'e6', source: 'state-3', target: 'state-2', kind: 'compensation', event: 'Undo' },
+  ],
+};
+
+describe('diagramToMermaid', () => {
+  it('renders the order saga', () => {
+    expect(diagramToMermaid(orderSaga)).toMatchSnapshot();
+  });
+
+  it('maps the initial state to [*] and a final state to a named state leaving to [*]', () => {
+    const out = diagramToMermaid(orderSaga);
+    expect(out).toContain('[*] --> Awaiting_order');
+    expect(out).toContain('Charging_payment --> Cancelled : PaymentFailed');
+    expect(out).toContain('Cancelled --> [*]');
+  });
+
+  it('labels transitions Event / Send A, Publish B and marks external events', () => {
+    const out = diagramToMermaid(orderSaga);
+    expect(out).toContain(
+      'Awaiting_order --> Reserving_stock : OrderReceived (from Shop API) / Send ReserveStock',
+    );
+    expect(out).toContain(
+      'Charging_payment --> Shipping : PaymentCharged / Send ShipOrder, Publish OrderAccepted',
+    );
+  });
+
+  it('declares display names for sanitised ids and keeps plain names as they are', () => {
+    const out = diagramToMermaid(orderSaga);
+    expect(out).toContain('state "Awaiting order" as Awaiting_order');
+    expect(out).not.toContain('as Shipping');
+  });
+
+  it('distinguishes compensation transitions and compensated states', () => {
+    const out = diagramToMermaid(orderSaga);
+    expect(out).toContain('Charging_payment --> Reserving_stock : compensate: Undo');
+    expect(out).toContain('class Reserving_stock compensation');
+    expect(out).toContain('classDef compensation');
+  });
+
+  it('follows the diagram direction', () => {
+    expect(diagramToMermaid(orderSaga)).toContain('direction TB');
+    expect(diagramToMermaid({ ...orderSaga, direction: 'left-right' })).toContain('direction LR');
+  });
+
+  it('makes ids unique, valid and not keywords', () => {
+    const out = diagramToMermaid({
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'state', name: 'Same' },
+        { id: 'b', type: 'state', name: 'same' },
+        { id: 'c', type: 'state', name: 'end' },
+        { id: 'd', type: 'state', name: '1st step!' },
+        { id: 'e', type: 'state', name: '???' },
+      ],
+      edges: [{ id: 'x', source: 'a', target: 'b', kind: 'forward' }],
+    });
+    expect(out).toContain('state "same" as same_2');
+    expect(out).toContain('state "end" as s_end');
+    expect(out).toContain('state "1st step!" as s_1st_step');
+    expect(out).toContain('state "???" as s_state');
+    expect(out).toContain('Same --> same_2\n');
+  });
+
+  it('escapes characters that would end a label or name', () => {
+    const out = diagramToMermaid({
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'state', name: 'Say "hi"; ok' },
+        { id: 'b', type: 'state', name: 'B', activities: [{ kind: 'command', name: 'X;Y' }] },
+      ],
+      edges: [{ id: 'x', source: 'a', target: 'b', kind: 'forward', event: 'Multi\nline' }],
+    });
+    expect(out).toContain('state "Say #quot;hi#quot;#59; ok" as Say_hi_ok');
+    expect(out).toContain(': Multi line / Send X#59;Y');
+  });
+
+  it('labels a transition without an event by its activities only, or leaves it bare', () => {
+    const out = diagramToMermaid({
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'state', name: 'A' },
+        { id: 'b', type: 'state', name: 'B', activities: [{ kind: 'event', name: 'Done' }] },
+      ],
+      edges: [
+        { id: 'x', source: 'a', target: 'b', kind: 'forward' },
+        { id: 'y', source: 'b', target: 'a', kind: 'forward' },
+      ],
+    });
+    expect(out).toContain('A --> B : Publish Done\n');
+    expect(out).toContain('B --> A\n');
+  });
+
+  it('skips transitions to missing states and handles an empty diagram', () => {
+    expect(
+      diagramToMermaid({
+        ...orderSaga,
+        edges: [{ id: 'bad', source: 'nope', target: 'state-1', kind: 'forward' }],
+      }),
+    ).not.toContain('nope');
+    expect(diagramToMermaid({ direction: 'top-bottom', nodes: [], edges: [] })).toBe(
+      'stateDiagram-v2\n  direction TB\n',
+    );
+  });
+});
+
+describe('mermaidMarkdown', () => {
+  it('wraps the text in a mermaid fence', () => {
+    expect(mermaidMarkdown('stateDiagram-v2\n')).toBe('```mermaid\nstateDiagram-v2\n```\n');
+  });
+});
