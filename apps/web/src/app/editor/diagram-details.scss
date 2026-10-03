@@ -89,3 +89,78 @@
     border-radius: 50%;
   }
 }
+
+// The saga's code metadata, folded away under the description.
+.code-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  color: var(--c-text-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+
+  app-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: var(--c-text);
+    background: var(--c-surface-2);
+    outline: none;
+  }
+
+  .count {
+    padding: 0 6px;
+    color: var(--c-text);
+    background: var(--c-surface-3);
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 16px;
+  }
+}
+
+.code {
+  display: grid;
+  gap: 6px;
+  padding: 0 4px 4px;
+
+  label {
+    display: grid;
+    gap: 2px;
+  }
+
+  label > span {
+    color: var(--c-text-subtle);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  input {
+    min-width: 0;
+    padding: 5px 8px;
+    color: var(--c-text);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: 12px;
+
+    &:focus-visible {
+      border-color: var(--c-primary);
+      outline: none;
+    }
+  }
+
+  small {
+    color: var(--c-text-subtle);
+    font-size: 11px;
+  }
+}

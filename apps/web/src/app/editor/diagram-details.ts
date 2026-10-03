@@ -1,4 +1,5 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
+import { SagaInfo } from '@ariadne/core';
 import { DiagramStore } from '../model/diagram-store';
 import { Icon } from './icon';
 
@@ -19,6 +20,34 @@ export class DiagramDetails {
   readonly locked = input(false);
 
   protected readonly expanded = signal(false);
+  protected readonly codeOpen = signal(false);
+
+  /** The saga's code metadata (class, namespace, …): what generating C# needs. */
+  protected readonly codeFields: readonly {
+    key: keyof SagaInfo;
+    label: string;
+    placeholder: string;
+  }[] = [
+    { key: 'className', label: 'State machine class', placeholder: 'OrderStateMachine' },
+    { key: 'namespace', label: 'Namespace', placeholder: 'Shop.Orders' },
+    { key: 'instanceType', label: 'Saga instance type', placeholder: 'OrderState' },
+    { key: 'stateProperty', label: 'Current state property', placeholder: 'CurrentState' },
+    {
+      key: 'contractsNamespace',
+      label: 'Contracts namespace',
+      placeholder: 'Shop.Orders.Contracts',
+    },
+  ];
+  protected readonly saga = computed(() => this.store.diagram().saga ?? {});
+  protected readonly codeCount = computed(() => Object.keys(this.saga()).length);
+
+  protected toggleCode(): void {
+    this.codeOpen.update((open) => !open);
+  }
+
+  protected setCode(key: keyof SagaInfo, event: Event): void {
+    this.store.setSaga({ [key]: (event.target as HTMLInputElement).value });
+  }
 
   protected toggle(): void {
     this.expanded.update((open) => !open);

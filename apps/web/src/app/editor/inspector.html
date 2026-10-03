@@ -571,6 +571,49 @@
       <p class="hint">{{ hint }}</p>
     }
     @if (edge.event) {
+      <section class="group" aria-label="Event in code">
+        <button
+          type="button"
+          class="group-toggle"
+          [attr.aria-expanded]="isOpen('code', eventInfo() ? 1 : 0)"
+          (click)="toggle('code', eventInfo() ? 1 : 0)"
+        >
+          <app-icon [name]="isOpen('code', eventInfo() ? 1 : 0) ? 'expandLess' : 'expandMore'" />
+          <span>In code</span>
+          @if (eventInfo()) {
+            <span class="count">{{
+              (eventInfo()?.messageType ? 1 : 0) + (eventInfo()?.correlation ? 1 : 0)
+            }}</span>
+          }
+        </button>
+        @if (isOpen('code', eventInfo() ? 1 : 0)) {
+          <small class="group-desc">
+            Shared by every transition on “{{ edge.event }}”. Used when C# is generated.
+          </small>
+          <label class="field">
+            <span>Message type</span>
+            <input
+              type="text"
+              [placeholder]="edge.event"
+              [value]="eventInfo()?.messageType ?? ''"
+              (change)="setMessageType($event)"
+            />
+          </label>
+          <label class="field">
+            <span>Correlation</span>
+            <input
+              type="text"
+              placeholder="CorrelationId"
+              [value]="eventInfo()?.correlation ?? ''"
+              (change)="setCorrelation($event)"
+            />
+            <small
+              >The correlation id property, or a CorrelateBy expression such as x =>
+              x.OrderId.</small
+            >
+          </label>
+        }
+      </section>
       <label class="field">
         <span>Guard</span>
         <input
