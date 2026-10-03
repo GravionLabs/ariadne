@@ -518,7 +518,7 @@
                   <option [value]="target.id">{{ target.name }}</option>
                 }
               </select>
-              <small>An earlier state makes a loop, e.g. a retry.</small>
+              <small>An earlier state, or this one itself, makes a loop, e.g. a retry.</small>
             </label>
           }
           <div class="add-row">
@@ -546,7 +546,7 @@
           </option>
         }
       </select>
-      <small>Point it at an earlier state to make a loop, e.g. a retry.</small>
+      <small>An earlier state, or this one itself, makes a loop, e.g. a retry.</small>
     </label>
     <label class="field">
       <span>Event</span>

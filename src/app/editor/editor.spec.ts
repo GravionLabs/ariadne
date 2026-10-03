@@ -507,12 +507,12 @@ describe('Editor', () => {
 
     const target = () =>
       el.querySelector<HTMLSelectElement>('app-inspector select[aria-label="Target state"]')!;
-    // Everything that can be entered, except the source itself and the initial state.
-    expect([...target().options].map((o) => o.textContent?.trim())).toEqual(['State', 'Final']);
+    // Everything that can be entered (also the source itself, for a loop), not the initial state.
+    expect([...target().options].map((o) => o.value)).toEqual(['state-1', 'state-2', 'end-1']);
     expect(target().value).toBe('state-2');
     expect(el.querySelectorAll('app-transition-label')).toHaveLength(3);
 
-    // state-1 → state-2 cannot point at state-1 (itself), but state-2 → state-1 can.
+    // state-2 → state-1 goes back to an earlier state: a loop.
     await select([], ['edge-3']);
     target().value = 'state-1';
     target().dispatchEvent(new Event('change'));
@@ -589,10 +589,7 @@ describe('Editor', () => {
       el.querySelector<HTMLSelectElement>(
         'app-inspector select[aria-label="To an existing state"]',
       )!;
-    expect([...existing().options].map((o) => o.textContent?.trim())).toEqual([
-      'Choose a state…',
-      'State',
-    ]);
+    expect([...existing().options].map((o) => o.value)).toEqual(['', 'state-1', 'state-2']);
     existing().value = 'state-1';
     existing().dispatchEvent(new Event('change'));
     await settle();
@@ -609,6 +606,31 @@ describe('Editor', () => {
     expect(store.edges().find((e) => e.id === 'edge-2')?.target).toBe('end-1');
     store.undo();
     expect(store.edges().find((e) => e.id === 'edge-2')?.target).toBe('state-2');
+  });
+
+  it('draws parallel transitions with a label each, and a state that leads to itself', async () => {
+    const { el, store, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'state');
+    store.updateEdge('edge-2', { event: 'Paid', guard: 'big' });
+    // A second transition between the same states is fine once the first has an event.
+    store.connect('state-1', 'state-2');
+    store.updateEdge('edge-3', { event: 'Paid', guard: 'small' });
+    store.connect('state-2', 'state-2');
+    store.updateEdge('edge-4', { event: 'Retry' });
+    await settle();
+
+    const labels = [...el.querySelectorAll('.transition app-transition-label .event .text')].map(
+      (t) => t.textContent?.trim(),
+    );
+    expect(labels).toEqual(expect.arrayContaining(['Paid [big]', 'Paid [small]']));
+    // The self-transition is part of the diagram: a line with its label on it, routed around.
+    expect(el.querySelector('f-connection[aria-label$="on Retry"]')).toBeTruthy();
+    expect(
+      el.querySelector('f-connection app-transition-label .event .text')?.textContent?.trim(),
+    ).toBe('Retry');
+    // Two parallel lines and the loop get waypoints; the plain ones do not.
+    expect(el.querySelectorAll('f-connection-waypoints').length).toBe(3);
   });
 
   it('adds the one Any state from the toolbox and opens it', async () => {

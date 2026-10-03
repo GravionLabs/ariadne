@@ -85,7 +85,10 @@ describe('diagram edits', () => {
     const first = connect(path(), 'start-1', 'end-1')!;
     expect(first.diagram.edges.at(-1)).toMatchObject({ source: 'start-1', target: 'end-1' });
     expect(connect(first.diagram, 'start-1', 'end-1')).toBeNull();
-    expect(connect(path(), 'state-1', 'state-1')).toBeNull();
+    // A state may lead to itself (a loop), also only once.
+    const loop = connect(path(), 'state-1', 'state-1')!;
+    expect(loop.diagram.edges.at(-1)).toMatchObject({ source: 'state-1', target: 'state-1' });
+    expect(connect(loop.diagram, 'state-1', 'state-1')).toBeNull();
     expect(connect(path(), 'end-1', 'state-1')).toBeNull();
   });
 
@@ -165,7 +168,7 @@ describe('diagram edits', () => {
     expect(looped?.edges.at(-1)).toMatchObject({ source: longer.id, target: 'state-1' });
   });
 
-  it('refuses an unknown edge or state, a state that cannot be entered, itself and duplicates', () => {
+  it('refuses an unknown edge or state, a state that cannot be entered and duplicates', () => {
     expect(retargetEdge(path(), 'nope', 'end-1')).toBeNull();
     expect(retargetEdge(path(), 'edge-1', 'nope')).toBeNull();
     expect(retargetEdge(path(), 'edge-2', 'start-1')).toBeNull();
@@ -174,10 +177,27 @@ describe('diagram edits', () => {
       ...path(),
       edges: [
         ...path().edges,
-        { id: 'edge-3', source: 'start-1', target: 'end-1', kind: 'forward' as const },
+        {
+          id: 'edge-3',
+          source: 'start-1',
+          target: 'end-1',
+          kind: 'forward' as const,
+          event: 'Go',
+        },
       ],
     };
     expect(retargetEdge(twin, 'edge-1', 'end-1')).toBeNull();
+    // The same states with another event or guard are a different transition.
+    const other = {
+      ...twin,
+      edges: twin.edges.map((e) => (e.id === 'edge-3' ? { ...e, guard: 'big' } : e)),
+    };
+    expect(retargetEdge(other, 'edge-1', 'end-1')).not.toBeNull();
+  });
+
+  it('lets a transition lead back to its own source', () => {
+    const next = retargetEdge(path(), 'edge-2', 'state-1')!;
+    expect(next.edges[1]).toMatchObject({ source: 'state-1', target: 'state-1' });
   });
 
   it('returns the same diagram when the target does not change', () => {

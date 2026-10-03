@@ -118,7 +118,8 @@ the join on that event is the way on.
 
 A transition may lead back to a state it came from, a loop (e.g. a retry). Loops need no marker in the file;
 the editor leaves them out of the auto-layout and draws them like compensation transitions, with their label
-on the line. A transition from a state to itself is not allowed.
+on the line. A transition from a state to itself is a loop too. Several transitions may lead between the same two states
+(e.g. one event with different guards); each gets its own label and line.
 
 An event a transition reacts to is **internal** when some state of the same diagram publishes it
 (an `event:` activity), and **external** otherwise. External events can arrive in any state, not only

@@ -31,6 +31,7 @@ import {
   joinEventsOf,
   requestEvent,
 } from '../model/diagram';
+import { sameTransition } from '../model/diagram-edits';
 import { DiagramStore } from '../model/diagram-store';
 import { namingHint } from '../model/messages';
 import { DiagramLayout } from './diagram-layout';
@@ -450,16 +451,15 @@ export class Inspector {
 
   /** States `edge` could lead to: everything that can be entered; taken ones are marked. */
   protected targetsOf(edge: DiagramEdge): { id: string; name: string; taken: boolean }[] {
-    const taken = new Set(
-      this.store
-        .edges()
-        .filter((e) => e.id !== edge.id && e.source === edge.source && e.kind === edge.kind)
-        .map((e) => e.target),
-    );
+    const edges = this.store.edges();
     return this.store
       .nodes()
-      .filter((n) => hasInput(n.type) && n.id !== edge.source)
-      .map((n) => ({ id: n.id, name: n.name, taken: taken.has(n.id) }));
+      .filter((n) => hasInput(n.type))
+      .map((n) => ({
+        id: n.id,
+        name: n.name,
+        taken: edges.some((e) => e.id !== edge.id && sameTransition(e, { ...edge, target: n.id })),
+      }));
   }
 
   /** The selected transition's possible targets. */
@@ -485,12 +485,20 @@ export class Inspector {
     return this.store.edges().filter((e) => e.source === id && e.kind === 'forward');
   });
 
-  /** States the selected state has no forward transition to yet: "To an existing state". */
+  /** States no event-less forward transition of the selected state leads to yet: "To an existing state". */
   protected readonly existingTargets = computed(() => {
     const node = this.node();
     if (!node) return [];
-    const led = new Set(this.outgoing().map((e) => e.target));
-    return this.store.nodes().filter((n) => hasInput(n.type) && n.id !== node.id && !led.has(n.id));
+    const outgoing = this.outgoing();
+    return this.store
+      .nodes()
+      .filter(
+        (n) =>
+          hasInput(n.type) &&
+          !outgoing.some((e) =>
+            sameTransition(e, { source: node.id, target: n.id, kind: 'forward' }),
+          ),
+      );
   });
 
   protected connectToExisting(event: Event): void {

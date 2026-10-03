@@ -93,19 +93,30 @@ export function updateEdge(d: Diagram, id: string, patch: EdgePatch): Diagram {
 }
 
 /**
+ * Whether two transitions are the same one: same states, kind, event and guard. Several
+ * transitions may lead between the same two states as long as they differ in event or guard.
+ */
+export const sameTransition = (
+  a: Pick<DiagramEdge, 'source' | 'target' | 'kind' | 'event' | 'guard'>,
+  b: Pick<DiagramEdge, 'source' | 'target' | 'kind' | 'event' | 'guard'>,
+): boolean =>
+  a.source === b.source &&
+  a.target === b.target &&
+  a.kind === b.kind &&
+  (a.event ?? '') === (b.event ?? '') &&
+  (a.guard ?? '') === (b.guard ?? '');
+
+/**
  * Points a transition at another state. `null` if the transition or the state is unknown, the
- * state cannot be entered, it is the transition's own source, or the transition would duplicate
- * another one (same source, target and kind). Pointing it back at an earlier state makes a loop.
+ * state cannot be entered, or the transition would duplicate another one (same states, kind,
+ * event and guard). Pointing it back at an earlier state, or at its own source, makes a loop.
  */
 export function retargetEdge(d: Diagram, edgeId: string, target: string): Diagram | null {
   const edge = d.edges.find((e) => e.id === edgeId);
   const to = d.nodes.find((n) => n.id === target);
-  if (!edge || !to || !hasInput(to.type) || target === edge.source) return null;
+  if (!edge || !to || !hasInput(to.type)) return null;
   if (target === edge.target) return d;
-  const duplicate = d.edges.some(
-    (e) =>
-      e.id !== edgeId && e.source === edge.source && e.target === target && e.kind === edge.kind,
-  );
+  const duplicate = d.edges.some((e) => e.id !== edgeId && sameTransition(e, { ...edge, target }));
   if (duplicate) return null;
   return { ...d, edges: d.edges.map((e) => (e.id === edgeId ? { ...e, target } : e)) };
 }
@@ -120,7 +131,10 @@ export function updateDetails(d: Diagram, patch: DetailsPatch): Diagram {
   });
 }
 
-/** Connects two nodes. `null` if the connection is not allowed or already exists. */
+/**
+ * Connects two nodes (a node to itself is a loop). `null` if not allowed, or if a transition
+ * without an event already leads there: a second one is welcome once the first has an event.
+ */
 export function connect(
   d: Diagram,
   source: string,
@@ -129,10 +143,10 @@ export function connect(
 ): Created | null {
   const from = d.nodes.find((n) => n.id === source);
   const to = d.nodes.find((n) => n.id === target);
-  if (source === target || !from || !to || !hasOutput(from.type) || !hasInput(to.type)) {
+  if (!from || !to || !hasOutput(from.type) || !hasInput(to.type)) {
     return null;
   }
-  if (d.edges.some((e) => e.source === source && e.target === target && e.kind === kind)) {
+  if (d.edges.some((e) => sameTransition(e, { source, target, kind }))) {
     return null;
   }
   const id = nextId('edge', d.edges);

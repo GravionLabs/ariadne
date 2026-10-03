@@ -258,4 +258,46 @@ describe('renderDiagramSvg title', () => {
     expect(paths).toHaveLength(plain.length + 1);
     expect(renderDiagramSvg(looped).svg).toBe(svg);
   });
+
+  it('draws parallel transitions as separate lines, each through its label', () => {
+    const parallel = {
+      ...orderSaga,
+      edges: [
+        ...orderSaga.edges,
+        {
+          id: 'edge-8',
+          source: 'state-1',
+          target: 'state-2',
+          kind: 'forward' as const,
+          event: 'StockReserved',
+          guard: 'express',
+        },
+      ],
+    };
+    const { svg } = renderDiagramSvg(parallel);
+    expect(svg).toContain('StockReserved [express]');
+    const plain = renderDiagramSvg(orderSaga).svg;
+    const count = (s: string) => (s.match(/<path d="M[^"]*" fill="none"/g) ?? []).length;
+    expect(count(svg)).toBe(count(plain) + 1);
+    // The two lines between the same states do not coincide.
+    const between = svg.match(/<path d="M[^"]*" fill="none"/g)!;
+    expect(new Set(between).size).toBe(between.length);
+  });
+
+  it('draws a transition from a state to itself', () => {
+    const { svg } = renderDiagramSvg({
+      ...orderSaga,
+      edges: [
+        ...orderSaga.edges,
+        {
+          id: 'edge-9',
+          source: 'state-2',
+          target: 'state-2',
+          kind: 'forward' as const,
+          event: 'RetryCharge',
+        },
+      ],
+    });
+    expect(svg).toContain('RetryCharge');
+  });
 });
