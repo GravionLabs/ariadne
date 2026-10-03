@@ -535,46 +535,28 @@ describe('requests', () => {
 describe('joins', () => {
   const joined: Diagram = {
     ...sample,
-    nodes: [
-      ...sample.nodes,
-      {
-        id: 'join-1',
-        type: 'join',
-        name: 'OrderReady',
-        combines: ['PaymentCharged', 'StockReserved'],
-      },
-    ],
+    nodes: [...sample.nodes, { id: 'join-1', type: 'join', name: 'OrderReady' }],
     edges: [
-      { id: 'e1', source: 'state-1', target: 'join-1', kind: 'forward' },
+      { id: 'e1', source: 'state-1', target: 'join-1', kind: 'forward', event: 'PaymentCharged' },
       { id: 'e2', source: 'join-1', target: 'end-1', kind: 'forward', event: 'OrderReady' },
     ],
   };
 
-  it('round-trips, writing combines after the name', () => {
+  it('round-trips; a join is just a named node, its events come from the transitions', () => {
     const text = serializeDiagram(joined);
-    expect(text).toContain(
-      '  - id: join-1\n    type: join\n    name: OrderReady\n    combines:\n      - PaymentCharged\n      - StockReserved\n',
-    );
+    expect(text).toContain('  - id: join-1\n    type: join\n    name: OrderReady\n');
+    expect(text).not.toContain('combines');
     expect(parseDiagram(text)).toEqual(joined);
   });
 
-  it('allows a join without events yet', () => {
+  it('ignores a "combines" key from an earlier draft of the format', () => {
     const parsed = parseDiagram(
-      'version: 3\nnodes:\n  - { id: j, type: join, name: J, combines: [] }',
+      'version: 3\nnodes:\n  - { id: j, type: join, name: J, combines: [A, B] }',
     );
-    expect('combines' in parsed.nodes[0]).toBe(false);
+    expect(parsed.nodes[0]).toEqual({ id: 'j', type: 'join', name: 'J' });
   });
 
   it.each([
-    [
-      '{ id: a, type: state, name: A, combines: [X] }',
-      /nodes\[0\]\.combines is only allowed on joins/,
-    ],
-    [
-      '{ id: a, type: join, name: A, combines: [""] }',
-      /nodes\[0\]\.combines\[0\] must be a non-empty string/,
-    ],
-    ['{ id: a, type: join, name: A, combines: X }', /nodes\[0\]\.combines must be a list/],
     [
       '{ id: a, type: join, name: A, activities: [{ command: X }] }',
       /activities is only allowed on states, not on the join/,

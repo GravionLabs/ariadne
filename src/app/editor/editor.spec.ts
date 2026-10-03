@@ -419,43 +419,48 @@ describe('Editor', () => {
     expect(el.querySelector('app-inspector .origin')?.textContent).toContain('State');
   });
 
-  it('adds a join from the "+", lists what it waits for, and recognises its event', async () => {
-    const { el, store, select, settle, fill, pick, expand } = await setup();
+  it('adds a join from the "+"; it waits for the events of its incoming transitions', async () => {
+    const { el, store, select, settle, fill, pick } = await setup();
     store.appendNode('start-1', 'state');
     await settle();
     await pick(slotButton(el), 'join');
     expect(store.nodes().map((n) => n.type)).toEqual(['start', 'state', 'join']);
     expect(el.querySelector('app-node-card[data-type="join"] .bar')).toBeTruthy();
     expect(el.querySelector('app-inspector')?.getAttribute('aria-label')).toBe('Join settings');
+    const waits = () => el.querySelector('app-node-card[data-type="join"] .combines')?.textContent;
 
-    await expand('Combined events');
-    inspectorButton(el, 'Add an event').click();
-    await settle();
-    const field = el.querySelector<HTMLInputElement>('app-inspector .combine input')!;
-    field.value = 'PaymentCharged';
-    field.dispatchEvent(new Event('change'));
-    await settle();
-    expect(store.nodes()[2].combines).toEqual(['PaymentCharged']);
-    expect(el.querySelector('app-node-card[data-type="join"] .combines')?.textContent).toContain(
-      'PaymentCharged',
+    // Nothing to choose: the events are those of the transitions leading in.
+    expect(el.querySelector('app-inspector .combine')).toBeNull();
+    expect(el.querySelector('app-inspector [aria-label="Waits for"]')?.textContent).toContain(
+      'Nothing yet',
     );
+    expect(waits()).toContain('no events yet');
+
+    await select([], ['edge-2']);
+    await fill('input[placeholder="e.g. PaymentCharged"]', 'PaymentCharged');
+    expect(waits()).toContain('PaymentCharged');
+    await select(['join-1']);
+    expect(
+      [...el.querySelectorAll('app-inspector .events li')].map((li) => li.textContent?.trim()),
+    ).toEqual(['PaymentCharged']);
+
+    // A second transition into the join adds its event; the same event is counted once.
+    store.appendNode('start-1', 'state');
+    store.connect('state-2', 'join-1');
+    store.updateEdge('edge-4', { event: 'StockReserved' });
+    await settle();
+    expect(waits()).toContain('PaymentCharged + StockReserved');
 
     // A transition leaving the join on its name is the composite event.
     store.appendNode('join-1', 'end');
     await settle();
-    await select([], ['edge-3']);
+    await select([], ['edge-5']);
     await fill('input[placeholder="e.g. PaymentCharged"]', 'Join');
-    const label = el.querySelectorAll('app-transition-label')[2];
+    const label = el.querySelectorAll('app-transition-label')[4];
     expect(label.querySelector('.event')?.classList).toContain('composite');
-    expect(el.querySelector('app-inspector .origin.join')?.textContent).toContain('PaymentCharged');
-
-    // An empty name removes the event again.
-    await select(['join-1']);
-    const again = el.querySelector<HTMLInputElement>('app-inspector .combine input')!;
-    again.value = '';
-    again.dispatchEvent(new Event('change'));
-    await settle();
-    expect(store.nodes()[2].combines).toBeUndefined();
+    expect(el.querySelector('app-inspector .origin.join')?.textContent).toContain(
+      'PaymentCharged and StockReserved',
+    );
   });
 
   it('collapses the inspector sections: entries open them, empty ones start closed', async () => {

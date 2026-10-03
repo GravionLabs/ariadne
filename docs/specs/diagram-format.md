@@ -91,7 +91,6 @@ edges:
 | `type`         | `start` \| `state` \| `end` \| `any` \| `join`                                                 | yes      | Initial state (no incoming transitions), state, final state (no outgoing), the one `any` node (transitions leaving it apply in every state; nothing enters it), or a `join` (waits until several events have all arrived).                                                |
 | `name`         | string                                                                                         | yes      | Label shown on the canvas.                                                                                                                                                                                                                                                |
 | `description`  | string                                                                                         | no       | Documentation only.                                                                                                                                                                                                                                                       |
-| `combines`     | list of strings                                                                                | no       | On a `join` node: the events that must all have arrived. The join's `name` is the composite event raised then; the transition leaving the join reacts to that name. Only on `join` nodes.                                                                                 |
 | `requests`     | list of requests                                                                               | no       | Requests the state makes on entry (`request: <Name>`, optional `timeout: 30s`). The answers are the events `<Name>.Completed`, `<Name>.Faulted` and `<Name>.TimeoutExpired`: transitions on them are drawn with a reply, fault or clock icon. Only on `state` nodes.      |
 | `timers`       | list of timers                                                                                 | no       | Timeouts the state schedules (`schedule: <Name>`, optional `delay: 30s`) or cancels (`unschedule: <Name>`) on entry, in order. Only on `state` nodes. A transition whose `event` is the name of a scheduled timeout is the timeout path: drawn dotted amber with a clock. |
 | `ignores`      | list of strings                                                                                | no       | Events the state receives and drops (`Ignore(E)`). Only on `state` nodes.                                                                                                                                                                                                 |
@@ -112,6 +111,10 @@ edges:
 | `event`       | string                      | no       | The event that triggers the transition, e.g. `PaymentCharged`.                                             |
 | `eventSource` | string                      | no       | Where an external event comes from, e.g. `Shop API`.                                                       |
 | `guard`       | string                      | no       | Condition for taking the transition, e.g. `amount > 100`. Needs an `event`. Free text, documentation only. |
+
+A **join** waits for the events of all transitions that lead into it (each event once); there is nothing to
+list on the node. Its `name` is the composite event raised when they have all arrived, and a transition leaving
+the join on that event is the way on.
 
 A transition may lead back to a state it came from, a loop (e.g. a retry). Loops need no marker in the file;
 the editor leaves them out of the auto-layout and draws them like compensation transitions, with their label
@@ -139,7 +142,7 @@ generator (#93) follow this table.
 
 | Diagram                                                        | MassTransit                                                                                                                                                  |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `join` with `combines: [A, B]`, `name: X`                      | `CompositeEvent(() => X, x => x.Status, A, B)`; the transition leaving the join is `When(X)`                                                                 |
+| `join` named `X`, reached by transitions on `A` and `B`        | `CompositeEvent(() => X, x => x.Status, A, B)`; the transition leaving the join is `When(X)`                                                                 |
 | `requests` `request: R`, `timeout: D`                          | `Request(() => R, x => x.RequestId, r => r.Timeout = D)`, then `.Request(R, ctx => new RMsg(..))` on entry                                                   |
 | transition on `R.Completed` / `R.Faulted` / `R.TimeoutExpired` | `When(R.Completed)` / `When(R.Faulted)` / `When(R.TimeoutExpired)`                                                                                           |
 | `timers` `schedule: T`, `delay: D`                             | `Schedule(() => T, x => x.TimeoutTokenId, s => { s.Delay = D; s.Received = e => e.CorrelateById(...); })`, then `.Schedule(T, ctx => new TMsg(..))` on entry |
@@ -194,6 +197,5 @@ names the offending path. For example:
 - `nodes[1].requests[0] must be "request: <Name>"`
 - `nodes[1].timers[0] must be "schedule: <Name>" or "unschedule: <Name>"`
 - `There can be only one node of type "any"`
-- `nodes[1].combines is only allowed on joins`
 - `edges[0].activities is not allowed: activities belong to states (nodes[].activities)`
 - `edges[0].target "state-9" is not a node`

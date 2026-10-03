@@ -1,4 +1,4 @@
-import { Diagram, eventKindOf } from './diagram';
+import { Diagram, eventKindOf, joinEventsOf } from './diagram';
 
 const diagram: Diagram = {
   direction: 'top-bottom',
@@ -62,7 +62,7 @@ describe('eventKindOf', () => {
   describe('eventKindOf with joins', () => {
     const kindOf = eventKindOf({
       direction: 'top-bottom',
-      nodes: [{ id: 'join-1', type: 'join', name: 'OrderReady', combines: ['A', 'B'] }],
+      nodes: [{ id: 'join-1', type: 'join', name: 'OrderReady' }],
       edges: [],
     });
 
@@ -70,5 +70,46 @@ describe('eventKindOf', () => {
       expect(kindOf({ event: 'OrderReady' })).toBe('composite');
       expect(kindOf({ event: 'A' })).toBe('external');
     });
+  });
+});
+
+describe('joinEventsOf', () => {
+  const edge = (id: string, source: string, target: string, event?: string) => ({
+    id,
+    source,
+    target,
+    kind: 'forward' as const,
+    event,
+  });
+  const diagram: Diagram = {
+    direction: 'top-bottom',
+    nodes: [
+      { id: 'a', type: 'state', name: 'A' },
+      { id: 'b', type: 'state', name: 'B' },
+      { id: 'join-1', type: 'join', name: 'Ready' },
+      { id: 'join-2', type: 'join', name: 'Other' },
+      { id: 'end-1', type: 'end', name: 'Done' },
+    ],
+    edges: [
+      edge('e1', 'a', 'join-1', 'PaymentCharged'),
+      edge('e2', 'b', 'join-1', 'StockReserved'),
+      edge('e3', 'b', 'join-1', 'PaymentCharged'),
+      edge('e4', 'a', 'join-1'),
+      edge('e5', 'join-1', 'end-1', 'Ready'),
+    ],
+  };
+
+  it('collects the events of the incoming transitions, each once, in transition order', () => {
+    expect(joinEventsOf(diagram).get('join-1')).toEqual(['PaymentCharged', 'StockReserved']);
+  });
+
+  it('has an entry for every join, empty without incoming events, and none for other nodes', () => {
+    const joins = joinEventsOf(diagram);
+    expect([...joins.keys()]).toEqual(['join-1', 'join-2']);
+    expect(joins.get('join-2')).toEqual([]);
+  });
+
+  it('does not count the transition leaving the join', () => {
+    expect(joinEventsOf(diagram).get('join-1')).not.toContain('Ready');
   });
 });

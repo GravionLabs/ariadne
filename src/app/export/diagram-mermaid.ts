@@ -1,5 +1,5 @@
 import { ACTIVITY_VERBS } from '../editor/node-types';
-import { Diagram, DiagramEdge, DiagramNode, eventLabel } from '../model/diagram';
+import { Diagram, DiagramEdge, DiagramNode, eventLabel, joinEventsOf } from '../model/diagram';
 
 /** Words Mermaid's state diagram grammar treats as keywords; an id must not be one of them. */
 const RESERVED = new Set([
@@ -78,6 +78,7 @@ export function diagramToMermaid(diagram: Diagram): string {
   const ids = stateIds(diagram.nodes.filter((n) => n.type !== 'start'));
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const ref = (id: string) => (nodes.get(id)?.type === 'start' ? '[*]' : ids.get(id)!);
+  const joins = joinEventsOf(diagram);
   const lines = [
     ...(diagram.name?.trim()
       ? ['---', `title: ${JSON.stringify(diagram.name.trim())}`, '---']
@@ -113,7 +114,7 @@ export function diagramToMermaid(diagram: Diagram): string {
       ),
       ...(node.type === 'join'
         ? [
-            `${node.name} when ${(node.combines ?? []).join(' + ') || 'its events'} have all arrived`,
+            `${node.name} when ${(joins.get(node.id) ?? []).join(' + ') || 'its events'} have all arrived`,
           ]
         : []),
       ...(node.ignores?.length ? [`Ignores ${node.ignores.join(', ')}`] : []),

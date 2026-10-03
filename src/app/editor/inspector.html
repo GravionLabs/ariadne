@@ -187,54 +187,24 @@
       </section>
     }
 
-    @if (hasCombines(node.type)) {
-      <section class="group" aria-label="Combined events">
-        <button
-          type="button"
-          class="group-toggle"
-          [attr.aria-expanded]="isOpen('combines', node.combines?.length ?? 0)"
-          (click)="toggle('combines', node.combines?.length ?? 0)"
-        >
-          <app-icon
-            [name]="isOpen('combines', node.combines?.length ?? 0) ? 'expandLess' : 'expandMore'"
-          />
-          <span>Waits for</span>
-          @if (node.combines?.length ?? 0) {
-            <span class="count">{{ node.combines?.length ?? 0 }}</span>
-          }
-        </button>
-        @if (isOpen('combines', node.combines?.length ?? 0)) {
-          <small class="group-desc">
-            When all of these events have arrived, “{{ node.name }}” is raised: give the transition
-            leaving this join that event.
-          </small>
-          @for (combined of node.combines ?? []; track $index; let i = $index) {
-            <div class="combine row">
-              <input
-                type="text"
-                aria-label="Combined event"
-                placeholder="e.g. PaymentCharged"
-                [value]="combined"
-                (change)="setCombine(i, $event)"
-              />
-              <button
-                type="button"
-                class="icon-button"
-                [attr.aria-label]="'Remove ' + combined"
-                title="Remove"
-                (click)="removeCombine(i)"
-              >
-                <app-icon name="delete" />
-              </button>
-            </div>
-          }
-          <div class="add-row">
-            <button type="button" class="ghost" (click)="addCombine()">
-              <app-icon name="event" /> Add an event
-            </button>
-          </div>
+    @if (node.type === 'join') {
+      <div class="field" aria-label="Waits for">
+        <span>Waits for</span>
+        @if (waitsFor().length) {
+          <ul class="events">
+            @for (event of waitsFor(); track event) {
+              <li>{{ event }}</li>
+            }
+          </ul>
+        } @else {
+          <small>Nothing yet: give the transitions leading into this join an event.</small>
         }
-      </section>
+        <small>
+          The events of the transitions leading into this join. When all of them have arrived, “{{
+            node.name
+          }}” is raised: give the transition leaving the join that event.
+        </small>
+      </div>
     }
 
     @if (hasRequests(node.type)) {
@@ -584,8 +554,8 @@
         <p class="origin join">
           <app-icon name="join" />
           <span
-            >Raised when {{ (join.combines ?? []).join(' and ') || 'its events' }} have all arrived
-            (join “{{ join.name }}”).</span
+            >Raised when {{ joinRaisedBy().join(' and ') || 'its events' }} have all arrived (join
+            “{{ join.name }}”).</span
           >
         </p>
       } @else if (requesters().length) {

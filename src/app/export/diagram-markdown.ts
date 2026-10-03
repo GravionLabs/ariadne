@@ -1,6 +1,6 @@
 import { decisionIds } from '../editor/diagram-layout';
 import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from '../editor/node-types';
-import { Diagram, DiagramNode, EventKind, eventKindOf } from '../model/diagram';
+import { Diagram, DiagramNode, EventKind, eventKindOf, joinEventsOf } from '../model/diagram';
 import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
 
 export interface MarkdownOptions {
@@ -41,7 +41,8 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
   out.push('## Diagram', mermaidMarkdown(diagramToMermaid(diagram)).trimEnd());
 
   // The Waits for column only appears when the diagram has a join.
-  const joining = diagram.nodes.some((n) => n.type === 'join');
+  const joins = joinEventsOf(diagram);
+  const joining = joins.size > 0;
   // The Requests column only appears when some state makes a request.
   const requesting = diagram.nodes.some((n) => n.requests?.length);
   // The Timers column only appears when some state schedules a timeout.
@@ -70,7 +71,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
             typeLabel(n),
             n.description ?? '',
             (n.activities ?? []).map((a) => `${ACTIVITY_VERBS[a.kind]} ${a.name}`).join('\n'),
-            ...(joining ? [(n.combines ?? []).join('\n')] : []),
+            ...(joining ? [(joins.get(n.id) ?? []).join('\n')] : []),
             ...(requesting
               ? [
                   (n.requests ?? [])

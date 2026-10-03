@@ -12,7 +12,7 @@
   <div class="bar"></div>
   <div class="bar-text">
     <strong class="name">{{ node().name }}</strong>
-    <span class="combines">{{ (node().combines ?? []).join(' + ') || 'no events yet' }}</span>
+    <span class="combines">{{ events().join(' + ') || 'no events yet' }}</span>
   </div>
 } @else {
   <div class="heading">

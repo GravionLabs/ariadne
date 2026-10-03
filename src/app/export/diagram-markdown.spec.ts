@@ -236,12 +236,11 @@ describe('diagramToMarkdown', () => {
 
   it('adds a Waits for column for a join and calls its event composite', () => {
     expect(diagramToMarkdown(orderSaga)).not.toContain('| Waits for |');
-    const nodes = [
-      ...orderSaga.nodes,
-      { id: 'join-1', type: 'join' as const, name: 'OrderReady', combines: ['A', 'B'] },
-    ];
+    const nodes = [...orderSaga.nodes, { id: 'join-1', type: 'join' as const, name: 'OrderReady' }];
     const edges = [
       ...orderSaga.edges,
+      { id: 'j1', source: 'state-1', target: 'join-1', kind: 'forward' as const, event: 'A' },
+      { id: 'j3', source: 'state-2', target: 'join-1', kind: 'forward' as const, event: 'B' },
       {
         id: 'j2',
         source: 'join-1',
