@@ -39,3 +39,6 @@ await copyFile(
   require.resolve('web-tree-sitter/web-tree-sitter.wasm'),
   'dist/web-tree-sitter.wasm',
 );
+
+// The JSON Schema of `*.saga.yaml`, contributed as `yamlValidation` (Red Hat YAML extension).
+await copyFile('../../docs/specs/saga.schema.json', 'dist/saga.schema.json');

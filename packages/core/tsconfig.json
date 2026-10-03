@@ -2,7 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "types": ["vitest/globals"],
-    "noEmit": true
+    "noEmit": true,
+    "resolveJsonModule": true
   },
   "include": ["src/**/*.ts"]
 }

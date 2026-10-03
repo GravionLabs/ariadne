@@ -204,3 +204,19 @@ names the offending path. For example:
 - `events[1]: the event "OrderReceived" is described twice`
 - `edges[0].activities is not allowed: activities belong to states (nodes[].activities)`
 - `edges[0].target "state-9" is not a node`
+
+## Editor support
+
+[`saga.schema.json`](saga.schema.json) is a JSON Schema (draft-07) of the current format, for completion, hover text and validation while
+editing the YAML by hand. The Ariadne extension for VS Code contributes it for `*.saga.yaml` (the
+[Red Hat YAML extension](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) uses it).
+Any editor with a YAML language server can use it from a comment at the top of the file:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/GravionLabs/ariadne/main/docs/specs/saga.schema.json
+version: 3
+```
+
+The schema is stricter than the reader in one way: it flags keys the format does not have (a typo such as `evnt`), which
+the reader ignores. It cannot check what needs the whole file: unique node ids, edges that point at existing nodes, at most
+one `any` node, one entry per event. Ariadne reports those itself. A test keeps the schema in step with the reader.

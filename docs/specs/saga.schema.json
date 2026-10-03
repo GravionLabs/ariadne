@@ -1,0 +1,264 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/GravionLabs/ariadne/main/docs/specs/saga.schema.json",
+  "title": "Ariadne saga diagram",
+  "description": "A saga state machine as an Ariadne diagram (format version 3, see docs/specs/diagram-format.md). Files of versions 1 and 2 are still read by Ariadne, but only the current version is described here. Rules that need to look across the file (unique ids, edges that point at existing nodes, one `any` node) are checked by Ariadne itself, not by this schema.",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 3,
+      "description": "Version of the file format."
+    },
+    "name": {
+      "type": "string",
+      "description": "Title of the saga, e.g. `Order Saga`. Exports use it as the title."
+    },
+    "description": {
+      "type": "string",
+      "description": "What the saga does; shown under the title in exports."
+    },
+    "saga": {
+      "type": "object",
+      "description": "What generating or importing C# needs to know about the saga. All optional.",
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "type": "string",
+          "description": "The state machine class, e.g. `OrderStateMachine`."
+        },
+        "namespace": {
+          "type": "string",
+          "description": "Namespace of the state machine and the saga instance, e.g. `Shop.Orders`."
+        },
+        "instance": {
+          "type": "string",
+          "description": "The saga instance type (`SagaStateMachineInstance`), e.g. `OrderState`."
+        },
+        "stateProperty": {
+          "type": "string",
+          "description": "The instance property holding the current state, e.g. `CurrentState`."
+        },
+        "contractsNamespace": {
+          "type": "string",
+          "description": "Namespace of the message contracts (commands and events), when not the saga's."
+        },
+        "source": {
+          "type": "string",
+          "description": "The C# file that implements the saga, relative to this file, with `/` as separator, e.g. `../Sagas/OrderStateMachine.cs`."
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "description": "What is known in code about an event, one entry per event. An event no entry describes is implicit (message type = name, correlated by `CorrelationId`).",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The event, as transitions name it. Unique in the list."
+          },
+          "messageType": {
+            "type": "string",
+            "description": "The message type, when it is not called like the event, e.g. `SubmitOrder`."
+          },
+          "correlation": {
+            "type": "string",
+            "description": "`CorrelationId`, or the correlation as written in code, e.g. `CorrelateById(context => context.Message.OrderId)`."
+          }
+        }
+      }
+    },
+    "direction": {
+      "enum": ["top-bottom", "left-right"],
+      "default": "top-bottom",
+      "description": "Layout direction."
+    },
+    "nodes": {
+      "type": "array",
+      "description": "The states. Ids are unique in the file; there is at most one `any` node.",
+      "items": { "$ref": "#/definitions/node" }
+    },
+    "edges": {
+      "type": "array",
+      "description": "The transitions. Every `source` and `target` is the id of a node.",
+      "items": { "$ref": "#/definitions/edge" }
+    }
+  },
+  "definitions": {
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique in the file, e.g. `state-3`."
+        },
+        "type": {
+          "enum": ["start", "end", "state", "any", "join"],
+          "description": "`start`: the initial state (nothing enters it). `state`: a state. `end`: a final state (nothing leaves it). `any`: transitions leaving it apply in every state; nothing enters it. `join`: waits until the events of all incoming transitions have arrived."
+        },
+        "name": { "type": "string", "minLength": 1, "description": "Label shown on the canvas." },
+        "description": { "type": "string", "description": "Documentation only." },
+        "color": {
+          "anyOf": [
+            { "enum": ["red", "orange", "amber", "green", "teal", "blue", "purple", "pink"] },
+            { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+          ],
+          "description": "Accent color of the card: a palette name or a `#rrggbb` value."
+        },
+        "activities": {
+          "type": "array",
+          "description": "What the saga does on entering this state, in order. Only on `state` nodes.",
+          "items": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 1,
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Send a command to exactly one consumer, e.g. `ChargePayment`."
+              },
+              "event": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Publish an event to all subscribers, e.g. `OrderAccepted`."
+              }
+            }
+          }
+        },
+        "ignores": {
+          "type": "array",
+          "description": "Events the state receives and drops (`Ignore(E)`). Only on `state` nodes.",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "requests": {
+          "type": "array",
+          "description": "Requests the state makes on entry. The answers are the events `<Name>.Completed`, `<Name>.Faulted` and `<Name>.TimeoutExpired`. Only on `state` nodes.",
+          "items": {
+            "type": "object",
+            "required": ["request"],
+            "additionalProperties": false,
+            "properties": {
+              "request": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The request, e.g. `ValidateAddress`."
+              },
+              "timeout": {
+                "type": "string",
+                "description": "How long to wait for the reply, e.g. `30s`."
+              }
+            }
+          }
+        },
+        "timers": {
+          "type": "array",
+          "description": "Timeouts the state schedules or cancels on entry, in order. Only on `state` nodes.",
+          "items": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "oneOf": [
+              { "required": ["schedule"] },
+              { "required": ["unschedule"], "not": { "required": ["delay"] } }
+            ],
+            "properties": {
+              "schedule": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Schedule a timeout; when it fires the saga receives it as an event of this name."
+              },
+              "unschedule": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Cancel a scheduled timeout."
+              },
+              "delay": {
+                "type": "string",
+                "description": "Only with `schedule`: how long until it fires, e.g. `30s`."
+              }
+            }
+          }
+        },
+        "retry": {
+          "type": "string",
+          "description": "Free text, e.g. `3 attempts`. Documentation only."
+        },
+        "timeout": {
+          "type": "string",
+          "description": "Free text, e.g. `30s`. Documentation only."
+        },
+        "compensation": {
+          "type": "object",
+          "required": ["name"],
+          "additionalProperties": false,
+          "description": "Undo action for the work done to reach this state.",
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "description": { "type": "string" }
+          }
+        }
+      },
+      "if": {
+        "required": ["type"],
+        "properties": { "type": { "enum": ["start", "end", "any", "join"] } }
+      },
+      "then": {
+        "properties": {
+          "activities": false,
+          "ignores": false,
+          "requests": false,
+          "timers": false
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "source", "target"],
+      "additionalProperties": false,
+      "dependencies": { "guard": ["event"] },
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "e.g. `edge-4`." },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id of the state the saga is in."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id of the state the transition enters."
+        },
+        "kind": {
+          "enum": ["forward", "compensation"],
+          "default": "forward",
+          "description": "Compensation transitions are not laid out."
+        },
+        "event": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The event that triggers the transition, e.g. `PaymentCharged`."
+        },
+        "eventSource": {
+          "type": "string",
+          "description": "Where an external event comes from, e.g. `Shop API`."
+        },
+        "guard": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Condition for taking the transition, e.g. `amount > 100`. Needs an `event`."
+        }
+      }
+    }
+  }
+}

@@ -177,7 +177,13 @@
           "scope": "resource"
         }
       }
-    }
+    },
+    "yamlValidation": [
+      {
+        "fileMatch": "*.saga.yaml",
+        "url": "./dist/saga.schema.json"
+      }
+    ]
   },
   "scripts": {
     "build": "pnpm --filter @ariadne/web build:embedded && node build.mjs",
