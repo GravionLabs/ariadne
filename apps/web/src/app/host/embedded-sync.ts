@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { Diagram, parseDiagramWithNotes, serializeDiagram } from '@ariadne/core';
 import type { HostMessage } from '@ariadne/editor-protocol';
@@ -16,6 +17,7 @@ export class EmbeddedSync {
   private readonly host = inject(EditorHost);
   private readonly store = inject(DiagramStore);
   private readonly theme = inject(Theme);
+  private readonly document = inject(DOCUMENT);
 
   /** Why the document cannot be shown, while it cannot; the diagram is not editable then. */
   readonly invalid = signal<string | null>(null);
@@ -38,6 +40,8 @@ export class EmbeddedSync {
   start(): void {
     if (this.started || !this.host.embedded) return;
     this.started = true;
+    // The styles take the colours, font and focus ring of VS Code (src/styles.scss).
+    this.document.documentElement.setAttribute('data-host', 'vscode');
     this.host.listen((message) => this.receive(message));
     this.host.post({ v: 1, type: 'ready' });
   }

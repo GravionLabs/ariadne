@@ -95,7 +95,7 @@ app-export-menu ::ng-deep .menu-button {
   }
 
   &:focus-visible {
-    outline: 2px solid var(--c-primary);
+    outline: 2px solid var(--c-focus);
     outline-offset: 1px;
   }
 
@@ -316,7 +316,7 @@ app-export-menu ::ng-deep .menu-button {
 
   // The flow is one tab stop (arrows move between its states): show that it has the focus.
   &:focus-visible {
-    outline: 2px solid var(--c-primary);
+    outline: 2px solid var(--c-focus);
     outline-offset: -2px;
   }
 }
@@ -415,7 +415,7 @@ app-export-menu ::ng-deep .menu-button {
   }
 
   &:focus-visible {
-    outline: 2px solid var(--c-primary);
+    outline: 2px solid var(--c-focus);
     outline-offset: -2px;
   }
 

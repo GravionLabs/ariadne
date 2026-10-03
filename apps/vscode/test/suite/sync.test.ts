@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
 interface OpenEditor {
   uri: vscode.Uri;
   session: { receive(data: unknown): void; idle(): PromiseLike<unknown> };
-  posted: { type: string; text?: string }[];
+  posted: { type: string; text?: string; kind?: string }[];
 }
 interface Api {
   openEditors(): OpenEditor[];
@@ -159,5 +159,23 @@ describe('Document sync', () => {
     });
     assert.strictEqual(input.uri.fsPath, file.fsPath);
     assert.strictEqual(fs.readFileSync(file.fsPath, 'utf8'), 'nodes: [unclosed');
+  });
+
+  it('follows the colour theme of VS Code, live', async () => {
+    const editor = await openAndFind();
+    const config = vscode.workspace.getConfiguration('workbench');
+    const before = config.inspect<string>('colorTheme')?.globalValue;
+    try {
+      await config.update('colorTheme', 'Default Light Modern', vscode.ConfigurationTarget.Global);
+      await until('the light theme', () =>
+        editor.posted.find((m) => m.type === 'theme' && m.kind === 'light'),
+      );
+      await config.update('colorTheme', 'Default High Contrast', vscode.ConfigurationTarget.Global);
+      await until('the high-contrast theme', () =>
+        editor.posted.find((m) => m.type === 'theme' && m.kind === 'high-contrast'),
+      );
+    } finally {
+      await config.update('colorTheme', before, vscode.ConfigurationTarget.Global);
+    }
   });
 });

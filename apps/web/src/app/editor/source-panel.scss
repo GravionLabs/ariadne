@@ -60,7 +60,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--c-primary);
+    outline: 2px solid var(--c-focus);
     outline-offset: -2px;
   }
 }
@@ -142,7 +142,7 @@
   cursor: pointer;
 
   &:focus-visible {
-    outline: 2px solid var(--c-primary);
+    outline: 2px solid var(--c-focus);
     outline-offset: 2px;
   }
 }

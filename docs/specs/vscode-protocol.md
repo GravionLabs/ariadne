@@ -48,6 +48,15 @@ editor ◀── documentChanged ─── host        (only when the text diffe
 The host answers an `edit` it applied itself with no `documentChanged`; the editor ignores a
 `documentChanged` whose text equals the last text it sent.
 
+## Theme
+
+`init` carries the theme kind and `theme` follows every change of the colour theme, live. The editor
+picks its light, dark or high-contrast token set from it (`Theme.setHost`; there is no light
+high-contrast set, so `high-contrast-light` uses light). On top, the page is marked `data-host="vscode"`
+and `src/styles.scss` takes the canvas background (`--vscode-editor-background`), the text colour
+(`--vscode-foreground`), the font (`--vscode-font-family`) and the focus ring (`--vscode-focusBorder`)
+from the workbench; the node and status colours stay Ariadne's.
+
 ## The embedded build
 
 `pnpm --filter @ariadne/web build:embedded` builds the editor for the webview into

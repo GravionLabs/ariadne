@@ -150,8 +150,15 @@ describe('EmbeddedSync', () => {
     });
   });
 
+  it('marks the page as hosted in VS Code, so the styles use its colours', () => {
+    setup();
+    expect(document.documentElement.getAttribute('data-host')).toBe('vscode');
+    document.documentElement.removeAttribute('data-host');
+  });
+
   it('does nothing without a host', () => {
     const { posted, store } = setup(false);
+    expect(document.documentElement.hasAttribute('data-host')).toBe(false);
     store.setDetails({ name: 'x' });
     TestBed.tick();
     expect(posted).toEqual([]);
