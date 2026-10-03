@@ -340,17 +340,19 @@
   box-shadow: none;
 }
 
+// Invisible input of the "+" slot. Sized and centred like the node cards' connectors (f-flow's
+// theme forces connectors to 10px), so the dashed line to the slot runs straight.
 .slot-in {
   position: absolute;
+  top: -5px;
+  left: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
   opacity: 0;
-  top: 0;
-  left: 50%;
-  width: 1px;
-  height: 1px;
 
   [data-direction='left-right'] & {
-    top: 50%;
-    left: 0;
+    top: calc(50% - 5px);
+    left: -5px;
   }
 }
 
