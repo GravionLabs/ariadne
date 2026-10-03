@@ -8,6 +8,7 @@ import {
   parseDiagram,
   validate,
 } from '@ariadne/core';
+import { generateSaga } from '@ariadne/masstransit/generate';
 import { diagramToMarkdown, diagramToMermaid, renderDiagramSvg } from '@ariadne/export';
 
 /** Everything the command line touches, so it can be run and tested without a process. */
@@ -20,17 +21,21 @@ export interface Io {
 
 export const VERSION: string = pkg.version;
 
-export const USAGE = `ariadne ${VERSION}: check and export saga diagrams
+export const USAGE = `ariadne ${VERSION}: check, export and generate code from saga diagrams
 
 Usage:
   ariadne lint <file.saga.yaml…> [--format text|json] [--max-warnings <n>]
   ariadne export <file.saga.yaml> --format mermaid|svg|png|md [-o <file>]
+  ariadne generate <file.saga.yaml> [-o <dir>]
 
 Commands:
   lint      Report modelling mistakes. Exits with 1 when there are errors (or more warnings
             than --max-warnings), so it can fail a CI build.
   export    Write the diagram as Mermaid text, SVG, PNG or a Markdown documentation page.
             Text formats go to the standard output unless -o is given; PNG needs -o.
+  generate  Write the MassTransit state machine, saga instance and message contracts as C# files
+            into the directory given with -o (default: the current one). What could not be
+            generated is reported on the standard error.
 
 Options:
   -h, --help      Show this text
@@ -58,6 +63,7 @@ export async function run(args: readonly string[], io: Io): Promise<number> {
     }
     if (command === 'lint') return await lint(rest, io);
     if (command === 'export') return await exportCommand(rest, io);
+    if (command === 'generate') return await generateCommand(rest, io);
     throw new UsageError(`Unknown command “${command}”.`);
   } catch (e) {
     if (e instanceof UsageError) {
@@ -242,6 +248,33 @@ async function toPng(svg: string): Promise<Uint8Array> {
   })
     .render()
     .asPng();
+}
+
+// ---- generate
+
+async function generateCommand(args: readonly string[], io: Io): Promise<number> {
+  const { values, positionals } = options(args, { output: { type: 'string', short: 'o' } });
+  if (positionals.length !== 1) throw new UsageError('generate needs exactly one file.');
+  const [file] = positionals;
+  let diagram: Diagram;
+  try {
+    diagram = parseDiagram(await read(io, file));
+  } catch (e) {
+    if (e instanceof DiagramFormatError) {
+      io.stderr(`${file}: not a valid saga diagram: ${e.message}\n`);
+      return 1;
+    }
+    throw e;
+  }
+  const dir = (values.output ?? '.').replace(/[\\/]+$/, '');
+  const { files, warnings } = generateSaga(diagram);
+  for (const f of files) {
+    const path = `${dir}/${f.path}`;
+    await write(io, path, f.content);
+    io.stdout(`${path}\n`);
+  }
+  for (const w of warnings) io.stderr(`${file}: warning: ${w}\n`);
+  return 0;
 }
 
 const ensureNewline = (text: string): string => (text.endsWith('\n') ? text : `${text}\n`);

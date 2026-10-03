@@ -2,7 +2,7 @@
   "name": "@ariadne/cli",
   "version": "0.0.0",
   "private": true,
-  "description": "The ariadne command: lint and export saga diagrams, locally and in CI.",
+  "description": "The ariadne command: lint, export and generate C# from saga diagrams, locally and in CI.",
   "type": "module",
   "bin": {
     "ariadne": "./dist/ariadne.mjs"
@@ -21,6 +21,7 @@
   "dependencies": {
     "@ariadne/core": "workspace:*",
     "@ariadne/export": "workspace:*",
+    "@ariadne/masstransit": "workspace:*",
     "@dagrejs/dagre": "^3.1.1",
     "@resvg/resvg-js": "^2.6.2",
     "yaml": "^2.9.1"

@@ -239,3 +239,27 @@ describe('ariadne export', () => {
     expect(t.stderr()).toContain('cannot write /readonly/x.svg');
   });
 });
+
+describe('ariadne generate', () => {
+  it('writes the C# files into the directory and lists them', async () => {
+    const t = setup({ 'order.saga.yaml': orderSaga });
+    expect(await t.run('generate', 'order.saga.yaml', '-o', 'out/')).toBe(0);
+    const names = [...t.disk.keys()].filter((k) => k.startsWith('out/'));
+    expect(names.every((n) => n.endsWith('.cs'))).toBe(true);
+    expect(names.length).toBe(3);
+    expect(t.stdout().trim().split('\n')).toEqual(names);
+    expect(t.disk.get(names[0])).toContain('MassTransitStateMachine<');
+  });
+
+  it('needs one file', async () => {
+    const t = setup();
+    expect(await t.run('generate')).toBe(2);
+    expect(t.stderr()).toContain('generate needs exactly one file');
+  });
+
+  it('reports a file that is not a diagram', async () => {
+    const t = setup({ 'x.saga.yaml': 'nodes: 3' });
+    expect(await t.run('generate', 'x.saga.yaml')).toBe(1);
+    expect(t.stderr()).toContain('not a valid saga diagram');
+  });
+});

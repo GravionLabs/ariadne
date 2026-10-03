@@ -32,6 +32,9 @@ importers:
       '@ariadne/export':
         specifier: workspace:*
         version: link:../../packages/export
+      '@ariadne/masstransit':
+        specifier: workspace:*
+        version: link:../../packages/masstransit
       '@dagrejs/dagre':
         specifier: ^3.1.1
         version: 3.1.1
