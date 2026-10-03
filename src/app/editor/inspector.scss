@@ -455,3 +455,24 @@ textarea {
     font-weight: 500;
   }
 }
+
+// One outgoing transition of a state: its event, an arrow, and where it leads.
+.transition-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+
+  .transition-event {
+    overflow: hidden;
+    color: var(--c-text);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .arrow {
+    color: var(--c-text-subtle);
+  }
+}
