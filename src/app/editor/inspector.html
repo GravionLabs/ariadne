@@ -473,20 +473,54 @@
         <button
           type="button"
           class="group-toggle"
-          [attr.aria-expanded]="isOpen('transitions', 0)"
-          (click)="toggle('transitions', 0)"
+          [attr.aria-expanded]="isOpen('transitions', outgoing().length)"
+          (click)="toggle('transitions', outgoing().length)"
         >
-          <app-icon [name]="isOpen('transitions', 0) ? 'expandLess' : 'expandMore'" />
+          <app-icon
+            [name]="isOpen('transitions', outgoing().length) ? 'expandLess' : 'expandMore'"
+          />
           <span>Transitions</span>
-          @if (0) {
-            <span class="count">{{ 0 }}</span>
+          @if (outgoing().length) {
+            <span class="count">{{ outgoing().length }}</span>
           }
         </button>
-        @if (isOpen('transitions', 0)) {
+        @if (isOpen('transitions', outgoing().length)) {
           <small class="group-desc">
             Each event this state receives leads on through its own transition; with more than one,
             the state is a decision.
           </small>
+          @for (edge of outgoing(); track edge.id) {
+            <label class="transition-row">
+              <span class="transition-event" [title]="eventOf(edge)">{{ eventOf(edge) }}</span>
+              <span class="arrow" aria-hidden="true">→</span>
+              <select
+                [attr.aria-label]="'To, for ' + eventOf(edge)"
+                (change)="retarget(edge, $event)"
+              >
+                @for (target of targetsOf(edge); track target.id) {
+                  <option
+                    [value]="target.id"
+                    [selected]="target.id === edge.target"
+                    [disabled]="target.taken"
+                  >
+                    {{ target.name }}
+                  </option>
+                }
+              </select>
+            </label>
+          }
+          @if (existingTargets().length) {
+            <label class="field">
+              <span>To an existing state</span>
+              <select aria-label="To an existing state" (change)="connectToExisting($event)">
+                <option value="" selected>Choose a state…</option>
+                @for (target of existingTargets(); track target.id) {
+                  <option [value]="target.id">{{ target.name }}</option>
+                }
+              </select>
+              <small>An earlier state makes a loop, e.g. a retry.</small>
+            </label>
+          }
           <div class="add-row">
             <button type="button" class="ghost" (click)="transitionAdded.emit('state')">
               <app-icon name="step" /> To a new state

@@ -12,12 +12,14 @@ import {
 } from '@angular/core';
 import {
   Activity,
+  DiagramEdge,
   DiagramNode,
   EdgeKind,
   MessageKind,
   NODE_COLORS,
   NodeColor,
   NodeType,
+  eventLabel,
   hasActivities,
   REQUEST_OUTCOMES,
   Request,
@@ -446,10 +448,8 @@ export class Inspector {
     if (edge && value !== edge.eventSource) this.store.updateEdge(edge.id, { eventSource: value });
   }
 
-  /** States the selected transition could lead to: everything that can be entered. */
-  protected readonly targets = computed(() => {
-    const edge = this.edge();
-    if (!edge) return [];
+  /** States `edge` could lead to: everything that can be entered; taken ones are marked. */
+  protected targetsOf(edge: DiagramEdge): { id: string; name: string; taken: boolean }[] {
     const taken = new Set(
       this.store
         .edges()
@@ -460,12 +460,48 @@ export class Inspector {
       .nodes()
       .filter((n) => hasInput(n.type) && n.id !== edge.source)
       .map((n) => ({ id: n.id, name: n.name, taken: taken.has(n.id) }));
+  }
+
+  /** The selected transition's possible targets. */
+  protected readonly targets = computed(() => {
+    const edge = this.edge();
+    return edge ? this.targetsOf(edge) : [];
   });
 
   protected setTarget(event: Event): void {
     const edge = this.edge();
+    if (edge) this.retarget(edge, event);
+  }
+
+  /** Points `edge` at the state picked in the select; puts the old target back if refused. */
+  protected retarget(edge: DiagramEdge, event: Event): void {
     const select = event.target as HTMLSelectElement;
-    if (edge && !this.store.setEdgeTarget(edge.id, select.value)) select.value = edge.target;
+    if (!this.store.setEdgeTarget(edge.id, select.value)) select.value = edge.target;
+  }
+
+  /** Forward transitions leaving the selected state. */
+  protected readonly outgoing = computed(() => {
+    const id = this.node()?.id;
+    return this.store.edges().filter((e) => e.source === id && e.kind === 'forward');
+  });
+
+  /** States the selected state has no forward transition to yet: "To an existing state". */
+  protected readonly existingTargets = computed(() => {
+    const node = this.node();
+    if (!node) return [];
+    const led = new Set(this.outgoing().map((e) => e.target));
+    return this.store.nodes().filter((n) => hasInput(n.type) && n.id !== node.id && !led.has(n.id));
+  });
+
+  protected connectToExisting(event: Event): void {
+    const node = this.node();
+    const select = event.target as HTMLSelectElement;
+    if (node && select.value) this.store.connect(node.id, select.value);
+    select.value = '';
+  }
+
+  protected eventOf(edge: DiagramEdge): string {
+    return eventLabel(edge) || 'no event yet';
   }
 
   protected setGuard(event: Event): void {

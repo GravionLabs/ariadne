@@ -567,6 +567,50 @@ describe('Editor', () => {
     expect(expanded('Details')).toBe('true');
   });
 
+  it("lists a state's transitions with a To select, and connects to an existing state (a loop)", async () => {
+    const { el, store, select, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'state');
+    store.appendNode('state-2', 'end');
+    store.updateEdge('edge-2', { event: 'Go' });
+    await select(['state-2']);
+    const rows = () => [...el.querySelectorAll<HTMLElement>('app-inspector .transition-row')];
+    const toggleCount = () =>
+      el.querySelector('app-inspector [aria-label="Transitions"] .count')?.textContent?.trim();
+
+    // state-2 leaves through edge-3 (no event yet) only.
+    expect(rows().map((r) => r.querySelector('.transition-event')?.textContent?.trim())).toEqual([
+      'no event yet',
+    ]);
+    expect(toggleCount()).toBe('1');
+
+    // Loop back: state-2 → state-1 through the existing-state select.
+    const existing = () =>
+      el.querySelector<HTMLSelectElement>(
+        'app-inspector select[aria-label="To an existing state"]',
+      )!;
+    expect([...existing().options].map((o) => o.textContent?.trim())).toEqual([
+      'Choose a state…',
+      'State',
+    ]);
+    existing().value = 'state-1';
+    existing().dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.edges().at(-1)).toMatchObject({ source: 'state-2', target: 'state-1' });
+    expect(toggleCount()).toBe('2');
+
+    // Re-point a listed transition from the state itself: one undo step.
+    await select(['state-1']);
+    const row = rows()[0].querySelector('select')!;
+    expect(row.value).toBe('state-2');
+    row.value = 'end-1';
+    row.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.edges().find((e) => e.id === 'edge-2')?.target).toBe('end-1');
+    store.undo();
+    expect(store.edges().find((e) => e.id === 'edge-2')?.target).toBe('state-2');
+  });
+
   it('adds the one Any state from the toolbox and opens it', async () => {
     const { el, store, settle } = await setup();
     const add = () => el.querySelector<HTMLButtonElement>('[aria-label="Add the Any state"]')!;
