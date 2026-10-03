@@ -32,6 +32,25 @@
     </button>
   </nav>
 
+  <nav class="file-actions" aria-label="Export">
+    <button
+      type="button"
+      class="menu-button"
+      (click)="exporter.exportSvg()"
+      title="Export the diagram as an SVG image"
+    >
+      <app-icon name="saveAs" /><span>Export SVG</span>
+    </button>
+    <button
+      type="button"
+      class="menu-button"
+      (click)="exporter.exportPng()"
+      title="Export the diagram as a PNG image (2×)"
+    >
+      <app-icon name="saveAs" /><span>Export PNG</span>
+    </button>
+  </nav>
+
   <div class="topbar-end">
     @if (file.notice(); as notice) {
       <p class="error-pill notice-pill" role="status">

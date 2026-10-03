@@ -12,7 +12,7 @@ import {
 interface FileHandle {
   readonly name: string;
   getFile(): Promise<File>;
-  createWritable(): Promise<{ write(data: string): Promise<void>; close(): Promise<void> }>;
+  createWritable(): Promise<{ write(data: string | Blob): Promise<void>; close(): Promise<void> }>;
 }
 interface FilePickerOptions {
   suggestedName?: string;
@@ -82,6 +82,29 @@ export class BrowserFileStorage extends FileStorage {
     return { name: suggestedName };
   }
 
+  async exportFile(content: Blob, suggestedName: string): Promise<FileRef | null> {
+    const fs = this.fs;
+    if (fs) {
+      const extension = suggestedName.slice(suggestedName.lastIndexOf('.'));
+      const handle = await cancelled(
+        fs.showSaveFilePicker({
+          suggestedName,
+          types: [
+            {
+              description: `${extension.slice(1).toUpperCase()} image`,
+              accept: { [content.type]: [extension] },
+            },
+          ],
+        }),
+      );
+      if (!handle) return null;
+      await write(handle, content);
+      return { name: handle.name };
+    }
+    this.downloadBlob(content, suggestedName);
+    return { name: suggestedName };
+  }
+
   private pickFile(): Promise<File | null> {
     return new Promise((resolve) => {
       const input = this.document.createElement('input');
@@ -94,7 +117,11 @@ export class BrowserFileStorage extends FileStorage {
   }
 
   private download(content: string, name: string): void {
-    const url = URL.createObjectURL(new Blob([content], { type: 'application/yaml' }));
+    this.downloadBlob(new Blob([content], { type: 'application/yaml' }), name);
+  }
+
+  private downloadBlob(blob: Blob, name: string): void {
+    const url = URL.createObjectURL(blob);
     const link = this.document.createElement('a');
     link.href = url;
     link.download = name;
@@ -103,7 +130,7 @@ export class BrowserFileStorage extends FileStorage {
   }
 }
 
-async function write(handle: FileHandle, content: string): Promise<void> {
+async function write(handle: FileHandle, content: string | Blob): Promise<void> {
   const writable = await handle.createWritable();
   await writable.write(content);
   await writable.close();
