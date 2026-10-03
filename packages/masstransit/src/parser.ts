@@ -15,7 +15,7 @@ export interface CSharpParserOptions {
    * The tree-sitter runtime, `web-tree-sitter.wasm`. Without it the runtime looks next to its own
    * script, which works in Node but not once a bundler has moved the script.
    */
-  runtime?: string | URL;
+  runtime?: string | URL | Uint8Array;
 }
 
 /**
@@ -25,7 +25,13 @@ export interface CSharpParserOptions {
 export async function createCSharpParser(options: CSharpParserOptions): Promise<CSharpParser> {
   const { Parser, Language } = await import('web-tree-sitter');
   const runtime = options.runtime;
-  await Parser.init(runtime ? { locateFile: () => String(runtime) } : {});
+  await Parser.init(
+    runtime instanceof Uint8Array
+      ? { wasmBinary: runtime }
+      : runtime
+        ? { locateFile: () => String(runtime) }
+        : {},
+  );
   const grammar = options.grammar;
   const language = await Language.load(grammar instanceof URL ? String(grammar) : grammar);
   const parser = new Parser();

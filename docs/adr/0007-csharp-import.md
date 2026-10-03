@@ -74,8 +74,10 @@ a partial class in two files with helper methods, and a base class that cannot b
 - the output of every sample is a valid `*.saga.yaml` that the editor opens, with no error finding; the
   expected files sit next to the samples and are golden tests;
 - start-up (runtime + grammar) 23 ms; a 60-line saga parses in 6 ms; 2,600 lines in 50 ms;
-- the browser is checked when the import is added to the web app (#90); this ADR is updated if loading
-  differs there.
+- in the web app, in Chrome (dev server), the first import loads runtime and grammar from the app's own
+  `wasm/` folder and reads a small saga in 83 ms; loading is the same as in Node, only the files come over
+  HTTP. The grammar (5.35 MB, 317 kB gzipped) and the runtime are separate files, fetched on the first
+  import only; the initial bundle grows by about 20 kB.
 
 ## Consequences
 

@@ -402,3 +402,24 @@ describe('importSagas on small sagas', () => {
     expect(result.sagas).toEqual([]);
   });
 });
+
+describe('createCSharpParser', () => {
+  it('takes the tree-sitter runtime and the grammar as bytes too, as a bundler hands them over', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const { createRequire } = await import('node:module');
+    const { createCSharpParser } = await import('./parser');
+    const require = createRequire(import.meta.url);
+    const fromBytes = await createCSharpParser({
+      grammar: new Uint8Array(
+        await readFile(require.resolve('tree-sitter-c-sharp/tree-sitter-c_sharp.wasm')),
+      ),
+      runtime: new Uint8Array(
+        await readFile(require.resolve('web-tree-sitter/web-tree-sitter.wasm')),
+      ),
+    });
+    const files = sample('order');
+    expect(serializeDiagram(only(importSagas(files, fromBytes)))).toBe(
+      serializeDiagram(only(importSagas(files, parser))),
+    );
+  });
+});

@@ -78,6 +78,9 @@ importers:
       '@ariadne/export':
         specifier: workspace:*
         version: link:../../packages/export
+      '@ariadne/masstransit':
+        specifier: workspace:*
+        version: link:../../packages/masstransit
       '@codemirror/commands':
         specifier: ^6.11.1
         version: 6.11.1
@@ -123,9 +126,15 @@ importers:
       rxjs:
         specifier: ~7.8.0
         version: 7.8.2
+      tree-sitter-c-sharp:
+        specifier: ^0.23.5
+        version: 0.23.5
       tslib:
         specifier: ^2.3.0
         version: 2.8.1
+      web-tree-sitter:
+        specifier: ^0.27.0
+        version: 0.27.0
       yaml:
         specifier: ^2.9.1
         version: 2.9.1

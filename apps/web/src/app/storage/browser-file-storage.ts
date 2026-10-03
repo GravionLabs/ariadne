@@ -5,6 +5,8 @@ import {
   FileRef,
   FileStorage,
   OpenedFile,
+  PickFilesOptions,
+  TextFile,
   diagramFileName,
 } from './file-storage';
 
@@ -16,6 +18,7 @@ interface FileHandle {
 }
 interface FilePickerOptions {
   suggestedName?: string;
+  multiple?: boolean;
   types?: { description: string; accept: Record<string, string[]> }[];
 }
 interface FileSystemAccessWindow {
@@ -60,6 +63,26 @@ export class BrowserFileStorage extends FileStorage {
     }
     const file = await this.pickFile();
     return file && { ref: { name: file.name }, content: await file.text() };
+  }
+
+  async openFiles(options: PickFilesOptions): Promise<TextFile[] | null> {
+    const fs = this.fs;
+    let files: File[] | null;
+    if (fs) {
+      const handles = await cancelled(
+        fs.showOpenFilePicker({
+          multiple: true,
+          types: [
+            { description: options.description, accept: { 'text/plain': [...options.extensions] } },
+          ],
+        }),
+      );
+      files = handles && (await Promise.all(handles.map((h) => h.getFile())));
+    } else {
+      files = await this.pickFiles(options.extensions);
+    }
+    if (!files?.length) return null;
+    return Promise.all(files.map(async (f) => ({ name: f.name, content: await f.text() })));
   }
 
   async save(content: string, ref: FileRef): Promise<FileRef | null> {
@@ -111,6 +134,18 @@ export class BrowserFileStorage extends FileStorage {
       input.type = 'file';
       input.accept = DIAGRAM_EXTENSIONS.join(',');
       input.addEventListener('change', () => resolve(input.files?.[0] ?? null));
+      input.addEventListener('cancel', () => resolve(null));
+      input.click();
+    });
+  }
+
+  private pickFiles(extensions: readonly string[]): Promise<File[] | null> {
+    return new Promise((resolve) => {
+      const input = this.document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      input.accept = extensions.join(',');
+      input.addEventListener('change', () => resolve(input.files ? [...input.files] : null));
       input.addEventListener('cancel', () => resolve(null));
       input.click();
     });

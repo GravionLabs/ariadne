@@ -19,6 +19,7 @@ class FakeFileStorage extends FileStorage {
     this.written.push({ name: this.saveAsName, content });
     return { name: this.saveAsName };
   });
+  openFiles = vi.fn(async () => null);
   exportFile = vi.fn(async (_content: Blob, name: string) => ({ name }));
 }
 
