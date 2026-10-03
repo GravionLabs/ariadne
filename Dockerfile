@@ -17,6 +17,9 @@ COPY packages/masstransit/package.json packages/masstransit/
 RUN pnpm install --frozen-lockfile
 COPY apps apps
 COPY packages packages
+# The app bundles the sample sagas.
+COPY docs/examples docs/examples
+COPY samples/sagas samples/sagas
 RUN pnpm --filter @ariadne/web build && pnpm --filter @ariadne/server build
 
 # ---- run: the node binary, the bundled server and the built app, nothing else (no npm, no yarn)

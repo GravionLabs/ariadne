@@ -6,7 +6,11 @@ on:
       - Dockerfile
       - .dockerignore
       - compose.yaml
-      - apps/server/**
+      - apps/**
+      - packages/**
+      - docs/examples/**
+      - samples/sagas/**
+      - pnpm-lock.yaml
       - .github/workflows/container.yml
   push:
     tags: ['v*']
