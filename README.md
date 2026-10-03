@@ -107,6 +107,9 @@ apps/
 packages/
   core/       @ariadne/core: model, YAML format, validation, layout, catalog, walkthrough (no framework)
   export/     @ariadne/export: SVG, Mermaid and Markdown exports (no browser needed)
+  masstransit/ @ariadne/masstransit: import MassTransit saga state machines from C# (tree-sitter)
+samples/
+  sagas/      C# sagas with the diagrams the importer must produce
 docs/
   adr/        architecture decision records
   specs/      the diagram file format
@@ -115,7 +118,7 @@ docs/
 
 The repository is a pnpm workspace (`apps/*`, `packages/*`); the root scripts run across all of it.
 
-Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md).
+Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [importing C# with tree-sitter](docs/adr/0007-csharp-import.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md).
 
 ## Roadmap
 
