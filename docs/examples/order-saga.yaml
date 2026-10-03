@@ -1,0 +1,73 @@
+version: 3
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-1
+    type: state
+    name: Reserving stock
+    description: Waits for the warehouse to confirm that the items are available.
+    activities:
+      - command: ReserveStock
+    compensation:
+      name: ReleaseStock
+  - id: state-2
+    type: state
+    name: Charging payment
+    description: Waits for the payment service.
+    activities:
+      - command: ChargePayment
+    retry: 3 attempts
+    timeout: 30s
+    compensation:
+      name: RefundPayment
+  - id: state-3
+    type: state
+    name: Shipping
+    activities:
+      - command: ShipOrder
+      - event: OrderAccepted
+  - id: end-1
+    type: end
+    name: Completed
+  - id: end-2
+    type: end
+    name: Cancelled
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-1
+    kind: forward
+    event: OrderReceived
+    eventSource: Shop API
+  - id: edge-2
+    source: state-1
+    target: state-2
+    kind: forward
+    event: StockReserved
+    eventSource: Warehouse service
+  - id: edge-3
+    source: state-1
+    target: end-2
+    kind: forward
+    event: StockUnavailable
+    eventSource: Warehouse service
+  - id: edge-4
+    source: state-2
+    target: state-3
+    kind: forward
+    event: PaymentCharged
+    eventSource: Payment service
+  - id: edge-5
+    source: state-2
+    target: end-2
+    kind: forward
+    event: PaymentFailed
+    eventSource: Payment service
+  - id: edge-6
+    source: state-3
+    target: end-1
+    kind: forward
+    event: OrderShipped
+    eventSource: Warehouse service
