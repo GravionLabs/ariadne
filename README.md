@@ -56,6 +56,8 @@ pnpm build           # production build in apps/web/dist/
 
 ## Command line
 
+Self-hosting: `docker run -p 8080:8080 ghcr.io/gravionlabs/ariadne:latest`, see [docs/self-hosting.md](docs/self-hosting.md).
+
 `apps/cli` builds the `ariadne` command (Node 22 or later) for local use and CI:
 
 ```sh
@@ -100,6 +102,7 @@ The full format, with every field and the migration rules, is in [docs/specs/dia
 
 ```
 apps/
+  server/     Node server (Hono) that serves the built app, for the container
   cli/        the ariadne command: lint, export, generate, import, diff
   web/        the Angular editor
     src/app/
@@ -121,7 +124,7 @@ docs/
 
 The repository is a pnpm workspace (`apps/*`, `packages/*`); the root scripts run across all of it.
 
-Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [importing C# with tree-sitter](docs/adr/0007-csharp-import.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md), [generating C# and checking it against the diagram](docs/adr/0013-csharp-generation.md).
+Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [importing C# with tree-sitter](docs/adr/0007-csharp-import.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md), [generating C# and checking it against the diagram](docs/adr/0013-csharp-generation.md), [the server and the container](docs/adr/0014-server-and-container.md).
 
 ## Roadmap
 

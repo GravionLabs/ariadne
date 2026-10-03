@@ -67,3 +67,10 @@ docker build -t ariadne .
 
 The image is published by the `Container` workflow when a tag `vX.Y.Z` is pushed; pull requests that change the
 Dockerfile or the server build the image and check `/health`.
+
+## Static hosting
+
+The server is optional: the build in `apps/web/dist/ariadne/browser` is plain static files and works on any static
+host that serves `.wasm` as `application/wasm` and gives unknown paths `index.html`. For a sub-path, build with
+`ng build --base-href /ariadne/`. The `Pages` workflow does this for GitHub Pages; it is off until the repository
+variable `DEPLOY_PAGES` is `true`.
