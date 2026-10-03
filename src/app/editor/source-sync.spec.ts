@@ -190,6 +190,21 @@ describe('SourceSync', () => {
       expect(sync.text()).toBe('version: 3\nnodes: {}\n');
     });
 
+    it('says where the problem is', () => {
+      sync.edit('version: 3\nnodes:\n  - { id: a, type: task, name: A }\n');
+      tick(SOURCE_DEBOUNCE_MS);
+      const status = sync.status();
+      expect(status.kind === 'error' && status.error).toMatchObject({ line: 3, column: 20 });
+    });
+
+    it('has no position for an error it cannot place', () => {
+      sync.edit('- 1\n');
+      tick(SOURCE_DEBOUNCE_MS);
+      const status = sync.status();
+      expect(status.kind === 'error' && status.error.message).toMatch(/file must be a mapping/);
+      expect(status.kind === 'error' && status.error.line).toBeUndefined();
+    });
+
     it('reports YAML syntax errors', () => {
       sync.edit('nodes: [');
       tick(SOURCE_DEBOUNCE_MS);

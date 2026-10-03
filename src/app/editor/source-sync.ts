@@ -2,14 +2,18 @@ import { DestroyRef, Injectable, effect, inject, signal, untracked } from '@angu
 import { Diagram } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramFormatError, parseDiagramWithNotes, serializeDiagram } from '../model/diagram-yaml';
+import { locateSourceError } from './source-errors';
 import { DiagramDocument } from '../storage/diagram-document';
 
 /** Pause after the last keystroke before the text is parsed and applied. */
 export const SOURCE_DEBOUNCE_MS = 300;
 
-/** What is wrong with the text: shown under the editor. */
+/** What is wrong with the text: shown under the editor and marked in it. */
 export interface SourceError {
   message: string;
+  /** Where the problem is (1-based), when it can be placed. */
+  line?: number;
+  column?: number;
 }
 
 export type SourceStatus =
@@ -78,7 +82,11 @@ export class SourceSync {
       this._status.set({ kind: 'synced' });
     } catch (e) {
       if (!(e instanceof DiagramFormatError)) throw e;
-      this._status.set({ kind: 'error', error: { message: e.message } });
+      const at = locateSourceError(this._text(), e.message);
+      this._status.set({
+        kind: 'error',
+        error: { message: e.message, line: at?.line, column: at?.column },
+      });
     }
   }
 
