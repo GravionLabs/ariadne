@@ -4,21 +4,21 @@
     class="card"
     [class.selected]="selected()"
     [style.height.px]="cardHeight()"
-    [attr.aria-label]="'Transition' + (edge().event ? ' on ' + edge().event : '')"
+    [attr.aria-label]="'Transition' + (edge().event ? ' on ' + label() : '')"
     (click)="selectRequested.emit()"
   >
-    @if (edge().event; as event) {
+    @if (edge().event) {
       <span
         class="row event"
-        [class.external]="external()"
-        [title]="
-          external()
-            ? 'External event' + (edge().eventSource ? ' from ' + edge().eventSource : '')
-            : 'Event published by this saga'
-        "
+        [class.external]="kind() === 'external'"
+        [class.timeout]="kind() === 'timeout'"
+        [class.reply]="kind() === 'reply'"
+        [class.fault]="kind() === 'fault'"
+        [class.composite]="kind() === 'composite'"
+        [title]="hint()"
       >
-        <app-icon name="trigger" />
-        <span class="text">{{ event }}</span>
+        <app-icon [name]="icon()" />
+        <span class="text">{{ label() }}</span>
       </span>
       @if (edge().eventSource; as source) {
         <span class="row source">

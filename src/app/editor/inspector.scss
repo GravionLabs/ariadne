@@ -36,6 +36,12 @@
   &[data-type='end'] {
     --node-color: var(--c-end);
   }
+  &[data-type='any'] {
+    --node-color: var(--c-any);
+  }
+  &[data-type='join'] {
+    --node-color: var(--c-join);
+  }
   &[data-type='transition'] {
     --node-color: var(--c-event);
   }
@@ -225,6 +231,30 @@ textarea {
   &[data-kind='event'] {
     --kind-color: var(--c-event);
   }
+
+  &[data-kind='timer'] {
+    --kind-color: var(--c-timeout);
+  }
+
+  &[data-kind='request'] {
+    --kind-color: var(--c-command);
+  }
+}
+
+.timer-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--kind-color);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  app-icon {
+    width: 14px;
+    height: 14px;
+  }
 }
 
 .segmented {
@@ -288,6 +318,14 @@ textarea {
 
   &.external {
     --origin-color: var(--c-external);
+  }
+
+  &.timeout {
+    --origin-color: var(--c-timeout);
+  }
+
+  &.join {
+    --origin-color: var(--c-join);
   }
 }
 

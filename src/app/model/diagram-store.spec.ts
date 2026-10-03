@@ -324,4 +324,16 @@ describe('DiagramStore', () => {
       expect(store.canUndo()).toBe(false);
     });
   });
+
+  describe('the any node', () => {
+    it('is added once and a second request is not an undo step', () => {
+      store.load(blank());
+      const id = store.addNode('any');
+      expect(store.addNode('any')).toBe(id);
+      expect(store.nodes()).toHaveLength(1);
+      store.undo();
+      expect(store.nodes()).toHaveLength(0);
+      expect(store.canUndo()).toBe(false);
+    });
+  });
 });

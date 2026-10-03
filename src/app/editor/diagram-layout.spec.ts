@@ -1,5 +1,12 @@
-import { Diagram } from '../model/diagram';
-import { isCompact, labelSize, layoutDiagram, nodeSize, slotSources } from './diagram-layout';
+import { Diagram, DiagramNode } from '../model/diagram';
+import {
+  decisionIds,
+  isCompact,
+  labelSize,
+  layoutDiagram,
+  nodeSize,
+  slotSources,
+} from './diagram-layout';
 
 const saga: Diagram = {
   direction: 'top-bottom',
@@ -130,5 +137,61 @@ describe('diagram layout', () => {
     expect(isCompact({ id: 'e', type: 'end', name: 'E' })).toBe(true);
     expect(isCompact({ id: 'a', type: 'state', name: 'A' })).toBe(false);
     expect(nodeSize({ id: 'a', type: 'state', name: 'A' }).width).toBeGreaterThan(pill.width);
+  });
+
+  it('makes room for a guard in the label', () => {
+    const plain = labelSize(saga.edges[0], 'top-bottom');
+    const guarded = labelSize(
+      { ...saga.edges[0], guard: 'the order total is more than a hundred' },
+      'top-bottom',
+    );
+    expect(guarded.width).toBeGreaterThan(plain.width);
+  });
+
+  it('gives each ignored event a chip row on the card', () => {
+    const plain = { id: 'a', type: 'state', name: 'a' } as const;
+    const ignoring = { ...plain, ignores: ['X', 'Y'] };
+    expect(nodeSize(ignoring).height).toBe(nodeSize(plain).height + 2 * 24 + 6);
+  });
+
+  it('draws the any node as a pill, and never as a decision', () => {
+    const any = { id: 'any-1', type: 'any', name: 'Any state' } as const;
+    expect(isCompact(any)).toBe(true);
+    const diagram: Diagram = {
+      direction: 'top-bottom',
+      nodes: [any, ...saga.nodes],
+      edges: [
+        { id: 'a1', source: 'any-1', target: 'state-1', kind: 'forward', event: 'X' },
+        { id: 'a2', source: 'any-1', target: 'state-2', kind: 'forward', event: 'Y' },
+      ],
+    };
+    expect(decisionIds(diagram).has('any-1')).toBe(false);
+    expect(layoutDiagram(diagram).positions.has('any-1')).toBe(true);
+  });
+
+  it('gives each timer a chip row on the card', () => {
+    const plain = { id: 'a', type: 'state', name: 'a' } as const;
+    const timed = { ...plain, timers: [{ action: 'schedule' as const, name: 'T' }] };
+    expect(nodeSize(timed).height).toBe(nodeSize(plain).height + 24 + 6);
+  });
+
+  it('gives each request a chip row on the card', () => {
+    const plain = { id: 'a', type: 'state', name: 'a' } as const;
+    const requesting = { ...plain, requests: [{ name: 'R' }] };
+    expect(nodeSize(requesting).height).toBe(nodeSize(plain).height + 24 + 6);
+  });
+
+  it('draws a join as a bar with room for its text, and never as a decision', () => {
+    const join: DiagramNode = { id: 'join-1', type: 'join', name: 'Ready', combines: ['A', 'B'] };
+    expect(nodeSize(join)).toEqual({ width: 200, height: 50 });
+    const diagram: Diagram = {
+      direction: 'top-bottom',
+      nodes: [...saga.nodes, join],
+      edges: [
+        { id: 'j1', source: 'join-1', target: 'state-1', kind: 'forward', event: 'Ready' },
+        { id: 'j2', source: 'join-1', target: 'state-2', kind: 'forward', event: 'Ready' },
+      ],
+    };
+    expect(decisionIds(diagram).has('join-1')).toBe(false);
   });
 });

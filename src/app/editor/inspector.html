@@ -155,6 +155,184 @@
       </section>
     }
 
+    @if (hasCombines(node.type)) {
+      <section class="group" aria-label="Combined events">
+        <div class="group-title">
+          <span>Waits for</span>
+          <small>
+            When all of these events have arrived, “{{ node.name }}” is raised: give the transition
+            leaving this join that event.
+          </small>
+        </div>
+        @for (combined of node.combines ?? []; track $index; let i = $index) {
+          <div class="combine row">
+            <input
+              type="text"
+              aria-label="Combined event"
+              placeholder="e.g. PaymentCharged"
+              [value]="combined"
+              (change)="setCombine(i, $event)"
+            />
+            <button
+              type="button"
+              class="icon-button"
+              [attr.aria-label]="'Remove ' + combined"
+              title="Remove"
+              (click)="removeCombine(i)"
+            >
+              <app-icon name="delete" />
+            </button>
+          </div>
+        }
+        <div class="add-row">
+          <button type="button" class="ghost" (click)="addCombine()">
+            <app-icon name="event" /> Add an event
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (hasRequests(node.type)) {
+      <section class="group" aria-label="Requests">
+        <div class="group-title">
+          <span>Requests</span>
+          <small>
+            Made when the saga enters “{{ node.name }}”. The answer comes back as
+            <em>&lt;Name&gt;.Completed</em>, <em>.Faulted</em> or <em>.TimeoutExpired</em>: give a
+            transition each of those events.
+          </small>
+        </div>
+        @for (request of node.requests ?? []; track $index; let i = $index) {
+          <div class="request message" data-kind="request">
+            <span class="timer-title"><app-icon name="command" /> Request</span>
+            <div class="row">
+              <input
+                type="text"
+                class="name"
+                aria-label="Request"
+                placeholder="e.g. ValidateAddress"
+                [value]="request.name"
+                (change)="setRequestName(i, $event)"
+              />
+              <button
+                type="button"
+                class="icon-button"
+                [attr.aria-label]="'Remove ' + request.name"
+                title="Remove"
+                (click)="removeRequest(i)"
+              >
+                <app-icon name="delete" />
+              </button>
+            </div>
+            <input
+              type="text"
+              class="timeout"
+              aria-label="Timeout"
+              placeholder="Wait for the answer, e.g. 30s"
+              [value]="request.timeout ?? ''"
+              (change)="setRequestTimeout(i, $event)"
+            />
+          </div>
+        }
+        <div class="add-row">
+          <button type="button" class="ghost" (click)="addRequest()">
+            <app-icon name="command" /> Make a request
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (hasTimers(node.type)) {
+      <section class="group" aria-label="Timers">
+        <div class="group-title">
+          <span>Timers</span>
+          <small>
+            Run in order when the saga enters “{{ node.name }}”. A scheduled timeout is received as
+            an event when it fires: give a transition that event.
+          </small>
+        </div>
+        @for (timer of node.timers ?? []; track $index; let i = $index) {
+          <div class="timer message" data-kind="timer">
+            <span class="timer-title">
+              <app-icon name="clock" />
+              {{ timer.action === 'schedule' ? 'Schedule' : 'Unschedule' }}
+            </span>
+            <div class="row">
+              <input
+                type="text"
+                class="name"
+                aria-label="Timeout message"
+                placeholder="e.g. PaymentTimeout"
+                [value]="timer.name"
+                (change)="setTimerName(i, $event)"
+              />
+              <button
+                type="button"
+                class="icon-button"
+                [attr.aria-label]="'Remove ' + timer.name"
+                title="Remove"
+                (click)="removeTimer(i)"
+              >
+                <app-icon name="delete" />
+              </button>
+            </div>
+            @if (timer.action === 'schedule') {
+              <input
+                type="text"
+                class="delay"
+                aria-label="Delay"
+                placeholder="Delay, e.g. 30s"
+                [value]="timer.delay ?? ''"
+                (change)="setTimerDelay(i, $event)"
+              />
+            }
+          </div>
+        }
+        <div class="add-row">
+          <button type="button" class="ghost" (click)="addTimer('schedule')">
+            <app-icon name="clock" /> Schedule a timeout
+          </button>
+          <button type="button" class="ghost" (click)="addTimer('unschedule')">
+            <app-icon name="clock" /> Unschedule
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (hasIgnores(node.type)) {
+      <section class="group" aria-label="Ignored events">
+        <div class="group-title">
+          <span>Ignored events</span>
+          <small> Events “{{ node.name }}” receives and drops, instead of failing on them. </small>
+        </div>
+        @for (ignored of node.ignores ?? []; track $index; let i = $index) {
+          <div class="ignore row">
+            <input
+              type="text"
+              aria-label="Ignored event"
+              placeholder="e.g. OrderCancelled"
+              [value]="ignored"
+              (change)="setIgnore(i, $event)"
+            />
+            <button
+              type="button"
+              class="icon-button"
+              [attr.aria-label]="'Remove ' + ignored"
+              title="Remove"
+              (click)="removeIgnore(i)"
+            >
+              <app-icon name="delete" />
+            </button>
+          </div>
+        }
+        <div class="add-row">
+          <button type="button" class="ghost" (click)="addIgnore()">
+            <app-icon name="ignore" /> Ignore an event
+          </button>
+        </div>
+      </section>
+    }
+
     @if (node.type === 'state') {
       <label class="field">
         <span>Compensation</span>
@@ -213,16 +391,56 @@
       <input
         type="text"
         placeholder="e.g. PaymentCharged"
+        list="event-suggestions"
         [value]="edge.event ?? ''"
         (change)="setEvent($event)"
       />
       <small>Received while in “{{ ends()?.from }}”, it triggers this transition.</small>
     </label>
-    @if (edge.event && namingHint('event', edge.event); as hint) {
+    <datalist id="event-suggestions">
+      @for (suggestion of eventSuggestions(); track suggestion) {
+        <option [value]="suggestion"></option>
+      }
+    </datalist>
+    @if (
+      edge.event && !eventSuggestions().includes(edge.event) && namingHint('event', edge.event);
+      as hint
+    ) {
       <p class="hint">{{ hint }}</p>
     }
     @if (edge.event) {
-      @if (publishers().length) {
+      <label class="field">
+        <span>Guard</span>
+        <input
+          type="text"
+          placeholder="e.g. amount > 100"
+          [value]="edge.guard ?? ''"
+          (change)="setGuard($event)"
+        />
+        <small
+          >A condition on the event. Give transitions on the same event different guards to
+          branch.</small
+        >
+      </label>
+      @if (joinOfEvent(); as join) {
+        <p class="origin join">
+          <app-icon name="join" />
+          <span
+            >Raised when {{ (join.combines ?? []).join(' and ') || 'its events' }} have all arrived
+            (join “{{ join.name }}”).</span
+          >
+        </p>
+      } @else if (requesters().length) {
+        <p class="origin" [class.timeout]="eventEnds('TimeoutExpired')">
+          <app-icon name="command" />
+          <span>Answer to the request made when entering {{ requesters().join(', ') }}.</span>
+        </p>
+      } @else if (timeoutSchedulers().length) {
+        <p class="origin timeout">
+          <app-icon name="clock" />
+          <span>Timeout scheduled when entering {{ timeoutSchedulers().join(', ') }}.</span>
+        </p>
+      } @else if (publishers().length) {
         <p class="origin">
           <app-icon name="trigger" />
           <span>Published by this saga when entering {{ publishers().join(', ') }}.</span>

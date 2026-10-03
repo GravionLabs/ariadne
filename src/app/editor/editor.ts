@@ -24,10 +24,11 @@ import {
   DiagramNode,
   Direction,
   NodeType,
+  eventLabel,
   inputId,
   nodeIdOfConnector,
   outputId,
-  publishedEvents,
+  eventKindOf,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
@@ -104,7 +105,8 @@ export class Editor {
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
 
   /** Events the saga publishes itself; every other event comes from outside. */
-  protected readonly published = computed(() => publishedEvents(this.store.diagram()));
+  /** What kind of event each transition reacts to (from the saga, outside it, a timeout). */
+  protected readonly kindOf = computed(() => eventKindOf(this.store.diagram()));
 
   /** Spoken names of the states (`Decision: Check stock`) and transitions, for screen readers. */
   protected nodeLabel(node: DiagramNode): string {
@@ -115,7 +117,7 @@ export class Editor {
   protected edgeLabel(edge: DiagramEdge): string {
     const name = (id: string) => this.store.nodes().find((n) => n.id === id)?.name ?? id;
     const kind = edge.kind === 'compensation' ? 'Compensation' : 'Transition';
-    return `${kind} from ${name(edge.source)} to ${name(edge.target)}${edge.event ? ` on ${edge.event}` : ''}`;
+    return `${kind} from ${name(edge.source)} to ${name(edge.target)}${edge.event ? ` on ${eventLabel(edge)}` : ''}`;
   }
 
   protected readonly edgesById = computed(() => new Map(this.store.edges().map((e) => [e.id, e])));
@@ -161,6 +163,11 @@ export class Editor {
 
   protected addStart(): void {
     this.ui.selectNode(this.store.addNode('start'));
+  }
+
+  /** The "any" node, whose transitions apply in every state. There is only one. */
+  protected addAny(): void {
+    this.ui.selectNode(this.store.addNode('any'));
   }
 
   protected setDirection(direction: Direction): void {

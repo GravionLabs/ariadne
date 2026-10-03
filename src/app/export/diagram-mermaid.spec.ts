@@ -170,4 +170,79 @@ describe('diagramToMermaid title', () => {
       true,
     );
   });
+
+  it('shows a guard in square brackets after the event', () => {
+    const edges = orderSaga.edges.map((e) =>
+      e.event === 'PaymentFailed' ? { ...e, guard: 'attempts >= 3' } : e,
+    );
+    expect(diagramToMermaid({ ...orderSaga, edges })).toContain(
+      'Charging_payment --> Cancelled : PaymentFailed [attempts >= 3]',
+    );
+  });
+
+  it('notes the events a state ignores', () => {
+    const nodes = orderSaga.nodes.map((n) =>
+      n.name === 'Shipping' ? { ...n, ignores: ['OrderCancelled', 'Ping'] } : n,
+    );
+    expect(diagramToMermaid({ ...orderSaga, nodes })).toContain(
+      'note right of Shipping : Ignores OrderCancelled, Ping',
+    );
+  });
+
+  it('notes the timers of a state', () => {
+    const nodes = orderSaga.nodes.map((n) =>
+      n.name === 'Shipping'
+        ? {
+            ...n,
+            timers: [
+              { action: 'schedule' as const, name: 'ShipTimeout', delay: '2d' },
+              { action: 'unschedule' as const, name: 'PayTimeout' },
+            ],
+          }
+        : n,
+    );
+    expect(diagramToMermaid({ ...orderSaga, nodes })).toContain(
+      'note right of Shipping : Schedules ShipTimeout in 2d · Unschedules PayTimeout',
+    );
+  });
+
+  it('notes the requests of a state', () => {
+    const nodes = orderSaga.nodes.map((n) =>
+      n.name === 'Shipping'
+        ? { ...n, requests: [{ name: 'BookCourier', timeout: '10s' }, { name: 'CheckFraud' }] }
+        : n,
+    );
+    expect(diagramToMermaid({ ...orderSaga, nodes })).toContain(
+      'note right of Shipping : Requests BookCourier (timeout 10s) · Requests CheckFraud',
+    );
+  });
+
+  it('draws a join as a Mermaid bar, with a note for its name and events', () => {
+    const nodes = [
+      ...orderSaga.nodes,
+      {
+        id: 'join-1',
+        type: 'join' as const,
+        name: 'Order ready',
+        combines: ['PaymentCharged', 'StockReserved'],
+      },
+    ];
+    const edges = [
+      ...orderSaga.edges,
+      { id: 'j1', source: 'state-1', target: 'join-1', kind: 'forward' as const },
+      {
+        id: 'j2',
+        source: 'join-1',
+        target: 'end-1',
+        kind: 'forward' as const,
+        event: 'Order ready',
+      },
+    ];
+    const out = diagramToMermaid({ ...orderSaga, nodes, edges });
+    expect(out).toContain('state Order_ready <<join>>');
+    expect(out).toContain(
+      'note right of Order_ready : Order ready when PaymentCharged + StockReserved have all arrived',
+    );
+    expect(out).not.toContain('state "Order ready" as Order_ready');
+  });
 });

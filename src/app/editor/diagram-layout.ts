@@ -1,6 +1,14 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import dagre from '@dagrejs/dagre';
-import { Diagram, DiagramEdge, DiagramNode, Direction, Point, hasOutput } from '../model/diagram';
+import {
+  Diagram,
+  DiagramEdge,
+  DiagramNode,
+  Direction,
+  Point,
+  eventLabel,
+  hasOutput,
+} from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 
 export interface Size {
@@ -59,13 +67,24 @@ const LABEL_MAX_WIDTH = 240;
  * before anything is drawn; the editor passes the same size to f-flow.
  */
 export function nodeSize(node: DiagramNode, expanded = false): Size {
+  if (isBar(node)) return { width: BAR_WIDTH, height: BAR_HEIGHT };
   if (isCompact(node)) return { width: 180, height: 48 };
-  const rows = (node.activities?.length ?? 0) + (node.compensation ? 1 : 0);
+  const rows =
+    (node.activities?.length ?? 0) +
+    (node.requests?.length ?? 0) +
+    (node.timers?.length ?? 0) +
+    (node.ignores?.length ?? 0) +
+    (node.compensation ? 1 : 0);
   const base = CARD_HEADER + (rows ? rows * CHIP_ROW + 6 : 0);
   return { width: CARD_WIDTH, height: base + (expanded ? descriptionHeight(node) : 0) };
 }
 
-/** The initial and the final state are small pills; only states are full cards. */
+/** A join is a thick bar with its name and the events it waits for under it. */
+export const isBar = (node: DiagramNode): boolean => node.type === 'join';
+const BAR_WIDTH = 200;
+const BAR_HEIGHT = 50;
+
+/** The initial, the final, the "any" node and the join are small; only states are full cards. */
 export const isCompact = (node: DiagramNode): boolean => node.type !== 'state';
 
 /** Whether a node's card can unfold its description. */
@@ -96,7 +115,7 @@ export const labelRows = (edge: DiagramEdge): number =>
 export function labelSize(edge: DiagramEdge, direction: Direction): Size {
   const rows = labelRows(edge);
   if (rows === 0) return { width: INSERT_SIZE, height: INSERT_SIZE };
-  const texts = [edge.event ?? '', edge.eventSource ? `from ${edge.eventSource}` : ''];
+  const texts = [eventLabel(edge), edge.eventSource ? `from ${edge.eventSource}` : ''];
   const longest = Math.max(...texts.map((t) => t.length));
   const width = Math.min(
     LABEL_MAX_WIDTH,
@@ -115,6 +134,16 @@ export function outgoingCounts(diagram: Diagram): Map<string, number> {
     if (e.kind === 'forward') counts.set(e.source, (counts.get(e.source) ?? 0) + 1);
   }
   return counts;
+}
+
+/** States several transitions leave. The "any" node and joins are not: they fan out by design. */
+export function decisionIds(diagram: Diagram): Set<string> {
+  const anyIds = new Set(
+    diagram.nodes.filter((n) => n.type === 'any' || n.type === 'join').map((n) => n.id),
+  );
+  return new Set(
+    [...outgoingCounts(diagram)].filter(([id, n]) => n > 1 && !anyIds.has(id)).map(([id]) => id),
+  );
 }
 
 /**
@@ -209,7 +238,6 @@ export class DiagramLayout {
   readonly labels = computed(() => this.result().labels);
   /** Ids of states that several transitions leave: shown as decisions. */
   readonly decisions = computed(() => {
-    const counts = outgoingCounts(this.store.diagram());
-    return new Set([...counts].filter(([, n]) => n > 1).map(([id]) => id));
+    return decisionIds(this.store.diagram());
   });
 }

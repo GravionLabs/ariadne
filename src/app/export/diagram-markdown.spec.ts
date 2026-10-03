@@ -157,4 +157,103 @@ describe('diagramToMarkdown', () => {
   it('falls back to the given title without a name', () => {
     expect(diagramToMarkdown(orderSaga, { title: 'order' })).toMatch(/^# order\n/);
   });
+
+  it('adds a Guard column only when a transition has a guard', () => {
+    expect(diagramToMarkdown(orderSaga)).not.toContain('| Guard |');
+    const edges = orderSaga.edges.map((e) =>
+      e.event === 'PaymentFailed' ? { ...e, guard: 'attempts >= 3' } : e,
+    );
+    const md = diagramToMarkdown({ ...orderSaga, edges });
+    expect(md).toContain('| From | Event | Guard | Source | To | Kind |');
+    expect(md).toContain('attempts >= 3');
+  });
+
+  it('adds an Ignores column only when a state ignores events, and names the any node', () => {
+    expect(diagramToMarkdown(orderSaga)).not.toContain('| Ignores |');
+    const nodes = [
+      ...orderSaga.nodes.map((n) => (n.id === 'state-1' ? { ...n, ignores: ['Ping', 'Pong'] } : n)),
+      { id: 'any-1', type: 'any' as const, name: 'Any state' },
+    ];
+    const md = diagramToMarkdown({ ...orderSaga, nodes });
+    expect(md).toContain('| State | Type | Description | Activities | Ignores |');
+    expect(md).toContain('Ping<br>Pong');
+    expect(md).toMatch(/\| Any state \| Any state \|/);
+  });
+
+  it('adds a Timers column and calls the timeout event a timeout', () => {
+    expect(diagramToMarkdown(orderSaga)).not.toContain('| Timers |');
+    const nodes = orderSaga.nodes.map((n) =>
+      n.id === 'state-2'
+        ? { ...n, timers: [{ action: 'schedule' as const, name: 'StockTimeout', delay: '1h' }] }
+        : n,
+    );
+    const edges = [
+      ...orderSaga.edges,
+      {
+        id: 'e9',
+        source: 'state-2',
+        target: 'end-2',
+        kind: 'forward' as const,
+        event: 'StockTimeout',
+      },
+    ];
+    const md = diagramToMarkdown({ ...orderSaga, nodes, edges });
+    expect(md).toContain('Timers |');
+    expect(md).toContain('Schedule StockTimeout in 1h');
+    expect(md).toMatch(/\| StockTimeout \| timeout \|/);
+    expect(md).toMatch(/\| StockTimeout \| Timeout \|/);
+  });
+
+  it('adds a Requests column and names the answers to a request', () => {
+    expect(diagramToMarkdown(orderSaga)).not.toContain('| Requests |');
+    const nodes = orderSaga.nodes.map((n) =>
+      n.id === 'state-2' ? { ...n, requests: [{ name: 'CheckStock', timeout: '5s' }] } : n,
+    );
+    const edges = [
+      ...orderSaga.edges,
+      {
+        id: 'e8',
+        source: 'state-2',
+        target: 'state-3',
+        kind: 'forward' as const,
+        event: 'CheckStock.Completed',
+      },
+      {
+        id: 'e9',
+        source: 'state-2',
+        target: 'end-2',
+        kind: 'forward' as const,
+        event: 'CheckStock.Faulted',
+      },
+    ];
+    const md = diagramToMarkdown({ ...orderSaga, nodes, edges });
+    expect(md).toContain('Request CheckStock (timeout 5s)');
+    expect(md).toMatch(/\| CheckStock\.Completed \| reply \|/);
+    expect(md).toMatch(/\| CheckStock\.Faulted \| fault \|/);
+    expect(md).toMatch(/\| CheckStock\.Completed \| Reply \|/);
+    expect(md).toMatch(/\| CheckStock\.Faulted \| Fault \|/);
+  });
+
+  it('adds a Waits for column for a join and calls its event composite', () => {
+    expect(diagramToMarkdown(orderSaga)).not.toContain('| Waits for |');
+    const nodes = [
+      ...orderSaga.nodes,
+      { id: 'join-1', type: 'join' as const, name: 'OrderReady', combines: ['A', 'B'] },
+    ];
+    const edges = [
+      ...orderSaga.edges,
+      {
+        id: 'j2',
+        source: 'join-1',
+        target: 'end-1',
+        kind: 'forward' as const,
+        event: 'OrderReady',
+      },
+    ];
+    const md = diagramToMarkdown({ ...orderSaga, nodes, edges });
+    expect(md).toContain('| Waits for |');
+    expect(md).toContain('A<br>B');
+    expect(md).toMatch(/\| OrderReady \| join \|/);
+    expect(md).toMatch(/\| OrderReady \| Composite \|/);
+  });
 });

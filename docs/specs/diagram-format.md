@@ -85,28 +85,33 @@ edges:
 
 ### Node (state)
 
-| Field          | Type                                                                                           | Required | Notes                                                                                                                       |
-| -------------- | ---------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `id`           | string                                                                                         | yes      | Unique within the file, e.g. `state-3`.                                                                                     |
-| `type`         | `start` \| `state` \| `end`                                                                    | yes      | Initial state (no incoming transitions), state, final state (no outgoing).                                                  |
-| `name`         | string                                                                                         | yes      | Label shown on the canvas.                                                                                                  |
-| `description`  | string                                                                                         | no       | Documentation only.                                                                                                         |
-| `activities`   | list of activities                                                                             | no       | What the saga does on entering this state, in order. Only on `state` nodes: nothing runs in the initial or the final state. |
-| `color`        | `red` \| `orange` \| `amber` \| `green` \| `teal` \| `blue` \| `purple` \| `pink` \| `#rrggbb` | no       | Accent color at the top of the card: a palette name or a custom hex value. Defaults to the color of the node's type.        |
-| `retry`        | string                                                                                         | no       | Free text, e.g. `3 attempts`. Documentation only.                                                                           |
-| `timeout`      | string                                                                                         | no       | Free text, e.g. `30s`. Documentation only.                                                                                  |
-| `compensation` | `{ name: string, description?: string }`                                                       | no       | Undo action for the work done to reach this state.                                                                          |
+| Field          | Type                                                                                           | Required | Notes                                                                                                                                                                                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                                                                                         | yes      | Unique within the file, e.g. `state-3`.                                                                                                                                                                                                                                   |
+| `type`         | `start` \| `state` \| `end` \| `any` \| `join`                                                 | yes      | Initial state (no incoming transitions), state, final state (no outgoing), the one `any` node (transitions leaving it apply in every state; nothing enters it), or a `join` (waits until several events have all arrived).                                                |
+| `name`         | string                                                                                         | yes      | Label shown on the canvas.                                                                                                                                                                                                                                                |
+| `description`  | string                                                                                         | no       | Documentation only.                                                                                                                                                                                                                                                       |
+| `combines`     | list of strings                                                                                | no       | On a `join` node: the events that must all have arrived. The join's `name` is the composite event raised then; the transition leaving the join reacts to that name. Only on `join` nodes.                                                                                 |
+| `requests`     | list of requests                                                                               | no       | Requests the state makes on entry (`request: <Name>`, optional `timeout: 30s`). The answers are the events `<Name>.Completed`, `<Name>.Faulted` and `<Name>.TimeoutExpired`: transitions on them are drawn with a reply, fault or clock icon. Only on `state` nodes.      |
+| `timers`       | list of timers                                                                                 | no       | Timeouts the state schedules (`schedule: <Name>`, optional `delay: 30s`) or cancels (`unschedule: <Name>`) on entry, in order. Only on `state` nodes. A transition whose `event` is the name of a scheduled timeout is the timeout path: drawn dotted amber with a clock. |
+| `ignores`      | list of strings                                                                                | no       | Events the state receives and drops (`Ignore(E)`). Only on `state` nodes.                                                                                                                                                                                                 |
+| `activities`   | list of activities                                                                             | no       | What the saga does on entering this state, in order. Only on `state` nodes: nothing runs in the initial or the final state.                                                                                                                                               |
+| `color`        | `red` \| `orange` \| `amber` \| `green` \| `teal` \| `blue` \| `purple` \| `pink` \| `#rrggbb` | no       | Accent color at the top of the card: a palette name or a custom hex value. Defaults to the color of the node's type.                                                                                                                                                      |
+| `retry`        | string                                                                                         | no       | Free text, e.g. `3 attempts`. Documentation only.                                                                                                                                                                                                                         |
+| `timeout`      | string                                                                                         | no       | Free text, e.g. `30s`. Documentation only.                                                                                                                                                                                                                                |
+| `compensation` | `{ name: string, description?: string }`                                                       | no       | Undo action for the work done to reach this state.                                                                                                                                                                                                                        |
 
 ### Edge (transition)
 
-| Field         | Type                        | Required | Notes                                                             |
-| ------------- | --------------------------- | -------- | ----------------------------------------------------------------- |
-| `id`          | string                      | yes      | e.g. `edge-4`.                                                    |
-| `source`      | string                      | yes      | Node id: the state the saga is in.                                |
-| `target`      | string                      | yes      | Node id: the state the transition enters.                         |
-| `kind`        | `forward` \| `compensation` | no       | Defaults to `forward`. Compensation transitions are not laid out. |
-| `event`       | string                      | no       | The event that triggers the transition, e.g. `PaymentCharged`.    |
-| `eventSource` | string                      | no       | Where an external event comes from, e.g. `Shop API`.              |
+| Field         | Type                        | Required | Notes                                                                                                      |
+| ------------- | --------------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `id`          | string                      | yes      | e.g. `edge-4`.                                                                                             |
+| `source`      | string                      | yes      | Node id: the state the saga is in.                                                                         |
+| `target`      | string                      | yes      | Node id: the state the transition enters.                                                                  |
+| `kind`        | `forward` \| `compensation` | no       | Defaults to `forward`. Compensation transitions are not laid out.                                          |
+| `event`       | string                      | no       | The event that triggers the transition, e.g. `PaymentCharged`.                                             |
+| `eventSource` | string                      | no       | Where an external event comes from, e.g. `Shop API`.                                                       |
+| `guard`       | string                      | no       | Condition for taking the transition, e.g. `amount > 100`. Needs an `event`. Free text, documentation only. |
 
 An event a transition reacts to is **internal** when some state of the same diagram publishes it
 (an `event:` activity), and **external** otherwise. External events can arrive in any state, not only
@@ -122,6 +127,24 @@ An **activity** is a mapping with exactly one key, the kind of message, followin
   imperative, e.g. `SubmitOrder`, `ChargePayment`.
 - `event: <Name>`: **publish** a fact to any number of subscribers. Named noun–verb in the past tense,
   e.g. `OrderSubmitted`, `PaymentCharged`.
+
+## MassTransit mapping
+
+How the constructs relate to a MassTransit `MassTransitStateMachine<T>`. The importer (#83) and the
+generator (#93) follow this table.
+
+| Diagram                                                        | MassTransit                                                                                                                                                  |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `join` with `combines: [A, B]`, `name: X`                      | `CompositeEvent(() => X, x => x.Status, A, B)`; the transition leaving the join is `When(X)`                                                                 |
+| `requests` `request: R`, `timeout: D`                          | `Request(() => R, x => x.RequestId, r => r.Timeout = D)`, then `.Request(R, ctx => new RMsg(..))` on entry                                                   |
+| transition on `R.Completed` / `R.Faulted` / `R.TimeoutExpired` | `When(R.Completed)` / `When(R.Faulted)` / `When(R.TimeoutExpired)`                                                                                           |
+| `timers` `schedule: T`, `delay: D`                             | `Schedule(() => T, x => x.TimeoutTokenId, s => { s.Delay = D; s.Received = e => e.CorrelateById(...); })`, then `.Schedule(T, ctx => new TMsg(..))` on entry |
+| `timers` `unschedule: T`                                       | `.Unschedule(T)`                                                                                                                                             |
+| transition on a scheduled timeout's name                       | `When(T.Received)`                                                                                                                                           |
+| `ignores` of a state                                           | `During(State, Ignore(E))`                                                                                                                                   |
+| transitions leaving the `any` node                             | `DuringAny(When(E).TransitionTo(S))`                                                                                                                         |
+| transition with `guard`                                        | `When(E).If(ctx => <guard>, then => then.TransitionTo(A)).TransitionTo(B)`                                                                                   |
+| transitions on one event, other guards                         | `When(E).IfElse(ctx => <guard>, then => then.TransitionTo(A), else => else.TransitionTo(B))`                                                                 |
 
 ## Version 1
 
@@ -163,5 +186,10 @@ names the offending path. For example:
 - `nodes[2].type must be one of start, end, state`
 - `nodes[1].activities[0] must be "command: <Name>" or "event: <Name>"`
 - `nodes[2].activities is only allowed on states, not on the final state`
+- `nodes[1].ignores is only allowed on states`
+- `nodes[1].requests[0] must be "request: <Name>"`
+- `nodes[1].timers[0] must be "schedule: <Name>" or "unschedule: <Name>"`
+- `There can be only one node of type "any"`
+- `nodes[1].combines is only allowed on joins`
 - `edges[0].activities is not allowed: activities belong to states (nodes[].activities)`
 - `edges[0].target "state-9" is not a node`

@@ -1,6 +1,6 @@
-import { outgoingCounts } from '../editor/diagram-layout';
+import { decisionIds } from '../editor/diagram-layout';
 import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from '../editor/node-types';
-import { Diagram, DiagramNode, publishedEvents } from '../model/diagram';
+import { Diagram, DiagramNode, EventKind, eventKindOf } from '../model/diagram';
 import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
 
 export interface MarkdownOptions {
@@ -17,11 +17,20 @@ export interface MarkdownOptions {
  */
 export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {}): string {
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
-  const published = publishedEvents(diagram);
+  const kindOf = eventKindOf(diagram);
+  const sourceOf = (kind: EventKind | undefined) =>
+    kind
+      ? {
+          internal: 'saga',
+          external: 'external',
+          timeout: 'timeout',
+          reply: 'reply',
+          fault: 'fault',
+          composite: 'join',
+        }[kind]
+      : '';
   const name = (id: string) => nodes.get(id)?.name ?? id;
-  const decisions = new Set(
-    [...outgoingCounts(diagram)].filter(([, n]) => n > 1).map(([id]) => id),
-  );
+  const decisions = decisionIds(diagram);
   const typeLabel = (n: DiagramNode) => (decisions.has(n.id) ? DECISION : NODE_TYPES[n.type]).label;
   const edges = diagram.edges.filter((e) => nodes.has(e.source) && nodes.has(e.target));
 
@@ -31,16 +40,55 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
   if (description) out.push(description);
   out.push('## Diagram', mermaidMarkdown(diagramToMermaid(diagram)).trimEnd());
 
+  // The Waits for column only appears when the diagram has a join.
+  const joining = diagram.nodes.some((n) => n.type === 'join');
+  // The Requests column only appears when some state makes a request.
+  const requesting = diagram.nodes.some((n) => n.requests?.length);
+  // The Timers column only appears when some state schedules a timeout.
+  const timing = diagram.nodes.some((n) => n.timers?.length);
+  // The Ignores column only appears when some state ignores an event.
+  const ignoring = diagram.nodes.some((n) => n.ignores?.length);
   out.push(
     '## States',
     diagram.nodes.length
       ? table(
-          ['State', 'Type', 'Description', 'Activities', 'Compensation', 'Retry', 'Timeout'],
+          [
+            'State',
+            'Type',
+            'Description',
+            'Activities',
+            ...(joining ? ['Waits for'] : []),
+            ...(requesting ? ['Requests'] : []),
+            ...(timing ? ['Timers'] : []),
+            ...(ignoring ? ['Ignores'] : []),
+            'Compensation',
+            'Retry',
+            'Timeout',
+          ],
           diagram.nodes.map((n) => [
             n.name,
             typeLabel(n),
             n.description ?? '',
             (n.activities ?? []).map((a) => `${ACTIVITY_VERBS[a.kind]} ${a.name}`).join('\n'),
+            ...(joining ? [(n.combines ?? []).join('\n')] : []),
+            ...(requesting
+              ? [
+                  (n.requests ?? [])
+                    .map((r) => `Request ${r.name}${r.timeout ? ` (timeout ${r.timeout})` : ''}`)
+                    .join('\n'),
+                ]
+              : []),
+            ...(timing
+              ? [
+                  (n.timers ?? [])
+                    .map(
+                      (t) =>
+                        `${t.action === 'schedule' ? 'Schedule' : 'Unschedule'} ${t.name}${t.delay ? ` in ${t.delay}` : ''}`,
+                    )
+                    .join('\n'),
+                ]
+              : []),
+            ...(ignoring ? [(n.ignores ?? []).join('\n')] : []),
             n.compensation
               ? [n.compensation.name, n.compensation.description].filter(Boolean).join(': ')
               : '',
@@ -51,16 +99,18 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
       : none,
   );
 
+  // The Guard column only appears when some transition has one.
+  const guarded = edges.some((e) => e.guard);
   out.push(
     '## Transitions',
     edges.length
       ? table(
-          ['From', 'Event', 'Source', 'To', 'Kind'],
+          ['From', 'Event', ...(guarded ? ['Guard'] : []), 'Source', 'To', 'Kind'],
           edges.map((e) => [
             name(e.source),
             e.event ?? '',
-            e.eventSource ??
-              (e.event && !published.has(e.event) ? 'external' : e.event ? 'saga' : ''),
+            ...(guarded ? [e.guard ?? ''] : []),
+            e.eventSource ?? sourceOf(kindOf(e)),
             name(e.target),
             e.kind === 'compensation' ? 'Compensation' : 'Forward',
           ]),
@@ -97,7 +147,14 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
           ['Event', 'Origin', 'Published in', 'Triggers'],
           events.map((ev) => [
             ev,
-            published.has(ev) ? 'Internal' : 'External',
+            {
+              internal: 'Internal',
+              external: 'External',
+              timeout: 'Timeout',
+              reply: 'Reply',
+              fault: 'Fault',
+              composite: 'Composite',
+            }[kindOf({ event: ev })!],
             (publishedBy.get(ev) ?? []).join(', '),
             (reactions.get(ev) ?? []).join('\n'),
           ]),

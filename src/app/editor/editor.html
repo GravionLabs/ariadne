@@ -111,6 +111,7 @@
             [fRadius]="8"
             [fReassignDisabled]="true"
             [class.compensation]="edge.kind === 'compensation'"
+            [class.timeout]="kindOf()(edge) === 'timeout' && edge.kind !== 'compensation'"
           >
             <f-connection-marker-arrow />
             @if (edge.kind === 'compensation') {
@@ -122,7 +123,7 @@
                 [edge]="edge"
                 [direction]="store.direction()"
                 [selected]="ui.selectedEdge()?.id === edge.id"
-                [external]="!!edge.event && !published().has(edge.event)"
+                [kind]="kindOf()(edge)"
                 (selectRequested)="selectEdge(edge.id)"
               />
             }
@@ -175,7 +176,7 @@
                 [edge]="edge"
                 [direction]="store.direction()"
                 [selected]="ui.selectedEdge()?.id === edge.id"
-                [external]="!!edge.event && !published().has(edge.event)"
+                [kind]="kindOf()(edge)"
                 (selectRequested)="selectEdge(edge.id)"
                 (inserted)="insert(edge.id, $event)"
               />
@@ -233,6 +234,16 @@
     }
 
     <div class="toolbox floating" role="toolbar" aria-label="Edit and view">
+      <button
+        type="button"
+        class="icon-button"
+        (click)="addAny()"
+        aria-label="Add the Any state"
+        title="Add the Any state: transitions that apply in every state"
+      >
+        <app-icon name="any" />
+      </button>
+      <div class="divider"></div>
       <button
         type="button"
         class="icon-button"

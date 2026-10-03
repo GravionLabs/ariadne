@@ -1,5 +1,5 @@
 import { ACTIVITY_VERBS } from '../editor/node-types';
-import { Diagram, DiagramEdge, DiagramNode } from '../model/diagram';
+import { Diagram, DiagramEdge, DiagramNode, eventLabel } from '../model/diagram';
 
 /** Words Mermaid's state diagram grammar treats as keywords; an id must not be one of them. */
 const RESERVED = new Set([
@@ -55,7 +55,7 @@ const text = (s: string): string =>
  */
 function transitionLabel(edge: DiagramEdge, target: DiagramNode): string {
   const event =
-    edge.event && `${edge.event}${edge.eventSource ? ` (from ${edge.eventSource})` : ''}`;
+    edge.event && `${eventLabel(edge)}${edge.eventSource ? ` (from ${edge.eventSource})` : ''}`;
   const activities = (target.activities ?? [])
     .map((a) => `${ACTIVITY_VERBS[a.kind]} ${a.name}`)
     .join(', ');
@@ -89,7 +89,9 @@ export function diagramToMermaid(diagram: Diagram): string {
   for (const node of diagram.nodes) {
     if (node.type === 'start') continue;
     const id = ids.get(node.id)!;
-    if (id !== node.name) lines.push(`  state "${text(node.name)}" as ${id}`);
+    // A join is Mermaid's bar; it shows no name, so a note carries it (below).
+    if (node.type === 'join') lines.push(`  state ${id} <<join>>`);
+    else if (id !== node.name) lines.push(`  state "${text(node.name)}" as ${id}`);
   }
   for (const edge of diagram.edges) {
     const target = nodes.get(edge.target);
@@ -99,6 +101,25 @@ export function diagramToMermaid(diagram: Diagram): string {
   }
   for (const node of diagram.nodes) {
     if (node.type === 'end') lines.push(`  ${ids.get(node.id)} --> [*]`);
+  }
+  for (const node of diagram.nodes) {
+    const notes = [
+      ...(node.requests ?? []).map(
+        (r) => `Requests ${r.name}${r.timeout ? ` (timeout ${r.timeout})` : ''}`,
+      ),
+      ...(node.timers ?? []).map(
+        (t) =>
+          `${t.action === 'schedule' ? 'Schedules' : 'Unschedules'} ${t.name}${t.delay ? ` in ${t.delay}` : ''}`,
+      ),
+      ...(node.type === 'join'
+        ? [
+            `${node.name} when ${(node.combines ?? []).join(' + ') || 'its events'} have all arrived`,
+          ]
+        : []),
+      ...(node.ignores?.length ? [`Ignores ${node.ignores.join(', ')}`] : []),
+    ];
+    if (notes.length)
+      lines.push(`  note right of ${ids.get(node.id)} : ${text(notes.join(' · '))}`);
   }
   const compensated = diagram.nodes.filter((n) => n.compensation).map((n) => ids.get(n.id)!);
   if (compensated.length) {

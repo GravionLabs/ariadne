@@ -1,14 +1,23 @@
-import { Diagram, DiagramEdge, DiagramNode, NodeColor, Point } from '../model/diagram';
+import {
+  Diagram,
+  DiagramEdge,
+  DiagramNode,
+  NodeColor,
+  Point,
+  eventKindOf,
+  eventLabel,
+} from '../model/diagram';
 import {
   INSERT_OVERHANG,
   LABEL_PADDING,
   LABEL_ROW,
   Size,
+  isBar,
   isCompact,
   labelRows,
   layoutDiagram,
   nodeSize,
-  outgoingCounts,
+  decisionIds,
 } from '../editor/diagram-layout';
 import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from '../editor/node-types';
 
@@ -25,6 +34,12 @@ const COLORS = {
   start: '#22c55e',
   step: '#3b82f6',
   decision: '#8b5cf6',
+  any: '#64748b',
+  timeout: '#d97706',
+  reply: '#059669',
+  composite: '#4f46e5',
+  join: '#4f46e5',
+  fault: '#dc2626',
   end: '#f43f5e',
   compensation: '#f59e0b',
   command: '#2563eb',
@@ -66,7 +81,8 @@ export interface SvgExport {
 export function renderDiagramSvg(diagram: Diagram): SvgExport {
   const { positions, labels } = layoutDiagram(diagram);
   const lr = diagram.direction === 'left-right';
-  const counts = outgoingCounts(diagram);
+  const decisions = decisionIds(diagram);
+  const kindOf = eventKindOf(diagram);
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const rect = (id: string) => ({ ...positions.get(id)!, ...nodeSize(nodes.get(id)!) });
   /** A point from its position along the flow (`main`) and across it (`cross`). */
@@ -128,10 +144,18 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
       const corner = pt(a, lane);
       grow(corner.x, corner.y);
     }
+    // A timeout firing is dashed amber too, but dotted, so it differs from a compensation.
+    const timeout = edge.kind === 'forward' && kindOf(edge) === 'timeout';
+    const stroke =
+      edge.kind === 'compensation' ? COLORS.compensation : timeout ? COLORS.timeout : COLORS.line;
+    const dash =
+      edge.kind === 'compensation'
+        ? ' stroke-dasharray="6 4"'
+        : timeout
+          ? ' stroke-dasharray="2 5" stroke-linecap="round"'
+          : '';
     edgeSvg.push(
-      `<path d="${roundedPath(points)}" fill="none" stroke="${
-        edge.kind === 'compensation' ? COLORS.compensation : COLORS.line
-      }" stroke-width="2"${edge.kind === 'compensation' ? ' stroke-dasharray="6 4"' : ''} marker-end="url(#arrow-${edge.kind})"/>`,
+      `<path d="${roundedPath(points)}" fill="none" stroke="${stroke}" stroke-width="2"${dash} marker-end="url(#arrow-${edge.kind})"/>`,
     );
     if (labelRows(edge) > 0) {
       const label = transitionLabel(edge, labelCentre, lr, diagram);
@@ -147,7 +171,7 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
 
   const nodeSvg = diagram.nodes.map((n) => {
     const { x, y, width: w, height: h } = rect(n.id);
-    return stateSvg(n, x, y, { width: w, height: h }, (counts.get(n.id) ?? 0) > 1);
+    return stateSvg(n, x, y, { width: w, height: h }, decisions.has(n.id));
   });
 
   const svg = [
@@ -201,15 +225,10 @@ function transitionLabel(
   lr: boolean,
   diagram: Diagram,
 ): { svg: string } & Point & Size {
-  const published = new Set(
-    diagram.nodes.flatMap((nd) =>
-      (nd.activities ?? []).filter((a) => a.kind === 'event').map((a) => a.name),
-    ),
-  );
-  const external = !!edge.event && !published.has(edge.event);
+  const kind = eventKindOf(diagram)(edge);
   const rows = labelRows(edge);
   const height = rows * LABEL_ROW + 2 * LABEL_PADDING;
-  const texts = [edge.event ?? '', edge.eventSource ? `from ${edge.eventSource}` : ''];
+  const texts = [eventLabel(edge), edge.eventSource ? `from ${edge.eventSource}` : ''];
   const boxWidth = Math.min(
     240,
     Math.max(110, Math.ceil(44 + Math.max(...texts.map((t) => t.length)) * 6.6)),
@@ -224,10 +243,11 @@ function transitionLabel(
   const textWidth = card.width - 2 * 10 - 19;
   let rowY = y + LABEL_PADDING + LABEL_ROW / 2;
   if (edge.event) {
-    const color = external ? COLORS.external : COLORS.event;
+    const color = kind === 'internal' || !kind ? COLORS.event : COLORS[kind];
+    const glyph = { timeout: '⏱', reply: '↩', fault: '⚠', composite: '▬' }[kind as string] ?? '⚡';
     parts.push(
-      text('⚡', x + 10, rowY, { size: 11, fill: color }),
-      text(fit(edge.event, textWidth, 11), x + 29, rowY, {
+      text(glyph, x + 10, rowY, { size: 11, fill: color }),
+      text(fit(eventLabel(edge), textWidth, 11), x + 29, rowY, {
         size: 11,
         fill: mix(color, COLORS.text, 0.75),
       }),
@@ -248,13 +268,16 @@ function transitionLabel(
 
 function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision: boolean): string {
   const color = accent(node, decision);
+  if (isBar(node)) return barSvg(node, x, y, size, color);
   const compact = isCompact(node);
   const parts: string[] = [];
   const r = compact ? size.height / 2 : 8;
   if (compact) {
     const end = node.type === 'end';
+    // The "any" node is drawn dashed: it is not a state the saga is in.
+    const dash = node.type === 'any' ? ' stroke-dasharray="5 4"' : '';
     parts.push(
-      `<rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="${size.height}" rx="${r}" fill="${COLORS.surface}" stroke="${end ? color : COLORS.border}" stroke-width="${end ? 2 : 1}"/>`,
+      `<rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="${size.height}" rx="${r}" fill="${COLORS.surface}" stroke="${end ? color : node.type === 'any' ? COLORS.any : COLORS.border}" stroke-width="${end ? 2 : 1}"${dash}/>`,
     );
     if (end) {
       parts.push(
@@ -318,6 +341,38 @@ function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision:
         `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(color, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">${verb}</tspan> ${esc(name)}</text>`,
     );
   }
+  for (const r of node.requests ?? []) {
+    const label = fit(
+      `${r.name}${r.timeout ? ` · ${r.timeout}` : ''}`,
+      chipWidth - 8 * 11 * CHAR_EM,
+      11,
+    );
+    chip(
+      COLORS.command,
+      text('✉', x + 20, chipY + 10, { size: 11, fill: COLORS.command }) +
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(COLORS.command, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">Request</tspan> ${esc(label)}</text>`,
+    );
+  }
+  for (const t of node.timers ?? []) {
+    const verb = t.action === 'schedule' ? 'Schedule' : 'Unschedule';
+    const label = fit(
+      `${t.name}${t.delay ? ` in ${t.delay}` : ''}`,
+      chipWidth - (verb.length + 1) * 11 * CHAR_EM,
+      11,
+    );
+    chip(
+      COLORS.timeout,
+      text('⏱', x + 20, chipY + 10, { size: 11, fill: COLORS.timeout }) +
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(COLORS.timeout, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">${verb}</tspan> ${esc(label)}</text>`,
+    );
+  }
+  for (const event of node.ignores ?? []) {
+    chip(
+      COLORS.textSubtle,
+      text('⊘', x + 20, chipY + 10, { size: 11, fill: COLORS.textSubtle }) +
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" text-decoration="line-through" fill="${COLORS.textSubtle}">${esc(fit(event, chipWidth, 11))}</text>`,
+    );
+  }
   if (node.compensation) {
     chip(
       COLORS.compensation,
@@ -332,6 +387,19 @@ function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision:
   return `<g>${parts.join('')}</g>`;
 }
 
+/** A join: a thick bar, with its name and the events it waits for under it. */
+function barSvg(node: DiagramNode, x: number, y: number, size: Size, color: string): string {
+  const cx = x + size.width / 2;
+  const width = size.width - 8;
+  const combines = (node.combines ?? []).join(' + ') || 'no events yet';
+  return `<g><rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="10" rx="5" fill="${color}"/>${text(
+    fit(node.name, width, 13, true),
+    cx,
+    y + 24,
+    { size: 13, weight: 600, fill: COLORS.text, anchor: 'middle' },
+  )}${text(fit(combines, width, 11), cx, y + 40, { size: 11, fill: COLORS.textSubtle, anchor: 'middle' })}</g>`;
+}
+
 /** A small shape standing in for the node type's icon. */
 function badgeGlyph(
   node: DiagramNode,
@@ -343,6 +411,8 @@ function badgeGlyph(
   if (decision)
     return `<path d="M${n(cx)} ${n(cy - 8)}L${n(cx + 8)} ${n(cy)}L${n(cx)} ${n(cy + 8)}L${n(cx - 8)} ${n(cy)}z" fill="${color}"/>`;
   if (node.type === 'start') return `<circle cx="${n(cx)}" cy="${n(cy)}" r="7" fill="${color}"/>`;
+  if (node.type === 'any')
+    return `<circle cx="${n(cx)}" cy="${n(cy)}" r="7" fill="none" stroke="${color}" stroke-width="2" stroke-dasharray="3 2"/>`;
   if (node.type === 'end') {
     return `<circle cx="${n(cx)}" cy="${n(cy)}" r="7" fill="none" stroke="${color}" stroke-width="2"/><circle cx="${n(cx)}" cy="${n(cy)}" r="3.5" fill="${color}"/>`;
   }
@@ -354,7 +424,13 @@ function accent(node: DiagramNode, decision: boolean): string {
   if (custom)
     return custom.startsWith('#') ? custom : COLORS.palette[custom as keyof typeof COLORS.palette];
   if (decision) return COLORS.decision;
-  return { start: COLORS.start, end: COLORS.end, state: COLORS.step }[node.type];
+  return {
+    start: COLORS.start,
+    end: COLORS.end,
+    state: COLORS.step,
+    any: COLORS.any,
+    join: COLORS.join,
+  }[node.type];
 }
 
 interface TextStyle {
@@ -362,12 +438,13 @@ interface TextStyle {
   fill: string;
   weight?: number;
   spacing?: number;
+  anchor?: 'middle';
 }
 
 const text = (body: string, x: number, y: number, s: TextStyle): string =>
   `<text x="${n(x)}" y="${n(y)}" font-size="${s.size}"${s.weight ? ` font-weight="${s.weight}"` : ''}${
     s.spacing ? ` letter-spacing="${s.spacing}"` : ''
-  } dominant-baseline="central" fill="${s.fill}">${esc(body)}</text>`;
+  }${s.anchor ? ` text-anchor="${s.anchor}"` : ''} dominant-baseline="central" fill="${s.fill}">${esc(body)}</text>`;
 
 /** Truncates with an ellipsis so the text fits `width` px, like `text-overflow: ellipsis`. */
 export function fit(value: string, width: number, size: number, bold = false): string {

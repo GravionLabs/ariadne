@@ -135,15 +135,13 @@ describe('Editor', () => {
   });
 
   it('inserts a state into a transition with its "+"', async () => {
-    const { el, store, settle } = await setup();
+    const { el, store, settle, pick } = await setup();
     store.appendNode('start-1', 'end');
     await settle();
     expect(el.querySelector('.slot')).toBeNull();
     const inserts = el.querySelectorAll<HTMLButtonElement>('[aria-label="Insert a state here"]');
     expect(inserts).toHaveLength(1);
-    // Only states can be inserted, so there is no picker.
-    inserts[0].click();
-    await settle();
+    await pick(inserts[0], 'state');
     expect(store.edges().map((e) => [e.source, e.target])).toEqual([
       ['start-1', 'state-1'],
       ['state-1', 'end-1'],
@@ -289,6 +287,178 @@ describe('Editor', () => {
     expect(final.classList).toContain('compact');
     expect(final.querySelector('.chip')).toBeNull();
     expect(final.textContent).toContain('Final');
+  });
+
+  it('lets a transition on an event have a guard, shown after the event', async () => {
+    const { el, store, select, fill } = await setup();
+    store.appendNode('start-1', 'state');
+    await select([], ['edge-1']);
+    // No event, no guard.
+    expect(el.querySelector('app-inspector input[placeholder="e.g. amount > 100"]')).toBeNull();
+
+    await fill('input[placeholder="e.g. PaymentCharged"]', 'OrderSubmitted');
+    await fill('input[placeholder="e.g. amount > 100"]', 'amount > 100');
+    expect(store.edges()[0].guard).toBe('amount > 100');
+    expect(el.querySelector('app-transition-label .event .text')?.textContent?.trim()).toBe(
+      'OrderSubmitted [amount > 100]',
+    );
+
+    await fill('input[placeholder="e.g. amount > 100"]', '');
+    expect(store.edges()[0].guard).toBeUndefined();
+  });
+
+  it('lists ignored events of a state as struck-through chips and edits them in the inspector', async () => {
+    const { el, store, select, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    await select(['state-1']);
+    const ignoreInputs = () => el.querySelectorAll<HTMLInputElement>('app-inspector .ignore input');
+    inspectorButton(el, 'Ignore an event').click();
+    await settle();
+    expect(store.nodes()[1].ignores).toEqual(['SomethingHappened']);
+
+    const field = ignoreInputs()[0];
+    field.value = 'OrderCancelled';
+    field.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[1].ignores).toEqual(['OrderCancelled']);
+    expect(el.querySelector('app-node-card .chip-ignore')?.textContent?.trim()).toBe(
+      'OrderCancelled',
+    );
+
+    // An empty name removes it again.
+    field.value = '';
+    field.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[1].ignores).toBeUndefined();
+    expect(el.querySelector('.chip-ignore')).toBeNull();
+  });
+
+  it('schedules a timeout on a state; the event of that name is a timeout transition', async () => {
+    const { el, store, select, settle, fill } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    await select(['state-1']);
+    inspectorButton(el, 'Schedule a timeout').click();
+    await settle();
+    expect(store.nodes()[1].timers).toEqual([
+      { action: 'schedule', name: 'SomethingTimedOut', delay: '30s' },
+    ]);
+    expect(el.querySelector('app-node-card .chip-timeout')?.textContent).toContain(
+      'Schedule SomethingTimedOut in 30s',
+    );
+
+    const name = el.querySelector<HTMLInputElement>('app-inspector .timer .name')!;
+    name.value = 'PaymentTimeout';
+    name.dispatchEvent(new Event('change'));
+    const delay = el.querySelector<HTMLInputElement>('app-inspector .timer .delay')!;
+    delay.value = '';
+    delay.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[1].timers).toEqual([{ action: 'schedule', name: 'PaymentTimeout' }]);
+
+    // The transition on that event is a timeout.
+    await select([], ['edge-2']);
+    await fill('input[placeholder="e.g. PaymentCharged"]', 'PaymentTimeout');
+    expect(el.querySelector('app-inspector .origin.timeout')?.textContent).toContain('State');
+    const label = el.querySelectorAll('app-transition-label')[1];
+    expect(label.querySelector('.event')?.classList).toContain('timeout');
+
+    // An empty name removes the timer again.
+    await select(['state-1']);
+    const again = el.querySelector<HTMLInputElement>('app-inspector .timer .name')!;
+    again.value = '';
+    again.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[1].timers).toBeUndefined();
+  });
+
+  it('makes a request on a state; its three answers are recognised as transitions', async () => {
+    const { el, store, select, settle, fill } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    await select(['state-1']);
+    inspectorButton(el, 'Make a request').click();
+    await settle();
+    expect(store.nodes()[1].requests).toEqual([{ name: 'DoSomething', timeout: '30s' }]);
+
+    const name = el.querySelector<HTMLInputElement>('app-inspector .request .name')!;
+    name.value = 'CheckStock';
+    name.dispatchEvent(new Event('change'));
+    const timeout = el.querySelector<HTMLInputElement>('app-inspector .request .timeout')!;
+    timeout.value = '';
+    timeout.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[1].requests).toEqual([{ name: 'CheckStock' }]);
+    expect(el.querySelector('app-node-card .chip-request')?.textContent).toContain(
+      'Request CheckStock',
+    );
+
+    // The event field offers the three answers.
+    await select([], ['edge-2']);
+    const options = [...el.querySelectorAll<HTMLOptionElement>('#event-suggestions option')];
+    expect(options.map((o) => o.value)).toEqual([
+      'CheckStock.Completed',
+      'CheckStock.Faulted',
+      'CheckStock.TimeoutExpired',
+    ]);
+    await fill('input[placeholder="e.g. PaymentCharged"]', 'CheckStock.Faulted');
+    const label = el.querySelectorAll('app-transition-label')[1];
+    expect(label.querySelector('.event')?.classList).toContain('fault');
+    expect(el.querySelector('app-inspector .origin')?.textContent).toContain('State');
+  });
+
+  it('adds a join from the "+", lists what it waits for, and recognises its event', async () => {
+    const { el, store, select, settle, fill, pick } = await setup();
+    store.appendNode('start-1', 'state');
+    await settle();
+    await pick(slotButton(el), 'join');
+    expect(store.nodes().map((n) => n.type)).toEqual(['start', 'state', 'join']);
+    expect(el.querySelector('app-node-card[data-type="join"] .bar')).toBeTruthy();
+    expect(el.querySelector('app-inspector')?.getAttribute('aria-label')).toBe('Join settings');
+
+    inspectorButton(el, 'Add an event').click();
+    await settle();
+    const field = el.querySelector<HTMLInputElement>('app-inspector .combine input')!;
+    field.value = 'PaymentCharged';
+    field.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[2].combines).toEqual(['PaymentCharged']);
+    expect(el.querySelector('app-node-card[data-type="join"] .combines')?.textContent).toContain(
+      'PaymentCharged',
+    );
+
+    // A transition leaving the join on its name is the composite event.
+    store.appendNode('join-1', 'end');
+    await settle();
+    await select([], ['edge-3']);
+    await fill('input[placeholder="e.g. PaymentCharged"]', 'Join');
+    const label = el.querySelectorAll('app-transition-label')[2];
+    expect(label.querySelector('.event')?.classList).toContain('composite');
+    expect(el.querySelector('app-inspector .origin.join')?.textContent).toContain('PaymentCharged');
+
+    // An empty name removes the event again.
+    await select(['join-1']);
+    const again = el.querySelector<HTMLInputElement>('app-inspector .combine input')!;
+    again.value = '';
+    again.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[2].combines).toBeUndefined();
+  });
+
+  it('adds the one Any state from the toolbox and opens it', async () => {
+    const { el, store, settle } = await setup();
+    const add = () => el.querySelector<HTMLButtonElement>('[aria-label="Add the Any state"]')!;
+    add().click();
+    await settle();
+    expect(store.nodes().map((n) => n.type)).toEqual(['start', 'any']);
+    expect(el.querySelector('app-inspector')?.getAttribute('aria-label')).toBe(
+      'Any state settings',
+    );
+    expect(el.querySelector('app-node-card[data-type="any"]')).toBeTruthy();
+
+    add().click();
+    await settle();
+    expect(store.nodes()).toHaveLength(2);
   });
 
   it('marks events nobody in the saga publishes as external, with their source', async () => {

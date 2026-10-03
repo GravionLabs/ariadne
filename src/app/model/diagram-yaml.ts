@@ -13,6 +13,12 @@ import {
   isNodeColor,
   NodeType,
   hasActivities,
+  hasCombines,
+  hasIgnores,
+  hasRequests,
+  hasTimers,
+  Request,
+  Timer,
 } from './diagram';
 
 /** Current version of the file format; see docs/specs/diagram-format.md. */
@@ -25,7 +31,7 @@ export const FORMAT_VERSION = 3;
  */
 const READABLE_VERSIONS: readonly number[] = [1, 2, 3];
 
-const NODE_TYPES: readonly NodeType[] = ['start', 'end', 'state'];
+const NODE_TYPES: readonly NodeType[] = ['start', 'end', 'state', 'any', 'join'];
 /** Version 1 node types; both are plain states now (a decision is a state with branches). */
 const V1_STATE_TYPES = ['step', 'decision'];
 const EDGE_KINDS: readonly EdgeKind[] = ['forward', 'compensation'];
@@ -47,8 +53,8 @@ export function serializeDiagram(diagram: Diagram): string {
     description: diagram.description,
     direction: diagram.direction,
     nodes: diagram.nodes.map(serializeNode),
-    edges: diagram.edges.map(({ id, source, target, kind, event, eventSource }) =>
-      withoutUndefined({ id, source, target, kind, event, eventSource }),
+    edges: diagram.edges.map(({ id, source, target, kind, event, eventSource, guard }) =>
+      withoutUndefined({ id, source, target, kind, event, eventSource, guard }),
     ),
   };
   return stringify(withoutUndefined(file), { lineWidth: 0 });
@@ -64,6 +70,14 @@ function serializeNode(node: DiagramNode): Record<string, unknown> {
     // Compact one-key form: `- command: ChargePayment` / `- event: OrderShipped`.
     activities: node.activities?.length
       ? node.activities.map(({ kind, name }) => ({ [kind]: name }))
+      : undefined,
+    combines: node.combines?.length ? node.combines : undefined,
+    ignores: node.ignores?.length ? node.ignores : undefined,
+    requests: node.requests?.length
+      ? node.requests.map(({ name, timeout }) => withoutUndefined({ request: name, timeout }))
+      : undefined,
+    timers: node.timers?.length
+      ? node.timers.map(({ action, name, delay }) => withoutUndefined({ [action]: name, delay }))
       : undefined,
     retry: node.retry,
     timeout: node.timeout,
@@ -103,6 +117,9 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
   }
   const version = root['version'] as number;
   const nodes = asArray(root['nodes'] ?? [], 'nodes').map((n, i) => parseNode(n, i, version));
+  if (nodes.filter((n) => n.type === 'any').length > 1) {
+    throw new DiagramFormatError('There can be only one node of type "any"');
+  }
   const ids = new Set<string>();
   for (const { id } of nodes) {
     if (ids.has(id)) throw new DiagramFormatError(`Duplicate node id "${id}"`);
@@ -189,9 +206,41 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
       : asRecord(node['compensation'], `${at}.compensation`);
   if (node['activities'] !== undefined && !hasActivities(type as NodeType)) {
     throw new DiagramFormatError(
-      `${at}.activities is only allowed on states, not on the ${type === 'end' ? 'final' : 'initial'} state`,
+      `${at}.activities is only allowed on states, not on the ${{ end: 'final state', start: 'initial state', any: '"any" node', join: 'join' }[type as string]}`,
     );
   }
+  if (node['combines'] !== undefined && !hasCombines(type as NodeType)) {
+    throw new DiagramFormatError(`${at}.combines is only allowed on joins`);
+  }
+  const combines =
+    node['combines'] === undefined
+      ? undefined
+      : asArray(node['combines'], `${at}.combines`).map((e, i) =>
+          asString(e, `${at}.combines[${i}]`),
+        );
+  if (node['ignores'] !== undefined && !hasIgnores(type as NodeType)) {
+    throw new DiagramFormatError(`${at}.ignores is only allowed on states`);
+  }
+  const ignores =
+    node['ignores'] === undefined
+      ? undefined
+      : asArray(node['ignores'], `${at}.ignores`).map((e, i) => asString(e, `${at}.ignores[${i}]`));
+  if (node['requests'] !== undefined && !hasRequests(type as NodeType)) {
+    throw new DiagramFormatError(`${at}.requests is only allowed on states`);
+  }
+  const requests =
+    node['requests'] === undefined
+      ? undefined
+      : asArray(node['requests'], `${at}.requests`).map((r, i) =>
+          parseRequest(r, `${at}.requests[${i}]`),
+        );
+  if (node['timers'] !== undefined && !hasTimers(type as NodeType)) {
+    throw new DiagramFormatError(`${at}.timers is only allowed on states`);
+  }
+  const timers =
+    node['timers'] === undefined
+      ? undefined
+      : asArray(node['timers'], `${at}.timers`).map((t, i) => parseTimer(t, `${at}.timers[${i}]`));
   const activities =
     node['activities'] === undefined
       ? undefined
@@ -205,6 +254,10 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     description: optionalString(node['description'], `${at}.description`),
     color: color as NodeColor | undefined,
     activities: activities?.length ? activities : undefined,
+    combines: combines?.length ? combines : undefined,
+    ignores: ignores?.length ? ignores : undefined,
+    requests: requests?.length ? requests : undefined,
+    timers: timers?.length ? timers : undefined,
     retry: optionalString(node['retry'], `${at}.retry`),
     timeout: optionalString(node['timeout'], `${at}.timeout`),
     compensation:
@@ -214,6 +267,37 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
         description: optionalString(compensation['description'], `${at}.compensation.description`),
       }),
   }) as DiagramNode;
+}
+
+function parseRequest(value: unknown, at: string): Request {
+  const entry = asRecord(value, at);
+  if (entry['request'] === undefined)
+    throw new DiagramFormatError(`${at} must be "request: <Name>"`);
+  const timeout = optionalString(entry['timeout'], `${at}.timeout`)?.trim();
+  return withoutUndefined({
+    name: asString(entry['request'], `${at}.request`),
+    timeout: timeout || undefined,
+  });
+}
+
+const TIMER_ACTIONS = ['schedule', 'unschedule'] as const;
+
+function parseTimer(value: unknown, at: string): Timer {
+  const entry = asRecord(value, at);
+  const actions = TIMER_ACTIONS.filter((a) => entry[a] !== undefined);
+  if (actions.length !== 1) {
+    throw new DiagramFormatError(`${at} must be "schedule: <Name>" or "unschedule: <Name>"`);
+  }
+  const [action] = actions;
+  const delay = optionalString(entry['delay'], `${at}.delay`)?.trim();
+  if (delay && action === 'unschedule') {
+    throw new DiagramFormatError(`${at}.delay is only allowed with schedule`);
+  }
+  return withoutUndefined({
+    action,
+    name: asString(entry[action], `${at}.${action}`),
+    delay: delay || undefined,
+  });
 }
 
 function parseActivity(value: unknown, at: string): Activity {
@@ -254,6 +338,10 @@ function parseEdge(
           parseActivity(a, `${at}.activities[${i}]`),
         )
       : [];
+  const guard = optionalString(edge['guard'], `${at}.guard`)?.trim();
+  if (guard && !edge['event']) {
+    throw new DiagramFormatError(`${at}.guard needs an event: a guard is a condition on an event`);
+  }
   const source = asString(edge['source'], `${at}.source`);
   const target = asString(edge['target'], `${at}.target`);
   for (const [field, id] of [
@@ -270,6 +358,7 @@ function parseEdge(
       kind: kind as EdgeKind,
       event: optionalString(edge['event'], `${at}.event`) || undefined,
       eventSource: optionalString(edge['eventSource'], `${at}.eventSource`) || undefined,
+      guard: guard || undefined,
     }),
     activities: legacy,
   };

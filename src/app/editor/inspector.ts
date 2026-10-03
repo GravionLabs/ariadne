@@ -16,6 +16,14 @@ import {
   NodeColor,
   NodeType,
   hasActivities,
+  REQUEST_OUTCOMES,
+  Request,
+  Timer,
+  hasCombines,
+  hasIgnores,
+  hasRequests,
+  hasTimers,
+  requestEvent,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { namingHint } from '../model/messages';
@@ -63,6 +71,10 @@ export class Inspector {
 
   protected readonly namingHint = namingHint;
   protected readonly hasActivities = hasActivities;
+  protected readonly hasIgnores = hasIgnores;
+  protected readonly hasTimers = hasTimers;
+  protected readonly hasRequests = hasRequests;
+  protected readonly hasCombines = hasCombines;
   protected readonly colors = NODE_COLORS;
 
   protected readonly customColor = computed(() => {
@@ -166,6 +178,238 @@ export class Inspector {
       );
   }
 
+  protected addRequest(): void {
+    const node = this.node();
+    if (!node) return;
+    this.setRequests(node, [...(node.requests ?? []), { name: 'DoSomething', timeout: '30s' }]);
+    afterNextRender(
+      () => {
+        const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>('.request .name');
+        const last = inputs[inputs.length - 1];
+        last?.focus();
+        last?.select();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** An empty name removes the request. */
+  protected setRequestName(index: number, event: Event): void {
+    const node = this.node();
+    const name = optional(event);
+    const requests = node?.requests ?? [];
+    if (!node || name === requests[index]?.name) return;
+    this.setRequests(
+      node,
+      name
+        ? requests.map((r, i) => (i === index ? { ...r, name } : r))
+        : requests.filter((_, i) => i !== index),
+    );
+  }
+
+  protected setRequestTimeout(index: number, event: Event): void {
+    const node = this.node();
+    const timeout = optional(event);
+    const requests = node?.requests ?? [];
+    if (!node || timeout === requests[index]?.timeout) return;
+    this.setRequests(
+      node,
+      requests.map((r, i): Request => {
+        if (i !== index) return r;
+        return timeout === undefined ? { name: r.name } : { ...r, timeout };
+      }),
+    );
+  }
+
+  protected removeRequest(index: number): void {
+    const node = this.node();
+    if (node)
+      this.setRequests(
+        node,
+        (node.requests ?? []).filter((_, i) => i !== index),
+      );
+  }
+
+  private setRequests(node: DiagramNode, requests: Request[]): void {
+    this.store.updateNode(node.id, { requests: requests.length ? requests : undefined });
+  }
+
+  /** Events worth offering for a transition: the outcomes of requests, and scheduled timeouts. */
+  protected readonly eventSuggestions = computed(() =>
+    this.store
+      .nodes()
+      .flatMap((n) => [
+        ...(n.requests ?? []).flatMap((r) => REQUEST_OUTCOMES.map((o) => requestEvent(r.name, o))),
+        ...(n.timers ?? []).filter((t) => t.action === 'schedule').map((t) => t.name),
+        ...(n.type === 'join' ? [n.name] : []),
+      ]),
+  );
+
+  protected eventEnds(outcome: string): boolean {
+    return !!this.edge()?.event?.endsWith(`.${outcome}`);
+  }
+
+  /** Names of the states whose request the selected transition's event answers. */
+  protected readonly requesters = computed(() => {
+    const event = this.edge()?.event;
+    if (!event) return [];
+    return this.store
+      .nodes()
+      .filter((n) =>
+        n.requests?.some((r) => REQUEST_OUTCOMES.some((o) => requestEvent(r.name, o) === event)),
+      )
+      .map((n) => n.name);
+  });
+
+  protected addTimer(action: Timer['action']): void {
+    const node = this.node();
+    if (!node) return;
+    const timer: Timer =
+      action === 'schedule'
+        ? { action, name: 'SomethingTimedOut', delay: '30s' }
+        : { action, name: 'SomethingTimedOut' };
+    this.setTimers(node, [...(node.timers ?? []), timer]);
+    afterNextRender(
+      () => {
+        const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>('.timer .name');
+        const last = inputs[inputs.length - 1];
+        last?.focus();
+        last?.select();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** An empty name removes the timer. */
+  protected setTimerName(index: number, event: Event): void {
+    const node = this.node();
+    const name = optional(event);
+    const timers = node?.timers ?? [];
+    if (!node || name === timers[index]?.name) return;
+    this.setTimers(
+      node,
+      name
+        ? timers.map((t, i) => (i === index ? { ...t, name } : t))
+        : timers.filter((_, i) => i !== index),
+    );
+  }
+
+  protected setTimerDelay(index: number, event: Event): void {
+    const node = this.node();
+    const delay = optional(event);
+    const timers = node?.timers ?? [];
+    if (!node || delay === timers[index]?.delay) return;
+    this.setTimers(
+      node,
+      timers.map((t, i) => (i === index ? withoutUndefinedDelay({ ...t, delay }) : t)),
+    );
+  }
+
+  protected removeTimer(index: number): void {
+    const node = this.node();
+    if (node)
+      this.setTimers(
+        node,
+        (node.timers ?? []).filter((_, i) => i !== index),
+      );
+  }
+
+  private setTimers(node: DiagramNode, timers: Timer[]): void {
+    this.store.updateNode(node.id, { timers: timers.length ? timers : undefined });
+  }
+
+  protected addCombine(): void {
+    const node = this.node();
+    if (!node) return;
+    this.setCombines(node, [...(node.combines ?? []), 'SomethingHappened']);
+    afterNextRender(
+      () => {
+        const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>('.combine input');
+        const last = inputs[inputs.length - 1];
+        last?.focus();
+        last?.select();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** An empty name removes the event. */
+  protected setCombine(index: number, event: Event): void {
+    const node = this.node();
+    const name = optional(event);
+    const combines = node?.combines ?? [];
+    if (!node || name === combines[index]) return;
+    this.setCombines(
+      node,
+      name
+        ? combines.map((e, i) => (i === index ? name : e))
+        : combines.filter((_, i) => i !== index),
+    );
+  }
+
+  protected removeCombine(index: number): void {
+    const node = this.node();
+    if (node)
+      this.setCombines(
+        node,
+        (node.combines ?? []).filter((_, i) => i !== index),
+      );
+  }
+
+  private setCombines(node: DiagramNode, combines: string[]): void {
+    this.store.updateNode(node.id, { combines: combines.length ? combines : undefined });
+  }
+
+  /** The join whose composite event the selected transition reacts to. */
+  protected readonly joinOfEvent = computed(() => {
+    const event = this.edge()?.event;
+    return event
+      ? this.store.nodes().find((n) => n.type === 'join' && n.name === event)
+      : undefined;
+  });
+
+  protected addIgnore(): void {
+    const node = this.node();
+    if (!node) return;
+    this.setIgnores(node, [...(node.ignores ?? []), 'SomethingHappened']);
+    afterNextRender(
+      () => {
+        const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>('.ignore input');
+        const last = inputs[inputs.length - 1];
+        last?.focus();
+        last?.select();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** An empty name removes the ignored event. */
+  protected setIgnore(index: number, event: Event): void {
+    const node = this.node();
+    const name = optional(event);
+    const ignores = node?.ignores ?? [];
+    if (!node || name === ignores[index]) return;
+    this.setIgnores(
+      node,
+      name
+        ? ignores.map((e, i) => (i === index ? name : e))
+        : ignores.filter((_, i) => i !== index),
+    );
+  }
+
+  protected removeIgnore(index: number): void {
+    const node = this.node();
+    if (node)
+      this.setIgnores(
+        node,
+        (node.ignores ?? []).filter((_, i) => i !== index),
+      );
+  }
+
+  private setIgnores(node: DiagramNode, ignores: string[]): void {
+    this.store.updateNode(node.id, { ignores: ignores.length ? ignores : undefined });
+  }
+
   private setActivities(node: DiagramNode, activities: Activity[]): void {
     this.store.updateNode(node.id, { activities: activities.length ? activities : undefined });
   }
@@ -189,10 +433,26 @@ export class Inspector {
       .map((n) => n.name);
   });
 
+  /** Names of the states that schedule the selected transition's event as a timeout. */
+  protected readonly timeoutSchedulers = computed(() => {
+    const event = this.edge()?.event;
+    if (!event) return [];
+    return this.store
+      .nodes()
+      .filter((n) => n.timers?.some((t) => t.action === 'schedule' && t.name === event))
+      .map((n) => n.name);
+  });
+
   protected setEventSource(event: Event): void {
     const edge = this.edge();
     const value = optional(event);
     if (edge && value !== edge.eventSource) this.store.updateEdge(edge.id, { eventSource: value });
+  }
+
+  protected setGuard(event: Event): void {
+    const edge = this.edge();
+    const value = optional(event);
+    if (edge && value !== edge.guard) this.store.updateEdge(edge.id, { guard: value });
   }
 
   protected setEvent(event: Event): void {
@@ -212,4 +472,13 @@ export class Inspector {
 function optional(event: Event): string | undefined {
   const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value.trim();
   return value === '' ? undefined : value;
+}
+
+function withoutUndefinedDelay(timer: Timer): Timer {
+  if (timer.delay === undefined) {
+    const { delay, ...rest } = timer;
+    void delay;
+    return rest;
+  }
+  return timer;
 }

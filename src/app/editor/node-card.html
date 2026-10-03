@@ -8,53 +8,98 @@
   ></span>
 }
 
-<div class="heading">
-  <span class="badge"><app-icon [name]="info().icon" /></span>
-  <div class="title">
-    @if (!compact()) {
-      <span class="type">{{ info().label }}</span>
-    }
+@if (bar()) {
+  <div class="bar"></div>
+  <div class="bar-text">
     <strong class="name">{{ node().name }}</strong>
+    <span class="combines">{{ (node().combines ?? []).join(' + ') || 'no events yet' }}</span>
   </div>
-  @if (canExpand()) {
-    <button
-      type="button"
-      class="toggle"
-      [attr.aria-expanded]="open()"
-      [attr.aria-label]="open() ? 'Hide description' : 'Show description'"
-      (click)="expandToggled.emit(); $event.stopPropagation()"
-      (pointerdown)="$event.stopPropagation()"
-    >
-      <app-icon [name]="open() ? 'expandLess' : 'expandMore'" />
-    </button>
-  }
-</div>
-
-@if (node().activities?.length || node().compensation) {
-  <ul class="chips">
-    @for (activity of node().activities ?? []; track $index) {
-      <li
-        class="chip"
-        [class]="'chip-' + activity.kind"
-        [title]="verbs[activity.kind] + ' ' + activity.kind + ' on entering this state'"
+} @else {
+  <div class="heading">
+    <span class="badge"><app-icon [name]="info().icon" /></span>
+    <div class="title">
+      @if (!compact()) {
+        <span class="type">{{ info().label }}</span>
+      }
+      <strong class="name">{{ node().name }}</strong>
+    </div>
+    @if (canExpand()) {
+      <button
+        type="button"
+        class="toggle"
+        [attr.aria-expanded]="open()"
+        [attr.aria-label]="open() ? 'Hide description' : 'Show description'"
+        (click)="expandToggled.emit(); $event.stopPropagation()"
+        (pointerdown)="$event.stopPropagation()"
       >
-        <app-icon [name]="activity.kind" />
-        <span
-          ><span class="verb">{{ verbs[activity.kind] }}</span> {{ activity.name }}</span
-        >
-      </li>
+        <app-icon [name]="open() ? 'expandLess' : 'expandMore'" />
+      </button>
     }
-    @if (node().compensation; as compensation) {
-      <li class="chip chip-compensation" title="Compensation">
-        <app-icon name="compensation" />
-        <span>{{ compensation.name }}</span>
-      </li>
-    }
-  </ul>
-}
+  </div>
 
-@if (open()) {
-  <p class="description">{{ node().description }}</p>
+  @if (
+    node().activities?.length ||
+    node().requests?.length ||
+    node().timers?.length ||
+    node().ignores?.length ||
+    node().compensation
+  ) {
+    <ul class="chips">
+      @for (activity of node().activities ?? []; track $index) {
+        <li
+          class="chip"
+          [class]="'chip-' + activity.kind"
+          [title]="verbs[activity.kind] + ' ' + activity.kind + ' on entering this state'"
+        >
+          <app-icon [name]="activity.kind" />
+          <span
+            ><span class="verb">{{ verbs[activity.kind] }}</span> {{ activity.name }}</span
+          >
+        </li>
+      }
+      @for (request of node().requests ?? []; track $index) {
+        <li class="chip chip-request" title="Makes a request on entering this state">
+          <app-icon name="command" />
+          <span
+            ><span class="verb">Request</span> {{ request.name
+            }}{{ request.timeout ? ' · ' + request.timeout : '' }}</span
+          >
+        </li>
+      }
+      @for (timer of node().timers ?? []; track $index) {
+        <li
+          class="chip chip-timeout"
+          [title]="
+            timer.action === 'schedule'
+              ? 'Schedules a timeout on entering this state'
+              : 'Cancels a scheduled timeout on entering this state'
+          "
+        >
+          <app-icon name="clock" />
+          <span
+            ><span class="verb">{{ timer.action === 'schedule' ? 'Schedule' : 'Unschedule' }}</span>
+            {{ timer.name }}{{ timer.delay ? ' in ' + timer.delay : '' }}</span
+          >
+        </li>
+      }
+      @for (event of node().ignores ?? []; track $index) {
+        <li class="chip chip-ignore" title="Ignored while in this state">
+          <app-icon name="ignore" />
+          <span>{{ event }}</span>
+        </li>
+      }
+      @if (node().compensation; as compensation) {
+        <li class="chip chip-compensation" title="Compensation">
+          <app-icon name="compensation" />
+          <span>{{ compensation.name }}</span>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (open()) {
+    <p class="description">{{ node().description }}</p>
+  }
 }
 
 @if (hasOutput()) {

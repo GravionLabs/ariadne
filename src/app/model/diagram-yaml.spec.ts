@@ -330,3 +330,260 @@ describe('name and description', () => {
     expect(() => parseDiagram(`version: 3\n${line}\nnodes: []`)).toThrow(message);
   });
 });
+
+describe('guard', () => {
+  const guarded: Diagram = {
+    ...sample,
+    edges: [
+      {
+        id: 'e1',
+        source: 'start-1',
+        target: 'state-1',
+        kind: 'forward',
+        event: 'Go',
+        guard: 'amount > 100',
+      },
+      { id: 'e2', source: 'start-1', target: 'end-1', kind: 'forward', event: 'Go' },
+    ],
+  };
+
+  it('is written after the event source and round-trips', () => {
+    const text = serializeDiagram(guarded);
+    expect(text).toContain('    event: Go\n    guard: amount > 100\n');
+    expect(parseDiagram(text)).toEqual(guarded);
+  });
+
+  it('is omitted when empty', () => {
+    const parsed = parseDiagram(
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A }\nedges:\n  - { id: e, source: a, target: a, event: Go, guard: "  " }',
+    );
+    expect('guard' in parsed.edges[0]).toBe(false);
+  });
+
+  it('needs an event', () => {
+    expect(() =>
+      parseDiagram(
+        'version: 3\nnodes:\n  - { id: a, type: state, name: A }\nedges:\n  - { id: e, source: a, target: a, guard: x }',
+      ),
+    ).toThrow(/edges\[0\]\.guard needs an event/);
+  });
+});
+
+describe('ignored events and the any node', () => {
+  const withBoth: Diagram = {
+    ...sample,
+    nodes: [
+      ...sample.nodes.map((n) =>
+        n.id === 'state-1' ? { ...n, ignores: ['OrderCancelled', 'Ping'] } : n,
+      ),
+      { id: 'any-1', type: 'any', name: 'Any state' },
+    ],
+    edges: [{ id: 'e1', source: 'any-1', target: 'end-1', kind: 'forward', event: 'Abort' }],
+  };
+
+  it('round-trips, writing ignores after the activities', () => {
+    const text = serializeDiagram(withBoth);
+    expect(text).toMatch(/ {4}ignores:\n {6}- OrderCancelled\n {6}- Ping\n {4}retry: 3 attempts/);
+    expect(parseDiagram(text)).toEqual(withBoth);
+  });
+
+  it('omits an empty ignores list', () => {
+    const parsed = parseDiagram(
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A, ignores: [] }',
+    );
+    expect('ignores' in parsed.nodes[0]).toBe(false);
+  });
+
+  it.each([
+    [
+      '{ id: a, type: end, name: A, ignores: [X] }',
+      /nodes\[0\]\.ignores is only allowed on states/,
+    ],
+    [
+      '{ id: a, type: any, name: A, ignores: [X] }',
+      /nodes\[0\]\.ignores is only allowed on states/,
+    ],
+    [
+      '{ id: a, type: state, name: A, ignores: [""] }',
+      /nodes\[0\]\.ignores\[0\] must be a non-empty string/,
+    ],
+    ['{ id: a, type: state, name: A, ignores: X }', /nodes\[0\]\.ignores must be a list/],
+    [
+      '{ id: a, type: any, name: A, activities: [{ command: X }] }',
+      /activities is only allowed on states, not on the "any" node/,
+    ],
+  ])('rejects %s', (node, message) => {
+    expect(() => parseDiagram(`version: 3\nnodes:\n  - ${node}`)).toThrow(message);
+  });
+
+  it('allows only one any node', () => {
+    expect(() =>
+      parseDiagram(
+        'version: 3\nnodes:\n  - { id: a, type: any, name: A }\n  - { id: b, type: any, name: B }',
+      ),
+    ).toThrow(/only one node of type "any"/);
+  });
+});
+
+describe('timers', () => {
+  const timed: Diagram = {
+    ...sample,
+    nodes: sample.nodes.map((n) =>
+      n.id === 'state-1'
+        ? {
+            ...n,
+            timers: [
+              { action: 'schedule' as const, name: 'PaymentTimeout', delay: '30s' },
+              { action: 'unschedule' as const, name: 'OldTimeout' },
+            ],
+          }
+        : n,
+    ),
+  };
+
+  it('round-trips, writing the action as the key and timers after ignores', () => {
+    const text = serializeDiagram(timed);
+    expect(text).toContain(
+      '    timers:\n      - schedule: PaymentTimeout\n        delay: 30s\n      - unschedule: OldTimeout\n',
+    );
+    expect(parseDiagram(text)).toEqual(timed);
+  });
+
+  it('omits an empty list and an empty delay', () => {
+    const parsed = parseDiagram(
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A, timers: [{ schedule: T, delay: " " }] }\n  - { id: b, type: state, name: B, timers: [] }',
+    );
+    expect(parsed.nodes[0].timers).toEqual([{ action: 'schedule', name: 'T' }]);
+    expect('timers' in parsed.nodes[1]).toBe(false);
+  });
+
+  it.each([
+    [
+      '{ id: a, type: end, name: A, timers: [{ schedule: T }] }',
+      /nodes\[0\]\.timers is only allowed on states/,
+    ],
+    [
+      '{ id: a, type: state, name: A, timers: [{ delay: 30s }] }',
+      /nodes\[0\]\.timers\[0\] must be "schedule: <Name>" or "unschedule: <Name>"/,
+    ],
+    [
+      '{ id: a, type: state, name: A, timers: [{ schedule: T, unschedule: T }] }',
+      /must be "schedule: <Name>" or "unschedule: <Name>"/,
+    ],
+    [
+      '{ id: a, type: state, name: A, timers: [{ unschedule: T, delay: 30s }] }',
+      /nodes\[0\]\.timers\[0\]\.delay is only allowed with schedule/,
+    ],
+    [
+      '{ id: a, type: state, name: A, timers: [{ schedule: "" }] }',
+      /nodes\[0\]\.timers\[0\]\.schedule must be a non-empty string/,
+    ],
+    ['{ id: a, type: state, name: A, timers: T }', /nodes\[0\]\.timers must be a list/],
+  ])('rejects %s', (node, message) => {
+    expect(() => parseDiagram(`version: 3\nnodes:\n  - ${node}`)).toThrow(message);
+  });
+});
+
+describe('requests', () => {
+  const requesting: Diagram = {
+    ...sample,
+    nodes: sample.nodes.map((n) =>
+      n.id === 'state-1'
+        ? {
+            ...n,
+            requests: [{ name: 'ValidateAddress', timeout: '30s' }, { name: 'CheckFraud' }],
+          }
+        : n,
+    ),
+  };
+
+  it('round-trips, writing "request:" as the key and requests before timers', () => {
+    const text = serializeDiagram(requesting);
+    expect(text).toContain(
+      '    requests:\n      - request: ValidateAddress\n        timeout: 30s\n      - request: CheckFraud\n',
+    );
+    expect(parseDiagram(text)).toEqual(requesting);
+  });
+
+  it('omits an empty list and an empty timeout', () => {
+    const parsed = parseDiagram(
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A, requests: [{ request: R, timeout: " " }] }\n  - { id: b, type: state, name: B, requests: [] }',
+    );
+    expect(parsed.nodes[0].requests).toEqual([{ name: 'R' }]);
+    expect('requests' in parsed.nodes[1]).toBe(false);
+  });
+
+  it.each([
+    [
+      '{ id: a, type: start, name: A, requests: [{ request: R }] }',
+      /nodes\[0\]\.requests is only allowed on states/,
+    ],
+    [
+      '{ id: a, type: state, name: A, requests: [{ timeout: 30s }] }',
+      /nodes\[0\]\.requests\[0\] must be "request: <Name>"/,
+    ],
+    [
+      '{ id: a, type: state, name: A, requests: [{ request: "" }] }',
+      /nodes\[0\]\.requests\[0\]\.request must be a non-empty string/,
+    ],
+    ['{ id: a, type: state, name: A, requests: R }', /nodes\[0\]\.requests must be a list/],
+  ])('rejects %s', (node, message) => {
+    expect(() => parseDiagram(`version: 3\nnodes:\n  - ${node}`)).toThrow(message);
+  });
+});
+
+describe('joins', () => {
+  const joined: Diagram = {
+    ...sample,
+    nodes: [
+      ...sample.nodes,
+      {
+        id: 'join-1',
+        type: 'join',
+        name: 'OrderReady',
+        combines: ['PaymentCharged', 'StockReserved'],
+      },
+    ],
+    edges: [
+      { id: 'e1', source: 'state-1', target: 'join-1', kind: 'forward' },
+      { id: 'e2', source: 'join-1', target: 'end-1', kind: 'forward', event: 'OrderReady' },
+    ],
+  };
+
+  it('round-trips, writing combines after the name', () => {
+    const text = serializeDiagram(joined);
+    expect(text).toContain(
+      '  - id: join-1\n    type: join\n    name: OrderReady\n    combines:\n      - PaymentCharged\n      - StockReserved\n',
+    );
+    expect(parseDiagram(text)).toEqual(joined);
+  });
+
+  it('allows a join without events yet', () => {
+    const parsed = parseDiagram(
+      'version: 3\nnodes:\n  - { id: j, type: join, name: J, combines: [] }',
+    );
+    expect('combines' in parsed.nodes[0]).toBe(false);
+  });
+
+  it.each([
+    [
+      '{ id: a, type: state, name: A, combines: [X] }',
+      /nodes\[0\]\.combines is only allowed on joins/,
+    ],
+    [
+      '{ id: a, type: join, name: A, combines: [""] }',
+      /nodes\[0\]\.combines\[0\] must be a non-empty string/,
+    ],
+    ['{ id: a, type: join, name: A, combines: X }', /nodes\[0\]\.combines must be a list/],
+    [
+      '{ id: a, type: join, name: A, activities: [{ command: X }] }',
+      /activities is only allowed on states, not on the join/,
+    ],
+    [
+      '{ id: a, type: join, name: A, timers: [{ schedule: X }] }',
+      /nodes\[0\]\.timers is only allowed on states/,
+    ],
+  ])('rejects %s', (node, message) => {
+    expect(() => parseDiagram(`version: 3\nnodes:\n  - ${node}`)).toThrow(message);
+  });
+});

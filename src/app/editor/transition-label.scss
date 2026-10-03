@@ -95,6 +95,22 @@
   --row-color: var(--c-external);
 }
 
+.event.timeout {
+  --row-color: var(--c-timeout);
+}
+
+.event.reply {
+  --row-color: var(--c-reply);
+}
+
+.event.composite {
+  --row-color: var(--c-join);
+}
+
+.event.fault {
+  --row-color: var(--c-fault);
+}
+
 .source {
   --row-color: var(--c-external);
   color: var(--c-text-subtle);

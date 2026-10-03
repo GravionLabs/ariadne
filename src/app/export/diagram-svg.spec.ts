@@ -138,4 +138,96 @@ describe('renderDiagramSvg title', () => {
     expect(svg).not.toContain('<title>');
     expect(svg).not.toContain('<desc>');
   });
+
+  it('shows a guard after the event in the label', () => {
+    const edges = orderSaga.edges.map((e) =>
+      e.event === 'PaymentFailed' ? { ...e, guard: 'attempts >= 3' } : e,
+    );
+    const { svg } = renderDiagramSvg({ ...orderSaga, edges });
+    expect(svg).toContain('PaymentFailed [attempts &gt;= 3]');
+  });
+
+  it('draws ignored events struck through and the any node dashed', () => {
+    const nodes = [
+      ...orderSaga.nodes.map((n) => (n.id === 'state-1' ? { ...n, ignores: ['Ping'] } : n)),
+      { id: 'any-1', type: 'any' as const, name: 'Any state' },
+    ];
+    const { svg } = renderDiagramSvg({
+      ...orderSaga,
+      nodes,
+      edges: [
+        ...orderSaga.edges,
+        {
+          id: 'edge-9',
+          source: 'any-1',
+          target: 'end-2',
+          kind: 'forward' as const,
+          event: 'Abort',
+        },
+      ],
+    });
+    expect(svg).toMatch(/text-decoration="line-through"[^>]*>Ping</);
+    expect(svg).toContain('stroke-dasharray="5 4"');
+    expect(svg).toContain('Any state');
+  });
+
+  it('draws a timeout firing as a dotted amber line with a clock, and the timer chip', () => {
+    const nodes = orderSaga.nodes.map((n) =>
+      n.id === 'state-1'
+        ? { ...n, timers: [{ action: 'schedule' as const, name: 'StockTimeout', delay: '1h' }] }
+        : n,
+    );
+    const edges = orderSaga.edges.map((e) =>
+      e.id === 'edge-2' ? { ...e, event: 'StockTimeout' } : e,
+    );
+    const { svg } = renderDiagramSvg({ ...orderSaga, nodes, edges });
+    expect(svg).toContain('stroke="#d97706" stroke-width="2" stroke-dasharray="2 5"');
+    expect(svg).toContain('⏱');
+    expect(svg).toContain('Schedule</tspan> StockTimeout in 1h');
+  });
+
+  it('draws the request chip and marks replies and faults', () => {
+    const nodes = orderSaga.nodes.map((n) =>
+      n.id === 'state-1' ? { ...n, requests: [{ name: 'CheckStock', timeout: '5s' }] } : n,
+    );
+    const edges = orderSaga.edges.map((e) =>
+      e.id === 'edge-2'
+        ? { ...e, event: 'CheckStock.Completed' }
+        : e.id === 'edge-3'
+          ? { ...e, event: 'CheckStock.Faulted' }
+          : e,
+    );
+    const { svg } = renderDiagramSvg({ ...orderSaga, nodes, edges });
+    expect(svg).toContain('Request</tspan> CheckStock · 5s');
+    expect(svg).toContain('↩');
+    expect(svg).toContain('⚠');
+  });
+
+  it('draws a join as a bar with its name and events under it', () => {
+    const nodes = [
+      ...orderSaga.nodes,
+      {
+        id: 'join-1',
+        type: 'join' as const,
+        name: 'OrderReady',
+        combines: ['PaymentCharged', 'StockReserved'],
+      },
+    ];
+    const edges = [
+      ...orderSaga.edges,
+      { id: 'j1', source: 'state-1', target: 'join-1', kind: 'forward' as const },
+      {
+        id: 'j2',
+        source: 'join-1',
+        target: 'end-1',
+        kind: 'forward' as const,
+        event: 'OrderReady',
+      },
+    ];
+    const { svg } = renderDiagramSvg({ ...orderSaga, nodes, edges });
+    expect(svg).toContain('height="10" rx="5" fill="#4f46e5"');
+    expect(svg).toContain('>OrderReady<');
+    expect(svg).toContain('PaymentCharged + StockReserved');
+    expect(svg).toContain('▬');
+  });
 });
