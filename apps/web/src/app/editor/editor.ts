@@ -31,7 +31,10 @@ import { WalkthroughStore } from './walkthrough-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
+import { SagaImport } from '../import/saga-import';
 import { CatalogPanel } from './catalog-panel';
+import { GenerateDialog } from './generate-dialog';
+import { ImportDialog } from './import-dialog';
 import { NewDiagramDialog } from './new-diagram-dialog';
 import { ProblemsMenu } from './problems-menu';
 import { SourcePanel } from './source-panel';
@@ -68,6 +71,8 @@ const FIT_PADDING = { x: 80, y: 80 };
     FFlowModule,
     Icon,
     Inspector,
+    GenerateDialog,
+    ImportDialog,
     NewDiagramDialog,
     NodeCard,
     ProblemsMenu,
@@ -99,6 +104,9 @@ export class Editor {
   /** Walking through the saga: the diagram is read-only. */
   protected readonly walking = this.walk.active;
   private readonly newDialog = viewChild.required(NewDiagramDialog);
+  private readonly importDialog = viewChild.required(ImportDialog);
+  private readonly generateDialog = viewChild.required(GenerateDialog);
+  private readonly sagaImport = inject(SagaImport);
   protected readonly layout = inject(DiagramLayout);
   protected readonly theme = inject(Theme);
   protected readonly appendTypes = APPEND_TYPES;
@@ -239,6 +247,39 @@ export class Editor {
 
   protected async open(): Promise<void> {
     if (this.confirmDiscard() && (await this.file.open())) this.afterReplace();
+  }
+
+  /**
+   * Builds a diagram from MassTransit saga state machines in C# files. Everything happens here in
+   * the browser; the diagram opens as a new, unsaved one, after the user has seen what was found
+   * and what could not be shown.
+   */
+  protected async importCsharp(): Promise<void> {
+    const files = await this.sagaImport.pick();
+    if (!files) return;
+    this.file.setNotice('Reading the C# files…');
+    try {
+      const result = await this.sagaImport.read(files);
+      this.file.setNotice(null);
+      const saga = await this.importDialog().open(result, files.length);
+      if (!saga || !this.confirmDiscard()) return;
+      this.file.openImported(saga.diagram);
+      this.afterReplace();
+    } catch (e) {
+      this.file.setNotice(null);
+      this.file.setError(`The C# files could not be read: ${(e as Error).message}`);
+    }
+  }
+
+  /** Shows the C# for the diagram: generated here, in the browser, and not written anywhere yet. */
+  protected async generateCsharp(): Promise<void> {
+    try {
+      const { generateSaga } = await import('@ariadne/masstransit/generate');
+      const folder = this.file.name().replace(/\.(saga\.)?ya?ml$/i, '') || 'saga';
+      this.generateDialog().open(generateSaga(this.store.diagram()), folder);
+    } catch (e) {
+      this.file.setError(`C# could not be generated: ${(e as Error).message}`);
+    }
   }
 
   private afterReplace(): void {

@@ -36,6 +36,12 @@
       "problemMatcher": "$tsc"
     },
     {
+      "label": "pnpm: build cli",
+      "type": "shell",
+      "command": "pnpm --filter @ariadne/cli build",
+      "problemMatcher": []
+    },
+    {
       "label": "pnpm: lint",
       "type": "shell",
       "command": "pnpm lint",

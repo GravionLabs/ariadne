@@ -1,0 +1,60 @@
+<dialog #dialog aria-labelledby="import-title" (close)="onClose()">
+  <div class="dialog">
+    <h2 id="import-title">Import from C#</h2>
+
+    @if (result().sagas.length === 0) {
+      <p class="none" role="status">
+        No MassTransit saga state machine found in the {{ fileCount() }}
+        {{ fileCount() === 1 ? 'file' : 'files' }}.
+        @if (result().warnings.length) {
+          See below for what was noticed.
+        } @else {
+          A state machine derives from <code>MassTransitStateMachine&lt;T&gt;</code>; pick the files
+          that contain it.
+        }
+      </p>
+    } @else {
+      <fieldset class="sagas">
+        <legend>
+          {{
+            result().sagas.length === 1
+              ? 'Found one saga'
+              : 'Found ' + result().sagas.length + ' sagas: which one to open?'
+          }}
+        </legend>
+        @for (saga of result().sagas; track saga.className; let i = $index) {
+          <label class="saga" [class.picked]="i === picked()">
+            <input type="radio" name="saga" [checked]="i === picked()" (change)="pick(i)" />
+            <span class="class">{{ saga.className }}</span>
+            <span class="summary">{{ summary(saga) }}</span>
+          </label>
+        }
+      </fieldset>
+    }
+
+    @if (result().warnings.length; as count) {
+      <section class="warnings" aria-label="Warnings">
+        <h3>{{ count }} {{ count === 1 ? 'warning' : 'warnings' }}</h3>
+        <ul>
+          @for (warning of result().warnings; track $index) {
+            <li>
+              <span class="place">{{ warning.path }}:{{ warning.line }}</span>
+              {{ warning.message }}
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <div class="actions">
+      <button type="button" class="menu-button" (click)="cancel()">
+        {{ result().sagas.length ? 'Cancel' : 'Close' }}
+      </button>
+      @if (result().sagas.length) {
+        <button type="button" class="menu-button primary" (click)="accept()">
+          Open as new diagram
+        </button>
+      }
+    </div>
+  </div>
+</dialog>

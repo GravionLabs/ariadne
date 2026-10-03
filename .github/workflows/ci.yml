@@ -36,3 +36,19 @@ jobs:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run format:check
+
+  # The C# the generator writes must build against MassTransit (needs the .NET SDK, CI only).
+  generated-csharp:
+    name: Compile generated C#
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: GravionLabs/ci/node/setup@main
+        with:
+          package-manager: pnpm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ariadne/cli build
+      - run: scripts/compile-generated.sh

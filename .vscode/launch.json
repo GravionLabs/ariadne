@@ -27,6 +27,21 @@
       "webRoot": "${workspaceFolder}"
     },
     {
+      "name": "ariadne diff (CLI)",
+      "type": "node",
+      "request": "launch",
+      "preLaunchTask": "pnpm: build cli",
+      "program": "${workspaceFolder}/apps/cli/dist/ariadne.mjs",
+      "args": [
+        "diff",
+        "samples/sagas/order/OrderStateMachine.saga.yaml",
+        "samples/sagas/order/OrderStateMachine.cs"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
       "name": "ng test (Vitest)",
       "type": "node",
       "request": "launch",

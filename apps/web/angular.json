@@ -23,11 +23,21 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "loader": { ".yaml": "text" },
+            "loader": { ".yaml": "text", ".cs": "text", ".wasm": "binary" },
             "assets": [
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "tree-sitter-c_sharp.wasm",
+                "input": "node_modules/tree-sitter-c-sharp",
+                "output": "wasm"
+              },
+              {
+                "glob": "web-tree-sitter.wasm",
+                "input": "node_modules/web-tree-sitter",
+                "output": "wasm"
               }
             ],
             "styles": ["node_modules/@foblex/flow/styles/default.scss", "src/styles.scss"]
@@ -37,8 +47,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "1MB",
-                  "maximumError": "1.2MB"
+                  "maximumWarning": "1.1MB",
+                  "maximumError": "1.3MB"
                 },
                 {
                   "type": "anyComponentStyle",

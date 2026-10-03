@@ -1,0 +1,48 @@
+<dialog #dialog aria-labelledby="generate-title">
+  <div class="dialog">
+    <h2 id="generate-title">Generate C#</h2>
+    <p class="hint">
+      A MassTransit state machine, its saga instance and the message contracts. Search for
+      <code>TODO</code> to find what is left to fill in.
+    </p>
+
+    @if (result().warnings.length; as count) {
+      <section class="warnings" aria-label="Warnings">
+        <h3>{{ count }} {{ count === 1 ? 'thing was' : 'things were' }} not generated as drawn</h3>
+        <ul>
+          @for (warning of result().warnings; track $index) {
+            <li>{{ warning }}</li>
+          }
+        </ul>
+      </section>
+    }
+
+    <div class="tabs" role="tablist" aria-label="Generated files">
+      @for (f of result().files; track f.path; let i = $index) {
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          [class.current]="i === current()"
+          [attr.aria-selected]="i === current()"
+          (click)="show(i)"
+        >
+          {{ f.path }}
+        </button>
+      }
+    </div>
+
+    <pre
+      class="code"
+      tabindex="0"
+      aria-label="Generated code"
+    >@for (line of lines(); track $index) {<span class="line">{{ line.code }}@if (line.todo) {<span class="todo">{{ line.todo }}</span>}</span>}</pre>
+
+    <div class="actions">
+      <span class="status" role="status">{{ status() }}</span>
+      <button type="button" class="menu-button" (click)="close()">Close</button>
+      <button type="button" class="menu-button" (click)="copy()">Copy file</button>
+      <button type="button" class="menu-button primary" (click)="save()">Save all…</button>
+    </div>
+  </div>
+</dialog>

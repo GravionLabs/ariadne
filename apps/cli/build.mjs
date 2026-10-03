@@ -1,5 +1,7 @@
 // Bundles the command into one file: `dist/ariadne.mjs`. The packages are TypeScript sources, so
 // they are compiled here; @resvg/resvg-js has a native part and stays a dependency.
+import { copyFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { build } from 'esbuild';
 
 await build({
@@ -20,3 +22,14 @@ await build({
     ].join('\n'),
   },
 });
+
+// The C# parser is WebAssembly and is read next to the script when `import` or `diff` run.
+const require = createRequire(import.meta.url);
+await copyFile(
+  require.resolve('tree-sitter-c-sharp/tree-sitter-c_sharp.wasm'),
+  'dist/tree-sitter-c_sharp.wasm',
+);
+await copyFile(
+  require.resolve('web-tree-sitter/web-tree-sitter.wasm'),
+  'dist/web-tree-sitter.wasm',
+);

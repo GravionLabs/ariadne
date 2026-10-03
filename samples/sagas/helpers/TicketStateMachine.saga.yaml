@@ -1,0 +1,49 @@
+version: 3
+name: Ticket
+saga:
+  class: TicketStateMachine
+  namespace: Support.Tickets
+  instance: TicketState
+  stateProperty: CurrentState
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-open
+    type: state
+    name: Open
+  - id: state-assigned
+    type: state
+    name: Assigned
+    activities:
+      - command: NotifyAgent
+  - id: state-closed
+    type: state
+    name: Closed
+    activities:
+      - event: TicketClosedNotice
+  - id: end-1
+    type: end
+    name: Final
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-open
+    kind: forward
+    event: TicketOpened
+  - id: edge-2
+    source: state-open
+    target: state-assigned
+    kind: forward
+    event: TicketAssigned
+  - id: edge-3
+    source: state-open
+    target: state-closed
+    kind: forward
+    event: TicketClosed
+  - id: edge-4
+    source: state-assigned
+    target: end-1
+    kind: forward
+    event: TicketClosed

@@ -32,12 +32,21 @@ importers:
       '@ariadne/export':
         specifier: workspace:*
         version: link:../../packages/export
+      '@ariadne/masstransit':
+        specifier: workspace:*
+        version: link:../../packages/masstransit
       '@dagrejs/dagre':
         specifier: ^3.1.1
         version: 3.1.1
       '@resvg/resvg-js':
         specifier: ^2.6.2
         version: 2.6.2
+      tree-sitter-c-sharp:
+        specifier: ^0.23.5
+        version: 0.23.5
+      web-tree-sitter:
+        specifier: ^0.27.0
+        version: 0.27.0
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
@@ -78,6 +87,9 @@ importers:
       '@ariadne/export':
         specifier: workspace:*
         version: link:../../packages/export
+      '@ariadne/masstransit':
+        specifier: workspace:*
+        version: link:../../packages/masstransit
       '@codemirror/commands':
         specifier: ^6.11.1
         version: 6.11.1
@@ -123,9 +135,15 @@ importers:
       rxjs:
         specifier: ~7.8.0
         version: 7.8.2
+      tree-sitter-c-sharp:
+        specifier: ^0.23.5
+        version: 0.23.5
       tslib:
         specifier: ^2.3.0
         version: 2.8.1
+      web-tree-sitter:
+        specifier: ^0.27.0
+        version: 0.27.0
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
@@ -177,6 +195,31 @@ importers:
         specifier: ^2.9.1
         version: 2.9.1
     devDependencies:
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.2(@types/node@24.19.1)(jsdom@30.1.1)(vite@8.3.0(@types/node@24.19.1)(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1)(yaml@2.9.1))
+
+  packages/masstransit:
+    dependencies:
+      '@ariadne/core':
+        specifier: workspace:*
+        version: link:../core
+      '@dagrejs/dagre':
+        specifier: ^3.1.1
+        version: 3.1.1
+      tree-sitter-c-sharp:
+        specifier: ^0.23.5
+        version: 0.23.5
+      web-tree-sitter:
+        specifier: ^0.27.0
+        version: 0.27.0
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.1
       vitest:
         specifier: ^5.0.0
         version: 5.0.2(@types/node@24.19.1)(jsdom@30.1.1)(vite@8.3.0(@types/node@24.19.1)(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1)(yaml@2.9.1))
@@ -2361,8 +2404,16 @@ packages:
   node-addon-api@7.1.1:
     resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
 
+  node-addon-api@8.9.2:
+    resolution: {integrity: sha512-VijLXbi3UACN69I0JVXJsX4tjACjNoQDgv2gTF6sx2wWEi8tkSg2eX8p5gSIFi8z2+DL3oHmY6OyKce38SDolg==}
+    engines: {node: ^18 || ^20 || >= 21}
+
   node-gyp-build-optional-packages@5.2.2:
     resolution: {integrity: sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw==}
+    hasBin: true
+
+  node-gyp-build@4.8.4:
+    resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
     hasBin: true
 
   node-releases@2.0.57:
@@ -2737,6 +2788,14 @@ packages:
     resolution: {integrity: sha512-bLVMLPtstlZ4iMQHpFHTR7GAGj2jxi8Dg0s2h2MafAE4uSWF98FC/3MomU51iQAMf8/qDUbKWf5GxuvvVcXEhw==}
     engines: {node: '>=20'}
 
+  tree-sitter-c-sharp@0.23.5:
+    resolution: {integrity: sha512-xJGOeXPMmld0nES5+080N/06yY6LQi+KWGWV4LfZaZe6srJPtUtfhIbRSN7EZN6IaauzW28v6W4QHFwmeUW6HQ==}
+    peerDependencies:
+      tree-sitter: ^0.25.0
+    peerDependenciesMeta:
+      tree-sitter:
+        optional: true
+
   ts-api-utils@2.5.0:
     resolution: {integrity: sha512-OJ/ibxhPlqrMM0UiNHJ/0CKQkoKF243/AEmplt3qpRgkW8VG7IfOS41h7V8TjITqdByHzrjcS/2si+y4lIh8NA==}
     engines: {node: '>=18.12'}
@@ -2882,6 +2941,9 @@ packages:
 
   weak-lru-cache@1.2.2:
     resolution: {integrity: sha512-DEAoo25RfSYMuTGc9vPJzZcZullwIqRDSI9LOy+fkCJPi6hykCnfKaXTuPBDuXAUcqHXyOgFtHNp/kB2FjYHbw==}
+
+  web-tree-sitter@0.27.0:
+    resolution: {integrity: sha512-XK08gj6RwTMQatAG7uVRP8MunqotL/XC19vHgkSPKmELgbGPBj4ECvB8haHOUnyj6ls2B8t42UTro14zxGgAHg==}
 
   webidl-conversions@8.0.1:
     resolution: {integrity: sha512-BMhLD/Sw+GbJC21C/UgyaZX41nPt8bUTg+jWyDeg7e7YN4xOM05YPSIXceACnXVtqyEw/LMClUQMtMZ+PGGpqQ==}
@@ -4892,10 +4954,14 @@ snapshots:
 
   node-addon-api@7.1.1: {}
 
+  node-addon-api@8.9.2: {}
+
   node-gyp-build-optional-packages@5.2.2:
     dependencies:
       detect-libc: 2.1.2
     optional: true
+
+  node-gyp-build@4.8.4: {}
 
   node-releases@2.0.57: {}
 
@@ -5263,6 +5329,11 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
+  tree-sitter-c-sharp@0.23.5:
+    dependencies:
+      node-addon-api: 8.9.2
+      node-gyp-build: 4.8.4
+
   ts-api-utils@2.5.0(typescript@6.0.3):
     dependencies:
       typescript: 6.0.3
@@ -5351,6 +5422,8 @@ snapshots:
 
   weak-lru-cache@1.2.2:
     optional: true
+
+  web-tree-sitter@0.27.0: {}
 
   webidl-conversions@8.0.1: {}
 

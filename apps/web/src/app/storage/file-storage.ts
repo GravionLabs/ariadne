@@ -8,6 +8,20 @@ export interface OpenedFile {
   readonly content: string;
 }
 
+/** A text file the user picked to read, e.g. a C# source file. */
+export interface TextFile {
+  readonly name: string;
+  readonly content: string;
+}
+
+/** What to offer in a dialog that picks several files to read. */
+export interface PickFilesOptions {
+  /** Extensions with the dot, e.g. `.cs`. */
+  readonly extensions: readonly string[];
+  /** Shown in the file dialog, e.g. `C# source files`. */
+  readonly description: string;
+}
+
 /**
  * Platform-neutral access to local diagram files. The web build uses
  * {@link BrowserFileStorage}; the Tauri shell provides its own implementation.
@@ -15,6 +29,18 @@ export interface OpenedFile {
  */
 export abstract class FileStorage {
   abstract open(): Promise<OpenedFile | null>;
+
+  /**
+   * Lets the user pick several files to read; they are only read, never written back. Resolves to
+   * `null` when the user cancels.
+   */
+  abstract openFiles(options: PickFilesOptions): Promise<TextFile[] | null>;
+
+  /**
+   * Saves several generated files (C# sources): into a folder the user picks where the platform
+   * can, otherwise as one zip named after `folderName`. Resolves to `false` when the user cancels.
+   */
+  abstract saveFiles(files: readonly TextFile[], folderName: string): Promise<boolean>;
 
   /** Writes to `ref` in place when possible, otherwise asks where to save. */
   abstract save(content: string, ref: FileRef): Promise<FileRef | null>;

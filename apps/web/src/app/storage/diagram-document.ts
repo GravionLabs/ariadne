@@ -88,6 +88,11 @@ export const DiagramDocument = signalStore(
       },
 
       /** An empty diagram, named if `details` has a name; it is not unsaved until edited. */
+      /** A diagram that came from somewhere else (an import): open, but not saved anywhere yet. */
+      openImported(diagram: Diagram): void {
+        replace(diagram, null, true);
+      },
+
       newDiagram(details: { name?: string; description?: string } = {}): void {
         replace(updateDetails(emptyDiagram(), details), null);
       },

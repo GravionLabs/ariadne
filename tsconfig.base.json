@@ -13,7 +13,8 @@
     "moduleResolution": "bundler",
     "paths": {
       "@ariadne/core": ["./packages/core/src/index.ts"],
-      "@ariadne/export": ["./packages/export/src/index.ts"]
+      "@ariadne/export": ["./packages/export/src/index.ts"],
+      "@ariadne/masstransit": ["./packages/masstransit/src/index.ts"]
     }
   }
 }

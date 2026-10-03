@@ -1,5 +1,9 @@
 import orderSaga from '../../../docs/examples/order.saga.yaml?raw';
 import travelBooking from '../../../docs/examples/travel-booking.saga.yaml?raw';
+import orderCode from '../../../samples/sagas/order/OrderStateMachine.cs?raw';
+import orderGolden from '../../../samples/sagas/order/OrderStateMachine.saga.yaml?raw';
+import bookingCode from '../../../samples/sagas/booking/BookingStateMachine.cs?raw';
+import { createNodeParser } from '@ariadne/masstransit/node';
 import { describe, expect, it } from 'vitest';
 import pkg from '../package.json' with { type: 'json' };
 import { Io, VERSION, run } from './cli';
@@ -21,6 +25,7 @@ function setup(files: Record<string, string> = {}) {
     },
     stdout: (text) => out.push(text),
     stderr: (text) => err.push(text),
+    csharpParser: createNodeParser,
   };
   return {
     disk,
@@ -237,5 +242,87 @@ describe('ariadne export', () => {
       await t.run('export', 'sagas/order.saga.yaml', '--format', 'svg', '-o', '/readonly/x.svg'),
     ).toBe(2);
     expect(t.stderr()).toContain('cannot write /readonly/x.svg');
+  });
+});
+
+describe('ariadne generate', () => {
+  it('writes the C# files into the directory and lists them', async () => {
+    const t = setup({ 'order.saga.yaml': orderSaga });
+    expect(await t.run('generate', 'order.saga.yaml', '-o', 'out/')).toBe(0);
+    const names = [...t.disk.keys()].filter((k) => k.startsWith('out/'));
+    expect(names.every((n) => n.endsWith('.cs'))).toBe(true);
+    expect(names.length).toBe(3);
+    expect(t.stdout().trim().split('\n')).toEqual(names);
+    expect(t.disk.get(names[0])).toContain('MassTransitStateMachine<');
+  });
+
+  it('needs one file', async () => {
+    const t = setup();
+    expect(await t.run('generate')).toBe(2);
+    expect(t.stderr()).toContain('generate needs exactly one file');
+  });
+
+  it('reports a file that is not a diagram', async () => {
+    const t = setup({ 'x.saga.yaml': 'nodes: 3' });
+    expect(await t.run('generate', 'x.saga.yaml')).toBe(1);
+    expect(t.stderr()).toContain('not a valid saga diagram');
+  });
+});
+
+describe('ariadne import', () => {
+  it('writes a *.saga.yaml per saga and lists them', async () => {
+    const t = setup({ 'Order.cs': orderCode, 'Booking.cs': bookingCode });
+    expect(await t.run('import', 'Order.cs', 'Booking.cs', '-o', 'out')).toBe(0);
+    expect(t.stdout().trim().split('\n')).toEqual([
+      'out/OrderStateMachine.saga.yaml',
+      'out/BookingStateMachine.saga.yaml',
+    ]);
+    expect(t.disk.get('out/OrderStateMachine.saga.yaml')).toBe(orderGolden);
+  });
+
+  it('says where in the code something could not be shown', async () => {
+    const t = setup({ 'Order.cs': orderCode });
+    await t.run('import', 'Order.cs', '-o', 'out');
+    expect(t.stderr()).toMatch(/^Order\.cs:\d+: warning: /m);
+  });
+
+  it('exits with 1 when there is no saga', async () => {
+    const t = setup({ 'A.cs': 'class A {}' });
+    expect(await t.run('import', 'A.cs')).toBe(1);
+    expect(t.stderr()).toContain('No MassTransit saga state machine');
+  });
+
+  it('needs a file', async () => {
+    expect(await setup().run('import')).toBe(2);
+  });
+});
+
+describe('ariadne diff', () => {
+  const files = { 'order.saga.yaml': orderGolden, 'Order.cs': orderCode };
+
+  it('is quiet about a diagram and the code it came from', async () => {
+    const t = setup(files);
+    expect(await t.run('diff', 'order.saga.yaml', 'Order.cs')).toBe(0);
+    expect(t.stdout()).toContain('agree');
+  });
+
+  it('lists the differences and exits with 1', async () => {
+    const t = setup({
+      ...files,
+      'Order.cs': orderCode.replace('When(StockReserved)', 'When(StockUnavailable)'),
+    });
+    expect(await t.run('diff', 'order.saga.yaml', 'Order.cs')).toBe(1);
+    expect(t.stdout()).toContain('is in the diagram, not in the code');
+    expect(t.stdout()).toMatch(/\d+ differences?\./);
+  });
+
+  it('needs --class when the files have several state machines and the diagram does not say', async () => {
+    const t = setup({
+      'd.saga.yaml': 'version: 3\nnodes:\n  - { id: s, type: start, name: Initial }\nedges: []\n',
+      'All.cs': orderCode + bookingCode,
+    });
+    expect(await t.run('diff', 'd.saga.yaml', 'All.cs')).toBe(2);
+    expect(t.stderr()).toContain('Pass --class');
+    expect(await t.run('diff', 'd.saga.yaml', 'All.cs', '--class', 'Nope')).toBe(1);
   });
 });

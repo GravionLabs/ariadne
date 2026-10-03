@@ -9,12 +9,18 @@ import {
 } from '@foblex/flow';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
-import { FileStorage } from '../storage/file-storage';
+import { CSHARP_IMPORTER, CSharpImporter } from '../import/csharp-parser';
+import { realImporter } from '../import/real-importer.testing';
+import { FileStorage, TextFile } from '../storage/file-storage';
+import order from '../../../../../samples/sagas/order/OrderStateMachine.cs';
+import booking from '../../../../../samples/sagas/booking/BookingStateMachine.cs';
 import type { Mock } from 'vitest';
 import { CODE_EDITOR_FACTORY, CodeEditor, CodeEditorOptions } from './code-editor';
 import { Editor } from './editor';
 import './native-dialog.testing';
-import { serializeDiagram } from '@ariadne/core';
+import { parseDiagram, serializeDiagram } from '@ariadne/core';
+import orderYaml from '../../../../../docs/examples/order.saga.yaml';
+import travelYaml from '../../../../../docs/examples/travel-booking.saga.yaml';
 
 // jsdom has no ResizeObserver; f-flow uses it to track node sizes.
 globalThis.ResizeObserver ??= class {
@@ -36,7 +42,7 @@ interface FakeEditor extends CodeEditor {
 describe('Editor', () => {
   beforeEach(() => localStorage.clear());
 
-  async function setup() {
+  async function setup(options: { importer?: () => Promise<CSharpImporter> } = {}) {
     const editors: FakeEditor[] = [];
     const editorFactory = vi.fn(async (_parent: HTMLElement, options: CodeEditorOptions) => {
       const editor: FakeEditor = {
@@ -57,12 +63,15 @@ describe('Editor', () => {
       open: vi.fn(async () => null),
       save: vi.fn(async () => null),
       saveAs: vi.fn(async () => null),
+      openFiles: vi.fn(async (): Promise<TextFile[] | null> => null),
+      saveFiles: vi.fn(async () => true),
     };
     await TestBed.configureTestingModule({
       imports: [Editor],
       providers: [
         { provide: FileStorage, useValue: storage },
         { provide: CODE_EDITOR_FACTORY, useValue: editorFactory },
+        { provide: CSHARP_IMPORTER, useValue: options.importer ?? realImporter },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(Editor);
@@ -1079,6 +1088,213 @@ describe('Editor', () => {
     await fill('[aria-label="Event in code"] input[placeholder="PaymentCharged"]', '');
     await fill('[aria-label="Event in code"] input[placeholder="CorrelationId"]', '');
     expect(store.diagram().events).toBeUndefined();
+  });
+
+  describe('generate C#', () => {
+    async function generating() {
+      const ctx = await setup();
+      ctx.store.load(parseDiagram(orderYaml));
+      await ctx.settle();
+      const dialog = () => ctx.el.querySelector('app-generate-dialog dialog') as HTMLDialogElement;
+      const button = (label: string) =>
+        [...dialog().querySelectorAll<HTMLButtonElement>('button')].find(
+          (b) => b.textContent?.trim() === label,
+        )!;
+      const start = async () => {
+        [...ctx.el.querySelectorAll<HTMLButtonElement>('.file-actions button')]
+          .find((b) => b.textContent?.includes('Generate C#'))!
+          .click();
+        await vi.waitFor(
+          () => {
+            ctx.fixture.detectChanges();
+            expect(dialog().open).toBe(true);
+          },
+          { timeout: 15_000 },
+        );
+      };
+      return { ...ctx, dialog, button, start };
+    }
+
+    it('shows the generated files, one at a time, with the TODOs marked', async () => {
+      const { dialog, start, settle } = await generating();
+      await start();
+      const tabs = () => [...dialog().querySelectorAll('.tab')].map((t) => t.textContent?.trim());
+      expect(tabs()).toEqual(['OrderStateMachine.cs', 'OrderState.cs', 'Contracts.cs']);
+      expect(dialog().querySelector('.code')?.textContent).toContain(
+        'class OrderStateMachine : MassTransitStateMachine<OrderState>',
+      );
+      expect(dialog().querySelectorAll('.code .todo').length).toBeGreaterThan(0);
+
+      (dialog().querySelectorAll('.tab')[2] as HTMLButtonElement).click();
+      await settle();
+      expect(dialog().querySelector('.code')?.textContent).toContain('public record ReserveStock');
+      expect(dialog().querySelector('.tab.current')?.textContent?.trim()).toBe('Contracts.cs');
+    });
+
+    it('saves all files together, named after the diagram', async () => {
+      const { dialog, button, start, settle, storage } = await generating();
+      await start();
+      button('Save all…').click();
+      await settle();
+      const [files, folder] = storage.saveFiles.mock.calls[0] as unknown as [TextFile[], string];
+      expect(files.map((f) => f.name)).toEqual([
+        'OrderStateMachine.cs',
+        'OrderState.cs',
+        'Contracts.cs',
+      ]);
+      expect(folder).toBe('untitled.saga.yaml'.replace(/\.saga\.yaml$/, ''));
+      expect(dialog().querySelector('.status')?.textContent).toBe('Saved 3 files.');
+    });
+
+    it('copies the file that is shown', async () => {
+      const { dialog, button, start, settle } = await generating();
+      const writeText = vi.fn(async () => undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      await start();
+      button('Copy file').click();
+      await settle();
+      expect(writeText).toHaveBeenCalledWith(expect.stringContaining('OrderStateMachine'));
+      expect(dialog().querySelector('.status')?.textContent).toBe('OrderStateMachine.cs copied.');
+    });
+
+    it('lists what could not be generated', async () => {
+      const { store, dialog, start } = await generating();
+      store.load(parseDiagram(travelYaml));
+      await start();
+      expect(dialog().querySelectorAll('.warnings li').length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('import from C#', () => {
+    const orderFile: TextFile = { name: 'OrderStateMachine.cs', content: order };
+    const bookingFile: TextFile = { name: 'BookingStateMachine.cs', content: booking };
+
+    async function importing(files: TextFile[] | null, options?: Parameters<typeof setup>[0]) {
+      const ctx = await setup(options);
+      ctx.storage.openFiles.mockResolvedValue(files);
+      const dialog = () => ctx.el.querySelector('app-import-dialog dialog') as HTMLDialogElement;
+      const button = (label: string) =>
+        [...ctx.el.querySelectorAll<HTMLButtonElement>('button')].find(
+          (b) => b.textContent?.trim() === label,
+        )!;
+      /** A button of the import dialog (the New popup has a "Cancel" too). */
+      const inDialog = (label: string) =>
+        [...dialog().querySelectorAll<HTMLButtonElement>('button')].find(
+          (b) => b.textContent?.trim() === label,
+        )!;
+      /** Clicks "Import C#…" and waits until the dialog (or an error) is there. */
+      const start = async () => {
+        button('Import C#…').click();
+        await vi.waitFor(
+          () => {
+            ctx.fixture.detectChanges();
+            expect(dialog().open || ctx.el.querySelector('.error-pill[role="alert"]')).toBeTruthy();
+          },
+          { timeout: 15_000 },
+        );
+      };
+      return { ...ctx, dialog, button: inDialog, openImport: button, start };
+    }
+
+    it('has a button in the top bar that asks for C# files', async () => {
+      const { storage, el, settle } = await importing(null);
+      const button = [...el.querySelectorAll<HTMLButtonElement>('.file-actions button')].find((b) =>
+        b.textContent?.includes('Import C#'),
+      )!;
+      button.click();
+      await settle();
+      expect(storage.openFiles).toHaveBeenCalledWith({
+        extensions: ['.cs'],
+        description: 'C# source files',
+      });
+      // Cancelled: nothing opens, nothing is parsed.
+      expect(el.querySelector('app-import-dialog dialog')?.hasAttribute('open')).toBe(false);
+    });
+
+    it('shows the saga that was found, and opens it as a new, unsaved diagram', async () => {
+      const { store, el, dialog, button, start, settle } = await importing([orderFile]);
+      await start();
+      expect(dialog().open).toBe(true);
+      expect(dialog().querySelector('.saga .class')?.textContent).toBe('OrderStateMachine');
+      expect(dialog().querySelector('.saga .summary')?.textContent).toContain(
+        '3 states, 6 transitions',
+      );
+      // The warnings say where in the code: here, the activities that cannot be shown on a final state.
+      const places = [...dialog().querySelectorAll('.warnings .place')].map((p) => p.textContent);
+      expect(places).toEqual([
+        'OrderStateMachine.cs:34',
+        'OrderStateMachine.cs:42',
+        'OrderStateMachine.cs:47',
+      ]);
+
+      button('Open as new diagram').click();
+      await settle();
+      expect(dialog().open).toBe(false);
+      expect(store.diagram().saga?.className).toBe('OrderStateMachine');
+      expect(store.nodes().map((n) => n.name)).toContain('ChargingPayment');
+      expect(el.querySelector('[aria-label="Unsaved changes"]')).toBeTruthy();
+      expect(el.querySelector('.file-name')?.textContent?.trim()).toBe('untitled.saga.yaml');
+    });
+
+    it('leaves the diagram alone when the dialog is closed', async () => {
+      const { store, dialog, button, start, settle } = await importing([orderFile]);
+      store.appendNode('start-1', 'state');
+      const before = store.diagram();
+      await start();
+      button('Cancel').click();
+      await settle();
+      expect(dialog().open).toBe(false);
+      expect(store.diagram()).toBe(before);
+    });
+
+    it('lets the user choose when several sagas were found', async () => {
+      const { store, dialog, button, start, settle } = await importing([orderFile, bookingFile]);
+      await start();
+      const radios = [...dialog().querySelectorAll<HTMLInputElement>('input[type=radio]')];
+      expect(radios).toHaveLength(2);
+      expect(radios[0].checked).toBe(true);
+      radios[1].click();
+      await settle();
+      button('Open as new diagram').click();
+      await settle();
+      expect(store.diagram().saga?.className).toBe('BookingStateMachine');
+    });
+
+    it('says when there is no saga in the files, with what it noticed, and offers only to close', async () => {
+      const fancy: TextFile = {
+        name: 'FancyStateMachine.cs',
+        content:
+          'class Fancy : Audited<FancyState> { Fancy() { Initially(When(Started).TransitionTo(Done)); } State Done; }',
+      };
+      const { store, dialog, button, start, settle } = await importing([fancy]);
+      const before = store.diagram();
+      await start();
+      expect(dialog().querySelector('.none')?.textContent).toContain(
+        'No MassTransit saga state machine found',
+      );
+      expect(dialog().querySelector('.warnings')?.textContent).toContain('Audited<FancyState>');
+      expect(() => button('Open as new diagram')).not.toThrow();
+      expect(
+        [...dialog().querySelectorAll('button')].some((b) =>
+          b.textContent?.includes('Open as new'),
+        ),
+      ).toBe(false);
+      button('Close').click();
+      await settle();
+      expect(store.diagram()).toBe(before);
+    });
+
+    it('shows an error when the parser cannot be loaded', async () => {
+      const { el, start } = await importing([orderFile], {
+        importer: async () => {
+          throw new Error('the grammar could not be downloaded');
+        },
+      });
+      await start();
+      expect(el.querySelector('.error-pill')?.textContent).toContain(
+        'The C# files could not be read: the grammar could not be downloaded',
+      );
+    });
   });
 
   it('adds the one Any state from the toolbox and opens it', async () => {

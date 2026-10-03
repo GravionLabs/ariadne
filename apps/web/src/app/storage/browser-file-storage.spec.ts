@@ -3,6 +3,7 @@ import { BrowserFileStorage } from './browser-file-storage';
 
 /** The File System Access API is not in jsdom; the storage only needs these two functions. */
 interface PickerWindow {
+  showDirectoryPicker?: unknown;
   showOpenFilePicker?: unknown;
   showSaveFilePicker?: unknown;
 }
@@ -20,6 +21,7 @@ describe('BrowserFileStorage', () => {
     vi.restoreAllMocks();
     delete win.showOpenFilePicker;
     delete win.showSaveFilePicker;
+    delete win.showDirectoryPicker;
   });
 
   describe('with the File System Access API', () => {
@@ -48,6 +50,67 @@ describe('BrowserFileStorage', () => {
       // A plain .yaml file opens just the same.
       expect(opened?.ref.name).toBe('order.yaml');
       expect(opened?.content).toBe('version: 3\n');
+    });
+
+    it('picks several files to read, filtered to their extension', async () => {
+      const open = vi.fn(async () => [handle('A.cs', 'class A {}'), handle('B.cs', 'class B {}')]);
+      win.showOpenFilePicker = open;
+      win.showSaveFilePicker = vi.fn();
+
+      const files = await storage.openFiles({
+        extensions: ['.cs'],
+        description: 'C# source files',
+      });
+
+      expect(files).toEqual([
+        { name: 'A.cs', content: 'class A {}' },
+        { name: 'B.cs', content: 'class B {}' },
+      ]);
+      const [options] = open.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(options['multiple']).toBe(true);
+      expect(options['types']).toEqual([
+        { description: 'C# source files', accept: { 'text/plain': ['.cs'] } },
+      ]);
+    });
+
+    it('returns null when picking files is cancelled', async () => {
+      win.showOpenFilePicker = vi.fn(async () => {
+        throw new DOMException('cancelled', 'AbortError');
+      });
+      win.showSaveFilePicker = vi.fn();
+      expect(await storage.openFiles({ extensions: ['.cs'], description: 'C#' })).toBeNull();
+    });
+
+    it('writes several files into the folder the user picks', async () => {
+      const written = new Map<string, string>();
+      const directory = {
+        getFileHandle: async (name: string) => ({
+          name,
+          createWritable: async () => ({
+            write: async (data: string) => void written.set(name, data),
+            close: vi.fn(),
+          }),
+        }),
+      };
+      win.showDirectoryPicker = vi.fn(async () => directory);
+
+      const saved = await storage.saveFiles(
+        [
+          { name: 'A.cs', content: 'class A {}' },
+          { name: 'B.cs', content: 'class B {}' },
+        ],
+        'order',
+      );
+
+      expect(saved).toBe(true);
+      expect(Object.fromEntries(written)).toEqual({ 'A.cs': 'class A {}', 'B.cs': 'class B {}' });
+    });
+
+    it('saves nothing when the folder picker is cancelled', async () => {
+      win.showDirectoryPicker = vi.fn(async () => {
+        throw new DOMException('cancelled', 'AbortError');
+      });
+      expect(await storage.saveFiles([{ name: 'A.cs', content: 'x' }], 'order')).toBe(false);
     });
 
     it('exports an image through the save picker, filtered to its extension', async () => {
@@ -140,6 +203,31 @@ describe('BrowserFileStorage', () => {
       expect(ref).toEqual({ name: 'order.svg' });
     });
 
+    it('downloads several files as one zip', async () => {
+      const created: HTMLAnchorElement[] = [];
+      const realCreate = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        const el = realCreate(tag);
+        if (tag === 'a') {
+          created.push(el as HTMLAnchorElement);
+          (el as HTMLAnchorElement).click = vi.fn();
+        }
+        return el;
+      });
+      let blob: Blob | undefined;
+      URL.createObjectURL = vi.fn((b: Blob) => {
+        blob = b;
+        return 'blob:x';
+      });
+      URL.revokeObjectURL = vi.fn();
+
+      const saved = await storage.saveFiles([{ name: 'A.cs', content: 'class A {}' }], 'order');
+
+      expect(saved).toBe(true);
+      expect(created[0].download).toBe('order.zip');
+      expect(blob?.type).toBe('application/zip');
+    });
+
     it('lets the file input pick *.saga.yaml files', async () => {
       let input: HTMLInputElement | undefined;
       const realCreate = document.createElement.bind(document);
@@ -153,6 +241,38 @@ describe('BrowserFileStorage', () => {
       });
       expect(await storage.open()).toBeNull();
       expect(input?.accept).toBe('.saga.yaml');
+    });
+
+    it('lets the file input pick several files', async () => {
+      let input: HTMLInputElement | undefined;
+      const realCreate = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        const el = realCreate(tag);
+        if (tag === 'input') {
+          input = el as HTMLInputElement;
+          input.click = () => {
+            Object.defineProperty(input, 'files', {
+              value: [new File(['class A {}'], 'A.cs'), new File(['class B {}'], 'B.cs')],
+            });
+            input!.dispatchEvent(new Event('change'));
+          };
+        }
+        return el;
+      });
+      const files = await storage.openFiles({ extensions: ['.cs'], description: 'C#' });
+      expect(files?.map((f) => f.name)).toEqual(['A.cs', 'B.cs']);
+      expect(input?.multiple).toBe(true);
+      expect(input?.accept).toBe('.cs');
+    });
+
+    it('returns null when no file is picked', async () => {
+      const realCreate = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        const el = realCreate(tag);
+        if (tag === 'input') el.click = () => el.dispatchEvent(new Event('cancel'));
+        return el;
+      });
+      expect(await storage.openFiles({ extensions: ['.cs'], description: 'C#' })).toBeNull();
     });
   });
 });

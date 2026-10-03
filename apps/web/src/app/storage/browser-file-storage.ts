@@ -1,10 +1,13 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
+import { zipFiles } from './zip';
 import {
   DIAGRAM_EXTENSIONS,
   FileRef,
   FileStorage,
   OpenedFile,
+  PickFilesOptions,
+  TextFile,
   diagramFileName,
 } from './file-storage';
 
@@ -16,9 +19,14 @@ interface FileHandle {
 }
 interface FilePickerOptions {
   suggestedName?: string;
+  multiple?: boolean;
   types?: { description: string; accept: Record<string, string[]> }[];
 }
+interface DirectoryHandle {
+  getFileHandle(name: string, options: { create: boolean }): Promise<FileHandle>;
+}
 interface FileSystemAccessWindow {
+  showDirectoryPicker?(options?: { mode?: 'readwrite' }): Promise<DirectoryHandle>;
   showOpenFilePicker(options?: FilePickerOptions): Promise<FileHandle[]>;
   showSaveFilePicker(options?: FilePickerOptions): Promise<FileHandle>;
 }
@@ -62,6 +70,26 @@ export class BrowserFileStorage extends FileStorage {
     return file && { ref: { name: file.name }, content: await file.text() };
   }
 
+  async openFiles(options: PickFilesOptions): Promise<TextFile[] | null> {
+    const fs = this.fs;
+    let files: File[] | null;
+    if (fs) {
+      const handles = await cancelled(
+        fs.showOpenFilePicker({
+          multiple: true,
+          types: [
+            { description: options.description, accept: { 'text/plain': [...options.extensions] } },
+          ],
+        }),
+      );
+      files = handles && (await Promise.all(handles.map((h) => h.getFile())));
+    } else {
+      files = await this.pickFiles(options.extensions);
+    }
+    if (!files?.length) return null;
+    return Promise.all(files.map(async (f) => ({ name: f.name, content: await f.text() })));
+  }
+
   async save(content: string, ref: FileRef): Promise<FileRef | null> {
     const { handle } = ref as BrowserFileRef;
     if (!handle) return this.saveAs(content, ref.name);
@@ -80,6 +108,26 @@ export class BrowserFileStorage extends FileStorage {
     }
     this.download(content, suggestedName);
     return { name: suggestedName };
+  }
+
+  async saveFiles(files: readonly TextFile[], folderName: string): Promise<boolean> {
+    const picker = (this.document.defaultView as unknown as Partial<FileSystemAccessWindow> | null)
+      ?.showDirectoryPicker;
+    if (picker) {
+      const directory = await cancelled(
+        picker.call(this.document.defaultView, { mode: 'readwrite' }),
+      );
+      if (!directory) return false;
+      for (const file of files) {
+        await write(await directory.getFileHandle(file.name, { create: true }), file.content);
+      }
+      return true;
+    }
+    this.downloadBlob(
+      new Blob([zipFiles(files)], { type: 'application/zip' }),
+      `${folderName}.zip`,
+    );
+    return true;
   }
 
   async exportFile(content: Blob, suggestedName: string): Promise<FileRef | null> {
@@ -111,6 +159,18 @@ export class BrowserFileStorage extends FileStorage {
       input.type = 'file';
       input.accept = DIAGRAM_EXTENSIONS.join(',');
       input.addEventListener('change', () => resolve(input.files?.[0] ?? null));
+      input.addEventListener('cancel', () => resolve(null));
+      input.click();
+    });
+  }
+
+  private pickFiles(extensions: readonly string[]): Promise<File[] | null> {
+    return new Promise((resolve) => {
+      const input = this.document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      input.accept = extensions.join(',');
+      input.addEventListener('change', () => resolve(input.files ? [...input.files] : null));
       input.addEventListener('cancel', () => resolve(null));
       input.click();
     });

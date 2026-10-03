@@ -1,0 +1,69 @@
+version: 3
+name: Booking
+saga:
+  class: BookingStateMachine
+  namespace: Travel.Bookings
+  instance: BookingState
+  stateProperty: CurrentState
+events:
+  - name: BookingRequested
+    correlation: CorrelateById(m => m.Message.BookingId)
+  - name: PaymentReceived
+    correlation: CorrelateBy((saga, context) => saga.BookingId == context.Message.BookingId)
+  - name: CancelRequested
+    correlation: CorrelateById(m => m.Message.BookingId)
+  - name: TripStarted
+    correlation: CorrelateById(m => m.Message.BookingId)
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-awaiting-payment
+    type: state
+    name: AwaitingPayment
+  - id: state-confirmed
+    type: state
+    name: Confirmed
+  - id: state-cancelled
+    type: state
+    name: Cancelled
+    ignores:
+      - PaymentReceived
+  - id: end-1
+    type: end
+    name: Final
+  - id: any-1
+    type: any
+    name: Any state
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-awaiting-payment
+    kind: forward
+    event: BookingRequested
+  - id: edge-2
+    source: state-awaiting-payment
+    target: state-confirmed
+    kind: forward
+    event: PaymentReceived
+  - id: edge-3
+    source: state-awaiting-payment
+    target: state-cancelled
+    kind: forward
+    event: CancelRequested
+  - id: edge-4
+    source: state-confirmed
+    target: state-cancelled
+    kind: forward
+    event: CancelRequested
+  - id: edge-5
+    source: state-confirmed
+    target: end-1
+    kind: forward
+    event: TripStarted
+  - id: edge-6
+    source: any-1
+    target: end-1
+    kind: forward
+    event: Abort
