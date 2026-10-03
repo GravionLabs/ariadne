@@ -97,6 +97,17 @@
     outline-offset: 1px;
   }
 
+  // A toggle that is on, e.g. the source panel is open.
+  &.active {
+    color: var(--c-primary);
+    background: var(--c-primary-soft);
+    border-color: color-mix(in srgb, var(--c-primary) 30%, transparent);
+
+    app-icon {
+      color: var(--c-primary);
+    }
+  }
+
   &.primary {
     color: #fff;
     background: var(--c-primary);

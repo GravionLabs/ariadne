@@ -61,6 +61,16 @@
         ></span>
       }
     </span>
+    <button
+      type="button"
+      class="menu-button source-toggle"
+      [class.active]="sourceOpen()"
+      [attr.aria-pressed]="sourceOpen()"
+      (click)="toggleSource()"
+      title="Show or hide the diagram as YAML, next to the canvas"
+    >
+      <app-icon name="code" /><span>Source</span>
+    </button>
   </div>
 </header>
 
@@ -276,18 +286,6 @@
           <app-icon name="directionRight" />
         </button>
       </div>
-      <div class="divider"></div>
-      <button
-        type="button"
-        class="icon-button"
-        [class.active]="sourceOpen()"
-        [attr.aria-pressed]="sourceOpen()"
-        (click)="toggleSource()"
-        aria-label="Source"
-        title="Source: edit the diagram as YAML"
-      >
-        <app-icon name="code" />
-      </button>
       <div class="divider"></div>
       <button
         type="button"
