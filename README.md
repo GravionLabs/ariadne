@@ -91,7 +91,7 @@ docs/
   examples/   sample diagrams
 ```
 
-Decisions are recorded as ADRs: [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the source view](docs/adr/0008-source-view.md).
+Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the source view](docs/adr/0008-source-view.md).
 
 ## Roadmap
 
