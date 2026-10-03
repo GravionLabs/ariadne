@@ -12,6 +12,7 @@ import {
   hasOutput,
   nextId,
 } from './diagram';
+import { serializeDiagram } from './diagram-yaml';
 
 const MAX_HISTORY = 100;
 
@@ -37,6 +38,16 @@ export class DiagramStore {
     this._diagram.set(diagram);
     this._past.set([]);
     this._future.set([]);
+  }
+
+  /**
+   * Replaces the whole diagram as one undo step, e.g. after the source text was edited. Returns
+   * `false`, without touching the history, when the new diagram is the same as the current one.
+   */
+  replace(diagram: Diagram): boolean {
+    if (serializeDiagram(diagram) === serializeDiagram(this._diagram())) return false;
+    this.commit(() => diagram);
+    return true;
   }
 
   undo(): void {

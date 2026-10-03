@@ -206,6 +206,47 @@ describe('DiagramStore', () => {
     });
   });
 
+  describe('replace', () => {
+    const moved = (d: Diagram): Diagram => ({ ...d, direction: 'left-right' });
+
+    it('swaps the whole diagram as a single undo step', () => {
+      store.load(blank());
+      store.addNode('state');
+      const before = store.diagram();
+      const next: Diagram = {
+        direction: 'left-right',
+        nodes: [
+          { id: 'start-1', type: 'start', name: 'Initial' },
+          { id: 'state-1', type: 'state', name: 'Renamed' },
+        ],
+        edges: [{ id: 'edge-1', source: 'start-1', target: 'state-1', kind: 'forward' }],
+      };
+      expect(store.replace(next)).toBe(true);
+      expect(store.diagram()).toBe(next);
+      store.undo();
+      expect(store.diagram()).toBe(before);
+      store.redo();
+      expect(store.diagram()).toBe(next);
+    });
+
+    it('does nothing, and records no history, for an equal diagram', () => {
+      store.load(blank());
+      const copy: Diagram = { ...store.diagram(), nodes: [...store.nodes()] };
+      expect(store.replace(copy)).toBe(false);
+      expect(store.diagram()).not.toBe(copy);
+      expect(store.canUndo()).toBe(false);
+    });
+
+    it('clears the redo stack like any other edit', () => {
+      store.load(blank());
+      store.addNode('state');
+      store.undo();
+      expect(store.canRedo()).toBe(true);
+      store.replace(moved(store.diagram()));
+      expect(store.canRedo()).toBe(false);
+    });
+  });
+
   describe('history', () => {
     beforeEach(() => store.load(blank()));
 
