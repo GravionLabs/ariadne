@@ -28,12 +28,13 @@ kinds). `settings` holds the `ariadne.editor.*` settings the editor needs: `auto
 
 ## Editor → host
 
-| `type`       | Fields    | When                                                                                 |
-| ------------ | --------- | ------------------------------------------------------------------------------------ |
-| `ready`      |           | The editor is loaded and waits for `init`. Sent once, at start.                      |
-| `edit`       | `text`    | The user changed the diagram. `text` is the whole new document. The host applies it. |
-| `error`      | `message` | Something the user should know, e.g. the document cannot be read.                    |
-| `showAsText` |           | "Open as text" in the error state: the host opens the file in the text editor.       |
+| `type`       | Fields                                             | When                                                                                                               |
+| ------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `ready`      |                                                    | The editor is loaded and waits for `init`. Sent once, at start.                                                    |
+| `edit`       | `text`                                             | The user changed the diagram. `text` is the whole new document. The host applies it.                               |
+| `error`      | `message`                                          | Something the user should know, e.g. the document cannot be read.                                                  |
+| `showAsText` |                                                    | "Open as text" in the error state: the host opens the file in the text editor.                                     |
+| `goToCode`   | `target` (`{ kind: 'state' \| 'transition', id }`) | "Go to code" in the inspector: the host opens the C# the diagram names (`saga.source`) at the state or transition. |
 
 ## Sequence
 

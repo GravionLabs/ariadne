@@ -27,6 +27,12 @@ export interface EditorSettings {
 
 export const DEFAULT_SETTINGS: EditorSettings = { autoLayout: true };
 
+/** What "Go to code" is asked for: a state or a transition of the diagram, by its id. */
+export interface CodeTarget {
+  kind: 'state' | 'transition';
+  id: string;
+}
+
 /** Host → editor. */
 export type HostMessage =
   /** The document to show, the theme and the settings; the answer to `ready`. */
@@ -46,7 +52,9 @@ export type EditorMessage =
   /** Something the user should know, e.g. the document cannot be read. */
   | { v: 1; type: 'error'; message: string }
   /** The user wants to see the document as text ("Open as text"). */
-  | { v: 1; type: 'showAsText' };
+  | { v: 1; type: 'showAsText' }
+  /** The user wants to see a state or transition in the C# the diagram names (`saga.source`). */
+  | { v: 1; type: 'goToCode'; target: CodeTarget };
 
 export type Message = HostMessage | EditorMessage;
 
@@ -106,6 +114,14 @@ export function parseEditorMessage(data: unknown): EditorMessage | null {
       return { v: 1, type: 'ready' };
     case 'showAsText':
       return { v: 1, type: 'showAsText' };
+    case 'goToCode': {
+      const target = data['target'];
+      return isObject(target) &&
+        (target['kind'] === 'state' || target['kind'] === 'transition') &&
+        typeof target['id'] === 'string'
+        ? { v: 1, type: 'goToCode', target: { kind: target['kind'], id: target['id'] } }
+        : null;
+    }
     case 'edit':
       return typeof data['text'] === 'string' ? { v: 1, type: 'edit', text: data['text'] } : null;
     case 'error':

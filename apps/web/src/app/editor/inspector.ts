@@ -10,6 +10,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { EmbeddedSync } from '../host/embedded-sync';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
@@ -65,10 +66,23 @@ export class Inspector {
 
   private readonly editor = inject(EditorStore);
   private readonly layout = inject(DiagramLayout);
+  private readonly sync = inject(EmbeddedSync);
+
+  /** "Go to code" for the selected state or transition; only when the diagram names its C# file. */
+  protected readonly canGoToCode = computed(
+    () => this.sync.canGoToCode() && (this.node()?.type === 'state' || !!this.edge()),
+  );
 
   /** The selected state or transition, from the editor's selection. */
   protected readonly node = this.editor.selectedNode;
   protected readonly edge = this.editor.selectedEdge;
+
+  protected goToCode(): void {
+    const node = this.node();
+    const edge = this.edge();
+    if (node) this.sync.goToCode({ kind: 'state', id: node.id });
+    else if (edge) this.sync.goToCode({ kind: 'transition', id: edge.id });
+  }
   /** The selected state has several transitions. */
   protected readonly decision = computed(() => {
     const node = this.node();

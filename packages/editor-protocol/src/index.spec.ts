@@ -69,6 +69,28 @@ describe('parseEditorMessage', () => {
     });
   });
 
+  it('reads goToCode with its target', () => {
+    expect(
+      parseEditorMessage({ v: 1, type: 'goToCode', target: { kind: 'state', id: 'state-1' } }),
+    ).toEqual({ v: 1, type: 'goToCode', target: { kind: 'state', id: 'state-1' } });
+    expect(
+      parseEditorMessage({
+        v: 1,
+        type: 'goToCode',
+        target: { kind: 'transition', id: 'e1', x: 1 },
+      }),
+    ).toEqual({ v: 1, type: 'goToCode', target: { kind: 'transition', id: 'e1' } });
+  });
+
+  it.each([
+    { v: 1, type: 'goToCode' },
+    { v: 1, type: 'goToCode', target: { kind: 'node', id: 'a' } },
+    { v: 1, type: 'goToCode', target: { kind: 'state' } },
+    { v: 1, type: 'goToCode', target: 'state-1' },
+  ])('rejects the bad goToCode %j', (data) => {
+    expect(parseEditorMessage(data)).toBeNull();
+  });
+
   it.each([
     undefined,
     {},

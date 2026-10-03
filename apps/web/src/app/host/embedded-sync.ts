@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
-import { effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { Diagram, parseDiagramWithNotes, serializeDiagram } from '@ariadne/core';
-import type { HostMessage } from '@ariadne/editor-protocol';
+import type { CodeTarget, HostMessage } from '@ariadne/editor-protocol';
 import { DiagramStore } from '../model/diagram-store';
 import { Theme } from '../theme';
 import { EditorHost } from './editor-host';
@@ -23,6 +23,9 @@ export class EmbeddedSync {
   readonly invalid = signal<string | null>(null);
   /** Counts the documents shown from the start (`init`), so the view can fit the new diagram. */
   readonly opened = signal(0);
+
+  /** "Go to code" can be offered: inside a host, and the diagram names its C# file. */
+  readonly canGoToCode = computed(() => this.host.embedded && !!this.store.diagram().saga?.source);
 
   /** The diagram as the host last gave it; a different one is a change of the user. */
   private loaded: Diagram | null = null;
@@ -49,6 +52,11 @@ export class EmbeddedSync {
   /** "Open as text" in the error state. */
   showAsText(): void {
     this.host.post({ v: 1, type: 'showAsText' });
+  }
+
+  /** Asks the host to open the C# of the diagram at a state or transition. */
+  goToCode(target: CodeTarget): void {
+    this.host.post({ v: 1, type: 'goToCode', target });
   }
 
   private receive(message: HostMessage): void {

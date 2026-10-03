@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { HostMessage } from '@ariadne/editor-protocol';
+import type { CodeTarget, HostMessage } from '@ariadne/editor-protocol';
 import { EditorSession } from './editor-session';
 import { themeKindOf } from './theme-kind';
 import { createNonce, embeddedHtml, placeholderHtml } from './webview-html';
@@ -19,7 +19,10 @@ export class SagaEditorProvider implements vscode.CustomTextEditorProvider {
   /** The editors that are open now. */
   readonly open = new Set<OpenEditor>();
 
-  constructor(extensionUri: vscode.Uri) {
+  constructor(
+    extensionUri: vscode.Uri,
+    private readonly goToCode: (diagram: vscode.Uri, target: CodeTarget) => Promise<void>,
+  ) {
     this.webviewRoot = vscode.Uri.joinPath(extensionUri, 'dist', 'webview');
   }
 
@@ -55,6 +58,7 @@ export class SagaEditorProvider implements vscode.CustomTextEditorProvider {
         }),
         showAsText: () =>
           void vscode.commands.executeCommand('vscode.openWith', document.uri, 'default'),
+        goToCode: (target) => void this.goToCode(document.uri, target),
         showError: (message) => void vscode.window.showErrorMessage(message),
       },
     );

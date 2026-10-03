@@ -39,6 +39,8 @@ function setup(embedded = true) {
 }
 
 describe('EmbeddedSync', () => {
+  afterEach(() => document.documentElement.removeAttribute('data-host'));
+
   it('says ready and waits for the document', () => {
     const { posted, edits } = setup();
     TestBed.tick();
@@ -153,7 +155,39 @@ describe('EmbeddedSync', () => {
   it('marks the page as hosted in VS Code, so the styles use its colours', () => {
     setup();
     expect(document.documentElement.getAttribute('data-host')).toBe('vscode');
-    document.documentElement.removeAttribute('data-host');
+  });
+
+  describe('go to code', () => {
+    const linked = (source?: string) =>
+      serializeDiagram({ ...parseDiagram(orderYaml), saga: source ? { source } : undefined });
+
+    it('is offered when the diagram names its C# file', () => {
+      const { sync, init } = setup();
+      init(linked('../Order.cs'));
+      expect(sync.canGoToCode()).toBe(true);
+    });
+
+    it('is not offered for a diagram without a C# file', () => {
+      const { sync, init } = setup();
+      init(linked());
+      expect(sync.canGoToCode()).toBe(false);
+    });
+
+    it('is not offered without a host', () => {
+      const { sync, store } = setup(false);
+      store.load(parseDiagram(linked('../Order.cs')));
+      expect(sync.canGoToCode()).toBe(false);
+    });
+
+    it('asks the host to open the code of a state or a transition', () => {
+      const { sync, posted } = setup();
+      sync.goToCode({ kind: 'state', id: 'state-1' });
+      sync.goToCode({ kind: 'transition', id: 'edge-1' });
+      expect(posted.slice(-2)).toEqual([
+        { v: 1, type: 'goToCode', target: { kind: 'state', id: 'state-1' } },
+        { v: 1, type: 'goToCode', target: { kind: 'transition', id: 'edge-1' } },
+      ]);
+    });
   });
 
   it('does nothing without a host', () => {

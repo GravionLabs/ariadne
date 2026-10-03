@@ -1,6 +1,7 @@
 import {
   parseEditorMessage,
   type EditorSettings,
+  type CodeTarget,
   type HostMessage,
   type ThemeKind,
 } from '@ariadne/editor-protocol';
@@ -19,6 +20,8 @@ export interface SessionView {
   settings(): EditorSettings;
   /** Opens the document in the text editor. */
   showAsText(): void;
+  /** Opens the C# of the diagram at a state or transition. */
+  goToCode(target: CodeTarget): void;
   showError(message: string): void;
 }
 
@@ -57,6 +60,9 @@ export class EditorSession {
         break;
       case 'showAsText':
         this.view.showAsText();
+        break;
+      case 'goToCode':
+        this.view.goToCode(message.target);
         break;
       case 'error':
         this.view.showError(message.message);
