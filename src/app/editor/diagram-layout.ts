@@ -69,7 +69,10 @@ const LABEL_MAX_WIDTH = 240;
 export function nodeSize(node: DiagramNode, expanded = false): Size {
   if (isCompact(node)) return { width: 180, height: 48 };
   const rows =
-    (node.activities?.length ?? 0) + (node.ignores?.length ?? 0) + (node.compensation ? 1 : 0);
+    (node.activities?.length ?? 0) +
+    (node.timers?.length ?? 0) +
+    (node.ignores?.length ?? 0) +
+    (node.compensation ? 1 : 0);
   const base = CARD_HEADER + (rows ? rows * CHIP_ROW + 6 : 0);
   return { width: CARD_WIDTH, height: base + (expanded ? descriptionHeight(node) : 0) };
 }

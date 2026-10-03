@@ -85,18 +85,19 @@ edges:
 
 ### Node (state)
 
-| Field          | Type                                                                                           | Required | Notes                                                                                                                                                              |
-| -------------- | ---------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`           | string                                                                                         | yes      | Unique within the file, e.g. `state-3`.                                                                                                                            |
-| `type`         | `start` \| `state` \| `end` \| `any`                                                           | yes      | Initial state (no incoming transitions), state, final state (no outgoing), or the one `any` node: transitions leaving it apply in every state (nothing enters it). |
-| `name`         | string                                                                                         | yes      | Label shown on the canvas.                                                                                                                                         |
-| `description`  | string                                                                                         | no       | Documentation only.                                                                                                                                                |
-| `ignores`      | list of strings                                                                                | no       | Events the state receives and drops (`Ignore(E)`). Only on `state` nodes.                                                                                          |
-| `activities`   | list of activities                                                                             | no       | What the saga does on entering this state, in order. Only on `state` nodes: nothing runs in the initial or the final state.                                        |
-| `color`        | `red` \| `orange` \| `amber` \| `green` \| `teal` \| `blue` \| `purple` \| `pink` \| `#rrggbb` | no       | Accent color at the top of the card: a palette name or a custom hex value. Defaults to the color of the node's type.                                               |
-| `retry`        | string                                                                                         | no       | Free text, e.g. `3 attempts`. Documentation only.                                                                                                                  |
-| `timeout`      | string                                                                                         | no       | Free text, e.g. `30s`. Documentation only.                                                                                                                         |
-| `compensation` | `{ name: string, description?: string }`                                                       | no       | Undo action for the work done to reach this state.                                                                                                                 |
+| Field          | Type                                                                                           | Required | Notes                                                                                                                                                                                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                                                                                         | yes      | Unique within the file, e.g. `state-3`.                                                                                                                                                                                                                                   |
+| `type`         | `start` \| `state` \| `end` \| `any`                                                           | yes      | Initial state (no incoming transitions), state, final state (no outgoing), or the one `any` node: transitions leaving it apply in every state (nothing enters it).                                                                                                        |
+| `name`         | string                                                                                         | yes      | Label shown on the canvas.                                                                                                                                                                                                                                                |
+| `description`  | string                                                                                         | no       | Documentation only.                                                                                                                                                                                                                                                       |
+| `timers`       | list of timers                                                                                 | no       | Timeouts the state schedules (`schedule: <Name>`, optional `delay: 30s`) or cancels (`unschedule: <Name>`) on entry, in order. Only on `state` nodes. A transition whose `event` is the name of a scheduled timeout is the timeout path: drawn dotted amber with a clock. |
+| `ignores`      | list of strings                                                                                | no       | Events the state receives and drops (`Ignore(E)`). Only on `state` nodes.                                                                                                                                                                                                 |
+| `activities`   | list of activities                                                                             | no       | What the saga does on entering this state, in order. Only on `state` nodes: nothing runs in the initial or the final state.                                                                                                                                               |
+| `color`        | `red` \| `orange` \| `amber` \| `green` \| `teal` \| `blue` \| `purple` \| `pink` \| `#rrggbb` | no       | Accent color at the top of the card: a palette name or a custom hex value. Defaults to the color of the node's type.                                                                                                                                                      |
+| `retry`        | string                                                                                         | no       | Free text, e.g. `3 attempts`. Documentation only.                                                                                                                                                                                                                         |
+| `timeout`      | string                                                                                         | no       | Free text, e.g. `30s`. Documentation only.                                                                                                                                                                                                                                |
+| `compensation` | `{ name: string, description?: string }`                                                       | no       | Undo action for the work done to reach this state.                                                                                                                                                                                                                        |
 
 ### Edge (transition)
 
@@ -130,12 +131,15 @@ An **activity** is a mapping with exactly one key, the kind of message, followin
 How the constructs relate to a MassTransit `MassTransitStateMachine<T>`. The importer (#83) and the
 generator (#93) follow this table.
 
-| Diagram                                | MassTransit                                                                                  |
-| -------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `ignores` of a state                   | `During(State, Ignore(E))`                                                                   |
-| transitions leaving the `any` node     | `DuringAny(When(E).TransitionTo(S))`                                                         |
-| transition with `guard`                | `When(E).If(ctx => <guard>, then => then.TransitionTo(A)).TransitionTo(B)`                   |
-| transitions on one event, other guards | `When(E).IfElse(ctx => <guard>, then => then.TransitionTo(A), else => else.TransitionTo(B))` |
+| Diagram                                  | MassTransit                                                                                                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `timers` `schedule: T`, `delay: D`       | `Schedule(() => T, x => x.TimeoutTokenId, s => { s.Delay = D; s.Received = e => e.CorrelateById(...); })`, then `.Schedule(T, ctx => new TMsg(..))` on entry |
+| `timers` `unschedule: T`                 | `.Unschedule(T)`                                                                                                                                             |
+| transition on a scheduled timeout's name | `When(T.Received)`                                                                                                                                           |
+| `ignores` of a state                     | `During(State, Ignore(E))`                                                                                                                                   |
+| transitions leaving the `any` node       | `DuringAny(When(E).TransitionTo(S))`                                                                                                                         |
+| transition with `guard`                  | `When(E).If(ctx => <guard>, then => then.TransitionTo(A)).TransitionTo(B)`                                                                                   |
+| transitions on one event, other guards   | `When(E).IfElse(ctx => <guard>, then => then.TransitionTo(A), else => else.TransitionTo(B))`                                                                 |
 
 ## Version 1
 
@@ -178,6 +182,7 @@ names the offending path. For example:
 - `nodes[1].activities[0] must be "command: <Name>" or "event: <Name>"`
 - `nodes[2].activities is only allowed on states, not on the final state`
 - `nodes[1].ignores is only allowed on states`
+- `nodes[1].timers[0] must be "schedule: <Name>" or "unschedule: <Name>"`
 - `There can be only one node of type "any"`
 - `edges[0].activities is not allowed: activities belong to states (nodes[].activities)`
 - `edges[0].target "state-9" is not a node`

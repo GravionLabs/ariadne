@@ -28,7 +28,7 @@ import {
   inputId,
   nodeIdOfConnector,
   outputId,
-  publishedEvents,
+  eventKindOf,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
@@ -105,7 +105,8 @@ export class Editor {
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
 
   /** Events the saga publishes itself; every other event comes from outside. */
-  protected readonly published = computed(() => publishedEvents(this.store.diagram()));
+  /** What kind of event each transition reacts to (from the saga, outside it, a timeout). */
+  protected readonly kindOf = computed(() => eventKindOf(this.store.diagram()));
 
   /** Spoken names of the states (`Decision: Check stock`) and transitions, for screen readers. */
   protected nodeLabel(node: DiagramNode): string {

@@ -1,8 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
-import { DiagramEdge, Direction, NodeType, eventLabel } from '../model/diagram';
+import { DiagramEdge, Direction, EventKind, NodeType, eventLabel } from '../model/diagram';
 import { AddStepButton } from './add-step-button';
 import { LABEL_PADDING, LABEL_ROW, labelRows } from './diagram-layout';
-import { Icon } from './icon';
+import { Icon, IconName } from './icon';
 import { INSERT_TYPES } from './node-types';
 
 /**
@@ -25,14 +25,28 @@ export class TransitionLabel {
   readonly edge = input.required<DiagramEdge>();
   readonly direction = input.required<Direction>();
   readonly selected = input(false);
-  /** The saga does not publish the event itself: it comes from outside. */
-  readonly external = input(false);
+  /** Where the event comes from: the saga itself, outside it, or a timeout firing. */
+  readonly kind = input<EventKind>();
   /** Compensation transitions are not laid out and get no "+". */
   readonly insertable = input(true);
   readonly selectRequested = output<void>();
   readonly inserted = output<NodeType>();
 
   protected readonly insertTypes = INSERT_TYPES;
+  protected readonly icon = computed<IconName>(() =>
+    this.kind() === 'timeout' ? 'clock' : 'trigger',
+  );
+  protected readonly hint = computed(() => {
+    const source = this.edge().eventSource;
+    switch (this.kind()) {
+      case 'timeout':
+        return 'A scheduled timeout fires';
+      case 'external':
+        return 'External event' + (source ? ' from ' + source : '');
+      default:
+        return 'Event published by this saga';
+    }
+  });
   protected readonly label = computed(() => eventLabel(this.edge()));
   protected readonly rows = computed(() => labelRows(this.edge()));
   protected readonly cardHeight = computed(() => this.rows() * LABEL_ROW + 2 * LABEL_PADDING);

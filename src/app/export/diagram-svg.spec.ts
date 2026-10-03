@@ -170,4 +170,19 @@ describe('renderDiagramSvg title', () => {
     expect(svg).toContain('stroke-dasharray="5 4"');
     expect(svg).toContain('Any state');
   });
+
+  it('draws a timeout firing as a dotted amber line with a clock, and the timer chip', () => {
+    const nodes = orderSaga.nodes.map((n) =>
+      n.id === 'state-1'
+        ? { ...n, timers: [{ action: 'schedule' as const, name: 'StockTimeout', delay: '1h' }] }
+        : n,
+    );
+    const edges = orderSaga.edges.map((e) =>
+      e.id === 'edge-2' ? { ...e, event: 'StockTimeout' } : e,
+    );
+    const { svg } = renderDiagramSvg({ ...orderSaga, nodes, edges });
+    expect(svg).toContain('stroke="#d97706" stroke-width="2" stroke-dasharray="2 5"');
+    expect(svg).toContain('⏱');
+    expect(svg).toContain('Schedule</tspan> StockTimeout in 1h');
+  });
 });

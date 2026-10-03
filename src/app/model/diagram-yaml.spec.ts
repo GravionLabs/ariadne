@@ -424,3 +424,62 @@ describe('ignored events and the any node', () => {
     ).toThrow(/only one node of type "any"/);
   });
 });
+
+describe('timers', () => {
+  const timed: Diagram = {
+    ...sample,
+    nodes: sample.nodes.map((n) =>
+      n.id === 'state-1'
+        ? {
+            ...n,
+            timers: [
+              { action: 'schedule' as const, name: 'PaymentTimeout', delay: '30s' },
+              { action: 'unschedule' as const, name: 'OldTimeout' },
+            ],
+          }
+        : n,
+    ),
+  };
+
+  it('round-trips, writing the action as the key and timers after ignores', () => {
+    const text = serializeDiagram(timed);
+    expect(text).toContain(
+      '    timers:\n      - schedule: PaymentTimeout\n        delay: 30s\n      - unschedule: OldTimeout\n',
+    );
+    expect(parseDiagram(text)).toEqual(timed);
+  });
+
+  it('omits an empty list and an empty delay', () => {
+    const parsed = parseDiagram(
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A, timers: [{ schedule: T, delay: " " }] }\n  - { id: b, type: state, name: B, timers: [] }',
+    );
+    expect(parsed.nodes[0].timers).toEqual([{ action: 'schedule', name: 'T' }]);
+    expect('timers' in parsed.nodes[1]).toBe(false);
+  });
+
+  it.each([
+    [
+      '{ id: a, type: end, name: A, timers: [{ schedule: T }] }',
+      /nodes\[0\]\.timers is only allowed on states/,
+    ],
+    [
+      '{ id: a, type: state, name: A, timers: [{ delay: 30s }] }',
+      /nodes\[0\]\.timers\[0\] must be "schedule: <Name>" or "unschedule: <Name>"/,
+    ],
+    [
+      '{ id: a, type: state, name: A, timers: [{ schedule: T, unschedule: T }] }',
+      /must be "schedule: <Name>" or "unschedule: <Name>"/,
+    ],
+    [
+      '{ id: a, type: state, name: A, timers: [{ unschedule: T, delay: 30s }] }',
+      /nodes\[0\]\.timers\[0\]\.delay is only allowed with schedule/,
+    ],
+    [
+      '{ id: a, type: state, name: A, timers: [{ schedule: "" }] }',
+      /nodes\[0\]\.timers\[0\]\.schedule must be a non-empty string/,
+    ],
+    ['{ id: a, type: state, name: A, timers: T }', /nodes\[0\]\.timers must be a list/],
+  ])('rejects %s', (node, message) => {
+    expect(() => parseDiagram(`version: 3\nnodes:\n  - ${node}`)).toThrow(message);
+  });
+});

@@ -188,4 +188,21 @@ describe('diagramToMermaid title', () => {
       'note right of Shipping : Ignores OrderCancelled, Ping',
     );
   });
+
+  it('notes the timers of a state', () => {
+    const nodes = orderSaga.nodes.map((n) =>
+      n.name === 'Shipping'
+        ? {
+            ...n,
+            timers: [
+              { action: 'schedule' as const, name: 'ShipTimeout', delay: '2d' },
+              { action: 'unschedule' as const, name: 'PayTimeout' },
+            ],
+          }
+        : n,
+    );
+    expect(diagramToMermaid({ ...orderSaga, nodes })).toContain(
+      'note right of Shipping : Schedules ShipTimeout in 2d · Unschedules PayTimeout',
+    );
+  });
 });

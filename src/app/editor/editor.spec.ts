@@ -335,6 +335,45 @@ describe('Editor', () => {
     expect(el.querySelector('.chip-ignore')).toBeNull();
   });
 
+  it('schedules a timeout on a state; the event of that name is a timeout transition', async () => {
+    const { el, store, select, settle, fill } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    await select(['state-1']);
+    inspectorButton(el, 'Schedule a timeout').click();
+    await settle();
+    expect(store.nodes()[1].timers).toEqual([
+      { action: 'schedule', name: 'SomethingTimedOut', delay: '30s' },
+    ]);
+    expect(el.querySelector('app-node-card .chip-timeout')?.textContent).toContain(
+      'Schedule SomethingTimedOut in 30s',
+    );
+
+    const name = el.querySelector<HTMLInputElement>('app-inspector .timer .name')!;
+    name.value = 'PaymentTimeout';
+    name.dispatchEvent(new Event('change'));
+    const delay = el.querySelector<HTMLInputElement>('app-inspector .timer .delay')!;
+    delay.value = '';
+    delay.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[1].timers).toEqual([{ action: 'schedule', name: 'PaymentTimeout' }]);
+
+    // The transition on that event is a timeout.
+    await select([], ['edge-2']);
+    await fill('input[placeholder="e.g. PaymentCharged"]', 'PaymentTimeout');
+    expect(el.querySelector('app-inspector .origin.timeout')?.textContent).toContain('State');
+    const label = el.querySelectorAll('app-transition-label')[1];
+    expect(label.querySelector('.event')?.classList).toContain('timeout');
+
+    // An empty name removes the timer again.
+    await select(['state-1']);
+    const again = el.querySelector<HTMLInputElement>('app-inspector .timer .name')!;
+    again.value = '';
+    again.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[1].timers).toBeUndefined();
+  });
+
   it('adds the one Any state from the toolbox and opens it', async () => {
     const { el, store, settle } = await setup();
     const add = () => el.querySelector<HTMLButtonElement>('[aria-label="Add the Any state"]')!;

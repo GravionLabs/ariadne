@@ -1,6 +1,6 @@
 import { decisionIds } from '../editor/diagram-layout';
 import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from '../editor/node-types';
-import { Diagram, DiagramNode, publishedEvents } from '../model/diagram';
+import { Diagram, DiagramNode, EventKind, eventKindOf } from '../model/diagram';
 import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
 
 export interface MarkdownOptions {
@@ -17,7 +17,9 @@ export interface MarkdownOptions {
  */
 export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {}): string {
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
-  const published = publishedEvents(diagram);
+  const kindOf = eventKindOf(diagram);
+  const sourceOf = (kind: EventKind | undefined) =>
+    kind ? { internal: 'saga', external: 'external', timeout: 'timeout' }[kind] : '';
   const name = (id: string) => nodes.get(id)?.name ?? id;
   const decisions = decisionIds(diagram);
   const typeLabel = (n: DiagramNode) => (decisions.has(n.id) ? DECISION : NODE_TYPES[n.type]).label;
@@ -29,6 +31,8 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
   if (description) out.push(description);
   out.push('## Diagram', mermaidMarkdown(diagramToMermaid(diagram)).trimEnd());
 
+  // The Timers column only appears when some state schedules a timeout.
+  const timing = diagram.nodes.some((n) => n.timers?.length);
   // The Ignores column only appears when some state ignores an event.
   const ignoring = diagram.nodes.some((n) => n.ignores?.length);
   out.push(
@@ -40,6 +44,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
             'Type',
             'Description',
             'Activities',
+            ...(timing ? ['Timers'] : []),
             ...(ignoring ? ['Ignores'] : []),
             'Compensation',
             'Retry',
@@ -50,6 +55,16 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
             typeLabel(n),
             n.description ?? '',
             (n.activities ?? []).map((a) => `${ACTIVITY_VERBS[a.kind]} ${a.name}`).join('\n'),
+            ...(timing
+              ? [
+                  (n.timers ?? [])
+                    .map(
+                      (t) =>
+                        `${t.action === 'schedule' ? 'Schedule' : 'Unschedule'} ${t.name}${t.delay ? ` in ${t.delay}` : ''}`,
+                    )
+                    .join('\n'),
+                ]
+              : []),
             ...(ignoring ? [(n.ignores ?? []).join('\n')] : []),
             n.compensation
               ? [n.compensation.name, n.compensation.description].filter(Boolean).join(': ')
@@ -72,8 +87,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
             name(e.source),
             e.event ?? '',
             ...(guarded ? [e.guard ?? ''] : []),
-            e.eventSource ??
-              (e.event && !published.has(e.event) ? 'external' : e.event ? 'saga' : ''),
+            e.eventSource ?? sourceOf(kindOf(e)),
             name(e.target),
             e.kind === 'compensation' ? 'Compensation' : 'Forward',
           ]),
@@ -110,7 +124,9 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
           ['Event', 'Origin', 'Published in', 'Triggers'],
           events.map((ev) => [
             ev,
-            published.has(ev) ? 'Internal' : 'External',
+            { internal: 'Internal', external: 'External', timeout: 'Timeout' }[
+              kindOf({ event: ev })!
+            ],
             (publishedBy.get(ev) ?? []).join(', '),
             (reactions.get(ev) ?? []).join('\n'),
           ]),

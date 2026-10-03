@@ -228,6 +228,26 @@ textarea {
   &[data-kind='event'] {
     --kind-color: var(--c-event);
   }
+
+  &[data-kind='timer'] {
+    --kind-color: var(--c-timeout);
+  }
+}
+
+.timer-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--kind-color);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  app-icon {
+    width: 14px;
+    height: 14px;
+  }
 }
 
 .segmented {
@@ -291,6 +311,10 @@ textarea {
 
   &.external {
     --origin-color: var(--c-external);
+  }
+
+  &.timeout {
+    --origin-color: var(--c-timeout);
   }
 }
 

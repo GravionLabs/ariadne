@@ -29,6 +29,19 @@ export interface Activity {
   name: string;
 }
 
+/**
+ * A timeout a state schedules when the saga enters it, or cancels (MassTransit's `Schedule`).
+ * When a scheduled timeout fires, the saga receives its `name` as an event: a transition whose
+ * `event` is that name is the timeout path.
+ */
+export interface Timer {
+  action: 'schedule' | 'unschedule';
+  /** The timeout message, e.g. `PaymentTimeout`. */
+  name: string;
+  /** How long until it fires, free text such as `30s`. Only with `schedule`. */
+  delay?: string;
+}
+
 /** Undo action that runs when a later part of the saga fails. Only states can have one. */
 export interface Compensation {
   name: string;
@@ -65,6 +78,8 @@ export interface DiagramNode {
    */
   activities?: Activity[];
   compensation?: Compensation;
+  /** Timeouts the state schedules or cancels on entry, in order. Only on states. */
+  timers?: Timer[];
   /** Events the state ignores instead of failing on them (`Ignore(E)`). Only on states. */
   ignores?: string[];
   /** Free-text notes, e.g. "3 attempts, exponential backoff" / "30s". Documentation only. */
@@ -109,6 +124,9 @@ export interface Diagram {
 
 /** Only plain states can have {@link Activity activities}; the initial and final states cannot. */
 export const hasActivities = (type: NodeType): boolean => type === 'state';
+
+/** Only plain states can schedule {@link DiagramNode.timers timeouts}. */
+export const hasTimers = (type: NodeType): boolean => type === 'state';
 
 /** Only plain states can list {@link DiagramNode.ignores ignored events}. */
 export const hasIgnores = (type: NodeType): boolean => type === 'state';
@@ -158,4 +176,27 @@ export function nextId(prefix: string, existing: readonly { id: string }[]): str
     return match ? Math.max(acc, Number(match[1])) : acc;
   }, 0);
   return `${prefix}-${max + 1}`;
+}
+
+/**
+ * What kind of event a transition reacts to. `timeout` is a scheduled timeout firing; `internal` is
+ * published by a state of the saga; everything else comes from `external`. Derived, never stored.
+ */
+export type EventKind = 'internal' | 'external' | 'timeout';
+
+/** Classifies events of `diagram`; `undefined` for a transition without an event. */
+export function eventKindOf(
+  diagram: Diagram,
+): (edge: Pick<DiagramEdge, 'event'>) => EventKind | undefined {
+  const published = publishedEvents(diagram);
+  const timeouts = new Set(
+    diagram.nodes.flatMap((n) =>
+      (n.timers ?? []).filter((t) => t.action === 'schedule').map((t) => t.name),
+    ),
+  );
+  return ({ event }) => {
+    if (!event) return undefined;
+    if (timeouts.has(event)) return 'timeout';
+    return published.has(event) ? 'internal' : 'external';
+  };
 }

@@ -168,4 +168,10 @@ describe('diagram layout', () => {
     expect(decisionIds(diagram).has('any-1')).toBe(false);
     expect(layoutDiagram(diagram).positions.has('any-1')).toBe(true);
   });
+
+  it('gives each timer a chip row on the card', () => {
+    const plain = { id: 'a', type: 'state', name: 'a' } as const;
+    const timed = { ...plain, timers: [{ action: 'schedule' as const, name: 'T' }] };
+    expect(nodeSize(timed).height).toBe(nodeSize(plain).height + 24 + 6);
+  });
 });

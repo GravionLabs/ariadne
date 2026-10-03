@@ -1,4 +1,12 @@
-import { Diagram, DiagramEdge, DiagramNode, NodeColor, Point, eventLabel } from '../model/diagram';
+import {
+  Diagram,
+  DiagramEdge,
+  DiagramNode,
+  NodeColor,
+  Point,
+  eventKindOf,
+  eventLabel,
+} from '../model/diagram';
 import {
   INSERT_OVERHANG,
   LABEL_PADDING,
@@ -26,6 +34,7 @@ const COLORS = {
   step: '#3b82f6',
   decision: '#8b5cf6',
   any: '#64748b',
+  timeout: '#d97706',
   end: '#f43f5e',
   compensation: '#f59e0b',
   command: '#2563eb',
@@ -68,6 +77,7 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
   const { positions, labels } = layoutDiagram(diagram);
   const lr = diagram.direction === 'left-right';
   const decisions = decisionIds(diagram);
+  const kindOf = eventKindOf(diagram);
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const rect = (id: string) => ({ ...positions.get(id)!, ...nodeSize(nodes.get(id)!) });
   /** A point from its position along the flow (`main`) and across it (`cross`). */
@@ -129,10 +139,18 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
       const corner = pt(a, lane);
       grow(corner.x, corner.y);
     }
+    // A timeout firing is dashed amber too, but dotted, so it differs from a compensation.
+    const timeout = edge.kind === 'forward' && kindOf(edge) === 'timeout';
+    const stroke =
+      edge.kind === 'compensation' ? COLORS.compensation : timeout ? COLORS.timeout : COLORS.line;
+    const dash =
+      edge.kind === 'compensation'
+        ? ' stroke-dasharray="6 4"'
+        : timeout
+          ? ' stroke-dasharray="2 5" stroke-linecap="round"'
+          : '';
     edgeSvg.push(
-      `<path d="${roundedPath(points)}" fill="none" stroke="${
-        edge.kind === 'compensation' ? COLORS.compensation : COLORS.line
-      }" stroke-width="2"${edge.kind === 'compensation' ? ' stroke-dasharray="6 4"' : ''} marker-end="url(#arrow-${edge.kind})"/>`,
+      `<path d="${roundedPath(points)}" fill="none" stroke="${stroke}" stroke-width="2"${dash} marker-end="url(#arrow-${edge.kind})"/>`,
     );
     if (labelRows(edge) > 0) {
       const label = transitionLabel(edge, labelCentre, lr, diagram);
@@ -202,12 +220,7 @@ function transitionLabel(
   lr: boolean,
   diagram: Diagram,
 ): { svg: string } & Point & Size {
-  const published = new Set(
-    diagram.nodes.flatMap((nd) =>
-      (nd.activities ?? []).filter((a) => a.kind === 'event').map((a) => a.name),
-    ),
-  );
-  const external = !!edge.event && !published.has(edge.event);
+  const kind = eventKindOf(diagram)(edge);
   const rows = labelRows(edge);
   const height = rows * LABEL_ROW + 2 * LABEL_PADDING;
   const texts = [eventLabel(edge), edge.eventSource ? `from ${edge.eventSource}` : ''];
@@ -225,9 +238,10 @@ function transitionLabel(
   const textWidth = card.width - 2 * 10 - 19;
   let rowY = y + LABEL_PADDING + LABEL_ROW / 2;
   if (edge.event) {
-    const color = external ? COLORS.external : COLORS.event;
+    const color =
+      kind === 'external' ? COLORS.external : kind === 'timeout' ? COLORS.timeout : COLORS.event;
     parts.push(
-      text('⚡', x + 10, rowY, { size: 11, fill: color }),
+      text(kind === 'timeout' ? '⏱' : '⚡', x + 10, rowY, { size: 11, fill: color }),
       text(fit(eventLabel(edge), textWidth, 11), x + 29, rowY, {
         size: 11,
         fill: mix(color, COLORS.text, 0.75),
@@ -319,6 +333,19 @@ function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision:
       color,
       text(a.kind === 'command' ? '✉' : '⚑', x + 20, chipY + 10, { size: 11, fill: color }) +
         `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(color, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">${verb}</tspan> ${esc(name)}</text>`,
+    );
+  }
+  for (const t of node.timers ?? []) {
+    const verb = t.action === 'schedule' ? 'Schedule' : 'Unschedule';
+    const label = fit(
+      `${t.name}${t.delay ? ` in ${t.delay}` : ''}`,
+      chipWidth - (verb.length + 1) * 11 * CHAR_EM,
+      11,
+    );
+    chip(
+      COLORS.timeout,
+      text('⏱', x + 20, chipY + 10, { size: 11, fill: COLORS.timeout }) +
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(COLORS.timeout, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">${verb}</tspan> ${esc(label)}</text>`,
     );
   }
   for (const event of node.ignores ?? []) {

@@ -30,7 +30,12 @@
   }
 </div>
 
-@if (node().activities?.length || node().ignores?.length || node().compensation) {
+@if (
+  node().activities?.length ||
+  node().timers?.length ||
+  node().ignores?.length ||
+  node().compensation
+) {
   <ul class="chips">
     @for (activity of node().activities ?? []; track $index) {
       <li
@@ -41,6 +46,22 @@
         <app-icon [name]="activity.kind" />
         <span
           ><span class="verb">{{ verbs[activity.kind] }}</span> {{ activity.name }}</span
+        >
+      </li>
+    }
+    @for (timer of node().timers ?? []; track $index) {
+      <li
+        class="chip chip-timeout"
+        [title]="
+          timer.action === 'schedule'
+            ? 'Schedules a timeout on entering this state'
+            : 'Cancels a scheduled timeout on entering this state'
+        "
+      >
+        <app-icon name="clock" />
+        <span
+          ><span class="verb">{{ timer.action === 'schedule' ? 'Schedule' : 'Unschedule' }}</span>
+          {{ timer.name }}{{ timer.delay ? ' in ' + timer.delay : '' }}</span
         >
       </li>
     }

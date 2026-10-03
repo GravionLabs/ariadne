@@ -95,6 +95,10 @@
   --row-color: var(--c-external);
 }
 
+.event.timeout {
+  --row-color: var(--c-timeout);
+}
+
 .source {
   --row-color: var(--c-external);
   color: var(--c-text-subtle);

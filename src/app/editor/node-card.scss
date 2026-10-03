@@ -243,6 +243,10 @@
   --chip-color: var(--c-compensation);
 }
 
+.chip-timeout {
+  --chip-color: var(--c-timeout);
+}
+
 // An ignored event: grey and struck through.
 .chip-ignore {
   --chip-color: var(--c-text-subtle);

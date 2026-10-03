@@ -155,6 +155,63 @@
       </section>
     }
 
+    @if (hasTimers(node.type)) {
+      <section class="group" aria-label="Timers">
+        <div class="group-title">
+          <span>Timers</span>
+          <small>
+            Run in order when the saga enters “{{ node.name }}”. A scheduled timeout is received as
+            an event when it fires: give a transition that event.
+          </small>
+        </div>
+        @for (timer of node.timers ?? []; track $index; let i = $index) {
+          <div class="timer message" data-kind="timer">
+            <span class="timer-title">
+              <app-icon name="clock" />
+              {{ timer.action === 'schedule' ? 'Schedule' : 'Unschedule' }}
+            </span>
+            <div class="row">
+              <input
+                type="text"
+                class="name"
+                aria-label="Timeout message"
+                placeholder="e.g. PaymentTimeout"
+                [value]="timer.name"
+                (change)="setTimerName(i, $event)"
+              />
+              <button
+                type="button"
+                class="icon-button"
+                [attr.aria-label]="'Remove ' + timer.name"
+                title="Remove"
+                (click)="removeTimer(i)"
+              >
+                <app-icon name="delete" />
+              </button>
+            </div>
+            @if (timer.action === 'schedule') {
+              <input
+                type="text"
+                class="delay"
+                aria-label="Delay"
+                placeholder="Delay, e.g. 30s"
+                [value]="timer.delay ?? ''"
+                (change)="setTimerDelay(i, $event)"
+              />
+            }
+          </div>
+        }
+        <div class="add-row">
+          <button type="button" class="ghost" (click)="addTimer('schedule')">
+            <app-icon name="clock" /> Schedule a timeout
+          </button>
+          <button type="button" class="ghost" (click)="addTimer('unschedule')">
+            <app-icon name="clock" /> Unschedule
+          </button>
+        </div>
+      </section>
+    }
+
     @if (hasIgnores(node.type)) {
       <section class="group" aria-label="Ignored events">
         <div class="group-title">
@@ -269,7 +326,12 @@
           branch.</small
         >
       </label>
-      @if (publishers().length) {
+      @if (timeoutSchedulers().length) {
+        <p class="origin timeout">
+          <app-icon name="clock" />
+          <span>Timeout scheduled when entering {{ timeoutSchedulers().join(', ') }}.</span>
+        </p>
+      } @else if (publishers().length) {
         <p class="origin">
           <app-icon name="trigger" />
           <span>Published by this saga when entering {{ publishers().join(', ') }}.</span>

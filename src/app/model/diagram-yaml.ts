@@ -14,6 +14,8 @@ import {
   NodeType,
   hasActivities,
   hasIgnores,
+  hasTimers,
+  Timer,
 } from './diagram';
 
 /** Current version of the file format; see docs/specs/diagram-format.md. */
@@ -67,6 +69,9 @@ function serializeNode(node: DiagramNode): Record<string, unknown> {
       ? node.activities.map(({ kind, name }) => ({ [kind]: name }))
       : undefined,
     ignores: node.ignores?.length ? node.ignores : undefined,
+    timers: node.timers?.length
+      ? node.timers.map(({ action, name, delay }) => withoutUndefined({ [action]: name, delay }))
+      : undefined,
     retry: node.retry,
     timeout: node.timeout,
     compensation: node.compensation && withoutUndefined({ ...node.compensation }),
@@ -204,6 +209,13 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     node['ignores'] === undefined
       ? undefined
       : asArray(node['ignores'], `${at}.ignores`).map((e, i) => asString(e, `${at}.ignores[${i}]`));
+  if (node['timers'] !== undefined && !hasTimers(type as NodeType)) {
+    throw new DiagramFormatError(`${at}.timers is only allowed on states`);
+  }
+  const timers =
+    node['timers'] === undefined
+      ? undefined
+      : asArray(node['timers'], `${at}.timers`).map((t, i) => parseTimer(t, `${at}.timers[${i}]`));
   const activities =
     node['activities'] === undefined
       ? undefined
@@ -218,6 +230,7 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     color: color as NodeColor | undefined,
     activities: activities?.length ? activities : undefined,
     ignores: ignores?.length ? ignores : undefined,
+    timers: timers?.length ? timers : undefined,
     retry: optionalString(node['retry'], `${at}.retry`),
     timeout: optionalString(node['timeout'], `${at}.timeout`),
     compensation:
@@ -227,6 +240,26 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
         description: optionalString(compensation['description'], `${at}.compensation.description`),
       }),
   }) as DiagramNode;
+}
+
+const TIMER_ACTIONS = ['schedule', 'unschedule'] as const;
+
+function parseTimer(value: unknown, at: string): Timer {
+  const entry = asRecord(value, at);
+  const actions = TIMER_ACTIONS.filter((a) => entry[a] !== undefined);
+  if (actions.length !== 1) {
+    throw new DiagramFormatError(`${at} must be "schedule: <Name>" or "unschedule: <Name>"`);
+  }
+  const [action] = actions;
+  const delay = optionalString(entry['delay'], `${at}.delay`)?.trim();
+  if (delay && action === 'unschedule') {
+    throw new DiagramFormatError(`${at}.delay is only allowed with schedule`);
+  }
+  return withoutUndefined({
+    action,
+    name: asString(entry[action], `${at}.${action}`),
+    delay: delay || undefined,
+  });
 }
 
 function parseActivity(value: unknown, at: string): Activity {

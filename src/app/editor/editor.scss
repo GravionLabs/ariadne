@@ -431,6 +431,13 @@ app-export-menu ::ng-deep .menu-button {
   pointer-events: none;
 }
 
+// A timeout firing: dashed amber, as it is time that moves the saga on, not a message.
+.timeout {
+  --ff-connection-color: var(--c-timeout);
+  --ff-connection-hover-color: var(--c-timeout);
+  stroke-dasharray: 2 5;
+}
+
 .compensation {
   --ff-connection-color: var(--c-compensation);
   --ff-connection-hover-color: var(--c-compensation);

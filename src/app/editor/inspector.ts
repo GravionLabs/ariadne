@@ -17,6 +17,8 @@ import {
   NodeType,
   hasActivities,
   hasIgnores,
+  hasTimers,
+  Timer,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { namingHint } from '../model/messages';
@@ -65,6 +67,7 @@ export class Inspector {
   protected readonly namingHint = namingHint;
   protected readonly hasActivities = hasActivities;
   protected readonly hasIgnores = hasIgnores;
+  protected readonly hasTimers = hasTimers;
   protected readonly colors = NODE_COLORS;
 
   protected readonly customColor = computed(() => {
@@ -168,6 +171,63 @@ export class Inspector {
       );
   }
 
+  protected addTimer(action: Timer['action']): void {
+    const node = this.node();
+    if (!node) return;
+    const timer: Timer =
+      action === 'schedule'
+        ? { action, name: 'SomethingTimedOut', delay: '30s' }
+        : { action, name: 'SomethingTimedOut' };
+    this.setTimers(node, [...(node.timers ?? []), timer]);
+    afterNextRender(
+      () => {
+        const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>('.timer .name');
+        const last = inputs[inputs.length - 1];
+        last?.focus();
+        last?.select();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** An empty name removes the timer. */
+  protected setTimerName(index: number, event: Event): void {
+    const node = this.node();
+    const name = optional(event);
+    const timers = node?.timers ?? [];
+    if (!node || name === timers[index]?.name) return;
+    this.setTimers(
+      node,
+      name
+        ? timers.map((t, i) => (i === index ? { ...t, name } : t))
+        : timers.filter((_, i) => i !== index),
+    );
+  }
+
+  protected setTimerDelay(index: number, event: Event): void {
+    const node = this.node();
+    const delay = optional(event);
+    const timers = node?.timers ?? [];
+    if (!node || delay === timers[index]?.delay) return;
+    this.setTimers(
+      node,
+      timers.map((t, i) => (i === index ? withoutUndefinedDelay({ ...t, delay }) : t)),
+    );
+  }
+
+  protected removeTimer(index: number): void {
+    const node = this.node();
+    if (node)
+      this.setTimers(
+        node,
+        (node.timers ?? []).filter((_, i) => i !== index),
+      );
+  }
+
+  private setTimers(node: DiagramNode, timers: Timer[]): void {
+    this.store.updateNode(node.id, { timers: timers.length ? timers : undefined });
+  }
+
   protected addIgnore(): void {
     const node = this.node();
     if (!node) return;
@@ -233,6 +293,16 @@ export class Inspector {
       .map((n) => n.name);
   });
 
+  /** Names of the states that schedule the selected transition's event as a timeout. */
+  protected readonly timeoutSchedulers = computed(() => {
+    const event = this.edge()?.event;
+    if (!event) return [];
+    return this.store
+      .nodes()
+      .filter((n) => n.timers?.some((t) => t.action === 'schedule' && t.name === event))
+      .map((n) => n.name);
+  });
+
   protected setEventSource(event: Event): void {
     const edge = this.edge();
     const value = optional(event);
@@ -262,4 +332,13 @@ export class Inspector {
 function optional(event: Event): string | undefined {
   const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value.trim();
   return value === '' ? undefined : value;
+}
+
+function withoutUndefinedDelay(timer: Timer): Timer {
+  if (timer.delay === undefined) {
+    const { delay, ...rest } = timer;
+    void delay;
+    return rest;
+  }
+  return timer;
 }

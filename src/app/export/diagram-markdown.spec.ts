@@ -179,4 +179,28 @@ describe('diagramToMarkdown', () => {
     expect(md).toContain('Ping<br>Pong');
     expect(md).toMatch(/\| Any state \| Any state \|/);
   });
+
+  it('adds a Timers column and calls the timeout event a timeout', () => {
+    expect(diagramToMarkdown(orderSaga)).not.toContain('| Timers |');
+    const nodes = orderSaga.nodes.map((n) =>
+      n.id === 'state-2'
+        ? { ...n, timers: [{ action: 'schedule' as const, name: 'StockTimeout', delay: '1h' }] }
+        : n,
+    );
+    const edges = [
+      ...orderSaga.edges,
+      {
+        id: 'e9',
+        source: 'state-2',
+        target: 'end-2',
+        kind: 'forward' as const,
+        event: 'StockTimeout',
+      },
+    ];
+    const md = diagramToMarkdown({ ...orderSaga, nodes, edges });
+    expect(md).toContain('Timers |');
+    expect(md).toContain('Schedule StockTimeout in 1h');
+    expect(md).toMatch(/\| StockTimeout \| timeout \|/);
+    expect(md).toMatch(/\| StockTimeout \| Timeout \|/);
+  });
 });

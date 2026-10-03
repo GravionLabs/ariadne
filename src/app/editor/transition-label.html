@@ -10,14 +10,11 @@
     @if (edge().event) {
       <span
         class="row event"
-        [class.external]="external()"
-        [title]="
-          external()
-            ? 'External event' + (edge().eventSource ? ' from ' + edge().eventSource : '')
-            : 'Event published by this saga'
-        "
+        [class.external]="kind() === 'external'"
+        [class.timeout]="kind() === 'timeout'"
+        [title]="hint()"
       >
-        <app-icon name="trigger" />
+        <app-icon [name]="icon()" />
         <span class="text">{{ label() }}</span>
       </span>
       @if (edge().eventSource; as source) {

@@ -101,11 +101,15 @@ export function diagramToMermaid(diagram: Diagram): string {
     if (node.type === 'end') lines.push(`  ${ids.get(node.id)} --> [*]`);
   }
   for (const node of diagram.nodes) {
-    if (node.ignores?.length) {
-      lines.push(
-        `  note right of ${ids.get(node.id)} : ${text(`Ignores ${node.ignores.join(', ')}`)}`,
-      );
-    }
+    const notes = [
+      ...(node.timers ?? []).map(
+        (t) =>
+          `${t.action === 'schedule' ? 'Schedules' : 'Unschedules'} ${t.name}${t.delay ? ` in ${t.delay}` : ''}`,
+      ),
+      ...(node.ignores?.length ? [`Ignores ${node.ignores.join(', ')}`] : []),
+    ];
+    if (notes.length)
+      lines.push(`  note right of ${ids.get(node.id)} : ${text(notes.join(' · '))}`);
   }
   const compensated = diagram.nodes.filter((n) => n.compensation).map((n) => ids.get(n.id)!);
   if (compensated.length) {
