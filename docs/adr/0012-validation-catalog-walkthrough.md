@@ -58,3 +58,6 @@ saga event by event in a review.
   (epic #162) they belong in the core package with the parser and the format.
 - A walkthrough ignores guards (it offers every transition of the event) and does not model several
   events arriving for a join: it is a reading aid, not a simulation. Documentation only, as in ADR 0001.
+- The initial bundle grows by about 36 kB (948 to 985 kB). Lazy-loading the two panels saves only about
+  1 kB (they are small), so the budget moves instead: warning 1 MB, error 1.2 MB. The next sizeable
+  addition should split code out of the first download (the inspector is the biggest candidate).
