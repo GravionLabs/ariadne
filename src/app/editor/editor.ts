@@ -11,6 +11,8 @@ import {
   withA11y,
 } from '@foblex/flow';
 import {
+  DiagramEdge,
+  DiagramNode,
   Direction,
   NodeType,
   inputId,
@@ -21,13 +23,14 @@ import {
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramExport } from '../export/diagram-export';
 import { DiagramDocument } from '../storage/diagram-document';
+import { Theme } from '../theme';
 import { AddStepButton } from './add-step-button';
 import { DiagramLayout, SLOT_SIZE, nodeSize } from './diagram-layout';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
 import { SourcePanel } from './source-panel';
 import { NodeCard } from './node-card';
-import { APPEND_TYPES } from './node-types';
+import { APPEND_TYPES, DECISION, NODE_TYPES } from './node-types';
 import { TransitionLabel } from './transition-label';
 
 const FIT_PADDING = { x: 80, y: 80 };
@@ -48,6 +51,7 @@ export class Editor {
   protected readonly file = inject(DiagramDocument);
   protected readonly exporter = inject(DiagramExport);
   protected readonly layout = inject(DiagramLayout);
+  protected readonly theme = inject(Theme);
   protected readonly appendTypes = APPEND_TYPES;
   protected readonly slotSize = SLOT_SIZE;
   protected readonly nodeSize = nodeSize;
@@ -98,6 +102,18 @@ export class Editor {
   /** Events the saga publishes itself; every other event comes from outside. */
   protected readonly published = computed(() => publishedEvents(this.store.diagram()));
 
+  /** Spoken names of the states (`Decision: Check stock`) and transitions, for screen readers. */
+  protected nodeLabel(node: DiagramNode): string {
+    const info = this.layout.decisions().has(node.id) ? DECISION : NODE_TYPES[node.type];
+    return `${info.label}: ${node.name}`;
+  }
+
+  protected edgeLabel(edge: DiagramEdge): string {
+    const name = (id: string) => this.store.nodes().find((n) => n.id === id)?.name ?? id;
+    const kind = edge.kind === 'compensation' ? 'Compensation' : 'Transition';
+    return `${kind} from ${name(edge.source)} to ${name(edge.target)}${edge.event ? ` on ${edge.event}` : ''}`;
+  }
+
   protected readonly edgesById = computed(() => new Map(this.store.edges().map((e) => [e.id, e])));
 
   /** The selected edge if exactly one edge (and nothing else) is selected. */
@@ -121,7 +137,8 @@ export class Editor {
         if (this.pendingSelect) {
           this.flow()?.select([this.pendingSelect], [], false);
           // Keep the node being worked on in view as the graph grows.
-          if (!this.fitPending) this.canvas()?.centerGroupOrNode(this.pendingSelect, true);
+          if (!this.fitPending)
+            this.canvas()?.centerGroupOrNode(this.pendingSelect, !prefersReducedMotion());
         }
         this.fitPending = false;
         this.pendingSelect = null;
@@ -303,7 +320,7 @@ export class Editor {
 
   protected fitToScreen(animated = true): void {
     // Never zoom in past 100%: a fresh diagram (one start node) would fill the screen.
-    this.canvas()?.fitToScreen(FIT_PADDING, animated, true, 1);
+    this.canvas()?.fitToScreen(FIT_PADDING, animated && !prefersReducedMotion(), true, 1);
   }
 
   protected resetZoom(): void {
@@ -330,6 +347,10 @@ export class Editor {
 
 const SOURCE_MIN_WIDTH = 280;
 const SOURCE_DEFAULT_WIDTH = 440;
+
+/** `prefers-reduced-motion`: the canvas jumps instead of gliding. */
+const prefersReducedMotion = (): boolean =>
+  globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);

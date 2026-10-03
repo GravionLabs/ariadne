@@ -643,4 +643,70 @@ describe('Editor', () => {
       expect(store.nodes()).toHaveLength(2);
     });
   });
+
+  describe('accessibility', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    /** Serious or critical axe findings; jsdom has no layout, so the colour contrast rule is off. */
+    async function axeFindings(root: HTMLElement): Promise<string[]> {
+      const { default: axe } = await import('axe-core');
+      const { violations } = await axe.run(root, {
+        rules: { 'color-contrast': { enabled: false } },
+      });
+      return violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+        .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
+    }
+
+    it('has no serious axe findings, also with a selection and the source panel open', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      expect(await axeFindings(el)).toEqual([]);
+
+      await select(['start-1']);
+      el.querySelector<HTMLButtonElement>('.source-toggle')!.click();
+      await settle();
+      expect(await axeFindings(el)).toEqual([]);
+
+      await select([], [store.edges()[0].id]);
+      expect(await axeFindings(el)).toEqual([]);
+    });
+
+    it('labels the theme toggle with the theme it switches to', async () => {
+      const { el, fixture } = await setup();
+      const toggle = el.querySelector<HTMLButtonElement>('.theme-toggle')!;
+      const before = toggle.textContent!.trim();
+      toggle.click();
+      fixture.detectChanges();
+      expect(toggle.textContent!.trim()).not.toBe(before);
+    });
+
+    it('names states and transitions for screen readers', async () => {
+      const { el, store, settle } = await setup();
+      const id = store.appendNode('start-1', 'state')!;
+      store.updateNode(id, { name: 'Reserve stock' });
+      await settle();
+      const label = (selector: string) => el.querySelector(selector)?.getAttribute('aria-label');
+      expect(label('app-node-card')).toMatch(/^Initial: /);
+      expect(el.querySelector(`app-node-card[aria-label$="Reserve stock"]`)).not.toBeNull();
+      expect(label('f-connection')).toMatch(/^Transition from .+ to Reserve stock$/);
+    });
+
+    it('does not animate fitting or centring when the user prefers reduced motion', async () => {
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: query.includes('reduce'),
+        addEventListener: () => {},
+      }));
+      const { fixture, store, settle } = await setup();
+      const canvas = fixture.debugElement.query(By.directive(FCanvasComponent))
+        .componentInstance as FCanvasComponent;
+      const fit = vi.spyOn(canvas, 'fitToScreen');
+      store.setDirection('left-right');
+      await settle();
+      await new Promise((resolve) => setTimeout(resolve));
+      expect(fit).toHaveBeenCalled();
+      expect(fit.mock.calls[0][1]).toBe(false);
+    });
+  });
 });

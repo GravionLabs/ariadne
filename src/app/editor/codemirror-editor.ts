@@ -22,7 +22,7 @@ import { CodeEditor, CodeEditorOptions, minimalChange } from './code-editor';
 /** Marks changes that come from outside, so they are not reported as user edits. */
 const external = Annotation.define<boolean>();
 
-/** Colours follow the app's tokens, so the editor fits the page (and later the dark theme). */
+/** Colours follow the app's tokens, so the editor fits the page and the dark theme. */
 const theme = EditorView.theme({
   '&': {
     height: '100%',
