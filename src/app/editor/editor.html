@@ -64,11 +64,10 @@
     <button
       type="button"
       class="menu-button theme-toggle"
-      [attr.aria-pressed]="theme.isDark()"
       (click)="theme.toggle()"
-      title="Switch between the light and the dark theme"
+      [title]="theme.isDark() ? 'Switch to the light theme' : 'Switch to the dark theme'"
     >
-      <app-icon name="theme" /><span>Dark</span>
+      <app-icon name="theme" /><span>{{ theme.isDark() ? 'Light' : 'Dark' }}</span>
     </button>
     <button
       type="button"
@@ -101,6 +100,7 @@
         @for (edge of store.edges(); track edge.id) {
           <f-connection
             [fConnectionId]="edge.id"
+            [attr.aria-label]="edgeLabel(edge)"
             [fSourceId]="outputId(edge.source)"
             [fTargetId]="inputId(edge.target)"
             fType="segment"
@@ -154,7 +154,7 @@
             (expandToggled)="layout.toggleExpanded(node.id)"
             [decision]="layout.decisions().has(node.id)"
             [direction]="store.direction()"
-            [attr.aria-label]="node.name"
+            [attr.aria-label]="nodeLabel(node)"
           />
         }
         @for (label of layout.labels(); track label.id) {

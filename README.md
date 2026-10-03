@@ -30,6 +30,8 @@ States do things; transitions react to events. A command is sent to exactly one 
 - **Edit the source** next to the diagram: the **Source** button in the toolbar opens the YAML in a split view. Typing updates the diagram a moment later, editing the diagram updates the text, and a problem in the text is shown with its line and column while the diagram keeps its last valid state. Drag the divider to resize the panel.
 - **Undo and redo** every edit (`Ctrl+Z`, `Ctrl+Shift+Z`).
 - **Open and save** diagrams as `*.saga.yaml` files (`Ctrl+O`, `Ctrl+S`, `Ctrl+Shift+S`); older `.yaml` files still open. Where the browser allows it (Chrome, Edge) saving overwrites the opened file; otherwise it downloads a copy.
+- **Switch the theme** with the toggle in the top bar: light, dark, or (until you choose) your system's setting. When Ariadne is embedded, the host can set it with `postMessage({ type: 'ariadne:theme', kind })`, `kind` being `light`, `dark`, `high-contrast` or `high-contrast-light`.
+- **Use the keyboard.** `Tab` reaches the diagram once; then the arrows move between states and transitions (selecting them), `Ctrl`+arrow follows a transition, `Home`/`End` jump to the first or last state, `Ctrl+A` selects all, `Esc` clears, `Delete` removes the selection, `+`/`-`/`0` zoom. `Tab` on reaches the "+" buttons (`Enter` opens the picker), the inspector and the toolbar. Screen readers hear each state and transition and a live announcement of the selection; `prefers-reduced-motion` turns the animated fit and centring off.
 - **Old files keep working.** Earlier file versions are migrated on open, and the app tells you what changed.
 
 ## Getting started

@@ -277,6 +277,12 @@
   width: 100%;
   height: 100%;
   outline: none;
+
+  // The flow is one tab stop (arrows move between its states): show that it has the focus.
+  &:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: -2px;
+  }
 }
 
 .inspector {
