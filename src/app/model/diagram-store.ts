@@ -81,6 +81,17 @@ export const DiagramStore = signalStore(
         store._commit(() => next);
       },
 
+      /**
+       * Points a transition at another state, as one undo step. Returns `false` if that is not
+       * allowed (see `retargetEdge`); an unchanged target is allowed and records nothing.
+       */
+      setEdgeTarget(edgeId: string, target: string): boolean {
+        const next = edits.retargetEdge(store.diagram(), edgeId, target);
+        if (!next) return false;
+        if (next !== store.diagram()) store._commit(() => next);
+        return true;
+      },
+
       setDirection(direction: Direction): void {
         if (direction === store.diagram().direction) return;
         store._commit((d) => ({ ...d, direction }));

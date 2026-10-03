@@ -113,6 +113,10 @@ edges:
 | `eventSource` | string                      | no       | Where an external event comes from, e.g. `Shop API`.                                                       |
 | `guard`       | string                      | no       | Condition for taking the transition, e.g. `amount > 100`. Needs an `event`. Free text, documentation only. |
 
+A transition may lead back to a state it came from, a loop (e.g. a retry). Loops need no marker in the file;
+the editor leaves them out of the auto-layout and draws them like compensation transitions, with their label
+on the line. A transition from a state to itself is not allowed.
+
 An event a transition reacts to is **internal** when some state of the same diagram publishes it
 (an `event:` activity), and **external** otherwise. External events can arrive in any state, not only
 the initial one. `eventSource` names the system they come from. Ariadne derives internal or external

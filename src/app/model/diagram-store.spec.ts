@@ -336,4 +336,28 @@ describe('DiagramStore', () => {
       expect(store.canUndo()).toBe(false);
     });
   });
+
+  describe('retargeting a transition', () => {
+    it('is one undo step, and refused moves record nothing', () => {
+      store.load(blank());
+      const start = store.addNode('start');
+      const first = store.appendNode(start, 'state')!;
+      const second = store.appendNode(first, 'state')!;
+      const third = store.addNode('state');
+      store.load(store.diagram());
+      const edge = store.edges().find((e) => e.target === second)!;
+
+      expect(store.setEdgeTarget(edge.id, first)).toBe(false);
+      expect(store.setEdgeTarget(edge.id, 'nope')).toBe(false);
+      expect(store.setEdgeTarget(edge.id, start)).toBe(false);
+      expect(store.setEdgeTarget(edge.id, second)).toBe(true);
+      expect(store.canUndo()).toBe(false);
+
+      expect(store.setEdgeTarget(edge.id, third)).toBe(true);
+      expect(store.edges().find((e) => e.id === edge.id)?.target).toBe(third);
+      store.undo();
+      expect(store.edges().find((e) => e.id === edge.id)?.target).toBe(second);
+      expect(store.canUndo()).toBe(false);
+    });
+  });
 });

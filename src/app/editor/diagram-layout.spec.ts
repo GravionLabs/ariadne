@@ -1,5 +1,6 @@
 import { Diagram, DiagramNode } from '../model/diagram';
 import {
+  backEdgeIds,
   decisionIds,
   isCompact,
   labelSize,
@@ -193,5 +194,65 @@ describe('diagram layout', () => {
       ],
     };
     expect(decisionIds(diagram).has('join-1')).toBe(false);
+  });
+
+  describe('loops', () => {
+    // start → a → b → end, and b → a closes a loop.
+    const looped: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'start-1', type: 'start', name: 'Initial' },
+        { id: 'a', type: 'state', name: 'A' },
+        { id: 'b', type: 'state', name: 'B' },
+        { id: 'end-1', type: 'end', name: 'Done' },
+      ],
+      edges: [
+        { id: 'e1', source: 'start-1', target: 'a', kind: 'forward' },
+        { id: 'e2', source: 'a', target: 'b', kind: 'forward', event: 'Go' },
+        { id: 'e3', source: 'b', target: 'a', kind: 'forward', event: 'Retry' },
+        { id: 'e4', source: 'b', target: 'end-1', kind: 'forward', event: 'Done' },
+      ],
+    };
+
+    it('finds the transition that closes the loop, and only that one', () => {
+      expect([...backEdgeIds(looped)]).toEqual(['e3']);
+      expect(backEdgeIds(saga).size).toBe(0);
+    });
+
+    it('does not mistake a diamond (two paths joining) for a loop', () => {
+      const diamond: Diagram = {
+        ...looped,
+        edges: [
+          { id: 'e1', source: 'start-1', target: 'a', kind: 'forward' },
+          { id: 'e2', source: 'start-1', target: 'b', kind: 'forward' },
+          { id: 'e3', source: 'a', target: 'end-1', kind: 'forward' },
+          { id: 'e4', source: 'b', target: 'end-1', kind: 'forward' },
+        ],
+      };
+      expect(backEdgeIds(diamond).size).toBe(0);
+    });
+
+    it('finds loops that nothing leads into (every state has an incoming transition)', () => {
+      const ring: Diagram = {
+        ...looped,
+        edges: [
+          { id: 'r1', source: 'a', target: 'b', kind: 'forward' },
+          { id: 'r2', source: 'b', target: 'a', kind: 'forward' },
+        ],
+      };
+      expect(backEdgeIds(ring).size).toBe(1);
+    });
+
+    it('lays the diagram out as if the loop were not there, without a label for it', () => {
+      const { positions, labels } = layoutDiagram(looped);
+      expect(positions.get('a')!.y).toBeLessThan(positions.get('b')!.y);
+      expect(positions.get('b')!.y).toBeLessThan(positions.get('end-1')!.y);
+      expect(labels.map((l) => l.edgeId)).not.toContain('e3');
+      expect(labels.map((l) => l.edgeId)).toContain('e4');
+    });
+
+    it('counts the loop as a transition: the state is a decision', () => {
+      expect(decisionIds(looped).has('b')).toBe(true);
+    });
   });
 });

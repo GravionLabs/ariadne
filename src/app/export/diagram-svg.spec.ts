@@ -230,4 +230,27 @@ describe('renderDiagramSvg title', () => {
     expect(svg).toContain('PaymentCharged + StockReserved');
     expect(svg).toContain('▬');
   });
+
+  it('routes a transition that closes a loop around the states, with its label', () => {
+    const looped = {
+      ...orderSaga,
+      edges: [
+        ...orderSaga.edges,
+        {
+          id: 'edge-9',
+          source: 'state-2',
+          target: 'state-1',
+          kind: 'forward' as const,
+          event: 'RetryReserve',
+        },
+      ],
+    };
+    const { svg } = renderDiagramSvg(looped);
+    expect(svg).toContain('RetryReserve');
+    // The loop is a path of its own going out to a lane: more bends than a straight transition.
+    const paths = svg.match(/<path d="M[^"]*" fill="none"/g) ?? [];
+    const plain = renderDiagramSvg(orderSaga).svg.match(/<path d="M[^"]*" fill="none"/g) ?? [];
+    expect(paths).toHaveLength(plain.length + 1);
+    expect(renderDiagramSvg(looped).svg).toBe(svg);
+  });
 });

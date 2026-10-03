@@ -17,6 +17,7 @@ import {
   labelRows,
   layoutDiagram,
   nodeSize,
+  backEdgeIds,
   decisionIds,
 } from '../editor/diagram-layout';
 import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from '../editor/node-types';
@@ -82,6 +83,7 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
   const { positions, labels } = layoutDiagram(diagram);
   const lr = diagram.direction === 'left-right';
   const decisions = decisionIds(diagram);
+  const back = backEdgeIds(diagram);
   const kindOf = eventKindOf(diagram);
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const rect = (id: string) => ({ ...positions.get(id)!, ...nodeSize(nodes.get(id)!) });
@@ -123,7 +125,7 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
     const { out, in: inn } = anchors(edge);
     let points: Point[];
     let labelCentre: Point;
-    if (edge.kind === 'forward') {
+    if (edge.kind === 'forward' && !back.has(edge.id)) {
       const label = labelOf.get(edge.id);
       const mid = label
         ? mainOf(label.position) + (lr ? label.size.width : label.size.height) / 2

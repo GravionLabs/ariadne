@@ -6,6 +6,7 @@ import {
   connect,
   insertOnEdge,
   removeElements,
+  retargetEdge,
   updateDetails,
   updateEdge,
   updateNode,
@@ -148,5 +149,39 @@ describe('diagram edits', () => {
       ['state-1', inserted.id],
       [inserted.id, 'end-1'],
     ]);
+  });
+
+  it('points a transition at another state, keeping everything else', () => {
+    const next = retargetEdge(path(), 'edge-1', 'end-1')!;
+    expect(next.edges[0]).toEqual({ ...path().edges[0], target: 'end-1' });
+    expect(next.edges[1]).toEqual(path().edges[1]);
+  });
+
+  it('makes a loop when pointed back at an earlier state', () => {
+    // start → state-1 → end-1, and state-1 → new → end-1; then new → end-1 is pointed at state-1.
+    const longer = appendNode(path(), 'state-1', 'state')!;
+    const toEnd = connect(longer.diagram, longer.id, 'end-1')!;
+    const looped = retargetEdge(toEnd.diagram, toEnd.id, 'state-1');
+    expect(looped?.edges.at(-1)).toMatchObject({ source: longer.id, target: 'state-1' });
+  });
+
+  it('refuses an unknown edge or state, a state that cannot be entered, itself and duplicates', () => {
+    expect(retargetEdge(path(), 'nope', 'end-1')).toBeNull();
+    expect(retargetEdge(path(), 'edge-1', 'nope')).toBeNull();
+    expect(retargetEdge(path(), 'edge-2', 'start-1')).toBeNull();
+    expect(retargetEdge(path(), 'edge-1', 'start-1')).toBeNull();
+    const twin = {
+      ...path(),
+      edges: [
+        ...path().edges,
+        { id: 'edge-3', source: 'start-1', target: 'end-1', kind: 'forward' as const },
+      ],
+    };
+    expect(retargetEdge(twin, 'edge-1', 'end-1')).toBeNull();
+  });
+
+  it('returns the same diagram when the target does not change', () => {
+    const d = path();
+    expect(retargetEdge(d, 'edge-1', 'state-1')).toBe(d);
   });
 });

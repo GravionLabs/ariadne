@@ -136,6 +136,37 @@ export function outgoingCounts(diagram: Diagram): Map<string, number> {
   return counts;
 }
 
+/**
+ * Forward transitions that close a loop (they lead back to a state on the path to their source).
+ * They would distort the layers, so the layout leaves them out and they are drawn like
+ * compensation transitions. Found by depth-first search from the states nothing leads to, in node
+ * order, so the same diagram always gives the same answer.
+ */
+export function backEdgeIds(diagram: Diagram): Set<string> {
+  const outgoing = new Map<string, DiagramEdge[]>();
+  const entered = new Set<string>();
+  for (const e of diagram.edges) {
+    if (e.kind !== 'forward') continue;
+    outgoing.set(e.source, [...(outgoing.get(e.source) ?? []), e]);
+    entered.add(e.target);
+  }
+  const back = new Set<string>();
+  const done = new Set<string>();
+  const onPath = new Set<string>();
+  const visit = (id: string): void => {
+    onPath.add(id);
+    for (const e of outgoing.get(id) ?? []) {
+      if (onPath.has(e.target)) back.add(e.id);
+      else if (!done.has(e.target)) visit(e.target);
+    }
+    onPath.delete(id);
+    done.add(id);
+  };
+  const roots = diagram.nodes.filter((n) => !entered.has(n.id));
+  for (const { id } of [...roots, ...diagram.nodes]) if (!done.has(id)) visit(id);
+  return back;
+}
+
 /** States several transitions leave. The "any" node and joins are not: they fan out by design. */
 export function decisionIds(diagram: Diagram): Set<string> {
   const anyIds = new Set(
@@ -160,8 +191,8 @@ export const labelId = (edgeId: string): string => `label:${edgeId}`;
 
 /**
  * Lays out the forward graph with dagre, with the add slots and the transition labels (as dagre
- * edge labels, so they get room between the layers). Compensation transitions point backwards
- * and would distort the layers, so they are left out.
+ * edge labels, so they get room between the layers). Compensation transitions and transitions
+ * that close a loop point backwards and would distort the layers, so they are left out.
  */
 export function layoutDiagram(
   diagram: Diagram,
@@ -181,7 +212,8 @@ export function layoutDiagram(
     graph.setNode(id, { ...size });
   };
   diagram.nodes.forEach((n) => addNode(n.id, nodeSize(n, expanded.has(n.id))));
-  const forward = diagram.edges.filter((e) => e.kind === 'forward');
+  const back = backEdgeIds(diagram);
+  const forward = diagram.edges.filter((e) => e.kind === 'forward' && !back.has(e.id));
   const labelSizes = new Map(forward.map((e) => [e.id, labelSize(e, diagram.direction)]));
   forward.forEach((e) =>
     graph.setEdge(e.source, e.target, { ...labelSizes.get(e.id)!, labelpos: 'c' }),
