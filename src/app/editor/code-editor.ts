@@ -5,6 +5,10 @@ export interface CodeEditor {
   /** Replaces the text from outside (the user's cursor and scroll position are kept if possible). */
   setText(text: string): void;
   focus(): void;
+  /** Marks a problem at a position (1-based) with a message, or removes the mark with `null`. */
+  showError(error: { message: string; line: number; column: number } | null): void;
+  /** Puts the cursor at a position (1-based) and scrolls it into view. */
+  reveal(line: number, column: number): void;
   destroy(): void;
 }
 

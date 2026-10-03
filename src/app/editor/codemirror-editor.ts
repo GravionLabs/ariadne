@@ -1,5 +1,6 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { yaml } from '@codemirror/lang-yaml';
+import { lintGutter, setDiagnostics } from '@codemirror/lint';
 import {
   HighlightStyle,
   bracketMatching,
@@ -58,6 +59,8 @@ const highlighting = HighlightStyle.define([
   { tag: tags.keyword, color: 'var(--c-decision)' },
 ]);
 
+const clampLine = (line: number, lines: number): number => Math.min(Math.max(line, 1), lines);
+
 /** The CodeMirror 6 implementation of {@link CodeEditor}; imported lazily. */
 export async function createCodeMirrorEditor(
   parent: HTMLElement,
@@ -69,6 +72,7 @@ export async function createCodeMirrorEditor(
       doc: options.text,
       extensions: [
         lineNumbers(),
+        lintGutter(),
         highlightActiveLineGutter(),
         highlightActiveLine(),
         drawSelection(),
@@ -104,6 +108,29 @@ export async function createCodeMirrorEditor(
       view.dispatch({ changes: minimalChange(current, text), annotations: external.of(true) });
     },
     focus: () => view.focus(),
+    showError(error) {
+      if (!error) {
+        view.dispatch(setDiagnostics(view.state, []));
+        return;
+      }
+      const line = view.state.doc.line(clampLine(error.line, view.state.doc.lines));
+      const from = Math.min(line.from + Math.max(error.column - 1, 0), line.to);
+      view.dispatch(
+        setDiagnostics(view.state, [
+          // From the problem to the end of the line: the whole value is underlined.
+          { from, to: Math.max(from + 1, line.to), severity: 'error', message: error.message },
+        ]),
+      );
+    },
+    reveal(lineNumber, column) {
+      const line = view.state.doc.line(clampLine(lineNumber, view.state.doc.lines));
+      const pos = Math.min(line.from + Math.max(column - 1, 0), line.to);
+      view.dispatch({
+        selection: { anchor: pos },
+        effects: EditorView.scrollIntoView(pos, { y: 'center' }),
+      });
+      view.focus();
+    },
     destroy: () => view.destroy(),
   };
 }

@@ -130,3 +130,19 @@
 .keep {
   color: var(--c-text-subtle);
 }
+
+.where {
+  padding: 0;
+  color: var(--c-danger);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: 2px;
+  }
+}

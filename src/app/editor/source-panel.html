@@ -35,6 +35,16 @@
       @if (sync.status(); as status) {
         @if (status.kind === 'error') {
           <span class="dot"></span>
+          @if (status.error.line; as line) {
+            <button
+              type="button"
+              class="where"
+              title="Go to the problem"
+              (click)="reveal(line, status.error.column ?? 1)"
+            >
+              Line {{ line }}:{{ status.error.column ?? 1 }}
+            </button>
+          }
           <span class="message">{{ status.error.message }}</span>
           <span class="keep">The diagram keeps its last valid state.</span>
         }

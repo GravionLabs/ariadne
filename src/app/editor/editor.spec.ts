@@ -26,6 +26,8 @@ interface FakeEditor extends CodeEditor {
   text: string;
   options: CodeEditorOptions;
   setText: Mock<(text: string) => void>;
+  showError: Mock<CodeEditor['showError']>;
+  reveal: Mock<CodeEditor['reveal']>;
   destroy: Mock<() => void>;
 }
 
@@ -42,6 +44,8 @@ describe('Editor', () => {
           editor.text = text;
         }),
         focus: vi.fn(),
+        showError: vi.fn(),
+        reveal: vi.fn(),
         destroy: vi.fn(),
       };
       editors.push(editor);
@@ -485,6 +489,46 @@ describe('Editor', () => {
       const status = el.querySelector('app-source-panel [role=status]')!;
       expect(status.textContent).toContain('nodes must be a list');
       expect(status.textContent).toContain('keeps its last valid state');
+    });
+
+    it('names the line of a problem, marks it in the editor, and jumps there', async () => {
+      const { el, editors, settle } = await setup();
+      sourceButton(el).click();
+      await settle();
+      const [editor] = editors;
+      editor.options.onChange('version: 3\nnodes:\n  - { id: a, type: task, name: A }\n');
+      editor.options.onBlur();
+      await settle();
+      const status = el.querySelector('app-source-panel [role=status]')!;
+      expect(status.textContent).toContain('Line 3:20');
+      expect(editor.showError).toHaveBeenLastCalledWith({
+        message: expect.stringContaining('nodes[0].type must be one of'),
+        line: 3,
+        column: 20,
+      });
+
+      status.querySelector<HTMLButtonElement>('.where')!.click();
+      expect(editor.reveal).toHaveBeenCalledWith(3, 20);
+
+      // Fixing the text removes the mark.
+      editor.options.onChange(editor.text.replace('task', 'state'));
+      editor.options.onBlur();
+      await settle();
+      expect(editor.showError).toHaveBeenLastCalledWith(null);
+      expect(status.textContent).toContain('Valid');
+    });
+
+    it('has no line to show for a problem that cannot be placed', async () => {
+      const { el, editors, settle } = await setup();
+      sourceButton(el).click();
+      await settle();
+      editors[0].options.onChange('- 1\n');
+      editors[0].options.onBlur();
+      await settle();
+      const status = el.querySelector('app-source-panel [role=status]')!;
+      expect(status.textContent).toContain('file must be a mapping');
+      expect(status.querySelector('.where')).toBeNull();
+      expect(editors[0].showError).toHaveBeenLastCalledWith(null);
     });
 
     it('follows edits made on the canvas', async () => {

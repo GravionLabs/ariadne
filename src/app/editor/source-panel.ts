@@ -44,10 +44,37 @@ export class SourcePanel {
       const text = this.sync.text();
       this.editor?.setText(text);
     });
+    // Mark the problem in the text while there is one. A pending edit moves the text, so the mark
+    // goes until the new text is parsed.
+    effect(() => {
+      const status = this.sync.status();
+      const error = status.kind === 'error' ? status.error : null;
+      this.editor?.showError(
+        error?.line
+          ? { message: error.message, line: error.line, column: error.column ?? 1 }
+          : null,
+      );
+    });
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
       this.editor?.destroy();
     });
+  }
+
+  /** Jumps to the problem named in the status line. */
+  protected reveal(line: number, column: number): void {
+    this.editor?.reveal(line, column);
+  }
+
+  private showStatusError(editor: CodeEditor): void {
+    const status = this.sync.status();
+    if (status.kind === 'error' && status.error.line) {
+      editor.showError({
+        message: status.error.message,
+        line: status.error.line,
+        column: status.error.column ?? 1,
+      });
+    }
   }
 
   private async load(): Promise<void> {
@@ -63,6 +90,7 @@ export class SourcePanel {
       }
       this.editor = editor;
       editor.setText(this.sync.text());
+      this.showStatusError(editor);
       this.loading.set(false);
     } catch {
       this.failed.set(true);
