@@ -11,6 +11,7 @@ describe('exportFileName', () => {
     expect(exportFileName('order', 'png')).toBe('order.png');
     expect(exportFileName('.saga.yaml', 'svg')).toBe('diagram.svg');
     expect(exportFileName('order.saga.yaml', 'mmd')).toBe('order.mmd');
+    expect(exportFileName('order.saga.yaml', 'docs.md')).toBe('order.docs.md');
   });
 });
 
@@ -57,6 +58,13 @@ describe('DiagramExport', () => {
     const [md, mdName] = exportFile.mock.calls[1];
     expect(mdName).toBe('untitled.md');
     expect((await md.text()).startsWith('```mermaid\nstateDiagram-v2\n')).toBe(true);
+  });
+
+  it('saves the documentation page, titled with the diagram name', async () => {
+    expect(await exporter.exportMarkdown()).toBe(true);
+    const [blob, name] = exportFile.mock.calls[0];
+    expect(name).toBe('untitled.docs.md');
+    expect(await blob.text()).toMatch(/^# untitled\n/);
   });
 
   it('copies Mermaid to the clipboard and says so', async () => {

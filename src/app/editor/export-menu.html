@@ -40,5 +40,12 @@
         ><small>{{ entry.hint }}</small>
       </button>
     }
+    <header>Documentation</header>
+    @for (entry of documentation; track entry.label) {
+      <button type="button" role="menuitem" class="item" (click)="pick(entry)">
+        <strong>{{ entry.label }}</strong
+        ><small>{{ entry.hint }}</small>
+      </button>
+    }
   </section>
 </ng-template>

@@ -1,0 +1,147 @@
+import { Diagram } from '../model/diagram';
+import { diagramToMarkdown } from './diagram-markdown';
+
+const orderSaga: Diagram = {
+  direction: 'top-bottom',
+  nodes: [
+    { id: 'start-1', type: 'start', name: 'Initial' },
+    { id: 'state-1', type: 'state', name: 'Awaiting order', description: 'Waits for the shop.' },
+    {
+      id: 'state-2',
+      type: 'state',
+      name: 'Reserving stock',
+      activities: [{ kind: 'command', name: 'ReserveStock' }],
+      compensation: { name: 'ReleaseStock', description: 'Gives the stock back' },
+      retry: '3 attempts',
+      timeout: '30s',
+    },
+    {
+      id: 'state-3',
+      type: 'state',
+      name: 'Charging payment',
+      activities: [
+        { kind: 'command', name: 'ChargePayment' },
+        { kind: 'event', name: 'PaymentRequested' },
+      ],
+    },
+    { id: 'end-1', type: 'end', name: 'Completed' },
+    { id: 'end-2', type: 'end', name: 'Cancelled' },
+  ],
+  edges: [
+    { id: 'e1', source: 'start-1', target: 'state-1', kind: 'forward' },
+    {
+      id: 'e2',
+      source: 'state-1',
+      target: 'state-2',
+      kind: 'forward',
+      event: 'OrderReceived',
+      eventSource: 'Shop API',
+    },
+    { id: 'e3', source: 'state-2', target: 'state-3', kind: 'forward', event: 'StockReserved' },
+    { id: 'e4', source: 'state-3', target: 'end-1', kind: 'forward', event: 'PaymentCharged' },
+    { id: 'e5', source: 'state-3', target: 'end-2', kind: 'forward', event: 'PaymentFailed' },
+    { id: 'e6', source: 'state-3', target: 'state-2', kind: 'compensation', event: 'Undo' },
+  ],
+};
+
+describe('diagramToMarkdown', () => {
+  it('renders the order saga', () => {
+    expect(
+      diagramToMarkdown(orderSaga, {
+        title: 'Order saga',
+        description: 'Takes an order to shipping.',
+      }),
+    ).toMatchSnapshot();
+  });
+
+  it('is deterministic', () => {
+    expect(diagramToMarkdown(orderSaga)).toBe(diagramToMarkdown(orderSaga));
+  });
+
+  it('has title, description, diagram and the four tables, in order', () => {
+    const md = diagramToMarkdown(orderSaga, { title: 'Order', description: 'About orders.' });
+    const headings = md.match(/^#{1,2} .*/gm);
+    expect(headings).toEqual([
+      '# Order',
+      '## Diagram',
+      '## States',
+      '## Transitions',
+      '## Commands',
+      '## Events',
+    ]);
+    expect(md).toContain('# Order\n\nAbout orders.\n\n## Diagram');
+    expect(md).toContain('```mermaid\nstateDiagram-v2\n');
+  });
+
+  it('defaults the title and skips an empty description', () => {
+    expect(diagramToMarkdown(orderSaga)).toMatch(/^# Saga\n\n## Diagram/);
+    expect(diagramToMarkdown(orderSaga, { title: ' ', description: '  ' })).toMatch(
+      /^# Saga\n\n## Diagram/,
+    );
+  });
+
+  it('describes states, with decisions, activities, compensation, retry and timeout', () => {
+    const md = diagramToMarkdown(orderSaga);
+    expect(md).toContain('| Awaiting order | State | Waits for the shop. |');
+    expect(md).toContain('| Charging payment | Decision |');
+    expect(md).toContain('| Send ChargePayment<br>Publish PaymentRequested |');
+    expect(md).toContain('| ReleaseStock: Gives the stock back | 3 attempts | 30s |');
+    expect(md).toContain('| Initial | Initial |');
+    expect(md).toContain('| Cancelled | Final |');
+  });
+
+  it('lists transitions with source and kind', () => {
+    const md = diagramToMarkdown(orderSaga);
+    expect(md).toContain(
+      '| Awaiting order | OrderReceived | Shop API | Reserving stock | Forward |',
+    );
+    expect(md).toContain('| Charging payment | Undo | external | Reserving stock | Compensation |');
+    expect(md).toContain('| Initial |  |  | Awaiting order | Forward |');
+  });
+
+  it('lists commands and where they are sent', () => {
+    expect(diagramToMarkdown(orderSaga)).toContain('| ChargePayment | Charging payment |');
+  });
+
+  it('tells internal events from external ones and lists what they trigger', () => {
+    const md = diagramToMarkdown({
+      ...orderSaga,
+      edges: [
+        ...orderSaga.edges,
+        {
+          id: 'e7',
+          source: 'state-1',
+          target: 'end-2',
+          kind: 'forward',
+          event: 'PaymentRequested',
+        },
+      ],
+    });
+    expect(md).toContain(
+      '| PaymentRequested | Internal | Charging payment | Awaiting order → Cancelled |',
+    );
+    expect(md).toContain('| OrderReceived | External |  | Awaiting order → Reserving stock |');
+  });
+
+  it('escapes pipes and line breaks in cells', () => {
+    const md = diagramToMarkdown({
+      direction: 'top-bottom',
+      nodes: [{ id: 'a', type: 'state', name: 'A | B', description: 'one\ntwo' }],
+      edges: [],
+    });
+    expect(md).toContain('| A \\| B | State | one<br>two |');
+  });
+
+  it('says so when there is nothing to list', () => {
+    const md = diagramToMarkdown({ direction: 'top-bottom', nodes: [], edges: [] });
+    expect(md.match(/_None\._/g)).toHaveLength(4);
+  });
+
+  it('ignores transitions to missing states', () => {
+    const md = diagramToMarkdown({
+      ...orderSaga,
+      edges: [{ id: 'bad', source: 'nope', target: 'state-1', kind: 'forward', event: 'Ghost' }],
+    });
+    expect(md).not.toContain('Ghost');
+  });
+});
