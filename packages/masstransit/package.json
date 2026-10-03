@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./diff": "./src/diff.ts",
     "./generate": "./src/generate.ts",
     "./node": "./src/node.ts"
   },

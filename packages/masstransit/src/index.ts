@@ -8,3 +8,4 @@
 export * from './import';
 export * from './parser';
 export * from './generate';
+export * from './diff';
