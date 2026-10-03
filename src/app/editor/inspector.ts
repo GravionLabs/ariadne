@@ -5,12 +5,10 @@ import {
   afterNextRender,
   computed,
   inject,
-  input,
   output,
 } from '@angular/core';
 import {
   Activity,
-  DiagramEdge,
   DiagramNode,
   EdgeKind,
   MessageKind,
@@ -21,6 +19,8 @@ import {
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { namingHint } from '../model/messages';
+import { DiagramLayout } from './diagram-layout';
+import { EditorStore } from './editor-store';
 import { Icon } from './icon';
 import { DECISION, NODE_TYPES } from './node-types';
 
@@ -30,7 +30,7 @@ const NEW_MESSAGE: Record<MessageKind, string> = {
 };
 
 /**
- * Edits the selected state or transition. Fields commit on `change` (blur or Enter), so every edit is
+ * Edits the state or transition selected in the editor. Fields commit on `change` (blur or Enter), so every edit is
  * one undo step; unchanged values are not committed.
  */
 @Component({
@@ -45,10 +45,17 @@ export class Inspector {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
 
-  readonly node = input<DiagramNode>();
-  readonly edge = input<DiagramEdge>();
+  private readonly editor = inject(EditorStore);
+  private readonly layout = inject(DiagramLayout);
+
+  /** The selected state or transition, from the editor's selection. */
+  protected readonly node = this.editor.selectedNode;
+  protected readonly edge = this.editor.selectedEdge;
   /** The selected state has several transitions. */
-  readonly decision = input(false);
+  protected readonly decision = computed(() => {
+    const node = this.node();
+    return !!node && this.layout.decisions().has(node.id);
+  });
   readonly closed = output<void>();
   readonly deleted = output<void>();
   /** "Add transition": a new state of this type should follow the selected one. */

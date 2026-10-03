@@ -38,7 +38,7 @@
     @if (file.notice(); as notice) {
       <p class="error-pill notice-pill" role="status">
         <span [title]="notice">{{ notice }}</span>
-        <button type="button" aria-label="Dismiss notice" (click)="file.notice.set(null)">
+        <button type="button" aria-label="Dismiss notice" (click)="file.setNotice(null)">
           <app-icon name="close" />
         </button>
       </p>
@@ -46,7 +46,7 @@
     @if (file.error(); as error) {
       <p class="error-pill" role="alert">
         <span>{{ error }}</span>
-        <button type="button" aria-label="Dismiss error" (click)="file.error.set(null)">
+        <button type="button" aria-label="Dismiss error" (click)="file.setError(null)">
           <app-icon name="close" />
         </button>
       </p>
@@ -121,7 +121,7 @@
                 [insertable]="false"
                 [edge]="edge"
                 [direction]="store.direction()"
-                [selected]="selectedEdge()?.id === edge.id"
+                [selected]="ui.selectedEdge()?.id === edge.id"
                 [external]="!!edge.event && !published().has(edge.event)"
                 (selectRequested)="selectEdge(edge.id)"
               />
@@ -174,7 +174,7 @@
               <app-transition-label
                 [edge]="edge"
                 [direction]="store.direction()"
-                [selected]="selectedEdge()?.id === edge.id"
+                [selected]="ui.selectedEdge()?.id === edge.id"
                 [external]="!!edge.event && !published().has(edge.event)"
                 (selectRequested)="selectEdge(edge.id)"
                 (inserted)="insert(edge.id, $event)"
@@ -221,21 +221,12 @@
       </div>
     }
 
-    @if (selectedNode(); as node) {
+    @if (ui.inspectorOpen()) {
       <app-inspector
         class="inspector"
-        [node]="node"
-        [decision]="layout.decisions().has(node.id)"
         (closed)="clearSelection()"
         (deleted)="deleteSelection()"
-        (transitionAdded)="append(node.id, $event)"
-      />
-    } @else if (selectedEdge(); as edge) {
-      <app-inspector
-        class="inspector"
-        [edge]="edge"
-        (closed)="clearSelection()"
-        (deleted)="deleteSelection()"
+        (transitionAdded)="appendToSelected($event)"
       />
     }
 
@@ -243,7 +234,7 @@
       <button
         type="button"
         class="icon-button"
-        [disabled]="!hasSelection()"
+        [disabled]="!ui.hasSelection()"
         (click)="deleteSelection()"
         aria-label="Delete selection"
         title="Delete (Del)"

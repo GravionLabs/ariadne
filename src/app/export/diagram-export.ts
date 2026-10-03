@@ -64,11 +64,11 @@ export class DiagramExport {
       const clipboard = this.window?.navigator.clipboard;
       if (!clipboard) throw new Error('The clipboard is not available in this browser.');
       await clipboard.writeText(diagramToMermaid(this.store.diagram()));
-      this.document.error.set(null);
-      this.document.notice.set('Mermaid copied to clipboard.');
+      this.document.setError(null);
+      this.document.setNotice('Mermaid copied to clipboard.');
       return true;
     } catch (e) {
-      this.document.error.set((e as Error).message);
+      this.document.setError((e as Error).message);
       return false;
     }
   }
@@ -83,10 +83,10 @@ export class DiagramExport {
         blob,
         exportFileName(this.document.name(), extension),
       );
-      if (ref) this.document.error.set(null);
+      if (ref) this.document.setError(null);
       return !!ref;
     } catch (e) {
-      this.document.error.set((e as Error).message);
+      this.document.setError((e as Error).message);
       return false;
     }
   }

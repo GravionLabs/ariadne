@@ -33,6 +33,7 @@
     "@foblex/platform": "^1.0.4",
     "@foblex/utils": "^1.1.1",
     "@lezer/highlight": "^1.2.5",
+    "@ngrx/signals": "^22.0.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "yaml": "^2.9.1"

@@ -428,7 +428,7 @@ describe('Editor', () => {
 
   it('shows file errors and lets them be dismissed', async () => {
     const { el, settle } = await setup();
-    TestBed.inject(DiagramDocument).error.set('Unsupported format version 7');
+    TestBed.inject(DiagramDocument).setError('Unsupported format version 7');
     await settle();
     expect(el.querySelector('[role=alert]')?.textContent).toContain('Unsupported format');
     el.querySelector<HTMLButtonElement>('[aria-label="Dismiss error"]')!.click();
