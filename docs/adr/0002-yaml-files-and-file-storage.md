@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-01
-- Issues: #20, #23, #26
+- Issues: #20, #23, #26, #107
 
 ## Context
 
@@ -26,6 +26,18 @@ File System Access API) and later inside a Tauri 2 shell (native dialogs and fil
 4. **`DiagramDocument`** service owns the current file reference and an unsaved-changes flag. Because
    `DiagramStore` is immutable, "dirty" is simply `store.diagram() !== lastSavedDiagram`, which also
    becomes clean again when undo returns to the saved state.
+
+5. **Diagram files are named `*.saga.yaml`.** The double extension tells diagrams apart from every
+   other YAML file, so file dialogs can filter on it, the OS and other tools can associate it, and the
+   planned VS Code extension can register a custom editor for it (`"filenamePattern": "*.saga.yaml"`).
+   - **New and Save As** use it: the untitled document is `untitled.saga.yaml`, and
+     `diagramFileName()` turns a suggested name (`order`, `order.yaml`) into `order.saga.yaml`.
+   - **Open** filters on `*.saga.yaml`, but still opens any file. The pickers keep their "All files"
+     option, and nothing in the parser looks at the name, so older `.yaml` / `.yml` diagrams keep
+     working. **Save** writes in place under the name the file already has; **Save As** offers the new
+     name.
+   - The operating system's dialog has the last word on what the user types. If someone saves under
+     another name anyway, that name is kept (a file handle cannot be renamed).
 
 ## Consequences
 

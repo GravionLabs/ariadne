@@ -4,7 +4,7 @@ Diagrams for [MassTransit saga state machines](https://masstransit.massient.com/
 
 Ariadne is a web app (Angular + [Foblex f-flow](https://github.com/Foblex/f-flow)). Diagrams are plain local files, so they diff and review like code. It is **documentation only**: diagrams are never executed.
 
-![The order saga from docs/examples/order-saga.yaml](docs/images/order-saga.jpg)
+![The order saga from docs/examples/order.saga.yaml](docs/images/order-saga.jpg)
 
 ## The model
 
@@ -29,7 +29,7 @@ States do things; transitions react to events. A command is sent to exactly one 
 - **Edit** the selection in the inspector: name, description, color, activities, compensation, retry and timeout for states; event, event source and kind for transitions.
 - **Edit the source** next to the diagram: the **Source** button in the toolbar opens the YAML in a split view. Typing updates the diagram a moment later, editing the diagram updates the text, and a problem in the text is shown with its line and column while the diagram keeps its last valid state. Drag the divider to resize the panel.
 - **Undo and redo** every edit (`Ctrl+Z`, `Ctrl+Shift+Z`).
-- **Open and save** diagrams as YAML (`Ctrl+O`, `Ctrl+S`, `Ctrl+Shift+S`). Where the browser allows it (Chrome, Edge) saving overwrites the opened file; otherwise it downloads a copy.
+- **Open and save** diagrams as `*.saga.yaml` files (`Ctrl+O`, `Ctrl+S`, `Ctrl+Shift+S`); older `.yaml` files still open. Where the browser allows it (Chrome, Edge) saving overwrites the opened file; otherwise it downloads a copy.
 - **Old files keep working.** Earlier file versions are migrated on open, and the app tells you what changed.
 
 ## Getting started
@@ -41,7 +41,7 @@ pnpm install
 pnpm start        # dev server on http://localhost:4200
 ```
 
-Then open `docs/examples/order-saga.yaml` with **Open…** to see the diagram above.
+Then open `docs/examples/order.saga.yaml` with **Open…** to see the diagram above.
 
 Other commands:
 
@@ -54,7 +54,7 @@ pnpm build           # production build in dist/
 
 ## Diagram files
 
-A diagram is one YAML file. Only the graph is stored, no positions, so diffs show real changes to the saga:
+A diagram is one YAML file, named `*.saga.yaml`. Only the graph is stored, no positions, so diffs show real changes to the saga:
 
 ```yaml
 version: 3
@@ -76,7 +76,7 @@ edges:
   - { id: edge-2, source: state-1, target: end-1, event: StockReserved }
 ```
 
-The full format, with every field and the migration rules, is in [docs/specs/diagram-format.md](docs/specs/diagram-format.md). A complete example is [docs/examples/order-saga.yaml](docs/examples/order-saga.yaml).
+The full format, with every field and the migration rules, is in [docs/specs/diagram-format.md](docs/specs/diagram-format.md). A complete example is [docs/examples/order.saga.yaml](docs/examples/order.saga.yaml).
 
 ## Project layout
 

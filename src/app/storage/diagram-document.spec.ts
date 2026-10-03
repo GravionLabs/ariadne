@@ -6,7 +6,7 @@ import { FileRef, FileStorage, OpenedFile } from './file-storage';
 
 class FakeFileStorage extends FileStorage {
   opened: OpenedFile | null = null;
-  saveAsName: string | null = 'chosen.yaml';
+  saveAsName: string | null = 'chosen.saga.yaml';
   readonly written: { name: string; content: string }[] = [];
 
   open = vi.fn(async () => this.opened);
@@ -34,7 +34,7 @@ describe('DiagramDocument', () => {
   });
 
   it('starts clean and untitled, and becomes dirty on edits', () => {
-    expect(doc.name()).toBe('untitled.yaml');
+    expect(doc.name()).toBe('untitled.saga.yaml');
     expect(doc.dirty()).toBe(false);
     store.addNode('state');
     expect(doc.dirty()).toBe(true);
@@ -45,15 +45,15 @@ describe('DiagramDocument', () => {
   it('asks for a location on first save, then saves in place', async () => {
     store.addNode('state');
     expect(await doc.save()).toBe(true);
-    expect(storage.saveAs).toHaveBeenCalledWith(expect.any(String), 'untitled.yaml');
-    expect(doc.name()).toBe('chosen.yaml');
+    expect(storage.saveAs).toHaveBeenCalledWith(expect.any(String), 'untitled.saga.yaml');
+    expect(doc.name()).toBe('chosen.saga.yaml');
     expect(doc.dirty()).toBe(false);
 
     store.addNode('end');
     await doc.save();
     expect(storage.save).toHaveBeenCalledTimes(1);
     expect(storage.written.at(-1)).toEqual({
-      name: 'chosen.yaml',
+      name: 'chosen.saga.yaml',
       content: serializeDiagram(store.diagram()),
     });
   });
@@ -133,7 +133,7 @@ describe('DiagramDocument', () => {
     expect(await doc.open()).toBe(false);
     expect(doc.error()).toMatch(/Unsupported format version 7/);
     expect(store.nodes().map((n) => n.id)).toEqual(['start-1', 'state-1']);
-    expect(doc.name()).toBe('untitled.yaml');
+    expect(doc.name()).toBe('untitled.saga.yaml');
   });
 
   it('starts a new diagram with just a start node', () => {

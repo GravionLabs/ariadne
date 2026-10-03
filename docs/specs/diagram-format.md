@@ -1,6 +1,6 @@
 # Diagram file format (version 3)
 
-Ariadne stores one diagram per YAML file (`.yaml` / `.yml`). Files are meant to be committed to git.
+Ariadne stores one diagram per YAML file, named `*.saga.yaml` (older `.yaml` / `.yml` files can still be opened). Files are meant to be committed to git.
 The format is designed so that an unchanged diagram is written byte-for-byte identically. Layout is
 computed by the editor, so files hold the graph only: no positions, and a diff only shows what
 changed in the saga.
