@@ -32,7 +32,7 @@
       "request": "launch",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["ng", "test", "--no-watch"],
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/apps/web",
       "console": "integratedTerminal",
       "autoAttachChildProcesses": true,
       "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
