@@ -7,3 +7,5 @@ allowBuilds:
   esbuild: true
   lmdb: true
   msgpackr-extract: true
+  # Only the prebuilt grammar (WASM) of tree-sitter-c-sharp is used; its native build is not needed.
+  tree-sitter-c-sharp: false

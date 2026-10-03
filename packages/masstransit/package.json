@@ -1,0 +1,26 @@
+{
+  "name": "@ariadne/masstransit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MassTransit saga state machines <-> Ariadne diagrams: import from C# (tree-sitter) and generate C#.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-masstransit.xml"
+  },
+  "dependencies": {
+    "@ariadne/core": "workspace:*",
+    "@dagrejs/dagre": "^3.1.1",
+    "tree-sitter-c-sharp": "^0.23.5",
+    "web-tree-sitter": "^0.27.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "vitest": "^5.0.0"
+  }
+}

@@ -1,0 +1,42 @@
+version: 3
+name: Shipment
+saga:
+  class: ShipmentStateMachine
+  namespace: Warehouse.Shipments
+  instance: ShipmentState
+  stateProperty: CurrentState
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-packing
+    type: state
+    name: Packing
+    activities:
+      - command: PrintLabel
+      - event: ParcelBeingPacked
+  - id: state-in-transit
+    type: state
+    name: InTransit
+    activities:
+      - event: ParcelDispatched
+  - id: end-1
+    type: end
+    name: Final
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-packing
+    kind: forward
+    event: ShipmentRequested
+  - id: edge-2
+    source: state-packing
+    target: state-in-transit
+    kind: forward
+    event: ParcelPacked
+  - id: edge-3
+    source: state-in-transit
+    target: end-1
+    kind: forward
+    event: ParcelDelivered

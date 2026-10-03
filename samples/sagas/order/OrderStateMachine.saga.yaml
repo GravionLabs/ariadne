@@ -1,0 +1,64 @@
+version: 3
+name: Order
+saga:
+  class: OrderStateMachine
+  namespace: Shop.Orders
+  instance: OrderState
+  stateProperty: CurrentState
+events:
+  - name: OrderSubmitted
+    correlation: CorrelateById(context => context.Message.OrderId)
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-reserving-stock
+    type: state
+    name: ReservingStock
+    activities:
+      - command: ReserveStock
+  - id: state-charging-payment
+    type: state
+    name: ChargingPayment
+    activities:
+      - command: ChargePayment
+  - id: state-shipping
+    type: state
+    name: Shipping
+    activities:
+      - command: ShipOrder
+  - id: end-1
+    type: end
+    name: Final
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-reserving-stock
+    kind: forward
+    event: OrderSubmitted
+  - id: edge-2
+    source: state-reserving-stock
+    target: state-charging-payment
+    kind: forward
+    event: StockReserved
+  - id: edge-3
+    source: state-reserving-stock
+    target: end-1
+    kind: forward
+    event: StockUnavailable
+  - id: edge-4
+    source: state-charging-payment
+    target: state-shipping
+    kind: forward
+    event: PaymentCharged
+  - id: edge-5
+    source: state-charging-payment
+    target: end-1
+    kind: forward
+    event: PaymentFailed
+  - id: edge-6
+    source: state-shipping
+    target: end-1
+    kind: forward
+    event: OrderShipped
