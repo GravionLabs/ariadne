@@ -15,5 +15,6 @@ export * as edits from './diagram-edits';
 export * from './diagram-yaml';
 export * from './layout';
 export * from './messages';
+export * from './node-info';
 export * from './validation';
 export * from './walkthrough';

@@ -1,0 +1,33 @@
+{
+  "name": "@ariadne/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The ariadne command: lint and export saga diagrams, locally and in CI.",
+  "type": "module",
+  "bin": {
+    "ariadne": "./dist/ariadne.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-cli.xml"
+  },
+  "dependencies": {
+    "@ariadne/core": "workspace:*",
+    "@ariadne/export": "workspace:*",
+    "@dagrejs/dagre": "^3.1.1",
+    "@resvg/resvg-js": "^2.6.2",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "esbuild": "^0.28.2",
+    "vitest": "^5.0.0"
+  }
+}

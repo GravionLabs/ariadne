@@ -1,5 +1,5 @@
 import { IconName } from './icon';
-import { NodeType } from '@ariadne/core';
+import { DECISION_INFO, NODE_INFO, NodeType } from '@ariadne/core';
 
 export interface NodeTypeInfo {
   label: string;
@@ -7,32 +7,23 @@ export interface NodeTypeInfo {
   description: string;
 }
 
-export const NODE_TYPES: Record<NodeType, NodeTypeInfo> = {
-  start: { label: 'Initial', icon: 'start', description: 'Where the saga begins.' },
-  state: {
-    label: 'State',
-    icon: 'step',
-    description: 'Waits for events; each event leads on through a transition.',
-  },
-  end: { label: 'Final', icon: 'end', description: 'The saga is finished.' },
-  join: {
-    label: 'Join',
-    icon: 'join',
-    description: 'Waits until several events have all arrived.',
-  },
-  any: {
-    label: 'Any state',
-    icon: 'any',
-    description: 'Transitions that apply in every state.',
-  },
+const ICONS: Record<NodeType, IconName> = {
+  start: 'start',
+  state: 'step',
+  end: 'end',
+  join: 'join',
+  any: 'any',
 };
 
+export const NODE_TYPES: Record<NodeType, NodeTypeInfo> = Object.fromEntries(
+  (Object.keys(NODE_INFO) as NodeType[]).map((type) => [
+    type,
+    { ...NODE_INFO[type], icon: ICONS[type] },
+  ]),
+) as Record<NodeType, NodeTypeInfo>;
+
 /** How a state that several transitions leave is shown: it decides by the event it receives. */
-export const DECISION: NodeTypeInfo = {
-  label: 'Decision',
-  icon: 'decision',
-  description: 'Branches on the event it receives.',
-};
+export const DECISION: NodeTypeInfo = { ...DECISION_INFO, icon: 'decision' };
 
 /** Types offered by an add button: after a state, or in the middle of a transition. */
 export const APPEND_TYPES: readonly NodeType[] = ['state', 'join', 'end'];

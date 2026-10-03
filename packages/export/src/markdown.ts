@@ -1,13 +1,14 @@
-import { DECISION, NODE_TYPES } from '../editor/node-types';
-import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
+import { diagramToMermaid, mermaidMarkdown } from './mermaid';
 import {
   ACTIVITY_VERBS,
+  DECISION_INFO,
   decisionIds,
   Diagram,
   DiagramNode,
   EventKind,
   eventKindOf,
   joinEventsOf,
+  NODE_INFO,
 } from '@ariadne/core';
 
 export interface MarkdownOptions {
@@ -38,7 +39,8 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
       : '';
   const name = (id: string) => nodes.get(id)?.name ?? id;
   const decisions = decisionIds(diagram);
-  const typeLabel = (n: DiagramNode) => (decisions.has(n.id) ? DECISION : NODE_TYPES[n.type]).label;
+  const typeLabel = (n: DiagramNode) =>
+    (decisions.has(n.id) ? DECISION_INFO : NODE_INFO[n.type]).label;
   const edges = diagram.edges.filter((e) => nodes.has(e.source) && nodes.has(e.target));
 
   const title = diagram.name?.trim() || options.title?.trim() || 'Saga';

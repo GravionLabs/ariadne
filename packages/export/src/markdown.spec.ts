@@ -1,4 +1,4 @@
-import { diagramToMarkdown } from './diagram-markdown';
+import { diagramToMarkdown } from './markdown';
 import { Diagram } from '@ariadne/core';
 
 const orderSaga: Diagram = {
