@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push to the same branch makes the running check obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  ci:
+    name: Lint, build, test
+    runs-on: ubuntu-latest
+    steps:
+      # Lint, build and test with one install and the pnpm store cached
+      # (GravionLabs/ci: node/ci runs `pnpm run lint`, `build` and `test:ci`).
+      - uses: GravionLabs/ci/node/ci@main
+        with:
+          package-manager: pnpm
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: GravionLabs/ci/node/setup@main
+        with:
+          package-manager: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run format:check
