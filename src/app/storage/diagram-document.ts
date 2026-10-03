@@ -2,9 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Diagram, emptyDiagram } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { parseDiagramWithNotes, serializeDiagram } from '../model/diagram-yaml';
-import { FileRef, FileStorage } from './file-storage';
-
-const UNTITLED = 'untitled.yaml';
+import { FileRef, FileStorage, UNTITLED_NAME, diagramFileName } from './file-storage';
 
 /** The diagram file being edited: new/open/save through {@link FileStorage}. */
 @Injectable({ providedIn: 'root' })
@@ -16,7 +14,7 @@ export class DiagramDocument {
   /** Diagram as last loaded or saved; the store is immutable, so identity means unchanged. */
   private readonly saved = signal<Diagram>(this.store.diagram());
 
-  readonly name = computed(() => this.file()?.name ?? UNTITLED);
+  readonly name = computed(() => this.file()?.name ?? UNTITLED_NAME);
   readonly dirty = computed(() => this.store.diagram() !== this.saved());
   /** Last error, e.g. an invalid file; cleared by the next successful action. */
   readonly error = signal<string | null>(null);
@@ -46,7 +44,8 @@ export class DiagramDocument {
   }
 
   async saveAs(): Promise<boolean> {
-    return this.write((content) => this.storage.saveAs(content, this.name()));
+    // Always suggest a `*.saga.yaml` name, also for a legacy `.yaml` file opened before.
+    return this.write((content) => this.storage.saveAs(content, diagramFileName(this.name())));
   }
 
   private write(target: (content: string) => Promise<FileRef | null>): Promise<boolean> {

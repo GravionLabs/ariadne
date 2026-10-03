@@ -400,7 +400,7 @@ describe('Editor', () => {
     press('s');
     expect(storage.saveAs).toHaveBeenCalledWith(
       expect.stringContaining('version: 3'),
-      'untitled.yaml',
+      'untitled.saga.yaml',
     );
     press('S', true);
     expect(storage.saveAs).toHaveBeenCalledTimes(2);
@@ -414,7 +414,7 @@ describe('Editor', () => {
       [...el.querySelectorAll<HTMLButtonElement>('.file-actions button')].find(
         (b) => b.textContent?.trim() === 'Save',
       )!;
-    expect(el.querySelector('.file-name')?.textContent?.trim()).toBe('untitled.yaml');
+    expect(el.querySelector('.file-name')?.textContent?.trim()).toBe('untitled.saga.yaml');
     expect(el.querySelector('[aria-label="Unsaved changes"]')).toBeNull();
     expect(save().classList).not.toContain('primary');
     store.appendNode('start-1', 'state');
@@ -594,7 +594,7 @@ describe('Editor', () => {
       expect(store.nodes()[0].name).toBe('Begin');
       expect(storage.saveAs).toHaveBeenCalledWith(
         expect.stringContaining('name: Begin'),
-        'untitled.yaml',
+        'untitled.saga.yaml',
       );
     });
 

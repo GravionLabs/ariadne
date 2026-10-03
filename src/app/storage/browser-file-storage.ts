@@ -1,6 +1,12 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
-import { DIAGRAM_EXTENSIONS, FileRef, FileStorage, OpenedFile } from './file-storage';
+import {
+  DIAGRAM_EXTENSIONS,
+  FileRef,
+  FileStorage,
+  OpenedFile,
+  diagramFileName,
+} from './file-storage';
 
 /** Subset of the File System Access API (Chromium only, not in TypeScript's DOM lib yet). */
 interface FileHandle {
@@ -21,8 +27,12 @@ interface BrowserFileRef extends FileRef {
   readonly handle?: FileHandle;
 }
 
+// The pickers keep their "All files" option, so older `.yaml` / `.yml` diagrams can still be opened.
 const PICKER_TYPES = [
-  { description: 'Ariadne diagram', accept: { 'application/yaml': DIAGRAM_EXTENSIONS } },
+  {
+    description: 'Ariadne diagram (*.saga.yaml)',
+    accept: { 'application/yaml': DIAGRAM_EXTENSIONS },
+  },
 ];
 
 /**
@@ -60,6 +70,7 @@ export class BrowserFileStorage extends FileStorage {
   }
 
   async saveAs(content: string, suggestedName: string): Promise<FileRef | null> {
+    suggestedName = diagramFileName(suggestedName);
     const fs = this.fs;
     if (fs) {
       const handle = await cancelled(fs.showSaveFilePicker({ suggestedName, types: PICKER_TYPES }));

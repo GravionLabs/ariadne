@@ -1,8 +1,8 @@
-import orderSaga from '../../../docs/examples/order-saga.yaml';
+import orderSaga from '../../../docs/examples/order.saga.yaml';
 import { publishedEvents } from './diagram';
 import { parseDiagramWithNotes, serializeDiagram } from './diagram-yaml';
 
-describe('docs/examples/order-saga.yaml', () => {
+describe('docs/examples/order.saga.yaml', () => {
   const { diagram, notes } = parseDiagramWithNotes(orderSaga);
 
   it('is a valid, current-format diagram', () => {
