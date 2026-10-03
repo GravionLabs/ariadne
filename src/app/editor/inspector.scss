@@ -104,7 +104,13 @@
   cursor: pointer;
 
   &.none {
-    background: repeating-linear-gradient(45deg, var(--c-surface), var(--c-surface) 4px, var(--c-border) 4px, var(--c-border) 5px);
+    background: repeating-linear-gradient(
+      45deg,
+      var(--c-surface),
+      var(--c-surface) 4px,
+      var(--c-border) 4px,
+      var(--c-border) 5px
+    );
     border-color: var(--c-border);
   }
 

@@ -75,7 +75,11 @@ function descriptionHeight(node: DiagramNode): number {
   const lines = node
     .description!.split('\n')
     .reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / DESCRIPTION_LINE_CHARS)), 0);
-  return DESCRIPTION_GAP + 2 * DESCRIPTION_PADDING + Math.min(lines, DESCRIPTION_MAX_LINES) * DESCRIPTION_LINE;
+  return (
+    DESCRIPTION_GAP +
+    2 * DESCRIPTION_PADDING +
+    Math.min(lines, DESCRIPTION_MAX_LINES) * DESCRIPTION_LINE
+  );
 }
 
 /** Rows of a transition label: the event and its source, then one per activity. */
@@ -131,7 +135,10 @@ export const labelId = (edgeId: string): string => `label:${edgeId}`;
  * edge labels, so they get room between the layers). Compensation transitions point backwards
  * and would distort the layers, so they are left out.
  */
-export function layoutDiagram(diagram: Diagram, expanded: ReadonlySet<string> = new Set()): DiagramLayoutResult {
+export function layoutDiagram(
+  diagram: Diagram,
+  expanded: ReadonlySet<string> = new Set(),
+): DiagramLayoutResult {
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({
     rankdir: diagram.direction === 'left-right' ? 'LR' : 'TB',

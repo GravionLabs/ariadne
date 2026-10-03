@@ -111,8 +111,10 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     throw new DiagramFormatError(`${at}.type must be one of ${NODE_TYPES.join(', ')}`);
   }
   const color = node['color'];
-  if (color !== undefined &&   !isNodeColor(color)) {
-      throw new DiagramFormatError(`${at}.color must be one of ${NODE_COLORS.join(', ')} or a #rrggbb value`);
+  if (color !== undefined && !isNodeColor(color)) {
+    throw new DiagramFormatError(
+      `${at}.color must be one of ${NODE_COLORS.join(', ')} or a #rrggbb value`,
+    );
   }
   const compensation =
     node['compensation'] === undefined
