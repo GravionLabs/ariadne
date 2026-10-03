@@ -132,6 +132,18 @@
 </header>
 
 <div #body class="body">
+  @if (sync.invalid(); as problem) {
+    <div class="document-error" role="alert">
+      <h2>This diagram cannot be shown</h2>
+      <p class="problem">{{ problem }}</p>
+      <p>
+        The file is not changed. Fix it in the text editor; the diagram comes back when it is valid.
+      </p>
+      <button type="button" class="menu-button primary" (click)="sync.showAsText()">
+        Open as text
+      </button>
+    </div>
+  }
   <div class="workspace" [attr.data-direction]="store.direction()" [class.walking]="walking()">
     <f-flow
       fDraggable

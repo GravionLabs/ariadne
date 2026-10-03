@@ -1,0 +1,100 @@
+import {
+  parseEditorMessage,
+  type EditorSettings,
+  type HostMessage,
+  type ThemeKind,
+} from '@ariadne/editor-protocol';
+
+/** The text document behind one editor, as far as a session needs it. */
+export interface SessionDocument {
+  getText(): string;
+  /** Replaces the whole text (one `WorkspaceEdit`); resolves to whether VS Code applied it. */
+  replaceText(text: string): PromiseLike<boolean>;
+}
+
+/** The webview and the window around it, as far as a session needs them. */
+export interface SessionView {
+  post(message: HostMessage): void;
+  theme(): ThemeKind;
+  settings(): EditorSettings;
+  /** Opens the document in the text editor. */
+  showAsText(): void;
+  showError(message: string): void;
+}
+
+/**
+ * One open diagram: the conversation between a text document and the editor in its webview (see
+ * docs/specs/vscode-protocol.md). The document is the source of truth. The webview's edits become
+ * whole-document replacements, one at a time and in order; changes the document gets from anywhere
+ * else are sent to the webview. The webview's own edits are not echoed back to it.
+ */
+export class EditorSession {
+  private queue: PromiseLike<unknown> = Promise.resolve();
+  /** Texts the webview wrote that VS Code has not reported as a change yet. */
+  private readonly own: string[] = [];
+
+  constructor(
+    private readonly document: SessionDocument,
+    private readonly view: SessionView,
+  ) {}
+
+  /** A message from the webview; anything that is not part of the protocol is ignored. */
+  receive(data: unknown): void {
+    const message = parseEditorMessage(data);
+    if (!message) return;
+    switch (message.type) {
+      case 'ready':
+        this.view.post({
+          v: 1,
+          type: 'init',
+          text: this.document.getText(),
+          theme: this.view.theme(),
+          settings: this.view.settings(),
+        });
+        break;
+      case 'edit':
+        this.write(message.text);
+        break;
+      case 'showAsText':
+        this.view.showAsText();
+        break;
+      case 'error':
+        this.view.showError(message.message);
+        break;
+    }
+  }
+
+  /** The document's text changed (not only its dirty state). */
+  documentChanged(): void {
+    const text = this.document.getText();
+    const mine = this.own.indexOf(text);
+    if (mine >= 0) {
+      this.own.splice(mine, 1);
+      return;
+    }
+    this.view.post({ v: 1, type: 'documentChanged', text });
+  }
+
+  themeChanged(): void {
+    this.view.post({ v: 1, type: 'theme', kind: this.view.theme() });
+  }
+
+  /** Resolves when the edits received so far are applied. */
+  idle(): PromiseLike<unknown> {
+    return this.queue;
+  }
+
+  private write(text: string): void {
+    this.queue = this.queue.then(async () => {
+      if (this.document.getText() === text) return;
+      this.own.push(text);
+      let applied = false;
+      try {
+        applied = await this.document.replaceText(text);
+      } catch (e) {
+        this.view.showError(`The change could not be saved: ${(e as Error).message}`);
+      }
+      if (!applied) this.own.splice(this.own.lastIndexOf(text), 1);
+    });
+  }
+}

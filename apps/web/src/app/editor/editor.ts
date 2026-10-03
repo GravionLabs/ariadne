@@ -20,6 +20,7 @@ import {
   withA11y,
 } from '@foblex/flow';
 import { EditorHost } from '../host/editor-host';
+import { EmbeddedSync } from '../host/embedded-sync';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
@@ -113,6 +114,7 @@ export class Editor {
   protected readonly theme = inject(Theme);
   /** Inside a host (VS Code): it owns files, saving and undo; those controls are not shown. */
   protected readonly embedded = inject(EditorHost).embedded;
+  protected readonly sync = inject(EmbeddedSync);
   protected readonly appendTypes = APPEND_TYPES;
   protected readonly slotSize = SLOT_SIZE;
   protected readonly nodeSize = nodeSize;
@@ -199,6 +201,10 @@ export class Editor {
         this.canvas()?.centerGroupOrNode(node.id, !prefersReducedMotion()),
       );
       onCleanup(() => clearTimeout(timer));
+    });
+    // The host showed a document: start with the whole diagram in view.
+    effect(() => {
+      if (this.sync.opened() > 0) untracked(() => this.afterReplace());
     });
     // The text was edited while walking and the path no longer holds: the walk is over.
     effect(() => {

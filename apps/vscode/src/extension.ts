@@ -1,17 +1,19 @@
 import * as vscode from 'vscode';
 import { emptyDiagram, serializeDiagram } from '@ariadne/core';
-import { SAGA_EDITOR_VIEW_TYPE, SagaEditorProvider } from './saga-editor-provider';
+import { OpenEditor, SAGA_EDITOR_VIEW_TYPE, SagaEditorProvider } from './saga-editor-provider';
 
-export function activate(context: vscode.ExtensionContext): void {
+/** What the extension exports; the integration tests drive the editors through it. */
+export interface AriadneApi {
+  openEditors(): OpenEditor[];
+}
+
+export function activate(context: vscode.ExtensionContext): AriadneApi {
+  const provider = new SagaEditorProvider(context.extensionUri);
   context.subscriptions.push(
-    vscode.window.registerCustomEditorProvider(
-      SAGA_EDITOR_VIEW_TYPE,
-      new SagaEditorProvider(context.extensionUri),
-      {
-        webviewOptions: { retainContextWhenHidden: true },
-        supportsMultipleEditorsPerDocument: true,
-      },
-    ),
+    vscode.window.registerCustomEditorProvider(SAGA_EDITOR_VIEW_TYPE, provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+      supportsMultipleEditorsPerDocument: true,
+    }),
     vscode.commands.registerCommand('ariadne.openDiagram', (uri?: vscode.Uri) =>
       vscode.commands.executeCommand(
         'vscode.openWith',
@@ -45,6 +47,7 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.commands.executeCommand('vscode.openWith', file, SAGA_EDITOR_VIEW_TYPE);
     }),
   );
+  return { openEditors: () => [...provider.open] };
 }
 
 export function deactivate(): void {}
