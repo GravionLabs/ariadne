@@ -1,6 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { Diagram, emptyDiagram } from '../model/diagram';
+import { updateDetails } from '../model/diagram-edits';
 import { DiagramStore } from '../model/diagram-store';
 import { parseDiagramWithNotes, serializeDiagram } from '../model/diagram-yaml';
 import { FileRef, FileStorage, UNTITLED_NAME, diagramFileName } from './file-storage';
@@ -82,8 +83,9 @@ export const DiagramDocument = signalStore(
         patchState(store, { notice });
       },
 
-      newDiagram(): void {
-        replace(emptyDiagram(), null);
+      /** An empty diagram, named if `details` has a name; it is not unsaved until edited. */
+      newDiagram(details: { name?: string; description?: string } = {}): void {
+        replace(updateDetails(emptyDiagram(), details), null);
       },
 
       /** Returns false if the user cancelled or the file was invalid. */

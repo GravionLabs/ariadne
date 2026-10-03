@@ -1,0 +1,93 @@
+// The dialog lives in the CDK overlay container; emulated encapsulation still scopes these styles.
+.dialog {
+  display: grid;
+  gap: 12px;
+  width: min(380px, calc(100vw - 32px));
+  padding: 16px;
+  color: var(--c-text);
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+
+  h2 {
+    margin: 0;
+    font-size: 15px;
+  }
+
+  label {
+    display: grid;
+    gap: 4px;
+  }
+
+  label > span {
+    color: var(--c-text-subtle);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  small {
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  input,
+  textarea {
+    padding: 6px 8px;
+    color: var(--c-text);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    font: inherit;
+    resize: vertical;
+
+    &:focus-visible {
+      border-color: var(--c-primary);
+      outline: none;
+    }
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  // Same look as the top bar's buttons (`.menu-button` in editor.scss, which does not reach the overlay).
+  .menu-button {
+    height: 32px;
+    padding: 0 14px;
+    color: var(--c-text);
+    background: transparent;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: var(--c-surface-3);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--c-primary);
+      outline-offset: 1px;
+    }
+
+    &.primary {
+      color: var(--c-on-primary);
+      background: var(--c-primary);
+      border-color: var(--c-primary);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}

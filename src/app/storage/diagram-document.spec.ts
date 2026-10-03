@@ -167,3 +167,17 @@ describe('DiagramDocument', () => {
     expect(doc.dirty()).toBe(true);
   });
 });
+
+describe('DiagramDocument.newDiagram with details', () => {
+  it('starts a clean diagram with the given name and description', () => {
+    TestBed.configureTestingModule({ providers: [{ provide: FileStorage, useValue: {} }] });
+    const store = TestBed.inject(DiagramStore);
+    const doc = TestBed.inject(DiagramDocument);
+    store.addNode('state');
+    doc.newDiagram({ name: ' Order Saga ', description: 'About it' });
+    expect(store.diagram()).toMatchObject({ name: 'Order Saga', description: 'About it' });
+    expect(store.nodes().map((n) => n.type)).toEqual(['start']);
+    expect(store.canUndo()).toBe(false);
+    expect(doc.dirty()).toBe(false);
+  });
+});

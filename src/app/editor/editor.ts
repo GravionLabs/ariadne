@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import {
   Component,
   ElementRef,
@@ -39,6 +40,7 @@ import { EditorStore } from './editor-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
+import { askNewDiagram } from './new-diagram-dialog';
 import { SourcePanel } from './source-panel';
 import { NodeCard } from './node-card';
 import { APPEND_TYPES, DECISION, NODE_TYPES } from './node-types';
@@ -71,6 +73,7 @@ export class Editor {
   protected readonly store = inject(DiagramStore);
   protected readonly file = inject(DiagramDocument);
   protected readonly ui = inject(EditorStore);
+  private readonly dialog = inject(Dialog);
   protected readonly layout = inject(DiagramLayout);
   protected readonly theme = inject(Theme);
   protected readonly appendTypes = APPEND_TYPES;
@@ -164,9 +167,12 @@ export class Editor {
     this.store.setDirection(direction);
   }
 
-  protected newDiagram(): void {
+  /** Asks for the saga's name (and description) first, so a new diagram never starts unnamed. */
+  protected async newDiagram(): Promise<void> {
     if (!this.confirmDiscard()) return;
-    this.file.newDiagram();
+    const details = await askNewDiagram(this.dialog);
+    if (!details) return;
+    this.file.newDiagram(details);
     this.afterReplace();
   }
 
