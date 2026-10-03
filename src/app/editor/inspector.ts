@@ -16,9 +16,13 @@ import {
   NodeColor,
   NodeType,
   hasActivities,
-  hasIgnores,
-  hasTimers,
+  REQUEST_OUTCOMES,
+  Request,
   Timer,
+  hasIgnores,
+  hasRequests,
+  hasTimers,
+  requestEvent,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { namingHint } from '../model/messages';
@@ -68,6 +72,7 @@ export class Inspector {
   protected readonly hasActivities = hasActivities;
   protected readonly hasIgnores = hasIgnores;
   protected readonly hasTimers = hasTimers;
+  protected readonly hasRequests = hasRequests;
   protected readonly colors = NODE_COLORS;
 
   protected readonly customColor = computed(() => {
@@ -170,6 +175,88 @@ export class Inspector {
         (node.activities ?? []).filter((_, i) => i !== index),
       );
   }
+
+  protected addRequest(): void {
+    const node = this.node();
+    if (!node) return;
+    this.setRequests(node, [...(node.requests ?? []), { name: 'DoSomething', timeout: '30s' }]);
+    afterNextRender(
+      () => {
+        const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>('.request .name');
+        const last = inputs[inputs.length - 1];
+        last?.focus();
+        last?.select();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** An empty name removes the request. */
+  protected setRequestName(index: number, event: Event): void {
+    const node = this.node();
+    const name = optional(event);
+    const requests = node?.requests ?? [];
+    if (!node || name === requests[index]?.name) return;
+    this.setRequests(
+      node,
+      name
+        ? requests.map((r, i) => (i === index ? { ...r, name } : r))
+        : requests.filter((_, i) => i !== index),
+    );
+  }
+
+  protected setRequestTimeout(index: number, event: Event): void {
+    const node = this.node();
+    const timeout = optional(event);
+    const requests = node?.requests ?? [];
+    if (!node || timeout === requests[index]?.timeout) return;
+    this.setRequests(
+      node,
+      requests.map((r, i): Request => {
+        if (i !== index) return r;
+        return timeout === undefined ? { name: r.name } : { ...r, timeout };
+      }),
+    );
+  }
+
+  protected removeRequest(index: number): void {
+    const node = this.node();
+    if (node)
+      this.setRequests(
+        node,
+        (node.requests ?? []).filter((_, i) => i !== index),
+      );
+  }
+
+  private setRequests(node: DiagramNode, requests: Request[]): void {
+    this.store.updateNode(node.id, { requests: requests.length ? requests : undefined });
+  }
+
+  /** Events worth offering for a transition: the outcomes of requests, and scheduled timeouts. */
+  protected readonly eventSuggestions = computed(() =>
+    this.store
+      .nodes()
+      .flatMap((n) => [
+        ...(n.requests ?? []).flatMap((r) => REQUEST_OUTCOMES.map((o) => requestEvent(r.name, o))),
+        ...(n.timers ?? []).filter((t) => t.action === 'schedule').map((t) => t.name),
+      ]),
+  );
+
+  protected eventEnds(outcome: string): boolean {
+    return !!this.edge()?.event?.endsWith(`.${outcome}`);
+  }
+
+  /** Names of the states whose request the selected transition's event answers. */
+  protected readonly requesters = computed(() => {
+    const event = this.edge()?.event;
+    if (!event) return [];
+    return this.store
+      .nodes()
+      .filter((n) =>
+        n.requests?.some((r) => REQUEST_OUTCOMES.some((o) => requestEvent(r.name, o) === event)),
+      )
+      .map((n) => n.name);
+  });
 
   protected addTimer(action: Timer['action']): void {
     const node = this.node();

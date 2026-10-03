@@ -35,6 +35,8 @@ const COLORS = {
   decision: '#8b5cf6',
   any: '#64748b',
   timeout: '#d97706',
+  reply: '#059669',
+  fault: '#dc2626',
   end: '#f43f5e',
   compensation: '#f59e0b',
   command: '#2563eb',
@@ -238,10 +240,10 @@ function transitionLabel(
   const textWidth = card.width - 2 * 10 - 19;
   let rowY = y + LABEL_PADDING + LABEL_ROW / 2;
   if (edge.event) {
-    const color =
-      kind === 'external' ? COLORS.external : kind === 'timeout' ? COLORS.timeout : COLORS.event;
+    const color = kind === 'internal' || !kind ? COLORS.event : COLORS[kind];
+    const glyph = { timeout: '⏱', reply: '↩', fault: '⚠' }[kind as string] ?? '⚡';
     parts.push(
-      text(kind === 'timeout' ? '⏱' : '⚡', x + 10, rowY, { size: 11, fill: color }),
+      text(glyph, x + 10, rowY, { size: 11, fill: color }),
       text(fit(eventLabel(edge), textWidth, 11), x + 29, rowY, {
         size: 11,
         fill: mix(color, COLORS.text, 0.75),
@@ -333,6 +335,18 @@ function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision:
       color,
       text(a.kind === 'command' ? '✉' : '⚑', x + 20, chipY + 10, { size: 11, fill: color }) +
         `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(color, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">${verb}</tspan> ${esc(name)}</text>`,
+    );
+  }
+  for (const r of node.requests ?? []) {
+    const label = fit(
+      `${r.name}${r.timeout ? ` · ${r.timeout}` : ''}`,
+      chipWidth - 8 * 11 * CHAR_EM,
+      11,
+    );
+    chip(
+      COLORS.command,
+      text('✉', x + 20, chipY + 10, { size: 11, fill: COLORS.command }) +
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(COLORS.command, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">Request</tspan> ${esc(label)}</text>`,
     );
   }
   for (const t of node.timers ?? []) {

@@ -374,6 +374,41 @@ describe('Editor', () => {
     expect(store.nodes()[1].timers).toBeUndefined();
   });
 
+  it('makes a request on a state; its three answers are recognised as transitions', async () => {
+    const { el, store, select, settle, fill } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    await select(['state-1']);
+    inspectorButton(el, 'Make a request').click();
+    await settle();
+    expect(store.nodes()[1].requests).toEqual([{ name: 'DoSomething', timeout: '30s' }]);
+
+    const name = el.querySelector<HTMLInputElement>('app-inspector .request .name')!;
+    name.value = 'CheckStock';
+    name.dispatchEvent(new Event('change'));
+    const timeout = el.querySelector<HTMLInputElement>('app-inspector .request .timeout')!;
+    timeout.value = '';
+    timeout.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[1].requests).toEqual([{ name: 'CheckStock' }]);
+    expect(el.querySelector('app-node-card .chip-request')?.textContent).toContain(
+      'Request CheckStock',
+    );
+
+    // The event field offers the three answers.
+    await select([], ['edge-2']);
+    const options = [...el.querySelectorAll<HTMLOptionElement>('#event-suggestions option')];
+    expect(options.map((o) => o.value)).toEqual([
+      'CheckStock.Completed',
+      'CheckStock.Faulted',
+      'CheckStock.TimeoutExpired',
+    ]);
+    await fill('input[placeholder="e.g. PaymentCharged"]', 'CheckStock.Faulted');
+    const label = el.querySelectorAll('app-transition-label')[1];
+    expect(label.querySelector('.event')?.classList).toContain('fault');
+    expect(el.querySelector('app-inspector .origin')?.textContent).toContain('State');
+  });
+
   it('adds the one Any state from the toolbox and opens it', async () => {
     const { el, store, settle } = await setup();
     const add = () => el.querySelector<HTMLButtonElement>('[aria-label="Add the Any state"]')!;

@@ -99,6 +99,14 @@
   --row-color: var(--c-timeout);
 }
 
+.event.reply {
+  --row-color: var(--c-reply);
+}
+
+.event.fault {
+  --row-color: var(--c-fault);
+}
+
 .source {
   --row-color: var(--c-external);
   color: var(--c-text-subtle);

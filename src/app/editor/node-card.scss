@@ -243,6 +243,10 @@
   --chip-color: var(--c-compensation);
 }
 
+.chip-request {
+  --chip-color: var(--c-command);
+}
+
 .chip-timeout {
   --chip-color: var(--c-timeout);
 }

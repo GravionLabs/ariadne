@@ -483,3 +483,51 @@ describe('timers', () => {
     expect(() => parseDiagram(`version: 3\nnodes:\n  - ${node}`)).toThrow(message);
   });
 });
+
+describe('requests', () => {
+  const requesting: Diagram = {
+    ...sample,
+    nodes: sample.nodes.map((n) =>
+      n.id === 'state-1'
+        ? {
+            ...n,
+            requests: [{ name: 'ValidateAddress', timeout: '30s' }, { name: 'CheckFraud' }],
+          }
+        : n,
+    ),
+  };
+
+  it('round-trips, writing "request:" as the key and requests before timers', () => {
+    const text = serializeDiagram(requesting);
+    expect(text).toContain(
+      '    requests:\n      - request: ValidateAddress\n        timeout: 30s\n      - request: CheckFraud\n',
+    );
+    expect(parseDiagram(text)).toEqual(requesting);
+  });
+
+  it('omits an empty list and an empty timeout', () => {
+    const parsed = parseDiagram(
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A, requests: [{ request: R, timeout: " " }] }\n  - { id: b, type: state, name: B, requests: [] }',
+    );
+    expect(parsed.nodes[0].requests).toEqual([{ name: 'R' }]);
+    expect('requests' in parsed.nodes[1]).toBe(false);
+  });
+
+  it.each([
+    [
+      '{ id: a, type: start, name: A, requests: [{ request: R }] }',
+      /nodes\[0\]\.requests is only allowed on states/,
+    ],
+    [
+      '{ id: a, type: state, name: A, requests: [{ timeout: 30s }] }',
+      /nodes\[0\]\.requests\[0\] must be "request: <Name>"/,
+    ],
+    [
+      '{ id: a, type: state, name: A, requests: [{ request: "" }] }',
+      /nodes\[0\]\.requests\[0\]\.request must be a non-empty string/,
+    ],
+    ['{ id: a, type: state, name: A, requests: R }', /nodes\[0\]\.requests must be a list/],
+  ])('rejects %s', (node, message) => {
+    expect(() => parseDiagram(`version: 3\nnodes:\n  - ${node}`)).toThrow(message);
+  });
+});

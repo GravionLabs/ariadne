@@ -14,7 +14,9 @@ import {
   NodeType,
   hasActivities,
   hasIgnores,
+  hasRequests,
   hasTimers,
+  Request,
   Timer,
 } from './diagram';
 
@@ -69,6 +71,9 @@ function serializeNode(node: DiagramNode): Record<string, unknown> {
       ? node.activities.map(({ kind, name }) => ({ [kind]: name }))
       : undefined,
     ignores: node.ignores?.length ? node.ignores : undefined,
+    requests: node.requests?.length
+      ? node.requests.map(({ name, timeout }) => withoutUndefined({ request: name, timeout }))
+      : undefined,
     timers: node.timers?.length
       ? node.timers.map(({ action, name, delay }) => withoutUndefined({ [action]: name, delay }))
       : undefined,
@@ -209,6 +214,15 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     node['ignores'] === undefined
       ? undefined
       : asArray(node['ignores'], `${at}.ignores`).map((e, i) => asString(e, `${at}.ignores[${i}]`));
+  if (node['requests'] !== undefined && !hasRequests(type as NodeType)) {
+    throw new DiagramFormatError(`${at}.requests is only allowed on states`);
+  }
+  const requests =
+    node['requests'] === undefined
+      ? undefined
+      : asArray(node['requests'], `${at}.requests`).map((r, i) =>
+          parseRequest(r, `${at}.requests[${i}]`),
+        );
   if (node['timers'] !== undefined && !hasTimers(type as NodeType)) {
     throw new DiagramFormatError(`${at}.timers is only allowed on states`);
   }
@@ -230,6 +244,7 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     color: color as NodeColor | undefined,
     activities: activities?.length ? activities : undefined,
     ignores: ignores?.length ? ignores : undefined,
+    requests: requests?.length ? requests : undefined,
     timers: timers?.length ? timers : undefined,
     retry: optionalString(node['retry'], `${at}.retry`),
     timeout: optionalString(node['timeout'], `${at}.timeout`),
@@ -240,6 +255,17 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
         description: optionalString(compensation['description'], `${at}.compensation.description`),
       }),
   }) as DiagramNode;
+}
+
+function parseRequest(value: unknown, at: string): Request {
+  const entry = asRecord(value, at);
+  if (entry['request'] === undefined)
+    throw new DiagramFormatError(`${at} must be "request: <Name>"`);
+  const timeout = optionalString(entry['timeout'], `${at}.timeout`)?.trim();
+  return withoutUndefined({
+    name: asString(entry['request'], `${at}.request`),
+    timeout: timeout || undefined,
+  });
 }
 
 const TIMER_ACTIONS = ['schedule', 'unschedule'] as const;

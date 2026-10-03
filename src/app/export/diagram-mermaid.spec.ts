@@ -205,4 +205,15 @@ describe('diagramToMermaid title', () => {
       'note right of Shipping : Schedules ShipTimeout in 2d · Unschedules PayTimeout',
     );
   });
+
+  it('notes the requests of a state', () => {
+    const nodes = orderSaga.nodes.map((n) =>
+      n.name === 'Shipping'
+        ? { ...n, requests: [{ name: 'BookCourier', timeout: '10s' }, { name: 'CheckFraud' }] }
+        : n,
+    );
+    expect(diagramToMermaid({ ...orderSaga, nodes })).toContain(
+      'note right of Shipping : Requests BookCourier (timeout 10s) · Requests CheckFraud',
+    );
+  });
 });

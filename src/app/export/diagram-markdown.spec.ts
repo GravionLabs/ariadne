@@ -203,4 +203,34 @@ describe('diagramToMarkdown', () => {
     expect(md).toMatch(/\| StockTimeout \| timeout \|/);
     expect(md).toMatch(/\| StockTimeout \| Timeout \|/);
   });
+
+  it('adds a Requests column and names the answers to a request', () => {
+    expect(diagramToMarkdown(orderSaga)).not.toContain('| Requests |');
+    const nodes = orderSaga.nodes.map((n) =>
+      n.id === 'state-2' ? { ...n, requests: [{ name: 'CheckStock', timeout: '5s' }] } : n,
+    );
+    const edges = [
+      ...orderSaga.edges,
+      {
+        id: 'e8',
+        source: 'state-2',
+        target: 'state-3',
+        kind: 'forward' as const,
+        event: 'CheckStock.Completed',
+      },
+      {
+        id: 'e9',
+        source: 'state-2',
+        target: 'end-2',
+        kind: 'forward' as const,
+        event: 'CheckStock.Faulted',
+      },
+    ];
+    const md = diagramToMarkdown({ ...orderSaga, nodes, edges });
+    expect(md).toContain('Request CheckStock (timeout 5s)');
+    expect(md).toMatch(/\| CheckStock\.Completed \| reply \|/);
+    expect(md).toMatch(/\| CheckStock\.Faulted \| fault \|/);
+    expect(md).toMatch(/\| CheckStock\.Completed \| Reply \|/);
+    expect(md).toMatch(/\| CheckStock\.Faulted \| Fault \|/);
+  });
 });

@@ -155,6 +155,56 @@
       </section>
     }
 
+    @if (hasRequests(node.type)) {
+      <section class="group" aria-label="Requests">
+        <div class="group-title">
+          <span>Requests</span>
+          <small>
+            Made when the saga enters “{{ node.name }}”. The answer comes back as
+            <em>&lt;Name&gt;.Completed</em>, <em>.Faulted</em> or <em>.TimeoutExpired</em>: give a
+            transition each of those events.
+          </small>
+        </div>
+        @for (request of node.requests ?? []; track $index; let i = $index) {
+          <div class="request message" data-kind="request">
+            <span class="timer-title"><app-icon name="command" /> Request</span>
+            <div class="row">
+              <input
+                type="text"
+                class="name"
+                aria-label="Request"
+                placeholder="e.g. ValidateAddress"
+                [value]="request.name"
+                (change)="setRequestName(i, $event)"
+              />
+              <button
+                type="button"
+                class="icon-button"
+                [attr.aria-label]="'Remove ' + request.name"
+                title="Remove"
+                (click)="removeRequest(i)"
+              >
+                <app-icon name="delete" />
+              </button>
+            </div>
+            <input
+              type="text"
+              class="timeout"
+              aria-label="Timeout"
+              placeholder="Wait for the answer, e.g. 30s"
+              [value]="request.timeout ?? ''"
+              (change)="setRequestTimeout(i, $event)"
+            />
+          </div>
+        }
+        <div class="add-row">
+          <button type="button" class="ghost" (click)="addRequest()">
+            <app-icon name="command" /> Make a request
+          </button>
+        </div>
+      </section>
+    }
+
     @if (hasTimers(node.type)) {
       <section class="group" aria-label="Timers">
         <div class="group-title">
@@ -304,12 +354,21 @@
       <input
         type="text"
         placeholder="e.g. PaymentCharged"
+        list="event-suggestions"
         [value]="edge.event ?? ''"
         (change)="setEvent($event)"
       />
       <small>Received while in “{{ ends()?.from }}”, it triggers this transition.</small>
     </label>
-    @if (edge.event && namingHint('event', edge.event); as hint) {
+    <datalist id="event-suggestions">
+      @for (suggestion of eventSuggestions(); track suggestion) {
+        <option [value]="suggestion"></option>
+      }
+    </datalist>
+    @if (
+      edge.event && !eventSuggestions().includes(edge.event) && namingHint('event', edge.event);
+      as hint
+    ) {
       <p class="hint">{{ hint }}</p>
     }
     @if (edge.event) {
@@ -326,7 +385,12 @@
           branch.</small
         >
       </label>
-      @if (timeoutSchedulers().length) {
+      @if (requesters().length) {
+        <p class="origin" [class.timeout]="eventEnds('TimeoutExpired')">
+          <app-icon name="command" />
+          <span>Answer to the request made when entering {{ requesters().join(', ') }}.</span>
+        </p>
+      } @else if (timeoutSchedulers().length) {
         <p class="origin timeout">
           <app-icon name="clock" />
           <span>Timeout scheduled when entering {{ timeoutSchedulers().join(', ') }}.</span>

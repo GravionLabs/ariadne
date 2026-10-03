@@ -174,4 +174,10 @@ describe('diagram layout', () => {
     const timed = { ...plain, timers: [{ action: 'schedule' as const, name: 'T' }] };
     expect(nodeSize(timed).height).toBe(nodeSize(plain).height + 24 + 6);
   });
+
+  it('gives each request a chip row on the card', () => {
+    const plain = { id: 'a', type: 'state', name: 'a' } as const;
+    const requesting = { ...plain, requests: [{ name: 'R' }] };
+    expect(nodeSize(requesting).height).toBe(nodeSize(plain).height + 24 + 6);
+  });
 });

@@ -19,7 +19,15 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const kindOf = eventKindOf(diagram);
   const sourceOf = (kind: EventKind | undefined) =>
-    kind ? { internal: 'saga', external: 'external', timeout: 'timeout' }[kind] : '';
+    kind
+      ? {
+          internal: 'saga',
+          external: 'external',
+          timeout: 'timeout',
+          reply: 'reply',
+          fault: 'fault',
+        }[kind]
+      : '';
   const name = (id: string) => nodes.get(id)?.name ?? id;
   const decisions = decisionIds(diagram);
   const typeLabel = (n: DiagramNode) => (decisions.has(n.id) ? DECISION : NODE_TYPES[n.type]).label;
@@ -31,6 +39,8 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
   if (description) out.push(description);
   out.push('## Diagram', mermaidMarkdown(diagramToMermaid(diagram)).trimEnd());
 
+  // The Requests column only appears when some state makes a request.
+  const requesting = diagram.nodes.some((n) => n.requests?.length);
   // The Timers column only appears when some state schedules a timeout.
   const timing = diagram.nodes.some((n) => n.timers?.length);
   // The Ignores column only appears when some state ignores an event.
@@ -44,6 +54,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
             'Type',
             'Description',
             'Activities',
+            ...(requesting ? ['Requests'] : []),
             ...(timing ? ['Timers'] : []),
             ...(ignoring ? ['Ignores'] : []),
             'Compensation',
@@ -55,6 +66,13 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
             typeLabel(n),
             n.description ?? '',
             (n.activities ?? []).map((a) => `${ACTIVITY_VERBS[a.kind]} ${a.name}`).join('\n'),
+            ...(requesting
+              ? [
+                  (n.requests ?? [])
+                    .map((r) => `Request ${r.name}${r.timeout ? ` (timeout ${r.timeout})` : ''}`)
+                    .join('\n'),
+                ]
+              : []),
             ...(timing
               ? [
                   (n.timers ?? [])
@@ -124,9 +142,13 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
           ['Event', 'Origin', 'Published in', 'Triggers'],
           events.map((ev) => [
             ev,
-            { internal: 'Internal', external: 'External', timeout: 'Timeout' }[
-              kindOf({ event: ev })!
-            ],
+            {
+              internal: 'Internal',
+              external: 'External',
+              timeout: 'Timeout',
+              reply: 'Reply',
+              fault: 'Fault',
+            }[kindOf({ event: ev })!],
             (publishedBy.get(ev) ?? []).join(', '),
             (reactions.get(ev) ?? []).join('\n'),
           ]),

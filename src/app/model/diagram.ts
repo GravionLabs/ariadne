@@ -42,6 +42,25 @@ export interface Timer {
   delay?: string;
 }
 
+/**
+ * A request a state makes when the saga enters it (MassTransit's `Request`). The reply comes
+ * back as one of three events: `<name>.Completed`, `<name>.Faulted` or `<name>.TimeoutExpired`;
+ * transitions on those events are the paths out of the request.
+ */
+export interface Request {
+  /** The request, e.g. `ValidateAddress`. */
+  name: string;
+  /** How long to wait for the reply, free text such as `30s`. */
+  timeout?: string;
+}
+
+/** How a request ends: the reply, a fault, or no answer in time. */
+export const REQUEST_OUTCOMES = ['Completed', 'Faulted', 'TimeoutExpired'] as const;
+export type RequestOutcome = (typeof REQUEST_OUTCOMES)[number];
+
+/** The event raised when request `name` ends as `outcome`, e.g. `ValidateAddress.Completed`. */
+export const requestEvent = (name: string, outcome: RequestOutcome): string => `${name}.${outcome}`;
+
 /** Undo action that runs when a later part of the saga fails. Only states can have one. */
 export interface Compensation {
   name: string;
@@ -78,6 +97,8 @@ export interface DiagramNode {
    */
   activities?: Activity[];
   compensation?: Compensation;
+  /** Requests the state makes on entry, in order. Only on states. */
+  requests?: Request[];
   /** Timeouts the state schedules or cancels on entry, in order. Only on states. */
   timers?: Timer[];
   /** Events the state ignores instead of failing on them (`Ignore(E)`). Only on states. */
@@ -124,6 +145,9 @@ export interface Diagram {
 
 /** Only plain states can have {@link Activity activities}; the initial and final states cannot. */
 export const hasActivities = (type: NodeType): boolean => type === 'state';
+
+/** Only plain states can make {@link DiagramNode.requests requests}. */
+export const hasRequests = (type: NodeType): boolean => type === 'state';
 
 /** Only plain states can schedule {@link DiagramNode.timers timeouts}. */
 export const hasTimers = (type: NodeType): boolean => type === 'state';
@@ -179,10 +203,11 @@ export function nextId(prefix: string, existing: readonly { id: string }[]): str
 }
 
 /**
- * What kind of event a transition reacts to. `timeout` is a scheduled timeout firing; `internal` is
+ * What kind of event a transition reacts to. `timeout` is a scheduled timeout firing or a request
+ * running out of time; `reply` and `fault` are the two answers to a request; `internal` is
  * published by a state of the saga; everything else comes from `external`. Derived, never stored.
  */
-export type EventKind = 'internal' | 'external' | 'timeout';
+export type EventKind = 'internal' | 'external' | 'timeout' | 'reply' | 'fault';
 
 /** Classifies events of `diagram`; `undefined` for a transition without an event. */
 export function eventKindOf(
@@ -194,9 +219,20 @@ export function eventKindOf(
       (n.timers ?? []).filter((t) => t.action === 'schedule').map((t) => t.name),
     ),
   );
+  const outcomes = new Map<string, EventKind>(
+    diagram.nodes.flatMap((n) =>
+      (n.requests ?? []).flatMap((r): [string, EventKind][] => [
+        [requestEvent(r.name, 'Completed'), 'reply'],
+        [requestEvent(r.name, 'Faulted'), 'fault'],
+        [requestEvent(r.name, 'TimeoutExpired'), 'timeout'],
+      ]),
+    ),
+  );
   return ({ event }) => {
     if (!event) return undefined;
     if (timeouts.has(event)) return 'timeout';
+    const outcome = outcomes.get(event);
+    if (outcome) return outcome;
     return published.has(event) ? 'internal' : 'external';
   };
 }

@@ -232,6 +232,10 @@ textarea {
   &[data-kind='timer'] {
     --kind-color: var(--c-timeout);
   }
+
+  &[data-kind='request'] {
+    --kind-color: var(--c-command);
+  }
 }
 
 .timer-title {

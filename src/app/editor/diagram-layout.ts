@@ -70,6 +70,7 @@ export function nodeSize(node: DiagramNode, expanded = false): Size {
   if (isCompact(node)) return { width: 180, height: 48 };
   const rows =
     (node.activities?.length ?? 0) +
+    (node.requests?.length ?? 0) +
     (node.timers?.length ?? 0) +
     (node.ignores?.length ?? 0) +
     (node.compensation ? 1 : 0);

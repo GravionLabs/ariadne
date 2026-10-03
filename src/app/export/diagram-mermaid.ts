@@ -102,6 +102,9 @@ export function diagramToMermaid(diagram: Diagram): string {
   }
   for (const node of diagram.nodes) {
     const notes = [
+      ...(node.requests ?? []).map(
+        (r) => `Requests ${r.name}${r.timeout ? ` (timeout ${r.timeout})` : ''}`,
+      ),
       ...(node.timers ?? []).map(
         (t) =>
           `${t.action === 'schedule' ? 'Schedules' : 'Unschedules'} ${t.name}${t.delay ? ` in ${t.delay}` : ''}`,

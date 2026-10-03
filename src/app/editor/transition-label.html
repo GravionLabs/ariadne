@@ -12,6 +12,8 @@
         class="row event"
         [class.external]="kind() === 'external'"
         [class.timeout]="kind() === 'timeout'"
+        [class.reply]="kind() === 'reply'"
+        [class.fault]="kind() === 'fault'"
         [title]="hint()"
       >
         <app-icon [name]="icon()" />

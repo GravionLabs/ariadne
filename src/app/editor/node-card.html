@@ -32,6 +32,7 @@
 
 @if (
   node().activities?.length ||
+  node().requests?.length ||
   node().timers?.length ||
   node().ignores?.length ||
   node().compensation
@@ -46,6 +47,15 @@
         <app-icon [name]="activity.kind" />
         <span
           ><span class="verb">{{ verbs[activity.kind] }}</span> {{ activity.name }}</span
+        >
+      </li>
+    }
+    @for (request of node().requests ?? []; track $index) {
+      <li class="chip chip-request" title="Makes a request on entering this state">
+        <app-icon name="command" />
+        <span
+          ><span class="verb">Request</span> {{ request.name
+          }}{{ request.timeout ? ' · ' + request.timeout : '' }}</span
         >
       </li>
     }

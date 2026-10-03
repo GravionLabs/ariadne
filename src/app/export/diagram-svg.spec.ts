@@ -185,4 +185,21 @@ describe('renderDiagramSvg title', () => {
     expect(svg).toContain('⏱');
     expect(svg).toContain('Schedule</tspan> StockTimeout in 1h');
   });
+
+  it('draws the request chip and marks replies and faults', () => {
+    const nodes = orderSaga.nodes.map((n) =>
+      n.id === 'state-1' ? { ...n, requests: [{ name: 'CheckStock', timeout: '5s' }] } : n,
+    );
+    const edges = orderSaga.edges.map((e) =>
+      e.id === 'edge-2'
+        ? { ...e, event: 'CheckStock.Completed' }
+        : e.id === 'edge-3'
+          ? { ...e, event: 'CheckStock.Faulted' }
+          : e,
+    );
+    const { svg } = renderDiagramSvg({ ...orderSaga, nodes, edges });
+    expect(svg).toContain('Request</tspan> CheckStock · 5s');
+    expect(svg).toContain('↩');
+    expect(svg).toContain('⚠');
+  });
 });

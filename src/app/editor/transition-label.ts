@@ -33,14 +33,27 @@ export class TransitionLabel {
   readonly inserted = output<NodeType>();
 
   protected readonly insertTypes = INSERT_TYPES;
-  protected readonly icon = computed<IconName>(() =>
-    this.kind() === 'timeout' ? 'clock' : 'trigger',
-  );
+  protected readonly icon = computed<IconName>(() => {
+    switch (this.kind()) {
+      case 'timeout':
+        return 'clock';
+      case 'reply':
+        return 'reply';
+      case 'fault':
+        return 'fault';
+      default:
+        return 'trigger';
+    }
+  });
   protected readonly hint = computed(() => {
     const source = this.edge().eventSource;
     switch (this.kind()) {
       case 'timeout':
-        return 'A scheduled timeout fires';
+        return 'A timeout fires';
+      case 'reply':
+        return 'The reply to a request';
+      case 'fault':
+        return 'A request faulted';
       case 'external':
         return 'External event' + (source ? ' from ' + source : '');
       default:

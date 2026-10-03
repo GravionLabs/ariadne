@@ -91,6 +91,7 @@ edges:
 | `type`         | `start` \| `state` \| `end` \| `any`                                                           | yes      | Initial state (no incoming transitions), state, final state (no outgoing), or the one `any` node: transitions leaving it apply in every state (nothing enters it).                                                                                                        |
 | `name`         | string                                                                                         | yes      | Label shown on the canvas.                                                                                                                                                                                                                                                |
 | `description`  | string                                                                                         | no       | Documentation only.                                                                                                                                                                                                                                                       |
+| `requests`     | list of requests                                                                               | no       | Requests the state makes on entry (`request: <Name>`, optional `timeout: 30s`). The answers are the events `<Name>.Completed`, `<Name>.Faulted` and `<Name>.TimeoutExpired`: transitions on them are drawn with a reply, fault or clock icon. Only on `state` nodes.      |
 | `timers`       | list of timers                                                                                 | no       | Timeouts the state schedules (`schedule: <Name>`, optional `delay: 30s`) or cancels (`unschedule: <Name>`) on entry, in order. Only on `state` nodes. A transition whose `event` is the name of a scheduled timeout is the timeout path: drawn dotted amber with a clock. |
 | `ignores`      | list of strings                                                                                | no       | Events the state receives and drops (`Ignore(E)`). Only on `state` nodes.                                                                                                                                                                                                 |
 | `activities`   | list of activities                                                                             | no       | What the saga does on entering this state, in order. Only on `state` nodes: nothing runs in the initial or the final state.                                                                                                                                               |
@@ -131,15 +132,17 @@ An **activity** is a mapping with exactly one key, the kind of message, followin
 How the constructs relate to a MassTransit `MassTransitStateMachine<T>`. The importer (#83) and the
 generator (#93) follow this table.
 
-| Diagram                                  | MassTransit                                                                                                                                                  |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `timers` `schedule: T`, `delay: D`       | `Schedule(() => T, x => x.TimeoutTokenId, s => { s.Delay = D; s.Received = e => e.CorrelateById(...); })`, then `.Schedule(T, ctx => new TMsg(..))` on entry |
-| `timers` `unschedule: T`                 | `.Unschedule(T)`                                                                                                                                             |
-| transition on a scheduled timeout's name | `When(T.Received)`                                                                                                                                           |
-| `ignores` of a state                     | `During(State, Ignore(E))`                                                                                                                                   |
-| transitions leaving the `any` node       | `DuringAny(When(E).TransitionTo(S))`                                                                                                                         |
-| transition with `guard`                  | `When(E).If(ctx => <guard>, then => then.TransitionTo(A)).TransitionTo(B)`                                                                                   |
-| transitions on one event, other guards   | `When(E).IfElse(ctx => <guard>, then => then.TransitionTo(A), else => else.TransitionTo(B))`                                                                 |
+| Diagram                                                        | MassTransit                                                                                                                                                  |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `requests` `request: R`, `timeout: D`                          | `Request(() => R, x => x.RequestId, r => r.Timeout = D)`, then `.Request(R, ctx => new RMsg(..))` on entry                                                   |
+| transition on `R.Completed` / `R.Faulted` / `R.TimeoutExpired` | `When(R.Completed)` / `When(R.Faulted)` / `When(R.TimeoutExpired)`                                                                                           |
+| `timers` `schedule: T`, `delay: D`                             | `Schedule(() => T, x => x.TimeoutTokenId, s => { s.Delay = D; s.Received = e => e.CorrelateById(...); })`, then `.Schedule(T, ctx => new TMsg(..))` on entry |
+| `timers` `unschedule: T`                                       | `.Unschedule(T)`                                                                                                                                             |
+| transition on a scheduled timeout's name                       | `When(T.Received)`                                                                                                                                           |
+| `ignores` of a state                                           | `During(State, Ignore(E))`                                                                                                                                   |
+| transitions leaving the `any` node                             | `DuringAny(When(E).TransitionTo(S))`                                                                                                                         |
+| transition with `guard`                                        | `When(E).If(ctx => <guard>, then => then.TransitionTo(A)).TransitionTo(B)`                                                                                   |
+| transitions on one event, other guards                         | `When(E).IfElse(ctx => <guard>, then => then.TransitionTo(A), else => else.TransitionTo(B))`                                                                 |
 
 ## Version 1
 
@@ -182,6 +185,7 @@ names the offending path. For example:
 - `nodes[1].activities[0] must be "command: <Name>" or "event: <Name>"`
 - `nodes[2].activities is only allowed on states, not on the final state`
 - `nodes[1].ignores is only allowed on states`
+- `nodes[1].requests[0] must be "request: <Name>"`
 - `nodes[1].timers[0] must be "schedule: <Name>" or "unschedule: <Name>"`
 - `There can be only one node of type "any"`
 - `edges[0].activities is not allowed: activities belong to states (nodes[].activities)`
