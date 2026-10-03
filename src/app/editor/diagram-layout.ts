@@ -59,11 +59,14 @@ const LABEL_MAX_WIDTH = 240;
  * before anything is drawn; the editor passes the same size to f-flow.
  */
 export function nodeSize(node: DiagramNode, expanded = false): Size {
-  if (node.type === 'start' || node.type === 'end') return { width: 180, height: 48 };
-  const rows = node.compensation ? 1 : 0;
+  if (isCompact(node)) return { width: 180, height: 48 };
+  const rows = (node.activities?.length ?? 0) + (node.compensation ? 1 : 0);
   const base = CARD_HEADER + (rows ? rows * CHIP_ROW + 6 : 0);
   return { width: CARD_WIDTH, height: base + (expanded ? descriptionHeight(node) : 0) };
 }
+
+/** The initial and the final state are small pills; only states are full cards. */
+export const isCompact = (node: DiagramNode): boolean => node.type !== 'state';
 
 /** Whether a node's card can unfold its description. */
 export const canExpand = (node: DiagramNode): boolean =>
@@ -82,22 +85,18 @@ function descriptionHeight(node: DiagramNode): number {
   );
 }
 
-/** Rows of a transition label: the event and its source, then one per activity. */
+/** Rows of a transition label: the event, then its source. */
 export const labelRows = (edge: DiagramEdge): number =>
-  (edge.event ? 1 : 0) + (edge.event && edge.eventSource ? 1 : 0) + (edge.activities?.length ?? 0);
+  (edge.event ? 1 : 0) + (edge.event && edge.eventSource ? 1 : 0);
 
 /**
  * Size of a transition label: a card with its rows plus the overhanging "+", or just the "+"
- * when the transition has neither event nor activities.
+ * when the transition has no event.
  */
 export function labelSize(edge: DiagramEdge, direction: Direction): Size {
   const rows = labelRows(edge);
   if (rows === 0) return { width: INSERT_SIZE, height: INSERT_SIZE };
-  const texts = [
-    edge.event ?? '',
-    `from ${edge.eventSource ?? ''}`,
-    ...(edge.activities ?? []).map((a) => `Publish ${a.name}`),
-  ];
+  const texts = [edge.event ?? '', edge.eventSource ? `from ${edge.eventSource}` : ''];
   const longest = Math.max(...texts.map((t) => t.length));
   const width = Math.min(
     LABEL_MAX_WIDTH,

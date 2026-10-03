@@ -1,5 +1,5 @@
 import { Diagram } from '../model/diagram';
-import { labelSize, layoutDiagram, nodeSize, slotSources } from './diagram-layout';
+import { isCompact, labelSize, layoutDiagram, nodeSize, slotSources } from './diagram-layout';
 
 const saga: Diagram = {
   direction: 'top-bottom',
@@ -26,7 +26,6 @@ const saga: Diagram = {
       target: 'end-1',
       kind: 'forward',
       event: 'PaymentFailed',
-      activities: [{ kind: 'command', name: 'ReleaseStock' }],
     },
     { id: 'edge-5', source: 'state-3', target: 'state-1', kind: 'compensation' },
   ],
@@ -79,9 +78,9 @@ describe('diagram layout', () => {
     const empty = labelSize(saga.edges[1], 'top-bottom');
     expect(empty).toEqual({ width: 26, height: 26 });
     const one = labelSize(saga.edges[0], 'top-bottom');
-    const two = labelSize(saga.edges[3], 'top-bottom');
+    const two = labelSize({ ...saga.edges[3], eventSource: 'Shop API' }, 'top-bottom');
     expect(two.height).toBeGreaterThan(one.height);
-    const sideways = labelSize(saga.edges[3], 'left-right');
+    const sideways = labelSize({ ...saga.edges[3], eventSource: 'Shop API' }, 'left-right');
     expect(sideways.width).toBeGreaterThan(two.width);
     expect(sideways.height).toBeLessThan(two.height);
   });
@@ -91,7 +90,7 @@ describe('diagram layout', () => {
     expect(withSource.height).toBeGreaterThan(labelSize(saga.edges[0], 'top-bottom').height);
   });
 
-  it('sizes state cards by their compensation chip', () => {
+  it('sizes state cards by their activity and compensation chips', () => {
     expect(nodeSize({ id: 's', type: 'start', name: 'S' })).toEqual({ width: 180, height: 48 });
     const plain = nodeSize({ id: 'a', type: 'state', name: 'A' });
     const compensated = nodeSize({
@@ -102,5 +101,34 @@ describe('diagram layout', () => {
     });
     expect(compensated.width).toBe(plain.width);
     expect(compensated.height).toBeGreaterThan(plain.height);
+
+    const one = nodeSize({
+      id: 'c',
+      type: 'state',
+      name: 'C',
+      activities: [{ kind: 'command', name: 'ShipOrder' }],
+    });
+    const two = nodeSize({
+      id: 'd',
+      type: 'state',
+      name: 'D',
+      activities: [
+        { kind: 'command', name: 'ShipOrder' },
+        { kind: 'event', name: 'OrderAccepted' },
+      ],
+      compensation: { name: 'UndoIt' },
+    });
+    expect(one.height).toBe(compensated.height); // one chip row either way
+    expect(two.height - one.height).toBe(2 * (compensated.height - plain.height - 6) + 0);
+  });
+
+  it('draws the initial and the final state as pills, and only states as cards', () => {
+    const pill = { width: 180, height: 48 };
+    expect(nodeSize({ id: 's', type: 'start', name: 'S' })).toEqual(pill);
+    expect(nodeSize({ id: 'e', type: 'end', name: 'E' })).toEqual(pill);
+    expect(isCompact({ id: 's', type: 'start', name: 'S' })).toBe(true);
+    expect(isCompact({ id: 'e', type: 'end', name: 'E' })).toBe(true);
+    expect(isCompact({ id: 'a', type: 'state', name: 'A' })).toBe(false);
+    expect(nodeSize({ id: 'a', type: 'state', name: 'A' }).width).toBeGreaterThan(pill.width);
   });
 });

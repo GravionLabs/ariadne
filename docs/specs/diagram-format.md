@@ -1,4 +1,4 @@
-# Diagram file format (version 2)
+# Diagram file format (version 3)
 
 Ariadne stores one diagram per YAML file (`.yaml` / `.yml`). Files are meant to be committed to git.
 The format is designed so that an unchanged diagram is written byte-for-byte identically. Layout is
@@ -7,17 +7,18 @@ changed in the saga.
 
 A diagram is a saga **state machine**, in the sense of MassTransit sagas:
 
-- **Nodes** are states.
-- **Edges** are transitions. While the saga is in the source state, the transition's event moves it on:
-  the transition runs its activities (send commands, publish events) and enters the target state.
+- **Nodes** are states. Entering a state runs its **activities** (send commands, publish events),
+  like `WhenEnter(State, binder => binder.Send(...).Publish(...))`.
+- **Edges** are transitions. While the saga is in the source state, the transition's event moves it on
+  to the target state.
 
-A state left by several transitions is a decision: which way the saga goes depends on the event it
-receives.
+States do things; transitions only react to events. A state left by several transitions is a decision:
+which way the saga goes depends on the event it receives.
 
 ## Example
 
 ```yaml
-version: 2
+version: 3
 direction: top-bottom
 nodes:
   - id: start-1
@@ -27,10 +28,18 @@ nodes:
     type: state
     name: Charging payment
     description: Waits for the payment provider
+    activities:
+      - command: ChargePayment
     retry: 3 attempts, exponential backoff
     timeout: 30s
     compensation:
       name: RefundPayment
+  - id: state-2
+    type: state
+    name: Shipping
+    activities:
+      - command: ShipOrder
+      - event: OrderAccepted
   - id: end-1
     type: end
     name: Completed
@@ -44,46 +53,45 @@ edges:
     kind: forward
     event: OrderSubmitted
     eventSource: Shop API
-    activities:
-      - command: ChargePayment
   - id: edge-2
     source: state-1
-    target: end-1
+    target: state-2
     kind: forward
     event: PaymentCharged
-    activities:
-      - command: ShipOrder
-      - event: OrderAccepted
+  - id: edge-4
+    source: state-2
+    target: end-1
+    kind: forward
+    event: OrderShipped
   - id: edge-3
     source: state-1
     target: end-2
     kind: forward
     event: PaymentFailed
-    activities:
-      - event: OrderRejected
 ```
 
 ## Fields
 
 | Field       | Type                         | Required | Notes                                                         |
 | ----------- | ---------------------------- | -------- | ------------------------------------------------------------- |
-| `version`   | integer                      | yes      | `2` (files with `1` are still read, see below).               |
+| `version`   | integer                      | yes      | `3` (files with `1` or `2` are still read, see below).        |
 | `direction` | `top-bottom` \| `left-right` | no       | Layout direction. Defaults to `top-bottom`.                   |
 | `nodes`     | list                         | no       | Defaults to empty.                                            |
 | `edges`     | list                         | no       | Defaults to empty. Every `source`/`target` must be a node id. |
 
 ### Node (state)
 
-| Field          | Type                                                                                           | Required | Notes                                                                                                                |
-| -------------- | ---------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
-| `id`           | string                                                                                         | yes      | Unique within the file, e.g. `state-3`.                                                                              |
-| `type`         | `start` \| `state` \| `end`                                                                    | yes      | Initial state (no incoming transitions), state, final state (no outgoing).                                           |
-| `name`         | string                                                                                         | yes      | Label shown on the canvas.                                                                                           |
-| `description`  | string                                                                                         | no       | Documentation only.                                                                                                  |
-| `color`        | `red` \| `orange` \| `amber` \| `green` \| `teal` \| `blue` \| `purple` \| `pink` \| `#rrggbb` | no       | Accent color at the top of the card: a palette name or a custom hex value. Defaults to the color of the node's type. |
-| `retry`        | string                                                                                         | no       | Free text, e.g. `3 attempts`. Documentation only.                                                                    |
-| `timeout`      | string                                                                                         | no       | Free text, e.g. `30s`. Documentation only.                                                                           |
-| `compensation` | `{ name: string, description?: string }`                                                       | no       | Undo action for the work done to reach this state.                                                                   |
+| Field          | Type                                                                                           | Required | Notes                                                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                                                                                         | yes      | Unique within the file, e.g. `state-3`.                                                                                     |
+| `type`         | `start` \| `state` \| `end`                                                                    | yes      | Initial state (no incoming transitions), state, final state (no outgoing).                                                  |
+| `name`         | string                                                                                         | yes      | Label shown on the canvas.                                                                                                  |
+| `description`  | string                                                                                         | no       | Documentation only.                                                                                                         |
+| `activities`   | list of activities                                                                             | no       | What the saga does on entering this state, in order. Only on `state` nodes: nothing runs in the initial or the final state. |
+| `color`        | `red` \| `orange` \| `amber` \| `green` \| `teal` \| `blue` \| `purple` \| `pink` \| `#rrggbb` | no       | Accent color at the top of the card: a palette name or a custom hex value. Defaults to the color of the node's type.        |
+| `retry`        | string                                                                                         | no       | Free text, e.g. `3 attempts`. Documentation only.                                                                           |
+| `timeout`      | string                                                                                         | no       | Free text, e.g. `30s`. Documentation only.                                                                                  |
+| `compensation` | `{ name: string, description?: string }`                                                       | no       | Undo action for the work done to reach this state.                                                                          |
 
 ### Edge (transition)
 
@@ -95,12 +103,13 @@ edges:
 | `kind`        | `forward` \| `compensation` | no       | Defaults to `forward`. Compensation transitions are not laid out. |
 | `event`       | string                      | no       | The event that triggers the transition, e.g. `PaymentCharged`.    |
 | `eventSource` | string                      | no       | Where an external event comes from, e.g. `Shop API`.              |
-| `activities`  | list of activities          | no       | What the transition does, in order, before entering `target`.     |
 
-An event a transition reacts to is **internal** when some transition of the same diagram publishes it
+An event a transition reacts to is **internal** when some state of the same diagram publishes it
 (an `event:` activity), and **external** otherwise. External events can arrive in any state, not only
 the initial one. `eventSource` names the system they come from. Ariadne derives internal or external
 from the diagram and does not store it.
+
+A transition has no `activities` of its own: a file that gives one to an edge is rejected.
 
 An **activity** is a mapping with exactly one key, the kind of message, following the
 [MassTransit conventions](https://masstransit.massient.com/concepts/messages):
@@ -118,7 +127,20 @@ Version 1 files are read without changes to their meaning:
 - Nodes of type `step` and `decision` become `state`.
 - `direction` defaults to `top-bottom`.
 
-Saving writes version 2.
+Saving writes version 3.
+
+## Version 2
+
+Version 2 wrote activities on transitions. They are read and **moved onto the state each transition
+leads into** (see [ADR 0005](../adr/0005-activities-on-states.md)):
+
+- in edge order, appended after the state's own activities, without duplicates;
+- a transition into the initial or a final state cannot keep its activities, since nothing runs in
+  those states: they are dropped;
+- the app tells the user which states received activities and which were dropped, and treats the
+  file as unsaved until it is saved as version 3.
+
+Everything else is unchanged.
 
 ## Determinism
 
@@ -135,5 +157,7 @@ Invalid files are rejected as a whole, and the current diagram is left unchanged
 names the offending path. For example:
 
 - `nodes[2].type must be one of start, end, state`
-- `edges[1].activities[0] must be "command: <Name>" or "event: <Name>"`
+- `nodes[1].activities[0] must be "command: <Name>" or "event: <Name>"`
+- `nodes[2].activities is only allowed on states, not on the final state`
+- `edges[0].activities is not allowed: activities belong to states (nodes[].activities)`
 - `edges[0].target "state-9" is not a node`

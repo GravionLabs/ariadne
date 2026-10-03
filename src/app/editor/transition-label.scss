@@ -101,16 +101,6 @@
   font-style: italic;
 }
 
-.activity {
-  &[data-kind='command'] {
-    --row-color: var(--c-command);
-  }
-
-  .verb {
-    color: var(--c-text-subtle);
-  }
-}
-
 // The "+" sits on the line, half over the card's edge.
 .insert {
   position: absolute;

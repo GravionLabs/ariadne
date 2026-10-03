@@ -30,12 +30,26 @@
   }
 </div>
 
-@if (node().compensation; as compensation) {
+@if (node().activities?.length || node().compensation) {
   <ul class="chips">
-    <li class="chip chip-compensation" title="Compensation">
-      <app-icon name="compensation" />
-      <span>{{ compensation.name }}</span>
-    </li>
+    @for (activity of node().activities ?? []; track $index) {
+      <li
+        class="chip"
+        [class]="'chip-' + activity.kind"
+        [title]="verbs[activity.kind] + ' ' + activity.kind + ' on entering this state'"
+      >
+        <app-icon [name]="activity.kind" />
+        <span
+          ><span class="verb">{{ verbs[activity.kind] }}</span> {{ activity.name }}</span
+        >
+      </li>
+    }
+    @if (node().compensation; as compensation) {
+      <li class="chip chip-compensation" title="Compensation">
+        <app-icon name="compensation" />
+        <span>{{ compensation.name }}</span>
+      </li>
+    }
   </ul>
 }
 
