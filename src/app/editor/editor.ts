@@ -19,6 +19,7 @@ import {
   publishedEvents,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
+import { DiagramExport } from '../export/diagram-export';
 import { DiagramDocument } from '../storage/diagram-document';
 import { AddStepButton } from './add-step-button';
 import { DiagramLayout, SLOT_SIZE, nodeSize } from './diagram-layout';
@@ -45,6 +46,7 @@ const FIT_PADDING = { x: 80, y: 80 };
 export class Editor {
   protected readonly store = inject(DiagramStore);
   protected readonly file = inject(DiagramDocument);
+  protected readonly exporter = inject(DiagramExport);
   protected readonly layout = inject(DiagramLayout);
   protected readonly appendTypes = APPEND_TYPES;
   protected readonly slotSize = SLOT_SIZE;

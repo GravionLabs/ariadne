@@ -50,6 +50,31 @@ describe('BrowserFileStorage', () => {
       expect(opened?.content).toBe('version: 3\n');
     });
 
+    it('exports an image through the save picker, filtered to its extension', async () => {
+      const save = vi.fn(async () => handle('order.png'));
+      win.showOpenFilePicker = vi.fn();
+      win.showSaveFilePicker = save;
+
+      const ref = await storage.exportFile(new Blob(['x'], { type: 'image/png' }), 'order.png');
+
+      const [options] = save.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(options['suggestedName']).toBe('order.png');
+      expect(options['types']).toEqual([
+        { description: 'PNG image', accept: { 'image/png': ['.png'] } },
+      ]);
+      expect(ref).toEqual({ name: 'order.png' });
+    });
+
+    it('returns null when the export picker is cancelled', async () => {
+      win.showOpenFilePicker = vi.fn();
+      win.showSaveFilePicker = vi.fn(async () => {
+        throw new DOMException('cancelled', 'AbortError');
+      });
+      expect(
+        await storage.exportFile(new Blob(['x'], { type: 'image/svg+xml' }), 'a.svg'),
+      ).toBeNull();
+    });
+
     it('suggests a *.saga.yaml name when saving as', async () => {
       const save = vi.fn(async () => handle('order.saga.yaml'));
       win.showOpenFilePicker = vi.fn();
@@ -90,6 +115,29 @@ describe('BrowserFileStorage', () => {
 
       expect(created[0].download).toBe('order.saga.yaml');
       expect(ref).toEqual({ name: 'order.saga.yaml' });
+    });
+
+    it('downloads an exported image under its own name', async () => {
+      const created: HTMLAnchorElement[] = [];
+      const realCreate = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        const el = realCreate(tag);
+        if (tag === 'a') {
+          created.push(el as HTMLAnchorElement);
+          (el as HTMLAnchorElement).click = vi.fn();
+        }
+        return el;
+      });
+      URL.createObjectURL = vi.fn(() => 'blob:x');
+      URL.revokeObjectURL = vi.fn();
+
+      const ref = await storage.exportFile(
+        new Blob(['<svg/>'], { type: 'image/svg+xml' }),
+        'order.svg',
+      );
+
+      expect(created[0].download).toBe('order.svg');
+      expect(ref).toEqual({ name: 'order.svg' });
     });
 
     it('lets the file input pick *.saga.yaml files', async () => {

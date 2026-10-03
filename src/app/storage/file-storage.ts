@@ -21,6 +21,12 @@ export abstract class FileStorage {
 
   /** Always asks where to save. */
   abstract saveAs(content: string, suggestedName: string): Promise<FileRef | null>;
+
+  /**
+   * Saves a generated file (an image export), always asking where; it is not a diagram, so it
+   * does not become the open file. Resolves to `null` when the user cancels.
+   */
+  abstract exportFile(content: Blob, suggestedName: string): Promise<FileRef | null>;
 }
 
 /**
