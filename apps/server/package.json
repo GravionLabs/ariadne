@@ -1,0 +1,25 @@
+{
+  "name": "@ariadne/server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Serves the built Ariadne web app for self-hosting: static files, /config.json and /health.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node dist/server.mjs",
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-server.xml"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.0",
+    "hono": "^4.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "esbuild": "^0.28.2",
+    "vitest": "^5.0.0"
+  }
+}
