@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { Diagram } from './diagram';
 import { DiagramStore } from './diagram-store';
+import { Diagram } from '@ariadne/core';
 
 const blank = (): Diagram => ({ direction: 'top-bottom', nodes: [], edges: [] });
 

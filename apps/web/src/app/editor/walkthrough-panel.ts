@@ -1,10 +1,10 @@
 import { DOCUMENT } from '@angular/common';
 import { Component, computed, inject, output, signal } from '@angular/core';
-import { DiagramEdge, eventLabel } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { Icon } from './icon';
 import { NODE_TYPES } from './node-types';
 import { WalkthroughStore } from './walkthrough-store';
+import { DiagramEdge, eventLabel } from '@ariadne/core';
 
 /**
  * Step-through for a review: the saga starts in its initial state, you pick the event that

@@ -1,7 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { DiagramStore } from '../model/diagram-store';
-import { doingsOf, follow, optionsAt, walkAsText } from '../model/walkthrough';
+import { doingsOf, follow, optionsAt, walkAsText } from '@ariadne/core';
 
 /**
  * Walking through the saga one event at a time: which state it is in, which events it reacts to,

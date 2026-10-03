@@ -30,7 +30,7 @@ That code must not depend on Angular, or the CLI and the extension would drag it
      cli/  server/  vscode/
    ```
 
-   Packages are added as their issues are done; today only `apps/web` exists.
+   Packages are added as their issues are done; today `packages/core` and `apps/web` exist.
 
 3. **Dependency rules.** Arrows point down only:
    `apps/*` → `packages/*`; `viewer` → `core`, `export`; `export` → `core`; `masstransit` → `core`;
@@ -63,3 +63,14 @@ That code must not depend on Angular, or the CLI and the extension would drag it
   (decorators, Angular templates). That is fine for framework-free packages.
 - The Angular dependencies live in `apps/web/package.json`, so the CLI and the server do not install
   them.
+- **`@ariadne/core` is extracted (#166).** It holds the model, the YAML format, the pure edits, naming hints,
+  validation, the message catalog, the walkthrough and the layout (sizes, dagre, routes of loops and
+  parallel transitions). The web app imports it as `@ariadne/core` (a `workspace:*` dependency plus a
+  `paths` entry in `tsconfig.base.json`, so the Angular tools compile the sources). What was Angular
+  stayed in the app: the stores (`DiagramStore`, `EditorStore`, …), and `DiagramLayout`, now a thin
+  `computed` wrapper over `layoutDiagram`. Node icons and the editor's labels (`NODE_TYPES`) are UI and
+  stayed too; `ACTIVITY_VERBS` moved, since the walkthrough text needs it.
+- **Apps list the runtime dependencies of the source packages they use.** Angular's test runner leaves bare
+  packages external and resolves them from the app, so `apps/web` also depends on `yaml` and
+  `@dagrejs/dagre` (the bundler would find them in `packages/core`). Core's own tests run with plain
+  Vitest (`globals`, node environment) and read the example sagas with `?raw`.

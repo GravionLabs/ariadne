@@ -1,5 +1,5 @@
-import { DiagramFormatError, parseDiagram } from '../model/diagram-yaml';
 import { locateSourceError } from './source-errors';
+import { DiagramFormatError, parseDiagram } from '@ariadne/core';
 
 /** The message `parseDiagram` gives for `text`, and where we place it. */
 function locate(text: string) {

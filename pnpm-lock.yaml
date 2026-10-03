@@ -44,6 +44,9 @@ importers:
       '@angular/platform-browser':
         specifier: ^22.2.0
         version: 22.2.0(@angular/common@22.2.0(@angular/core@22.2.0(@angular/compiler@22.2.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.0(@angular/compiler@22.2.0)(rxjs@7.8.2))
+      '@ariadne/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@codemirror/commands':
         specifier: ^6.11.1
         version: 6.11.1
@@ -114,6 +117,19 @@ importers:
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.2(jsdom@30.1.1)(vite@8.3.0(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1)(yaml@2.9.1))
+
+  packages/core:
+    dependencies:
+      '@dagrejs/dagre':
+        specifier: ^3.1.1
+        version: 3.1.1
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+    devDependencies:
       vitest:
         specifier: ^5.0.0
         version: 5.0.2(jsdom@30.1.1)(vite@8.3.0(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1)(yaml@2.9.1))

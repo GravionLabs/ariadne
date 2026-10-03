@@ -1,5 +1,5 @@
-import orderSaga from '../../../../../docs/examples/order.saga.yaml';
-import travelBooking from '../../../../../docs/examples/travel-booking.saga.yaml';
+import orderSaga from '../../../docs/examples/order.saga.yaml?raw';
+import travelBooking from '../../../docs/examples/travel-booking.saga.yaml?raw';
 import { describe, expect, it } from 'vitest';
 import { Diagram, DiagramEdge, DiagramNode } from './diagram';
 import { parseDiagram } from './diagram-yaml';

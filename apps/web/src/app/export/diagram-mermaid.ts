@@ -1,5 +1,11 @@
-import { ACTIVITY_VERBS } from '../editor/node-types';
-import { Diagram, DiagramEdge, DiagramNode, eventLabel, joinEventsOf } from '../model/diagram';
+import {
+  ACTIVITY_VERBS,
+  Diagram,
+  DiagramEdge,
+  DiagramNode,
+  eventLabel,
+  joinEventsOf,
+} from '@ariadne/core';
 
 /** Words Mermaid's state diagram grammar treats as keywords; an id must not be one of them. */
 const RESERVED = new Set([

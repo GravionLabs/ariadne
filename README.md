@@ -86,11 +86,12 @@ The full format, with every field and the migration rules, is in [docs/specs/dia
 apps/
   web/        the Angular editor
     src/app/
-      model/      the diagram, its YAML format, the store with undo/redo (no UI)
+      model/      the diagram store with undo/redo (NgRx SignalStore)
       editor/     the canvas, state cards, transition labels, inspector, auto-layout, source panel
       storage/    FileStorage (open/save behind an interface) and the document service
       export/     SVG, PNG, Mermaid and Markdown
-packages/     shared libraries without a UI (added as they are extracted, see ADR 0006)
+packages/
+  core/       @ariadne/core: model, YAML format, validation, layout, catalog, walkthrough (no framework)
 docs/
   adr/        architecture decision records
   specs/      the diagram file format

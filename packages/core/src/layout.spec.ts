@@ -1,4 +1,4 @@
-import { Diagram, DiagramNode } from '../model/diagram';
+import { Diagram, DiagramNode } from './diagram';
 import {
   backEdgeIds,
   decisionIds,
@@ -7,7 +7,7 @@ import {
   layoutDiagram,
   nodeSize,
   slotSources,
-} from './diagram-layout';
+} from './layout';
 
 const saga: Diagram = {
   direction: 'top-bottom',

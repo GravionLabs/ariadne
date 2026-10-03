@@ -1,9 +1,8 @@
 import { Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
-import { MessageKind } from '../model/diagram';
-import { MessageEntry, buildCatalog } from '../model/catalog';
 import { DiagramStore } from '../model/diagram-store';
 import { EditorStore } from './editor-store';
 import { Icon } from './icon';
+import { buildCatalog, MessageEntry, MessageKind } from '@ariadne/core';
 
 const ORIGINS: Record<string, string> = {
   internal: 'Published by the saga',

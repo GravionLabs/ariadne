@@ -1,5 +1,5 @@
-import { MessageKind, NodeType } from '../model/diagram';
 import { IconName } from './icon';
+import { NodeType } from '@ariadne/core';
 
 export interface NodeTypeInfo {
   label: string;
@@ -33,9 +33,6 @@ export const DECISION: NodeTypeInfo = {
   icon: 'decision',
   description: 'Branches on the event it receives.',
 };
-
-/** What a transition does with a message: send a command, publish an event. */
-export const ACTIVITY_VERBS: Record<MessageKind, string> = { command: 'Send', event: 'Publish' };
 
 /** Types offered by an add button: after a state, or in the middle of a transition. */
 export const APPEND_TYPES: readonly NodeType[] = ['state', 'join', 'end'];

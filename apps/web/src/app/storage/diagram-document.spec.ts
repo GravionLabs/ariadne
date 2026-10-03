@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { DiagramStore } from '../model/diagram-store';
-import { serializeDiagram } from '../model/diagram-yaml';
 import { DiagramDocument } from './diagram-document';
 import { FileRef, FileStorage, OpenedFile } from './file-storage';
+import { serializeDiagram } from '@ariadne/core';
 
 class FakeFileStorage extends FileStorage {
   opened: OpenedFile | null = null;

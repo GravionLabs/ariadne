@@ -1,10 +1,20 @@
 import { Component, computed, input, output } from '@angular/core';
 import { EFConnectableSide, FFlowModule } from '@foblex/flow';
-import { Severity } from '../model/validation';
-import { DiagramNode, Direction, hasInput, hasOutput, inputId, outputId } from '../model/diagram';
-import { canExpand, isBar, isCompact } from './diagram-layout';
 import { Icon } from './icon';
-import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from './node-types';
+import { DECISION, NODE_TYPES } from './node-types';
+import {
+  ACTIVITY_VERBS,
+  canExpand,
+  DiagramNode,
+  Direction,
+  hasInput,
+  hasOutput,
+  inputId,
+  isBar,
+  isCompact,
+  outputId,
+  Severity,
+} from '@ariadne/core';
 
 /**
  * A state on the canvas. The host carries `fNode` (sized with `fNodeSize`, as f-flow owns the

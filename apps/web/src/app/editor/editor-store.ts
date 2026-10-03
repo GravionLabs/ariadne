@@ -1,7 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { DiagramStore } from '../model/diagram-store';
-import { SEVERITIES, Severity, findingsByElement, validate, worst } from '../model/validation';
+import { findingsByElement, SEVERITIES, Severity, validate, worst } from '@ariadne/core';
 
 interface EditorState {
   nodeIds: string[];

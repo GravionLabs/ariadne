@@ -1,11 +1,20 @@
 import { computed } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { Diagram, Direction, EdgeKind, MessageKind, NodeType, emptyDiagram } from './diagram';
-import * as edits from './diagram-edits';
-import { DetailsPatch, EdgePatch, NodePatch } from './diagram-edits';
-import { renameMessage } from './catalog';
-import { serializeDiagram } from './diagram-yaml';
 import { withUndoRedo } from './with-undo-redo';
+import {
+  DetailsPatch,
+  Diagram,
+  Direction,
+  EdgeKind,
+  EdgePatch,
+  edits,
+  emptyDiagram,
+  MessageKind,
+  NodePatch,
+  NodeType,
+  renameMessage,
+  serializeDiagram,
+} from '@ariadne/core';
 
 export type { DetailsPatch, EdgePatch, NodePatch };
 

@@ -1,10 +1,14 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { Diagram, emptyDiagram } from '../model/diagram';
-import { updateDetails } from '../model/diagram-edits';
 import { DiagramStore } from '../model/diagram-store';
-import { parseDiagramWithNotes, serializeDiagram } from '../model/diagram-yaml';
 import { FileRef, FileStorage, UNTITLED_NAME, diagramFileName } from './file-storage';
+import {
+  Diagram,
+  emptyDiagram,
+  parseDiagramWithNotes,
+  serializeDiagram,
+  updateDetails,
+} from '@ariadne/core';
 
 interface DocumentState {
   file: FileRef | null;

@@ -8,13 +8,13 @@ import {
   FSelectionChangeEvent,
 } from '@foblex/flow';
 import { DiagramStore } from '../model/diagram-store';
-import { serializeDiagram } from '../model/diagram-yaml';
 import { DiagramDocument } from '../storage/diagram-document';
 import { FileStorage } from '../storage/file-storage';
 import type { Mock } from 'vitest';
 import { CODE_EDITOR_FACTORY, CodeEditor, CodeEditorOptions } from './code-editor';
 import { Editor } from './editor';
 import './native-dialog.testing';
+import { serializeDiagram } from '@ariadne/core';
 
 // jsdom has no ResizeObserver; f-flow uses it to track node sizes.
 globalThis.ResizeObserver ??= class {
