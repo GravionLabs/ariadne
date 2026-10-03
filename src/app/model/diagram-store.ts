@@ -16,7 +16,7 @@ import {
 const MAX_HISTORY = 100;
 
 export type NodePatch = Partial<Omit<DiagramNode, 'id' | 'type'>>;
-export type EdgePatch = Partial<Pick<DiagramEdge, 'event' | 'eventSource' | 'activities' | 'kind'>>;
+export type EdgePatch = Partial<Pick<DiagramEdge, 'event' | 'eventSource' | 'kind'>>;
 
 /** App-owned diagram state (f-flow's "classic" mode): all edits go through this store. */
 @Injectable({ providedIn: 'root' })
@@ -94,8 +94,8 @@ export class DiagramStore {
   }
 
   /**
-   * Splits edge A→B into A→X→B with a new state X. A→X keeps the edge's id, event (with its
-   * source) and activities, so the transition out of A behaves as before. Returns the new node
+   * Splits edge A→B into A→X→B with a new state X. A→X keeps the edge's id and event (with its
+   * source), so the transition out of A still reacts to the same event; X→B has no event yet. Returns the new node
    * id, or `null` if the edge is unknown or `type` cannot sit in the middle of a path (start, end).
    */
   insertOnEdge(edgeId: string, type: NodeType): string | null {

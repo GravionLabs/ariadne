@@ -17,6 +17,7 @@ import {
   NODE_COLORS,
   NodeColor,
   NodeType,
+  hasActivities,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { namingHint } from '../model/messages';
@@ -54,6 +55,7 @@ export class Inspector {
   readonly transitionAdded = output<NodeType>();
 
   protected readonly namingHint = namingHint;
+  protected readonly hasActivities = hasActivities;
   protected readonly colors = NODE_COLORS;
 
   protected readonly customColor = computed(() => {
@@ -108,19 +110,10 @@ export class Inspector {
     if (node && value !== node[field]) this.store.updateNode(node.id, { [field]: value });
   }
 
-  protected setCompensation(event: Event): void {
-    const node = this.node();
-    const name = optional(event);
-    if (!node || name === node.compensation?.name) return;
-    this.store.updateNode(node.id, {
-      compensation: name ? { ...node.compensation, name } : undefined,
-    });
-  }
-
   protected addActivity(kind: MessageKind): void {
-    const edge = this.edge();
-    if (!edge) return;
-    this.setActivities(edge, [...(edge.activities ?? []), { kind, name: NEW_MESSAGE[kind] }]);
+    const node = this.node();
+    if (!node) return;
+    this.setActivities(node, [...(node.activities ?? []), { kind, name: NEW_MESSAGE[kind] }]);
     // Focus the new name so it can be typed over right away.
     afterNextRender(
       () => {
@@ -134,23 +127,23 @@ export class Inspector {
   }
 
   protected setActivityKind(index: number, kind: MessageKind): void {
-    const edge = this.edge();
-    const activities = edge?.activities ?? [];
-    if (!edge || activities[index]?.kind === kind) return;
+    const node = this.node();
+    const activities = node?.activities ?? [];
+    if (!node || activities[index]?.kind === kind) return;
     this.setActivities(
-      edge,
+      node,
       activities.map((a, i) => (i === index ? { ...a, kind } : a)),
     );
   }
 
   protected setActivityName(index: number, event: Event): void {
-    const edge = this.edge();
+    const node = this.node();
     const name = optional(event);
-    const activities = edge?.activities ?? [];
-    if (!edge || name === activities[index]?.name) return;
+    const activities = node?.activities ?? [];
+    if (!node || name === activities[index]?.name) return;
     // An empty name removes the activity.
     this.setActivities(
-      edge,
+      node,
       name
         ? activities.map((a, i) => (i === index ? { ...a, name } : a))
         : activities.filter((_, i) => i !== index),
@@ -158,27 +151,35 @@ export class Inspector {
   }
 
   protected removeActivity(index: number): void {
-    const edge = this.edge();
-    if (edge)
+    const node = this.node();
+    if (node)
       this.setActivities(
-        edge,
-        (edge.activities ?? []).filter((_, i) => i !== index),
+        node,
+        (node.activities ?? []).filter((_, i) => i !== index),
       );
   }
 
-  private setActivities(edge: DiagramEdge, activities: Activity[]): void {
-    this.store.updateEdge(edge.id, { activities: activities.length ? activities : undefined });
+  private setActivities(node: DiagramNode, activities: Activity[]): void {
+    this.store.updateNode(node.id, { activities: activities.length ? activities : undefined });
   }
 
-  /** Transitions (as "From → To") that publish the selected transition's event. */
+  protected setCompensation(event: Event): void {
+    const node = this.node();
+    const name = optional(event);
+    if (!node || name === node.compensation?.name) return;
+    this.store.updateNode(node.id, {
+      compensation: name ? { ...node.compensation, name } : undefined,
+    });
+  }
+
+  /** Names of the states that publish the selected transition's event when entered. */
   protected readonly publishers = computed(() => {
     const event = this.edge()?.event;
     if (!event) return [];
-    const name = (id: string) => this.store.nodes().find((n) => n.id === id)?.name ?? id;
     return this.store
-      .edges()
-      .filter((e) => e.activities?.some((a) => a.kind === 'event' && a.name === event))
-      .map((e) => `${name(e.source)} → ${name(e.target)}`);
+      .nodes()
+      .filter((n) => n.activities?.some((a) => a.kind === 'event' && a.name === event))
+      .map((n) => n.name);
   });
 
   protected setEventSource(event: Event): void {

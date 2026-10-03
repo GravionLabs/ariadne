@@ -69,13 +69,10 @@ describe('DiagramStore', () => {
       expect(store.nodes()).toHaveLength(2);
     });
 
-    it('inserts a state on a transition; the first half keeps event and activities', () => {
+    it('inserts a state on a transition; the first half keeps the event and its source', () => {
       store.addNode('start');
       store.appendNode('start-1', 'end');
-      store.updateEdge('edge-1', {
-        event: 'OrderSubmitted',
-        activities: [{ kind: 'command', name: 'ReserveStock' }],
-      });
+      store.updateEdge('edge-1', { event: 'OrderReceived', eventSource: 'Shop API' });
       expect(store.insertOnEdge('edge-1', 'state')).toBe('state-1');
       expect(store.edges()).toEqual([
         {
@@ -83,8 +80,8 @@ describe('DiagramStore', () => {
           source: 'start-1',
           target: 'state-1',
           kind: 'forward',
-          event: 'OrderSubmitted',
-          activities: [{ kind: 'command', name: 'ReserveStock' }],
+          event: 'OrderReceived',
+          eventSource: 'Shop API',
         },
         { id: 'edge-2', source: 'state-1', target: 'end-1', kind: 'forward' },
       ]);
@@ -159,22 +156,36 @@ describe('DiagramStore', () => {
       expect(store.nodes()[0].name).toBe('State');
     });
 
+    it('keeps activities on the state: set, clear, undo, and gone with the state', () => {
+      store.addNode('start');
+      store.appendNode('start-1', 'state');
+      store.appendNode('state-1', 'end');
+      const activities = [
+        { kind: 'command', name: 'ReserveStock' },
+        { kind: 'event', name: 'OrderAccepted' },
+      ] as const;
+      store.updateNode('state-1', { activities: [...activities] });
+      expect(store.nodes()[1].activities).toEqual(activities);
+      store.updateNode('state-1', { activities: undefined });
+      expect(store.nodes()[1]).not.toHaveProperty('activities');
+      store.undo();
+      expect(store.nodes()[1].activities).toEqual(activities);
+
+      // Inserting a state into a transition leaves the neighbours' activities alone.
+      store.insertOnEdge('edge-2', 'state');
+      expect(store.nodes()[1].activities).toEqual(activities);
+      // Removing the state takes its activities with it; the path is bridged.
+      store.remove({ nodeIds: ['state-1'] });
+      expect(store.nodes().some((n) => n.activities)).toBe(false);
+    });
+
     it('updates an edge and can undo it', () => {
       store.addNode('start');
       store.appendNode('start-1', 'state');
-      store.updateEdge('edge-1', {
-        event: 'OrderSubmitted',
-        activities: [{ kind: 'command', name: 'ReserveStock' }],
-        kind: 'compensation',
-      });
-      expect(store.edges()[0]).toMatchObject({
-        event: 'OrderSubmitted',
-        activities: [{ kind: 'command', name: 'ReserveStock' }],
-        kind: 'compensation',
-      });
-      store.updateEdge('edge-1', { event: undefined, activities: undefined });
+      store.updateEdge('edge-1', { event: 'OrderSubmitted', kind: 'compensation' });
+      expect(store.edges()[0]).toMatchObject({ event: 'OrderSubmitted', kind: 'compensation' });
+      store.updateEdge('edge-1', { event: undefined });
       expect(store.edges()[0]).not.toHaveProperty('event');
-      expect(store.edges()[0]).not.toHaveProperty('activities');
       store.undo();
       store.undo();
       expect(store.edges()[0]).toEqual({

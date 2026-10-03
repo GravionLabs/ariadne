@@ -74,6 +74,11 @@ describe('Editor', () => {
     [...el.querySelectorAll<HTMLButtonElement>('app-inspector button')].find((b) =>
       b.textContent?.includes(text),
     )!;
+  /** The "Send command" / "Publish event" buttons below the activity list (not the row toggles). */
+  const addActivityButton = (el: HTMLElement, text: string) =>
+    [...el.querySelectorAll<HTMLButtonElement>('app-inspector .add-row button')].find((b) =>
+      b.textContent?.includes(text),
+    );
 
   it('starts with the initial state and a "+" slot after it', async () => {
     const { el } = await setup();
@@ -149,33 +154,95 @@ describe('Editor', () => {
     expect(store.edges().at(-1)).toMatchObject({ source: 'state-1', target: 'end-1' });
   });
 
-  it('edits a transition: event, activities and their naming hints', async () => {
+  it('edits a transition: event, source and kind, but no activities', async () => {
     const { el, store, select, fill, settle } = await setup();
     store.appendNode('start-1', 'state');
     await select([], ['edge-1']);
     expect(el.querySelector('app-inspector')?.textContent).toContain('Initial → State');
 
     await fill('input[placeholder="e.g. PaymentCharged"]', 'OrderSubmitted');
-    inspectorButton(el, 'Send command').click();
-    await settle();
-    await fill('.message input', 'ReserveStock');
-    expect(store.edges()[0]).toMatchObject({
-      event: 'OrderSubmitted',
-      activities: [{ kind: 'command', name: 'ReserveStock' }],
-    });
-    expect(el.querySelector('app-inspector .hint')).toBeNull();
-
-    // Switching to "Publish event" flags the imperative name.
-    el.querySelector<HTMLButtonElement>('app-inspector .segmented [aria-checked="false"]')!.click();
-    await settle();
-    expect(store.edges()[0].activities).toEqual([{ kind: 'event', name: 'ReserveStock' }]);
-    expect(el.querySelector('app-inspector .hint')?.textContent).toMatch(/past tense/);
-
+    expect(store.edges()[0].event).toBe('OrderSubmitted');
     const label = el.querySelector('app-transition-label')!;
     expect([...label.querySelectorAll('.row')].map((r) => r.textContent?.trim())).toEqual([
       'OrderSubmitted',
-      'Publish ReserveStock',
     ]);
+    // Sending and publishing happen in states, not on transitions.
+    expect(el.querySelector('app-inspector [aria-label="Activities"]')).toBeNull();
+    expect(addActivityButton(el, 'Send command')).toBeUndefined();
+    await settle();
+  });
+
+  it('edits the activities of a state: send, publish, naming hints, chips on the card', async () => {
+    const { el, store, select, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    await select(['state-1']);
+
+    /** Sets the name of the n-th activity row in the inspector and commits it. */
+    const rename = async (index: number, value: string) => {
+      const field = el.querySelectorAll<HTMLInputElement>('app-inspector .message input')[index];
+      field.value = value;
+      field.dispatchEvent(new Event('change'));
+      await settle();
+    };
+
+    addActivityButton(el, 'Send command')!.click();
+    await settle();
+    await rename(0, 'ReserveStock');
+    expect(store.nodes()[1].activities).toEqual([{ kind: 'command', name: 'ReserveStock' }]);
+    expect(el.querySelector('app-inspector .hint')).toBeNull();
+
+    addActivityButton(el, 'Publish event')!.click();
+    await settle();
+    await rename(1, 'OrderAccepted');
+    expect(store.nodes()[1].activities).toEqual([
+      { kind: 'command', name: 'ReserveStock' },
+      { kind: 'event', name: 'OrderAccepted' },
+    ]);
+
+    // Switching the first one to "Publish event" flags the imperative name.
+    el.querySelector<HTMLButtonElement>(
+      'app-inspector .message .segmented [aria-checked="false"]',
+    )!.click();
+    await settle();
+    expect(store.nodes()[1].activities?.[0]).toEqual({ kind: 'event', name: 'ReserveStock' });
+    expect(el.querySelector('app-inspector .hint')?.textContent).toMatch(/past tense/);
+
+    const card = [...el.querySelectorAll('app-node-card')].find((c) =>
+      c.textContent?.includes('State'),
+    )!;
+    expect([...card.querySelectorAll('.chip')].map((c) => c.textContent?.trim())).toEqual([
+      'Publish ReserveStock',
+      'Publish OrderAccepted',
+    ]);
+
+    // An empty name removes the activity.
+    await rename(0, '  ');
+    expect(store.nodes()[1].activities).toEqual([{ kind: 'event', name: 'OrderAccepted' }]);
+  });
+
+  it('offers activities on states and final states, not on the initial state', async () => {
+    const { el, store, select } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    const section = () => el.querySelector('app-inspector [aria-label="Activities"]');
+    await select(['start-1']);
+    expect(section()).toBeNull();
+    await select(['end-1']);
+    expect(section()).not.toBeNull();
+  });
+
+  it('draws a final state with activities as a card with chips', async () => {
+    const { el, store, settle } = await setup();
+    store.appendNode('start-1', 'end');
+    await settle();
+    const final = () => el.querySelector('app-node-card[data-type="end"]')!;
+    expect(final().classList).toContain('compact');
+    store.updateNode('end-1', { activities: [{ kind: 'event', name: 'OrderCompleted' }] });
+    await settle();
+    expect(final().classList).not.toContain('compact');
+    expect(final().querySelector('.chip-event')?.textContent?.trim()).toBe(
+      'Publish OrderCompleted',
+    );
   });
 
   it('marks events nobody in the saga publishes as external, with their source', async () => {
@@ -193,10 +260,10 @@ describe('Editor', () => {
     expect(label().querySelector('.source')?.textContent?.trim()).toBe('from Shop API');
 
     // Once the saga publishes it itself, the event is internal.
-    store.updateEdge('edge-1', { activities: [{ kind: 'event', name: 'OrderReceived' }] });
+    store.updateNode('state-1', { activities: [{ kind: 'event', name: 'OrderReceived' }] });
     await settle();
     expect(el.querySelector('app-inspector .origin')?.textContent).toContain(
-      'Published by this saga on Initial → State',
+      'Published by this saga when entering State',
     );
     expect(label().querySelector('.event')?.classList).not.toContain('external');
   });
@@ -287,7 +354,7 @@ describe('Editor', () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key, ctrlKey: true, shiftKey }));
     press('s');
     expect(storage.saveAs).toHaveBeenCalledWith(
-      expect.stringContaining('version: 2'),
+      expect.stringContaining('version: 3'),
       'untitled.yaml',
     );
     press('S', true);

@@ -83,6 +83,75 @@
       </div>
     </div>
 
+    @if (hasActivities(node.type)) {
+      <section class="group" aria-label="Activities">
+        <div class="group-title">
+          <span>Activities</span>
+          <small>
+            Run in order when the saga enters “{{ node.name }}”: send a command to one consumer, or
+            publish an event to all subscribers.
+          </small>
+        </div>
+        @for (activity of node.activities ?? []; track $index; let i = $index) {
+          <div class="message" [attr.data-kind]="activity.kind">
+            <div class="segmented" role="radiogroup" [attr.aria-label]="'Kind of ' + activity.name">
+              <button
+                type="button"
+                role="radio"
+                [attr.aria-checked]="activity.kind === 'command'"
+                [class.active]="activity.kind === 'command'"
+                title="Send a command: an instruction to exactly one consumer"
+                (click)="setActivityKind(i, 'command')"
+              >
+                <app-icon name="command" /> Send command
+              </button>
+              <button
+                type="button"
+                role="radio"
+                [attr.aria-checked]="activity.kind === 'event'"
+                [class.active]="activity.kind === 'event'"
+                title="Publish an event: a fact for any number of subscribers"
+                (click)="setActivityKind(i, 'event')"
+              >
+                <app-icon name="event" /> Publish event
+              </button>
+            </div>
+            <div class="row">
+              <input
+                type="text"
+                aria-label="Message name"
+                [placeholder]="
+                  activity.kind === 'command' ? 'e.g. ShipOrder' : 'e.g. OrderAccepted'
+                "
+                [value]="activity.name"
+                (change)="setActivityName(i, $event)"
+              />
+              <button
+                type="button"
+                class="icon-button"
+                [attr.aria-label]="'Remove ' + activity.name"
+                title="Remove"
+                (click)="removeActivity(i)"
+              >
+                <app-icon name="delete" />
+              </button>
+            </div>
+            @if (namingHint(activity.kind, activity.name); as hint) {
+              <p class="hint">{{ hint }}</p>
+            }
+          </div>
+        }
+        <div class="add-row">
+          <button type="button" class="ghost" (click)="addActivity('command')">
+            <app-icon name="command" /> Send command
+          </button>
+          <button type="button" class="ghost" (click)="addActivity('event')">
+            <app-icon name="event" /> Publish event
+          </button>
+        </div>
+      </section>
+    }
+
     @if (node.type === 'state') {
       <label class="field">
         <span>Compensation</span>
@@ -153,7 +222,7 @@
       @if (publishers().length) {
         <p class="origin">
           <app-icon name="trigger" />
-          <span>Published by this saga on {{ publishers().join(', ') }}.</span>
+          <span>Published by this saga when entering {{ publishers().join(', ') }}.</span>
         </p>
       } @else {
         <p class="origin external">
@@ -174,71 +243,6 @@
         >
       </label>
     }
-
-    <section class="group" aria-label="Activities">
-      <div class="group-title">
-        <span>Activities</span>
-        <small>
-          Run in order before entering “{{ ends()?.to }}”: send a command to one consumer, or
-          publish an event to all subscribers.
-        </small>
-      </div>
-      @for (activity of edge.activities ?? []; track $index; let i = $index) {
-        <div class="message" [attr.data-kind]="activity.kind">
-          <div class="segmented" role="radiogroup" [attr.aria-label]="'Kind of ' + activity.name">
-            <button
-              type="button"
-              role="radio"
-              [attr.aria-checked]="activity.kind === 'command'"
-              [class.active]="activity.kind === 'command'"
-              title="Send a command: an instruction to exactly one consumer"
-              (click)="setActivityKind(i, 'command')"
-            >
-              <app-icon name="command" /> Send command
-            </button>
-            <button
-              type="button"
-              role="radio"
-              [attr.aria-checked]="activity.kind === 'event'"
-              [class.active]="activity.kind === 'event'"
-              title="Publish an event: a fact for any number of subscribers"
-              (click)="setActivityKind(i, 'event')"
-            >
-              <app-icon name="event" /> Publish event
-            </button>
-          </div>
-          <div class="row">
-            <input
-              type="text"
-              aria-label="Message name"
-              [placeholder]="activity.kind === 'command' ? 'e.g. ShipOrder' : 'e.g. OrderAccepted'"
-              [value]="activity.name"
-              (change)="setActivityName(i, $event)"
-            />
-            <button
-              type="button"
-              class="icon-button"
-              [attr.aria-label]="'Remove ' + activity.name"
-              title="Remove"
-              (click)="removeActivity(i)"
-            >
-              <app-icon name="delete" />
-            </button>
-          </div>
-          @if (namingHint(activity.kind, activity.name); as hint) {
-            <p class="hint">{{ hint }}</p>
-          }
-        </div>
-      }
-      <div class="add-row">
-        <button type="button" class="ghost" (click)="addActivity('command')">
-          <app-icon name="command" /> Send command
-        </button>
-        <button type="button" class="ghost" (click)="addActivity('event')">
-          <app-icon name="event" /> Publish event
-        </button>
-      </div>
-    </section>
 
     <label class="field">
       <span>Kind</span>

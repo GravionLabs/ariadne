@@ -33,6 +33,14 @@
   </nav>
 
   <div class="topbar-end">
+    @if (file.notice(); as notice) {
+      <p class="error-pill notice-pill" role="status">
+        <span [title]="notice">{{ notice }}</span>
+        <button type="button" aria-label="Dismiss notice" (click)="file.notice.set(null)">
+          <app-icon name="close" />
+        </button>
+      </p>
+    }
     @if (file.error(); as error) {
       <p class="error-pill" role="alert">
         <span>{{ error }}</span>

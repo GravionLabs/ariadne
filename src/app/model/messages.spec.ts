@@ -27,28 +27,38 @@ describe('namingHint', () => {
 });
 
 describe('publishedEvents', () => {
-  it('collects the events transitions publish, not the ones they send or react to', () => {
-    const diagram: Diagram = {
-      direction: 'top-bottom',
-      nodes: [
-        { id: 'a', type: 'state', name: 'A' },
-        { id: 'b', type: 'state', name: 'B' },
-      ],
-      edges: [
-        {
-          id: 'e1',
-          source: 'a',
-          target: 'b',
-          kind: 'forward',
-          event: 'OrderReceived',
-          activities: [
-            { kind: 'command', name: 'ReserveStock' },
-            { kind: 'event', name: 'OrderAccepted' },
-          ],
-        },
-        { id: 'e2', source: 'b', target: 'a', kind: 'forward', event: 'OrderAccepted' },
-      ],
-    };
-    expect([...publishedEvents(diagram)]).toEqual(['OrderAccepted']);
+  const diagram = (nodes: Diagram['nodes']): Diagram => ({
+    direction: 'top-bottom',
+    nodes,
+    edges: [],
+  });
+
+  it('collects the events states publish, not the commands they send', () => {
+    expect([
+      ...publishedEvents(
+        diagram([
+          { id: 'a', type: 'state', name: 'A' },
+          {
+            id: 'b',
+            type: 'state',
+            name: 'B',
+            activities: [
+              { kind: 'command', name: 'ReserveStock' },
+              { kind: 'event', name: 'OrderAccepted' },
+            ],
+          },
+          {
+            id: 'c',
+            type: 'end',
+            name: 'C',
+            activities: [{ kind: 'event', name: 'OrderShipped' }],
+          },
+        ]),
+      ),
+    ]).toEqual(['OrderAccepted', 'OrderShipped']);
+  });
+
+  it('is empty when no state publishes anything', () => {
+    expect(publishedEvents(diagram([{ id: 'a', type: 'state', name: 'A' }])).size).toBe(0);
   });
 });

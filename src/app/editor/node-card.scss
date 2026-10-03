@@ -212,8 +212,20 @@
   }
 }
 
+.chip-command {
+  --chip-color: var(--c-command);
+}
+
+.chip-event {
+  --chip-color: var(--c-event);
+}
+
 .chip-compensation {
   --chip-color: var(--c-compensation);
+}
+
+.verb {
+  color: var(--c-text-subtle);
 }
 
 // One connector in, one out; placed by direction. Only visible while hovering or connecting.

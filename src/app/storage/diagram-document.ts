@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Diagram, emptyDiagram } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
-import { parseDiagram, serializeDiagram } from '../model/diagram-yaml';
+import { parseDiagramWithNotes, serializeDiagram } from '../model/diagram-yaml';
 import { FileRef, FileStorage } from './file-storage';
 
 const UNTITLED = 'untitled.yaml';
@@ -20,6 +20,8 @@ export class DiagramDocument {
   readonly dirty = computed(() => this.store.diagram() !== this.saved());
   /** Last error, e.g. an invalid file; cleared by the next successful action. */
   readonly error = signal<string | null>(null);
+  /** What opening an older file changed, e.g. a migrated format; shown until dismissed. */
+  readonly notice = signal<string | null>(null);
 
   newDiagram(): void {
     this.replace(emptyDiagram(), null);
@@ -30,7 +32,10 @@ export class DiagramDocument {
     return this.run(async () => {
       const opened = await this.storage.open();
       if (!opened) return false;
-      this.replace(parseDiagram(opened.content), opened.ref);
+      const { diagram, notes } = parseDiagramWithNotes(opened.content);
+      // A migrated file differs from what is on disk, so it counts as unsaved until it is saved.
+      this.replace(diagram, opened.ref, notes.length > 0);
+      this.notice.set(notes.length > 0 ? notes.join(' ') : null);
       return true;
     });
   }
@@ -55,11 +60,13 @@ export class DiagramDocument {
     });
   }
 
-  private replace(diagram: Diagram, file: FileRef | null): void {
+  private replace(diagram: Diagram, file: FileRef | null, changed = false): void {
     this.store.load(diagram);
     this.file.set(file);
-    this.saved.set(this.store.diagram());
+    // The store is immutable and `dirty` compares identity, so a copy marks the file as changed.
+    this.saved.set(changed ? { ...this.store.diagram() } : this.store.diagram());
     this.error.set(null);
+    this.notice.set(null);
   }
 
   private async run(action: () => Promise<boolean>): Promise<boolean> {

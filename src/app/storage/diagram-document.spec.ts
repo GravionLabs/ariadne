@@ -79,6 +79,54 @@ describe('DiagramDocument', () => {
     expect(doc.dirty()).toBe(false);
   });
 
+  describe('files from before activities moved to states (format version 2)', () => {
+    const v2 = [
+      'version: 2',
+      'nodes:',
+      '  - { id: start-1, type: start, name: Initial }',
+      '  - { id: state-1, type: state, name: Reserving stock }',
+      'edges:',
+      '  - id: edge-1',
+      '    source: start-1',
+      '    target: state-1',
+      '    event: OrderReceived',
+      '    activities: [{ command: ReserveStock }]',
+      '',
+    ].join('\n');
+
+    it('migrates them, tells the user, and counts the file as unsaved', async () => {
+      storage.opened = { ref: { name: 'order.yaml' }, content: v2 };
+      expect(await doc.open()).toBe(true);
+      expect(store.nodes()[1].activities).toEqual([{ kind: 'command', name: 'ReserveStock' }]);
+      expect(doc.notice()).toContain('"Reserving stock"');
+      expect(doc.dirty()).toBe(true);
+      expect(doc.name()).toBe('order.yaml');
+    });
+
+    it('is clean again after saving the migrated file, and the notice goes away', async () => {
+      storage.opened = { ref: { name: 'order.yaml' }, content: v2 };
+      await doc.open();
+      expect(await doc.save()).toBe(true);
+      expect(doc.dirty()).toBe(false);
+      expect(storage.written.at(-1)?.content).toContain('version: 3');
+      expect(storage.written.at(-1)?.content).not.toMatch(/edges:[\s\S]*activities:/);
+    });
+
+    it('clears the notice when another diagram is opened or created', async () => {
+      storage.opened = { ref: { name: 'order.yaml' }, content: v2 };
+      await doc.open();
+      doc.newDiagram();
+      expect(doc.notice()).toBeNull();
+
+      storage.opened = { ref: { name: 'order.yaml' }, content: v2 };
+      await doc.open();
+      storage.opened = { ref: { name: 'v3.yaml' }, content: 'version: 3\n' };
+      await doc.open();
+      expect(doc.notice()).toBeNull();
+      expect(doc.dirty()).toBe(false);
+    });
+  });
+
   it('reports invalid files and keeps the current diagram', async () => {
     store.addNode('state');
     storage.opened = { ref: { name: 'bad.yaml' }, content: 'version: 7' };

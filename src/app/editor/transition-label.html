@@ -27,18 +27,6 @@
         </span>
       }
     }
-    @for (activity of edge().activities ?? []; track $index) {
-      <span
-        class="row activity"
-        [attr.data-kind]="activity.kind"
-        [title]="verbs[activity.kind] + ' ' + activity.kind"
-      >
-        <app-icon [name]="activity.kind" />
-        <span class="text"
-          ><span class="verb">{{ verbs[activity.kind] }}</span> {{ activity.name }}</span
-        >
-      </span>
-    }
   </button>
 }
 @if (insertable()) {

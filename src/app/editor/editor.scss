@@ -203,6 +203,17 @@
   }
 }
 
+// Same pill, in the amber of "unsaved": informs, does not alarm.
+.notice-pill {
+  color: color-mix(in srgb, var(--c-compensation) 55%, var(--c-text));
+  background: color-mix(in srgb, var(--c-compensation) 10%, var(--c-surface-1));
+  border-color: color-mix(in srgb, var(--c-compensation) 35%, var(--c-border));
+
+  button:hover {
+    background: color-mix(in srgb, var(--c-compensation) 16%, transparent);
+  }
+}
+
 // Workspace: canvas with floating inspector, toolbox and minimap.
 
 .workspace {

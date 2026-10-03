@@ -15,12 +15,14 @@ import {
 } from './diagram';
 
 /** Current version of the file format; see docs/specs/diagram-format.md. */
-export const FORMAT_VERSION = 2;
+export const FORMAT_VERSION = 3;
 /**
- * Versions the reader accepts. Version 1 positions and ports are read and ignored, and its
- * `step` and `decision` nodes become states.
+ * Versions the reader accepts:
+ * - version 1: positions and ports are read and ignored, `step` and `decision` nodes become states;
+ * - version 2: activities written on transitions move onto the state each one leads into
+ *   (ADR 0005).
  */
-const READABLE_VERSIONS: readonly number[] = [1, 2];
+const READABLE_VERSIONS: readonly number[] = [1, 2, 3];
 
 const NODE_TYPES: readonly NodeType[] = ['start', 'end', 'state'];
 /** Version 1 node types; both are plain states now (a decision is a state with branches). */
@@ -42,19 +44,8 @@ export function serializeDiagram(diagram: Diagram): string {
     version: FORMAT_VERSION,
     direction: diagram.direction,
     nodes: diagram.nodes.map(serializeNode),
-    edges: diagram.edges.map(({ id, source, target, kind, event, eventSource, activities }) =>
-      withoutUndefined({
-        id,
-        source,
-        target,
-        kind,
-        event,
-        eventSource,
-        // Compact one-key form: `- command: ChargePayment` / `- event: OrderShipped`.
-        activities: activities?.length
-          ? activities.map(({ kind, name }) => ({ [kind]: name }))
-          : undefined,
-      }),
+    edges: diagram.edges.map(({ id, source, target, kind, event, eventSource }) =>
+      withoutUndefined({ id, source, target, kind, event, eventSource }),
     ),
   };
   return stringify(file, { lineWidth: 0 });
@@ -67,14 +58,30 @@ function serializeNode(node: DiagramNode): Record<string, unknown> {
     name: node.name,
     description: node.description,
     color: node.color,
+    // Compact one-key form: `- command: ChargePayment` / `- event: OrderShipped`.
+    activities: node.activities?.length
+      ? node.activities.map(({ kind, name }) => ({ [kind]: name }))
+      : undefined,
     retry: node.retry,
     timeout: node.timeout,
     compensation: node.compensation && withoutUndefined({ ...node.compensation }),
   });
 }
 
+/** A parsed diagram plus what the reader changed to bring an older file up to date. */
+export interface ParsedDiagram {
+  diagram: Diagram;
+  /** Human-readable notes about migrations; empty for files in the current version. */
+  notes: string[];
+}
+
 /** Parses and validates a YAML diagram file. */
 export function parseDiagram(text: string): Diagram {
+  return parseDiagramWithNotes(text).diagram;
+}
+
+/** Like {@link parseDiagram}, and reports migrations of older files so they can be shown. */
+export function parseDiagramWithNotes(text: string): ParsedDiagram {
   let file: unknown;
   try {
     file = parse(text);
@@ -98,8 +105,40 @@ export function parseDiagram(text: string): Diagram {
     if (ids.has(id)) throw new DiagramFormatError(`Duplicate node id "${id}"`);
     ids.add(id);
   }
-  const edges = asArray(root['edges'] ?? [], 'edges').map((e, i) => parseEdge(e, i, ids));
-  return { direction: direction as Direction, nodes, edges };
+  const parsedEdges = asArray(root['edges'] ?? [], 'edges').map((e, i) =>
+    parseEdge(e, i, ids, version),
+  );
+  const edges = parsedEdges.map((p) => p.edge);
+  const notes = version < 3 ? moveActivitiesToStates(nodes, parsedEdges) : [];
+  return { diagram: { direction: direction as Direction, nodes, edges }, notes };
+}
+
+/**
+ * Version 2 wrote activities on transitions. They now belong to the state the transition leads
+ * into: moved in edge order, without duplicates (ADR 0005). Returns a note per migrated file.
+ */
+function moveActivitiesToStates(nodes: DiagramNode[], parsed: ParsedEdge[]): string[] {
+  const moved = new Map<string, Activity[]>();
+  for (const { edge, activities } of parsed) {
+    if (activities.length === 0) continue;
+    const list = moved.get(edge.target) ?? [];
+    for (const a of activities) {
+      if (!list.some((b) => b.kind === a.kind && b.name === a.name)) list.push(a);
+    }
+    moved.set(edge.target, list);
+  }
+  const names: string[] = [];
+  for (const node of nodes) {
+    const list = moved.get(node.id);
+    if (!list) continue;
+    node.activities = [...(node.activities ?? []), ...list];
+    names.push(`"${node.name}"`);
+  }
+  return names.length
+    ? [
+        `Activities (send command / publish event) moved from transitions onto the state they lead into: ${names.join(', ')}.`,
+      ]
+    : [];
 }
 
 function parseNode(value: unknown, index: number, version: number): DiagramNode {
@@ -120,12 +159,19 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     node['compensation'] === undefined
       ? undefined
       : asRecord(node['compensation'], `${at}.compensation`);
+  const activities =
+    node['activities'] === undefined
+      ? undefined
+      : asArray(node['activities'], `${at}.activities`).map((a, i) =>
+          parseActivity(a, `${at}.activities[${i}]`),
+        );
   return withoutUndefined({
     id: asString(node['id'], `${at}.id`),
     type: type as NodeType,
     name: asString(node['name'], `${at}.name`),
     description: optionalString(node['description'], `${at}.description`),
     color: color as NodeColor | undefined,
+    activities: activities?.length ? activities : undefined,
     retry: optionalString(node['retry'], `${at}.retry`),
     timeout: optionalString(node['timeout'], `${at}.timeout`),
     compensation:
@@ -146,19 +192,35 @@ function parseActivity(value: unknown, at: string): Activity {
   return { kind: kind as MessageKind, name: asString(name, `${at}.${kind}`) };
 }
 
-function parseEdge(value: unknown, index: number, nodeIds: Set<string>): DiagramEdge {
+/** An edge, plus the activities a version 2 file wrote on it (moved to the target state). */
+interface ParsedEdge {
+  edge: DiagramEdge;
+  activities: Activity[];
+}
+
+function parseEdge(
+  value: unknown,
+  index: number,
+  nodeIds: Set<string>,
+  version: number,
+): ParsedEdge {
   const at = `edges[${index}]`;
   const edge = asRecord(value, at);
   const kind = edge['kind'] ?? 'forward';
   if (!EDGE_KINDS.includes(kind as EdgeKind)) {
     throw new DiagramFormatError(`${at}.kind must be one of ${EDGE_KINDS.join(', ')}`);
   }
-  const activities =
-    edge['activities'] === undefined
-      ? undefined
-      : asArray(edge['activities'], `${at}.activities`).map((a, i) =>
+  if (version >= 3 && edge['activities'] !== undefined) {
+    throw new DiagramFormatError(
+      `${at}.activities is not allowed: activities belong to states (nodes[].activities)`,
+    );
+  }
+  const legacy =
+    version < 3 && edge['activities'] !== undefined
+      ? asArray(edge['activities'], `${at}.activities`).map((a, i) =>
           parseActivity(a, `${at}.activities[${i}]`),
-        );
+        )
+      : [];
   const source = asString(edge['source'], `${at}.source`);
   const target = asString(edge['target'], `${at}.target`);
   for (const [field, id] of [
@@ -167,15 +229,17 @@ function parseEdge(value: unknown, index: number, nodeIds: Set<string>): Diagram
   ]) {
     if (!nodeIds.has(id)) throw new DiagramFormatError(`${at}.${field} "${id}" is not a node`);
   }
-  return withoutUndefined({
-    id: asString(edge['id'], `${at}.id`),
-    source,
-    target,
-    kind: kind as EdgeKind,
-    event: optionalString(edge['event'], `${at}.event`) || undefined,
-    eventSource: optionalString(edge['eventSource'], `${at}.eventSource`) || undefined,
-    activities: activities?.length ? activities : undefined,
-  });
+  return {
+    edge: withoutUndefined({
+      id: asString(edge['id'], `${at}.id`),
+      source,
+      target,
+      kind: kind as EdgeKind,
+      event: optionalString(edge['event'], `${at}.event`) || undefined,
+      eventSource: optionalString(edge['eventSource'], `${at}.eventSource`) || undefined,
+    }),
+    activities: legacy,
+  };
 }
 
 function asRecord(value: unknown, at: string): Record<string, unknown> {

@@ -19,7 +19,10 @@ export type Direction = 'top-bottom' | 'left-right';
 export type MessageKind = 'command' | 'event';
 export const MESSAGE_KINDS: readonly MessageKind[] = ['command', 'event'];
 
-/** Something a transition does: send a command or publish an event. */
+/**
+ * Something a state does when the saga enters it: send a command or publish an event
+ * (MassTransit's `WhenEnter(State, binder => binder.Send(...).Publish(...))`).
+ */
 export interface Activity {
   kind: MessageKind;
   name: string;
@@ -55,6 +58,11 @@ export interface DiagramNode {
   description?: string;
   /** Accent color shown at the top of the card; absent = the default of the node's type. */
   color?: NodeColor;
+  /**
+   * What the saga does on entering this state, in order. States and the final state have them;
+   * the initial state is not entered through a transition, so it has none.
+   */
+  activities?: Activity[];
   compensation?: Compensation;
   /** Free-text notes, e.g. "3 attempts, exponential backoff" / "30s". Documentation only. */
   retry?: string;
@@ -73,8 +81,6 @@ export interface DiagramEdge {
    * can arrive from outside in any state, not only the initial one.
    */
   eventSource?: string;
-  /** What the transition does, in order, before entering the target state. */
-  activities?: Activity[];
 }
 
 /** Node positions are not stored: the editor lays the graph out in `direction`. */
@@ -84,14 +90,17 @@ export interface Diagram {
   edges: DiagramEdge[];
 }
 
+/** A node that can have {@link Activity activities}: the ones a transition leads into. */
+export const hasActivities = (type: NodeType): boolean => type !== 'start';
+
 /**
- * Names of the events the saga publishes itself (an activity of some transition). Every other
- * event a transition reacts to comes from outside.
+ * Names of the events the saga publishes itself (an activity of some state). Every other event a
+ * transition reacts to comes from outside.
  */
 export function publishedEvents(diagram: Diagram): Set<string> {
   return new Set(
-    diagram.edges.flatMap((e) =>
-      (e.activities ?? []).filter((a) => a.kind === 'event').map((a) => a.name),
+    diagram.nodes.flatMap((n) =>
+      (n.activities ?? []).filter((a) => a.kind === 'event').map((a) => a.name),
     ),
   );
 }
