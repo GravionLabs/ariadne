@@ -31,6 +31,11 @@ export class ExportMenu {
   ];
   protected readonly mermaid: readonly ExportEntry[] = [
     {
+      label: 'Copy Mermaid',
+      hint: 'To the clipboard',
+      run: () => this.exporter.copyMermaid(),
+    },
+    {
       label: 'Mermaid',
       hint: 'State diagram text (.mmd)',
       run: () => this.exporter.exportMermaid('mmd'),
@@ -39,11 +44,6 @@ export class ExportMenu {
       label: 'Mermaid in Markdown',
       hint: 'Fenced block (.md)',
       run: () => this.exporter.exportMermaid('md'),
-    },
-    {
-      label: 'Copy Mermaid',
-      hint: 'To the clipboard',
-      run: () => this.exporter.copyMermaid(),
     },
   ];
 

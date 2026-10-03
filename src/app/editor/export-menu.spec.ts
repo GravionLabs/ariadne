@@ -36,24 +36,24 @@ describe('ExportMenu', () => {
     expect(trigger().getAttribute('aria-expanded')).toBe('true');
   });
 
-  it('offers SVG, PNG, Mermaid, Mermaid in Markdown and a copy entry', () => {
+  it('offers SVG and PNG, then Mermaid with the copy entry first', () => {
     const { items, open } = setup();
     open();
     expect(items().map((i) => i.querySelector('strong')?.textContent)).toEqual([
       'SVG',
       'PNG',
+      'Copy Mermaid',
       'Mermaid',
       'Mermaid in Markdown',
-      'Copy Mermaid',
     ]);
   });
 
   it.each([
     [0, () => exporter.exportSvg, []],
     [1, () => exporter.exportPng, []],
-    [2, () => exporter.exportMermaid, ['mmd']],
-    [3, () => exporter.exportMermaid, ['md']],
-    [4, () => exporter.copyMermaid, []],
+    [2, () => exporter.copyMermaid, []],
+    [3, () => exporter.exportMermaid, ['mmd']],
+    [4, () => exporter.exportMermaid, ['md']],
   ])('runs entry %i and closes the menu', (index, method, args) => {
     const { fixture, trigger, items, open } = setup();
     open();
