@@ -63,6 +63,9 @@ pnpm --filter @ariadne/cli build
 node apps/cli/dist/ariadne.mjs lint docs/examples/*.saga.yaml      # exit 1 on errors
 node apps/cli/dist/ariadne.mjs lint --max-warnings 0 --format json order.saga.yaml
 node apps/cli/dist/ariadne.mjs export order.saga.yaml --format svg -o order.svg   # mermaid | svg | png | md
+node apps/cli/dist/ariadne.mjs generate order.saga.yaml -o src/Orders    # diagram -> C#
+node apps/cli/dist/ariadne.mjs import src/Orders/*.cs -o docs            # C# -> diagram
+node apps/cli/dist/ariadne.mjs diff docs/order.saga.yaml src/Orders/*.cs   # exit 1 when they differ
 ```
 
 `lint` reports the same findings as the editor's Problems list. Importing from and generating C# will be added when those exist.
@@ -97,7 +100,7 @@ The full format, with every field and the migration rules, is in [docs/specs/dia
 
 ```
 apps/
-  cli/        the ariadne command: lint and export
+  cli/        the ariadne command: lint, export, generate, import, diff
   web/        the Angular editor
     src/app/
       model/      the diagram store with undo/redo (NgRx SignalStore)
@@ -107,7 +110,7 @@ apps/
 packages/
   core/       @ariadne/core: model, YAML format, validation, layout, catalog, walkthrough (no framework)
   export/     @ariadne/export: SVG, Mermaid and Markdown exports (no browser needed)
-  masstransit/ @ariadne/masstransit: import MassTransit saga state machines from C# (tree-sitter)
+  masstransit/ @ariadne/masstransit: import saga state machines from C# (tree-sitter), generate C#, diff
 samples/
   sagas/      C# sagas with the diagrams the importer must produce
 docs/
@@ -118,7 +121,7 @@ docs/
 
 The repository is a pnpm workspace (`apps/*`, `packages/*`); the root scripts run across all of it.
 
-Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [importing C# with tree-sitter](docs/adr/0007-csharp-import.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md).
+Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [importing C# with tree-sitter](docs/adr/0007-csharp-import.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md), [generating C# and checking it against the diagram](docs/adr/0013-csharp-generation.md).
 
 ## Roadmap
 
