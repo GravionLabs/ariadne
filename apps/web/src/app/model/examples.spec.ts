@@ -1,10 +1,10 @@
-import orderSaga from '../../../docs/examples/order.saga.yaml';
-import travelBooking from '../../../docs/examples/travel-booking.saga.yaml';
+import orderSaga from '../../../../../docs/examples/order.saga.yaml';
+import travelBooking from '../../../../../docs/examples/travel-booking.saga.yaml';
 import { eventKindOf, joinEventsOf, publishedEvents } from './diagram';
 import { backEdgeIds } from '../editor/diagram-layout';
 import { parseDiagramWithNotes, serializeDiagram } from './diagram-yaml';
 
-describe('docs/examples/order.saga.yaml', () => {
+describe('../../../../../docs/examples/order.saga.yaml', () => {
   const { diagram, notes } = parseDiagramWithNotes(orderSaga);
 
   it('is a valid, current-format diagram', () => {
@@ -58,7 +58,7 @@ describe('docs/examples/order.saga.yaml', () => {
   });
 });
 
-describe('docs/examples/travel-booking.saga.yaml', () => {
+describe('../../../../../docs/examples/travel-booking.saga.yaml', () => {
   const { diagram, notes } = parseDiagramWithNotes(travelBooking);
   const nodes = diagram.nodes;
   const edges = diagram.edges;

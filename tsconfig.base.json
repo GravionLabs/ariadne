@@ -1,0 +1,15 @@
+/* Compiler options shared by every package and app of the workspace. */
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "moduleResolution": "bundler"
+  }
+}

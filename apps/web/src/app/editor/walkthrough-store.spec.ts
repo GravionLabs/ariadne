@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DiagramStore } from '../model/diagram-store';
 import { parseDiagram } from '../model/diagram-yaml';
-import orderSaga from '../../../docs/examples/order.saga.yaml';
+import orderSaga from '../../../../../docs/examples/order.saga.yaml';
 import { WalkthroughStore } from './walkthrough-store';
 
 describe('WalkthroughStore', () => {

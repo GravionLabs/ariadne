@@ -51,7 +51,7 @@ Other commands:
 pnpm test            # unit tests (Vitest)
 pnpm lint            # ESLint
 pnpm format:check    # Prettier (pnpm format fixes)
-pnpm build           # production build in dist/
+pnpm build           # production build in apps/web/dist/
 ```
 
 ## Diagram files
@@ -83,17 +83,23 @@ The full format, with every field and the migration rules, is in [docs/specs/dia
 ## Project layout
 
 ```
-src/app/
-  model/      the diagram, its YAML format, the store with undo/redo (no UI)
-  editor/     the canvas, state cards, transition labels, inspector, auto-layout, source panel
-  storage/    FileStorage (open/save behind an interface) and the document service
+apps/
+  web/        the Angular editor
+    src/app/
+      model/      the diagram, its YAML format, the store with undo/redo (no UI)
+      editor/     the canvas, state cards, transition labels, inspector, auto-layout, source panel
+      storage/    FileStorage (open/save behind an interface) and the document service
+      export/     SVG, PNG, Mermaid and Markdown
+packages/     shared libraries without a UI (added as they are extracted, see ADR 0006)
 docs/
   adr/        architecture decision records
   specs/      the diagram file format
   examples/   sample diagrams
 ```
 
-Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md).
+The repository is a pnpm workspace (`apps/*`, `packages/*`); the root scripts run across all of it.
+
+Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md).
 
 ## Roadmap
 
