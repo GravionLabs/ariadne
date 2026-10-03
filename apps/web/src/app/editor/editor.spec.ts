@@ -1188,7 +1188,7 @@ describe('Editor', () => {
         await vi.waitFor(
           () => {
             ctx.fixture.detectChanges();
-            expect(dialog().open || ctx.el.querySelector('.error-pill')).toBeTruthy();
+            expect(dialog().open || ctx.el.querySelector('.error-pill[role="alert"]')).toBeTruthy();
           },
           { timeout: 15_000 },
         );
