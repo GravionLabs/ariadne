@@ -42,6 +42,7 @@ import { EditorStore } from './editor-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
+import { CatalogPanel } from './catalog-panel';
 import { NewDiagramDialog } from './new-diagram-dialog';
 import { ProblemsMenu } from './problems-menu';
 import { SourcePanel } from './source-panel';
@@ -54,6 +55,7 @@ const FIT_PADDING = { x: 80, y: 80 };
 @Component({
   imports: [
     AddStepButton,
+    CatalogPanel,
     DiagramDetails,
     ExportMenu,
     FFlowModule,
@@ -259,6 +261,13 @@ export class Editor {
   protected deleteSelection(): void {
     this.store.remove(this.ui.selection());
     this.clearSelection();
+  }
+
+  /** The panel on the left of the canvas: the message catalog (later also the walkthrough). */
+  protected readonly leftPanel = signal<'messages' | null>(null);
+
+  protected toggleMessages(): void {
+    this.leftPanel.update((panel) => (panel === 'messages' ? null : 'messages'));
   }
 
   protected toggleSource(): void {

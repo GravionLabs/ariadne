@@ -14,6 +14,15 @@
   align-items: center;
 }
 
+// Looking at one message or one step: what belongs to it stays, the rest fades.
+:host([data-highlight='off']) {
+  opacity: 0.3;
+}
+:host([data-highlight='on']) .card {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--c-primary-soft);
+}
+
 :host(.inline) {
   width: max-content;
   max-width: 240px;

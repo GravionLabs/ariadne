@@ -287,6 +287,16 @@ app-export-menu ::ng-deep .menu-button {
   }
 }
 
+// The message catalog (and the walkthrough) float on the left, under the saga's name.
+.left-panel {
+  position: absolute;
+  z-index: 11;
+  top: 72px;
+  bottom: 16px;
+  left: 16px;
+  width: min(360px, calc(100% - 32px));
+}
+
 .inspector {
   position: absolute;
   z-index: 12;
@@ -429,6 +439,16 @@ app-export-menu ::ng-deep .menu-button {
   --ff-connection-color: var(--c-border-muted);
   stroke-dasharray: 4 4;
   pointer-events: none;
+}
+
+// Looking at one message or one step.
+f-connection[data-highlight='off'] {
+  opacity: 0.2;
+}
+
+f-connection[data-highlight='on'] {
+  --ff-connection-color: var(--c-primary);
+  --ff-connection-hover-color: var(--c-primary);
 }
 
 // A transition with an error or a warning (see the Problems list). Hints leave the line alone.

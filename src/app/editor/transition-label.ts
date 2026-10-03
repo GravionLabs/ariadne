@@ -18,6 +18,7 @@ import { INSERT_TYPES } from './node-types';
     '[attr.data-direction]': 'direction()',
     '[class.empty]': 'rows() === 0',
     '[class.inline]': '!insertable()',
+    '[attr.data-highlight]': 'highlight() ?? null',
   },
   templateUrl: './transition-label.html',
   styleUrl: './transition-label.scss',
@@ -26,6 +27,8 @@ export class TransitionLabel {
   readonly edge = input.required<DiagramEdge>();
   readonly direction = input.required<Direction>();
   readonly selected = input(false);
+  /** Emphasised (`on`) or faded (`off`), like the states. */
+  readonly highlight = input<'on' | 'off'>();
   /** The worst problem found with this transition: its card gets a coloured edge. */
   readonly finding = input<Severity>();
   /** Where the event comes from: the saga itself, outside it, or a timeout firing. */

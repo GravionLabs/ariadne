@@ -1,8 +1,9 @@
 import { computed } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { Diagram, Direction, EdgeKind, NodeType, emptyDiagram } from './diagram';
+import { Diagram, Direction, EdgeKind, MessageKind, NodeType, emptyDiagram } from './diagram';
 import * as edits from './diagram-edits';
 import { DetailsPatch, EdgePatch, NodePatch } from './diagram-edits';
+import { renameMessage } from './catalog';
 import { serializeDiagram } from './diagram-yaml';
 import { withUndoRedo } from './with-undo-redo';
 
@@ -89,6 +90,17 @@ export const DiagramStore = signalStore(
         const next = edits.retargetEdge(store.diagram(), edgeId, target);
         if (!next) return false;
         if (next !== store.diagram()) store._commit(() => next);
+        return true;
+      },
+
+      /**
+       * Renames a command or event everywhere it is used, as one undo step. Returns `false`
+       * (and records nothing) if the new name is empty or already used by another message.
+       */
+      renameMessage(kind: MessageKind, from: string, to: string): boolean {
+        const next = renameMessage(store.diagram(), kind, from, to);
+        if (!next) return false;
+        store._commit(() => next);
         return true;
       },
 

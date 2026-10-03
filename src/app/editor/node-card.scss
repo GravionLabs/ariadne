@@ -143,6 +143,16 @@
   }
 }
 
+// Looking at one message or one step: what belongs to it stays, the rest fades.
+:host([data-highlight='off']) {
+  opacity: 0.3;
+}
+:host([data-highlight='on']) {
+  box-shadow:
+    0 0 0 3px var(--c-primary),
+    var(--shadow-md);
+}
+
 // A marker for the worst problem found with the node (see the Problems list).
 :host([data-finding])::after {
   content: '';

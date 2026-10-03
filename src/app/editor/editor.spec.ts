@@ -695,6 +695,149 @@ describe('Editor', () => {
     );
   });
 
+  describe('message catalog', () => {
+    async function withMessages() {
+      const ctx = await setup();
+      const { el, store, settle } = ctx;
+      store.appendNode('start-1', 'state');
+      store.appendNode('state-1', 'state');
+      store.appendNode('state-2', 'end');
+      store.updateNode('state-1', {
+        activities: [
+          { kind: 'command', name: 'ReserveStock' },
+          { kind: 'event', name: 'StockRequested' },
+        ],
+      });
+      store.updateEdge('edge-1', { event: 'OrderPlaced', eventSource: 'Shop' });
+      store.updateEdge('edge-2', { event: 'StockRequested' });
+      await settle();
+      const open = async () => {
+        [...el.querySelectorAll<HTMLButtonElement>('.menu-button')]
+          .find((b) => b.textContent?.trim() === 'Messages')!
+          .click();
+        await settle();
+      };
+      const entries = () => [...el.querySelectorAll<HTMLElement>('app-catalog-panel .entry')];
+      return { ...ctx, open, entries };
+    }
+
+    it('lists the commands and events with where they come from and where they are used', async () => {
+      const { el, open, entries } = await withMessages();
+      expect(el.querySelector('app-catalog-panel')).toBeNull();
+      await open();
+      expect(
+        entries().map((e) => (e.querySelector('input.name') as HTMLInputElement).value),
+      ).toEqual(['ReserveStock', 'OrderPlaced', 'StockRequested']);
+      const [command, external, internal] = entries();
+      expect(command.textContent).toContain('Sent by State');
+      expect(external.textContent).toContain('From outside');
+      expect(external.textContent).toContain('From Shop');
+      expect(external.textContent).toContain('Triggers Initial → State');
+      expect(internal.textContent).toContain('Published by State');
+      expect(internal.textContent).toContain('Triggers State → State');
+    });
+
+    it('filters by kind and by name', async () => {
+      const { el, open, entries, settle } = await withMessages();
+      await open();
+      const radio = (label: string) =>
+        [...el.querySelectorAll<HTMLButtonElement>('app-catalog-panel .segmented button')].find(
+          (b) => b.textContent?.trim() === label,
+        )!;
+      radio('Commands').click();
+      await settle();
+      expect(entries()).toHaveLength(1);
+      radio('Events').click();
+      await settle();
+      expect(entries()).toHaveLength(2);
+      radio('All').click();
+      const search = el.querySelector<HTMLInputElement>('app-catalog-panel .search')!;
+      search.value = 'stock';
+      search.dispatchEvent(new Event('input'));
+      await settle();
+      expect(entries()).toHaveLength(2);
+      search.value = 'nothing like it';
+      search.dispatchEvent(new Event('input'));
+      await settle();
+      expect(entries()).toHaveLength(0);
+      expect(el.querySelector('app-catalog-panel .none')?.textContent).toContain(
+        'No message matches',
+      );
+    });
+
+    it('emphasises the states and transitions of a message, and lets go of them again', async () => {
+      const { el, open, entries, settle } = await withMessages();
+      await open();
+      const cards = () =>
+        [...el.querySelectorAll('app-node-card')].map((c) => c.getAttribute('data-highlight'));
+      expect(cards().every((h) => h === null)).toBe(true);
+
+      // StockRequested: published in State (state-1), reacted to by the edge state-1 → state-2.
+      entries()[2].querySelector<HTMLButtonElement>('.pick')!.click();
+      await settle();
+      expect(cards()).toEqual(['off', 'on', 'on', 'off']);
+      expect(el.querySelectorAll('f-connection[data-highlight="on"]')).toHaveLength(1);
+
+      entries()[2].querySelector<HTMLButtonElement>('.pick')!.click();
+      await settle();
+      expect(cards().every((h) => h === null)).toBe(true);
+
+      // Closing the panel lets go too.
+      entries()[0].querySelector<HTMLButtonElement>('.pick')!.click();
+      await settle();
+      expect(cards().some((h) => h === 'on')).toBe(true);
+      el.querySelector<HTMLButtonElement>(
+        'app-catalog-panel [aria-label="Close messages"]',
+      )!.click();
+      await settle();
+      expect(el.querySelector('app-catalog-panel')).toBeNull();
+      expect(cards().every((h) => h === null)).toBe(true);
+    });
+
+    it('renames a message everywhere in one undo step, and says why when it cannot', async () => {
+      const { el, store, open, entries, settle } = await withMessages();
+      await open();
+      const name = (i: number) => entries()[i].querySelector<HTMLInputElement>('input.name')!;
+
+      name(2).value = 'StockAsked';
+      name(2).dispatchEvent(new Event('change'));
+      await settle();
+      expect(store.nodes()[1].activities?.[1].name).toBe('StockAsked');
+      expect(store.edges()[1].event).toBe('StockAsked');
+      expect(
+        entries().map((e) => (e.querySelector('input.name') as HTMLInputElement).value),
+      ).toEqual(['ReserveStock', 'OrderPlaced', 'StockAsked']);
+      store.undo();
+      await settle();
+      expect(store.edges()[1].event).toBe('StockRequested');
+
+      // A name another event has: refused, the field goes back, a message tells why.
+      name(2).value = 'OrderPlaced';
+      name(2).dispatchEvent(new Event('change'));
+      await settle();
+      expect(name(2).value).toBe('StockRequested');
+      expect(el.querySelector('app-catalog-panel .error')?.textContent).toContain(
+        'already a event called “OrderPlaced”',
+      );
+      name(0).value = '  ';
+      name(0).dispatchEvent(new Event('change'));
+      await settle();
+      expect(el.querySelector('app-catalog-panel .error')?.textContent).toContain('needs a name');
+    });
+
+    it('shows the fixed names of timeouts and replies without a field to rename them', async () => {
+      const { store, open, entries, settle } = await withMessages();
+      store.updateNode('state-1', { timers: [{ action: 'schedule', name: 'StockTimeout' }] });
+      store.updateEdge('edge-1', { event: 'StockTimeout' });
+      await settle();
+      await open();
+      const timeout = entries().find((e) => e.textContent?.includes('StockTimeout'))!;
+      expect(timeout.textContent).toContain('Timeout');
+      expect(timeout.querySelector('input.name')).toBeNull();
+      expect(timeout.querySelector('.fixed')?.textContent).toContain('StockTimeout');
+    });
+  });
+
   it('adds the one Any state from the toolbox and opens it', async () => {
     const { el, store, settle } = await setup();
     const add = () => el.querySelector<HTMLButtonElement>('[aria-label="Add the Any state"]')!;
