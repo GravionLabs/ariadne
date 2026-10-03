@@ -135,15 +135,13 @@ describe('Editor', () => {
   });
 
   it('inserts a state into a transition with its "+"', async () => {
-    const { el, store, settle } = await setup();
+    const { el, store, settle, pick } = await setup();
     store.appendNode('start-1', 'end');
     await settle();
     expect(el.querySelector('.slot')).toBeNull();
     const inserts = el.querySelectorAll<HTMLButtonElement>('[aria-label="Insert a state here"]');
     expect(inserts).toHaveLength(1);
-    // Only states can be inserted, so there is no picker.
-    inserts[0].click();
-    await settle();
+    await pick(inserts[0], 'state');
     expect(store.edges().map((e) => [e.source, e.target])).toEqual([
       ['start-1', 'state-1'],
       ['state-1', 'end-1'],
@@ -407,6 +405,44 @@ describe('Editor', () => {
     const label = el.querySelectorAll('app-transition-label')[1];
     expect(label.querySelector('.event')?.classList).toContain('fault');
     expect(el.querySelector('app-inspector .origin')?.textContent).toContain('State');
+  });
+
+  it('adds a join from the "+", lists what it waits for, and recognises its event', async () => {
+    const { el, store, select, settle, fill, pick } = await setup();
+    store.appendNode('start-1', 'state');
+    await settle();
+    await pick(slotButton(el), 'join');
+    expect(store.nodes().map((n) => n.type)).toEqual(['start', 'state', 'join']);
+    expect(el.querySelector('app-node-card[data-type="join"] .bar')).toBeTruthy();
+    expect(el.querySelector('app-inspector')?.getAttribute('aria-label')).toBe('Join settings');
+
+    inspectorButton(el, 'Add an event').click();
+    await settle();
+    const field = el.querySelector<HTMLInputElement>('app-inspector .combine input')!;
+    field.value = 'PaymentCharged';
+    field.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[2].combines).toEqual(['PaymentCharged']);
+    expect(el.querySelector('app-node-card[data-type="join"] .combines')?.textContent).toContain(
+      'PaymentCharged',
+    );
+
+    // A transition leaving the join on its name is the composite event.
+    store.appendNode('join-1', 'end');
+    await settle();
+    await select([], ['edge-3']);
+    await fill('input[placeholder="e.g. PaymentCharged"]', 'Join');
+    const label = el.querySelectorAll('app-transition-label')[2];
+    expect(label.querySelector('.event')?.classList).toContain('composite');
+    expect(el.querySelector('app-inspector .origin.join')?.textContent).toContain('PaymentCharged');
+
+    // An empty name removes the event again.
+    await select(['join-1']);
+    const again = el.querySelector<HTMLInputElement>('app-inspector .combine input')!;
+    again.value = '';
+    again.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[2].combines).toBeUndefined();
   });
 
   it('adds the one Any state from the toolbox and opens it', async () => {

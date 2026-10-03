@@ -26,6 +26,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
           timeout: 'timeout',
           reply: 'reply',
           fault: 'fault',
+          composite: 'join',
         }[kind]
       : '';
   const name = (id: string) => nodes.get(id)?.name ?? id;
@@ -39,6 +40,8 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
   if (description) out.push(description);
   out.push('## Diagram', mermaidMarkdown(diagramToMermaid(diagram)).trimEnd());
 
+  // The Waits for column only appears when the diagram has a join.
+  const joining = diagram.nodes.some((n) => n.type === 'join');
   // The Requests column only appears when some state makes a request.
   const requesting = diagram.nodes.some((n) => n.requests?.length);
   // The Timers column only appears when some state schedules a timeout.
@@ -54,6 +57,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
             'Type',
             'Description',
             'Activities',
+            ...(joining ? ['Waits for'] : []),
             ...(requesting ? ['Requests'] : []),
             ...(timing ? ['Timers'] : []),
             ...(ignoring ? ['Ignores'] : []),
@@ -66,6 +70,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
             typeLabel(n),
             n.description ?? '',
             (n.activities ?? []).map((a) => `${ACTIVITY_VERBS[a.kind]} ${a.name}`).join('\n'),
+            ...(joining ? [(n.combines ?? []).join('\n')] : []),
             ...(requesting
               ? [
                   (n.requests ?? [])
@@ -148,6 +153,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
               timeout: 'Timeout',
               reply: 'Reply',
               fault: 'Fault',
+              composite: 'Composite',
             }[kindOf({ event: ev })!],
             (publishedBy.get(ev) ?? []).join(', '),
             (reactions.get(ev) ?? []).join('\n'),

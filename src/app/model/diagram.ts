@@ -7,8 +7,9 @@ export interface Point {
  * Nodes are the states of a saga state machine: the initial state (`start`), the final state
  * (`end`) and the states in between. A state that several transitions leave is a decision. The
  * `any` node is not a state the saga is in: its transitions apply in every state (`DuringAny`).
+ * A `join` is not one either: it waits until several events have all arrived (`CompositeEvent`).
  */
-export type NodeType = 'start' | 'end' | 'state' | 'any';
+export type NodeType = 'start' | 'end' | 'state' | 'any' | 'join';
 export type EdgeKind = 'forward' | 'compensation';
 export type Direction = 'top-bottom' | 'left-right';
 
@@ -101,6 +102,11 @@ export interface DiagramNode {
   requests?: Request[];
   /** Timeouts the state schedules or cancels on entry, in order. Only on states. */
   timers?: Timer[];
+  /**
+   * On a `join`: the events that must all have arrived. The join's `name` is the composite event
+   * raised then, and a transition on that event leaves the join.
+   */
+  combines?: string[];
   /** Events the state ignores instead of failing on them (`Ignore(E)`). Only on states. */
   ignores?: string[];
   /** Free-text notes, e.g. "3 attempts, exponential backoff" / "30s". Documentation only. */
@@ -146,6 +152,9 @@ export interface Diagram {
 /** Only plain states can have {@link Activity activities}; the initial and final states cannot. */
 export const hasActivities = (type: NodeType): boolean => type === 'state';
 
+/** Only a join combines {@link DiagramNode.combines events}. */
+export const hasCombines = (type: NodeType): boolean => type === 'join';
+
 /** Only plain states can make {@link DiagramNode.requests requests}. */
 export const hasRequests = (type: NodeType): boolean => type === 'state';
 
@@ -176,6 +185,7 @@ export const DEFAULT_NAMES: Record<NodeType, string> = {
   end: 'Final',
   state: 'State',
   any: 'Any state',
+  join: 'Join',
 };
 
 /** A new diagram: the initial state to build from. */
@@ -205,9 +215,10 @@ export function nextId(prefix: string, existing: readonly { id: string }[]): str
 /**
  * What kind of event a transition reacts to. `timeout` is a scheduled timeout firing or a request
  * running out of time; `reply` and `fault` are the two answers to a request; `internal` is
- * published by a state of the saga; everything else comes from `external`. Derived, never stored.
+ * the composite event of a `join`; `internal` is published by a state of the saga; everything else
+ * comes from `external`. Derived, never stored.
  */
-export type EventKind = 'internal' | 'external' | 'timeout' | 'reply' | 'fault';
+export type EventKind = 'internal' | 'external' | 'timeout' | 'reply' | 'fault' | 'composite';
 
 /** Classifies events of `diagram`; `undefined` for a transition without an event. */
 export function eventKindOf(
@@ -228,8 +239,10 @@ export function eventKindOf(
       ]),
     ),
   );
+  const composites = new Set(diagram.nodes.filter((n) => n.type === 'join').map((n) => n.name));
   return ({ event }) => {
     if (!event) return undefined;
+    if (composites.has(event)) return 'composite';
     if (timeouts.has(event)) return 'timeout';
     const outcome = outcomes.get(event);
     if (outcome) return outcome;

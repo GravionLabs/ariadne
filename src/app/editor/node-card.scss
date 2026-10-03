@@ -38,6 +38,9 @@
 :host([data-type='end']) {
   --node-color: var(--c-end);
 }
+:host([data-type='join']) {
+  --node-color: var(--c-join);
+}
 :host([data-type='any']) {
   --node-color: var(--c-any);
 }
@@ -87,6 +90,57 @@
   align-items: center;
   padding: 0 14px 0 8px;
   border-radius: 999px;
+}
+
+// A join: a thick bar, with its name and the events it waits for under it. No card around it.
+:host(.f-node.bar) {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:host(.f-node.bar)::before {
+  display: none;
+}
+
+:host(.f-node.bar:hover),
+:host(.f-node.bar.f-selected),
+:host(.f-node.bar:focus-visible) {
+  box-shadow: none;
+}
+
+.bar {
+  height: 10px;
+  background: var(--node-color);
+  border-radius: 5px;
+  transition: box-shadow var(--transition-fast);
+
+  :host(.f-selected) &,
+  :host(.f-node:focus-visible) & {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--node-color) 24%, transparent);
+  }
+}
+
+.bar-text {
+  display: grid;
+  gap: 1px;
+  margin-top: 6px;
+  text-align: center;
+
+  .name {
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .combines {
+    overflow: hidden;
+    color: var(--c-text-subtle);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 // The "any" node is not a state the saga is in: a dashed pill.

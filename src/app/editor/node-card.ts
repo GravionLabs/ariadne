@@ -1,7 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { EFConnectableSide, FFlowModule } from '@foblex/flow';
 import { DiagramNode, Direction, hasInput, hasOutput, inputId, outputId } from '../model/diagram';
-import { canExpand, isCompact } from './diagram-layout';
+import { canExpand, isBar, isCompact } from './diagram-layout';
 import { Icon } from './icon';
 import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from './node-types';
 
@@ -17,6 +17,7 @@ import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from './node-types';
     '[attr.data-color]': 'palette()',
     '[style.--node-color]': 'custom()',
     '[class.compact]': 'compact()',
+    '[class.bar]': 'bar()',
     '[attr.title]': 'open() ? null : node().description || null',
   },
   templateUrl: './node-card.html',
@@ -44,7 +45,8 @@ export class NodeCard {
   protected readonly info = computed(() =>
     this.decision() ? DECISION : NODE_TYPES[this.node().type],
   );
-  protected readonly compact = computed(() => isCompact(this.node()));
+  protected readonly bar = computed(() => isBar(this.node()));
+  protected readonly compact = computed(() => isCompact(this.node()) && !this.bar());
   protected readonly verbs = ACTIVITY_VERBS;
   protected readonly hasInput = computed(() => hasInput(this.node().type));
   protected readonly hasOutput = computed(() => hasOutput(this.node().type));

@@ -12,6 +12,7 @@ import {
   LABEL_PADDING,
   LABEL_ROW,
   Size,
+  isBar,
   isCompact,
   labelRows,
   layoutDiagram,
@@ -36,6 +37,8 @@ const COLORS = {
   any: '#64748b',
   timeout: '#d97706',
   reply: '#059669',
+  composite: '#4f46e5',
+  join: '#4f46e5',
   fault: '#dc2626',
   end: '#f43f5e',
   compensation: '#f59e0b',
@@ -241,7 +244,7 @@ function transitionLabel(
   let rowY = y + LABEL_PADDING + LABEL_ROW / 2;
   if (edge.event) {
     const color = kind === 'internal' || !kind ? COLORS.event : COLORS[kind];
-    const glyph = { timeout: '⏱', reply: '↩', fault: '⚠' }[kind as string] ?? '⚡';
+    const glyph = { timeout: '⏱', reply: '↩', fault: '⚠', composite: '▬' }[kind as string] ?? '⚡';
     parts.push(
       text(glyph, x + 10, rowY, { size: 11, fill: color }),
       text(fit(eventLabel(edge), textWidth, 11), x + 29, rowY, {
@@ -265,6 +268,7 @@ function transitionLabel(
 
 function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision: boolean): string {
   const color = accent(node, decision);
+  if (isBar(node)) return barSvg(node, x, y, size, color);
   const compact = isCompact(node);
   const parts: string[] = [];
   const r = compact ? size.height / 2 : 8;
@@ -383,6 +387,19 @@ function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision:
   return `<g>${parts.join('')}</g>`;
 }
 
+/** A join: a thick bar, with its name and the events it waits for under it. */
+function barSvg(node: DiagramNode, x: number, y: number, size: Size, color: string): string {
+  const cx = x + size.width / 2;
+  const width = size.width - 8;
+  const combines = (node.combines ?? []).join(' + ') || 'no events yet';
+  return `<g><rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="10" rx="5" fill="${color}"/>${text(
+    fit(node.name, width, 13, true),
+    cx,
+    y + 24,
+    { size: 13, weight: 600, fill: COLORS.text, anchor: 'middle' },
+  )}${text(fit(combines, width, 11), cx, y + 40, { size: 11, fill: COLORS.textSubtle, anchor: 'middle' })}</g>`;
+}
+
 /** A small shape standing in for the node type's icon. */
 function badgeGlyph(
   node: DiagramNode,
@@ -407,7 +424,13 @@ function accent(node: DiagramNode, decision: boolean): string {
   if (custom)
     return custom.startsWith('#') ? custom : COLORS.palette[custom as keyof typeof COLORS.palette];
   if (decision) return COLORS.decision;
-  return { start: COLORS.start, end: COLORS.end, state: COLORS.step, any: COLORS.any }[node.type];
+  return {
+    start: COLORS.start,
+    end: COLORS.end,
+    state: COLORS.step,
+    any: COLORS.any,
+    join: COLORS.join,
+  }[node.type];
 }
 
 interface TextStyle {
@@ -415,12 +438,13 @@ interface TextStyle {
   fill: string;
   weight?: number;
   spacing?: number;
+  anchor?: 'middle';
 }
 
 const text = (body: string, x: number, y: number, s: TextStyle): string =>
   `<text x="${n(x)}" y="${n(y)}" font-size="${s.size}"${s.weight ? ` font-weight="${s.weight}"` : ''}${
     s.spacing ? ` letter-spacing="${s.spacing}"` : ''
-  } dominant-baseline="central" fill="${s.fill}">${esc(body)}</text>`;
+  }${s.anchor ? ` text-anchor="${s.anchor}"` : ''} dominant-baseline="central" fill="${s.fill}">${esc(body)}</text>`;
 
 /** Truncates with an ellipsis so the text fits `width` px, like `text-overflow: ellipsis`. */
 export function fit(value: string, width: number, size: number, bold = false): string {

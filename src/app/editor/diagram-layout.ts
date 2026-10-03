@@ -67,6 +67,7 @@ const LABEL_MAX_WIDTH = 240;
  * before anything is drawn; the editor passes the same size to f-flow.
  */
 export function nodeSize(node: DiagramNode, expanded = false): Size {
+  if (isBar(node)) return { width: BAR_WIDTH, height: BAR_HEIGHT };
   if (isCompact(node)) return { width: 180, height: 48 };
   const rows =
     (node.activities?.length ?? 0) +
@@ -78,7 +79,12 @@ export function nodeSize(node: DiagramNode, expanded = false): Size {
   return { width: CARD_WIDTH, height: base + (expanded ? descriptionHeight(node) : 0) };
 }
 
-/** The initial, the final and the "any" node are small pills; only states are full cards. */
+/** A join is a thick bar with its name and the events it waits for under it. */
+export const isBar = (node: DiagramNode): boolean => node.type === 'join';
+const BAR_WIDTH = 200;
+const BAR_HEIGHT = 50;
+
+/** The initial, the final, the "any" node and the join are small; only states are full cards. */
 export const isCompact = (node: DiagramNode): boolean => node.type !== 'state';
 
 /** Whether a node's card can unfold its description. */
@@ -130,9 +136,11 @@ export function outgoingCounts(diagram: Diagram): Map<string, number> {
   return counts;
 }
 
-/** States several transitions leave. The "any" node is not one: it fans out by design. */
+/** States several transitions leave. The "any" node and joins are not: they fan out by design. */
 export function decisionIds(diagram: Diagram): Set<string> {
-  const anyIds = new Set(diagram.nodes.filter((n) => n.type === 'any').map((n) => n.id));
+  const anyIds = new Set(
+    diagram.nodes.filter((n) => n.type === 'any' || n.type === 'join').map((n) => n.id),
+  );
   return new Set(
     [...outgoingCounts(diagram)].filter(([id, n]) => n > 1 && !anyIds.has(id)).map(([id]) => id),
   );

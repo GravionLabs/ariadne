@@ -13,6 +13,7 @@ import {
   isNodeColor,
   NodeType,
   hasActivities,
+  hasCombines,
   hasIgnores,
   hasRequests,
   hasTimers,
@@ -30,7 +31,7 @@ export const FORMAT_VERSION = 3;
  */
 const READABLE_VERSIONS: readonly number[] = [1, 2, 3];
 
-const NODE_TYPES: readonly NodeType[] = ['start', 'end', 'state', 'any'];
+const NODE_TYPES: readonly NodeType[] = ['start', 'end', 'state', 'any', 'join'];
 /** Version 1 node types; both are plain states now (a decision is a state with branches). */
 const V1_STATE_TYPES = ['step', 'decision'];
 const EDGE_KINDS: readonly EdgeKind[] = ['forward', 'compensation'];
@@ -70,6 +71,7 @@ function serializeNode(node: DiagramNode): Record<string, unknown> {
     activities: node.activities?.length
       ? node.activities.map(({ kind, name }) => ({ [kind]: name }))
       : undefined,
+    combines: node.combines?.length ? node.combines : undefined,
     ignores: node.ignores?.length ? node.ignores : undefined,
     requests: node.requests?.length
       ? node.requests.map(({ name, timeout }) => withoutUndefined({ request: name, timeout }))
@@ -204,9 +206,18 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
       : asRecord(node['compensation'], `${at}.compensation`);
   if (node['activities'] !== undefined && !hasActivities(type as NodeType)) {
     throw new DiagramFormatError(
-      `${at}.activities is only allowed on states, not on the ${{ end: 'final state', start: 'initial state', any: '"any" node' }[type as string]}`,
+      `${at}.activities is only allowed on states, not on the ${{ end: 'final state', start: 'initial state', any: '"any" node', join: 'join' }[type as string]}`,
     );
   }
+  if (node['combines'] !== undefined && !hasCombines(type as NodeType)) {
+    throw new DiagramFormatError(`${at}.combines is only allowed on joins`);
+  }
+  const combines =
+    node['combines'] === undefined
+      ? undefined
+      : asArray(node['combines'], `${at}.combines`).map((e, i) =>
+          asString(e, `${at}.combines[${i}]`),
+        );
   if (node['ignores'] !== undefined && !hasIgnores(type as NodeType)) {
     throw new DiagramFormatError(`${at}.ignores is only allowed on states`);
   }
@@ -243,6 +254,7 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     description: optionalString(node['description'], `${at}.description`),
     color: color as NodeColor | undefined,
     activities: activities?.length ? activities : undefined,
+    combines: combines?.length ? combines : undefined,
     ignores: ignores?.length ? ignores : undefined,
     requests: requests?.length ? requests : undefined,
     timers: timers?.length ? timers : undefined,

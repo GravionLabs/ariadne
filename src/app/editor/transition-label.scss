@@ -103,6 +103,10 @@
   --row-color: var(--c-reply);
 }
 
+.event.composite {
+  --row-color: var(--c-join);
+}
+
 .event.fault {
   --row-color: var(--c-fault);
 }

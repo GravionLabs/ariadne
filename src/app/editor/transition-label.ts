@@ -41,6 +41,8 @@ export class TransitionLabel {
         return 'reply';
       case 'fault':
         return 'fault';
+      case 'composite':
+        return 'join';
       default:
         return 'trigger';
     }
@@ -54,6 +56,8 @@ export class TransitionLabel {
         return 'The reply to a request';
       case 'fault':
         return 'A request faulted';
+      case 'composite':
+        return 'All the events of a join have arrived';
       case 'external':
         return 'External event' + (source ? ' from ' + source : '');
       default:

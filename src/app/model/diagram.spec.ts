@@ -58,4 +58,17 @@ describe('eventKindOf', () => {
       expect(kindOf({ event: 'Other.Completed' })).toBe('external');
     });
   });
+
+  describe('eventKindOf with joins', () => {
+    const kindOf = eventKindOf({
+      direction: 'top-bottom',
+      nodes: [{ id: 'join-1', type: 'join', name: 'OrderReady', combines: ['A', 'B'] }],
+      edges: [],
+    });
+
+    it('calls the event named like a join composite, and not the combined ones', () => {
+      expect(kindOf({ event: 'OrderReady' })).toBe('composite');
+      expect(kindOf({ event: 'A' })).toBe('external');
+    });
+  });
 });

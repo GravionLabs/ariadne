@@ -1,4 +1,4 @@
-import { Diagram } from '../model/diagram';
+import { Diagram, DiagramNode } from '../model/diagram';
 import {
   decisionIds,
   isCompact,
@@ -179,5 +179,19 @@ describe('diagram layout', () => {
     const plain = { id: 'a', type: 'state', name: 'a' } as const;
     const requesting = { ...plain, requests: [{ name: 'R' }] };
     expect(nodeSize(requesting).height).toBe(nodeSize(plain).height + 24 + 6);
+  });
+
+  it('draws a join as a bar with room for its text, and never as a decision', () => {
+    const join: DiagramNode = { id: 'join-1', type: 'join', name: 'Ready', combines: ['A', 'B'] };
+    expect(nodeSize(join)).toEqual({ width: 200, height: 50 });
+    const diagram: Diagram = {
+      direction: 'top-bottom',
+      nodes: [...saga.nodes, join],
+      edges: [
+        { id: 'j1', source: 'join-1', target: 'state-1', kind: 'forward', event: 'Ready' },
+        { id: 'j2', source: 'join-1', target: 'state-2', kind: 'forward', event: 'Ready' },
+      ],
+    };
+    expect(decisionIds(diagram).has('join-1')).toBe(false);
   });
 });

@@ -39,6 +39,9 @@
   &[data-type='any'] {
     --node-color: var(--c-any);
   }
+  &[data-type='join'] {
+    --node-color: var(--c-join);
+  }
   &[data-type='transition'] {
     --node-color: var(--c-event);
   }
@@ -319,6 +322,10 @@ textarea {
 
   &.timeout {
     --origin-color: var(--c-timeout);
+  }
+
+  &.join {
+    --origin-color: var(--c-join);
   }
 }
 

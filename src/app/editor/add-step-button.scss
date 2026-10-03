@@ -94,6 +94,10 @@
   &[data-type='any'] {
     --node-color: var(--c-any);
   }
+
+  &[data-type='join'] {
+    --node-color: var(--c-join);
+  }
 }
 
 .option-icon {

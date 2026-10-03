@@ -202,4 +202,32 @@ describe('renderDiagramSvg title', () => {
     expect(svg).toContain('↩');
     expect(svg).toContain('⚠');
   });
+
+  it('draws a join as a bar with its name and events under it', () => {
+    const nodes = [
+      ...orderSaga.nodes,
+      {
+        id: 'join-1',
+        type: 'join' as const,
+        name: 'OrderReady',
+        combines: ['PaymentCharged', 'StockReserved'],
+      },
+    ];
+    const edges = [
+      ...orderSaga.edges,
+      { id: 'j1', source: 'state-1', target: 'join-1', kind: 'forward' as const },
+      {
+        id: 'j2',
+        source: 'join-1',
+        target: 'end-1',
+        kind: 'forward' as const,
+        event: 'OrderReady',
+      },
+    ];
+    const { svg } = renderDiagramSvg({ ...orderSaga, nodes, edges });
+    expect(svg).toContain('height="10" rx="5" fill="#4f46e5"');
+    expect(svg).toContain('>OrderReady<');
+    expect(svg).toContain('PaymentCharged + StockReserved');
+    expect(svg).toContain('▬');
+  });
 });

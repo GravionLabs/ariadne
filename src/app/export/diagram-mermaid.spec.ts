@@ -216,4 +216,33 @@ describe('diagramToMermaid title', () => {
       'note right of Shipping : Requests BookCourier (timeout 10s) · Requests CheckFraud',
     );
   });
+
+  it('draws a join as a Mermaid bar, with a note for its name and events', () => {
+    const nodes = [
+      ...orderSaga.nodes,
+      {
+        id: 'join-1',
+        type: 'join' as const,
+        name: 'Order ready',
+        combines: ['PaymentCharged', 'StockReserved'],
+      },
+    ];
+    const edges = [
+      ...orderSaga.edges,
+      { id: 'j1', source: 'state-1', target: 'join-1', kind: 'forward' as const },
+      {
+        id: 'j2',
+        source: 'join-1',
+        target: 'end-1',
+        kind: 'forward' as const,
+        event: 'Order ready',
+      },
+    ];
+    const out = diagramToMermaid({ ...orderSaga, nodes, edges });
+    expect(out).toContain('state Order_ready <<join>>');
+    expect(out).toContain(
+      'note right of Order_ready : Order ready when PaymentCharged + StockReserved have all arrived',
+    );
+    expect(out).not.toContain('state "Order ready" as Order_ready');
+  });
 });

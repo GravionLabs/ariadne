@@ -233,4 +233,27 @@ describe('diagramToMarkdown', () => {
     expect(md).toMatch(/\| CheckStock\.Completed \| Reply \|/);
     expect(md).toMatch(/\| CheckStock\.Faulted \| Fault \|/);
   });
+
+  it('adds a Waits for column for a join and calls its event composite', () => {
+    expect(diagramToMarkdown(orderSaga)).not.toContain('| Waits for |');
+    const nodes = [
+      ...orderSaga.nodes,
+      { id: 'join-1', type: 'join' as const, name: 'OrderReady', combines: ['A', 'B'] },
+    ];
+    const edges = [
+      ...orderSaga.edges,
+      {
+        id: 'j2',
+        source: 'join-1',
+        target: 'end-1',
+        kind: 'forward' as const,
+        event: 'OrderReady',
+      },
+    ];
+    const md = diagramToMarkdown({ ...orderSaga, nodes, edges });
+    expect(md).toContain('| Waits for |');
+    expect(md).toContain('A<br>B');
+    expect(md).toMatch(/\| OrderReady \| join \|/);
+    expect(md).toMatch(/\| OrderReady \| Composite \|/);
+  });
 });

@@ -137,4 +137,16 @@ describe('diagram edits', () => {
     expect(insertOnEdge(diagram, 'edge-1', 'any')).toBeNull();
     expect(appendNode(diagram, 'state-1', 'any')).toBeNull();
   });
+
+  it('adds a join after a state and into the middle of a transition, and lets it connect on', () => {
+    const appended = appendNode(path(), 'state-1', 'join')!;
+    expect(appended.diagram.nodes.at(-1)).toMatchObject({ type: 'join', name: 'Join' });
+    expect(connect(appended.diagram, appended.id, 'end-1')).not.toBeNull();
+    const inserted = insertOnEdge(path(), 'edge-2', 'join')!;
+    expect(inserted.diagram.edges.map((e) => [e.source, e.target])).toEqual([
+      ['start-1', 'state-1'],
+      ['state-1', inserted.id],
+      [inserted.id, 'end-1'],
+    ]);
+  });
 });

@@ -89,7 +89,9 @@ export function diagramToMermaid(diagram: Diagram): string {
   for (const node of diagram.nodes) {
     if (node.type === 'start') continue;
     const id = ids.get(node.id)!;
-    if (id !== node.name) lines.push(`  state "${text(node.name)}" as ${id}`);
+    // A join is Mermaid's bar; it shows no name, so a note carries it (below).
+    if (node.type === 'join') lines.push(`  state ${id} <<join>>`);
+    else if (id !== node.name) lines.push(`  state "${text(node.name)}" as ${id}`);
   }
   for (const edge of diagram.edges) {
     const target = nodes.get(edge.target);
@@ -109,6 +111,11 @@ export function diagramToMermaid(diagram: Diagram): string {
         (t) =>
           `${t.action === 'schedule' ? 'Schedules' : 'Unschedules'} ${t.name}${t.delay ? ` in ${t.delay}` : ''}`,
       ),
+      ...(node.type === 'join'
+        ? [
+            `${node.name} when ${(node.combines ?? []).join(' + ') || 'its events'} have all arrived`,
+          ]
+        : []),
       ...(node.ignores?.length ? [`Ignores ${node.ignores.join(', ')}`] : []),
     ];
     if (notes.length)
