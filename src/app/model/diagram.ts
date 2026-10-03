@@ -32,7 +32,16 @@ export interface Compensation {
 }
 
 /** Accent colors a node can be given; the hex values live in styles.scss (`--c-node-<name>`). */
-export const NODE_COLORS = ['red', 'orange', 'amber', 'green', 'teal', 'blue', 'purple', 'pink'] as const;
+export const NODE_COLORS = [
+  'red',
+  'orange',
+  'amber',
+  'green',
+  'teal',
+  'blue',
+  'purple',
+  'pink',
+] as const;
 /** A palette name or a custom `#rrggbb` color. */
 export type NodeColor = (typeof NODE_COLORS)[number] | `#${string}`;
 export const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;

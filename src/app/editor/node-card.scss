@@ -53,14 +53,30 @@
   display: none;
 }
 
-:host([data-color='red']) { --node-color: var(--c-node-red); }
-:host([data-color='orange']) { --node-color: var(--c-node-orange); }
-:host([data-color='amber']) { --node-color: var(--c-node-amber); }
-:host([data-color='green']) { --node-color: var(--c-node-green); }
-:host([data-color='teal']) { --node-color: var(--c-node-teal); }
-:host([data-color='blue']) { --node-color: var(--c-node-blue); }
-:host([data-color='purple']) { --node-color: var(--c-node-purple); }
-:host([data-color='pink']) { --node-color: var(--c-node-pink); }
+:host([data-color='red']) {
+  --node-color: var(--c-node-red);
+}
+:host([data-color='orange']) {
+  --node-color: var(--c-node-orange);
+}
+:host([data-color='amber']) {
+  --node-color: var(--c-node-amber);
+}
+:host([data-color='green']) {
+  --node-color: var(--c-node-green);
+}
+:host([data-color='teal']) {
+  --node-color: var(--c-node-teal);
+}
+:host([data-color='blue']) {
+  --node-color: var(--c-node-blue);
+}
+:host([data-color='purple']) {
+  --node-color: var(--c-node-purple);
+}
+:host([data-color='pink']) {
+  --node-color: var(--c-node-pink);
+}
 
 :host(.f-node.compact) {
   display: flex;
