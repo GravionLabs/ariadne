@@ -33,6 +33,7 @@ import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
 import { AddStepButton } from './add-step-button';
+import { DiagramDetails } from './diagram-details';
 import { DiagramLayout, SLOT_SIZE, nodeSize } from './diagram-layout';
 import { EditorStore } from './editor-store';
 import { ExportMenu } from './export-menu';
@@ -48,6 +49,7 @@ const FIT_PADDING = { x: 80, y: 80 };
 @Component({
   imports: [
     AddStepButton,
+    DiagramDetails,
     ExportMenu,
     FFlowModule,
     Icon,
