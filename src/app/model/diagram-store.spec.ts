@@ -296,4 +296,32 @@ describe('DiagramStore', () => {
       expect(store.nodes()).toEqual([]);
     });
   });
+
+  describe('details', () => {
+    it('sets the name and description as one undo step each', () => {
+      store.setDetails({ name: 'Order Saga' });
+      store.setDetails({ description: 'Takes an order to done.' });
+      expect(store.diagram()).toMatchObject({
+        name: 'Order Saga',
+        description: 'Takes an order to done.',
+      });
+      store.undo();
+      expect(store.diagram().description).toBeUndefined();
+      expect(store.diagram().name).toBe('Order Saga');
+      store.undo();
+      expect(store.diagram().name).toBeUndefined();
+      expect(store.canUndo()).toBe(false);
+    });
+
+    it('does not record a step when nothing changes', () => {
+      store.setDetails({ name: 'Order Saga' });
+      store.undo();
+      store.redo();
+      store.setDetails({ name: ' Order Saga ' });
+      store.setDetails({ description: '' });
+      store.undo();
+      expect(store.diagram().name).toBeUndefined();
+      expect(store.canUndo()).toBe(false);
+    });
+  });
 });

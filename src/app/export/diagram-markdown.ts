@@ -4,9 +4,9 @@ import { Diagram, DiagramNode, publishedEvents } from '../model/diagram';
 import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
 
 export interface MarkdownOptions {
-  /** Page title; the diagram has none of its own (the editor passes the file name). */
+  /** Page title when the diagram has no name of its own (the editor passes the file name). */
   title?: string;
-  /** Short text under the title. */
+  /** Short text under the title when the diagram has no description. */
   description?: string;
 }
 
@@ -25,8 +25,10 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
   const typeLabel = (n: DiagramNode) => (decisions.has(n.id) ? DECISION : NODE_TYPES[n.type]).label;
   const edges = diagram.edges.filter((e) => nodes.has(e.source) && nodes.has(e.target));
 
-  const out = [`# ${cell(options.title?.trim() || 'Saga')}`];
-  if (options.description?.trim()) out.push(options.description.trim());
+  const title = diagram.name?.trim() || options.title?.trim() || 'Saga';
+  const description = diagram.description?.trim() || options.description?.trim();
+  const out = [`# ${cell(title)}`];
+  if (description) out.push(description);
   out.push('## Diagram', mermaidMarkdown(diagramToMermaid(diagram)).trimEnd());
 
   out.push(

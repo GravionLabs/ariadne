@@ -287,3 +287,46 @@ edges:
     expect(() => parseDiagram(text)).toThrow(message);
   });
 });
+
+describe('name and description', () => {
+  const named: Diagram = { ...sample, name: 'Order Saga', description: 'Takes an order to done.' };
+
+  it('writes them right after the version, and omits them when unset', () => {
+    expect(serializeDiagram(named).split('\n').slice(0, 4)).toEqual([
+      'version: 3',
+      'name: Order Saga',
+      'description: Takes an order to done.',
+      'direction: top-bottom',
+    ]);
+    expect(serializeDiagram(sample)).not.toMatch(/^(name|description):/m);
+  });
+
+  it('round-trips', () => {
+    expect(parseDiagram(serializeDiagram(named))).toEqual(named);
+    expect(serializeDiagram(parseDiagram(serializeDiagram(named)))).toBe(serializeDiagram(named));
+  });
+
+  it('keeps files without them as they were', () => {
+    const parsed = parseDiagram(serializeDiagram(sample));
+    expect('name' in parsed).toBe(false);
+    expect('description' in parsed).toBe(false);
+  });
+
+  it('trims them and treats empty text as unset', () => {
+    const parsed = parseDiagram('version: 3\nname: "  Order Saga  "\ndescription: ""\nnodes: []');
+    expect(parsed.name).toBe('Order Saga');
+    expect('description' in parsed).toBe(false);
+  });
+
+  it('keeps a multi-line description', () => {
+    const text = 'Line one.\nLine two.';
+    expect(parseDiagram(serializeDiagram({ ...sample, description: text })).description).toBe(text);
+  });
+
+  it.each([
+    ['name: 3', /name must be a string/],
+    ['description: [a]', /description must be a string/],
+  ])('rejects %s', (line, message) => {
+    expect(() => parseDiagram(`version: 3\n${line}\nnodes: []`)).toThrow(message);
+  });
+});

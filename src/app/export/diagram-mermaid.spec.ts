@@ -157,3 +157,17 @@ describe('mermaidMarkdown', () => {
     expect(mermaidMarkdown('stateDiagram-v2\n')).toBe('```mermaid\nstateDiagram-v2\n```\n');
   });
 });
+
+describe('diagramToMermaid title', () => {
+  it('starts with title front matter for a named diagram', () => {
+    const text = diagramToMermaid({ ...orderSaga, name: 'Order "Saga"' });
+    expect(text.startsWith('---\ntitle: "Order \\"Saga\\""\n---\nstateDiagram-v2\n')).toBe(true);
+  });
+
+  it('has no front matter without a name', () => {
+    expect(diagramToMermaid(orderSaga).startsWith('stateDiagram-v2\n')).toBe(true);
+    expect(diagramToMermaid({ ...orderSaga, name: '  ' }).startsWith('stateDiagram-v2\n')).toBe(
+      true,
+    );
+  });
+});

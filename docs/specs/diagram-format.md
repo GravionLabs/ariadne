@@ -19,6 +19,8 @@ which way the saga goes depends on the event it receives.
 
 ```yaml
 version: 3
+name: Order Saga
+description: Takes an order from the shop to delivery.
 direction: top-bottom
 nodes:
   - id: start-1
@@ -72,12 +74,14 @@ edges:
 
 ## Fields
 
-| Field       | Type                         | Required | Notes                                                         |
-| ----------- | ---------------------------- | -------- | ------------------------------------------------------------- |
-| `version`   | integer                      | yes      | `3` (files with `1` or `2` are still read, see below).        |
-| `direction` | `top-bottom` \| `left-right` | no       | Layout direction. Defaults to `top-bottom`.                   |
-| `nodes`     | list                         | no       | Defaults to empty.                                            |
-| `edges`     | list                         | no       | Defaults to empty. Every `source`/`target` must be a node id. |
+| Field         | Type                         | Required | Notes                                                                                                                                                   |
+| ------------- | ---------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`     | integer                      | yes      | `3` (files with `1` or `2` are still read, see below).                                                                                                  |
+| `name`        | string                       | no       | Title of the saga, e.g. `Order Saga`. Surrounding whitespace is trimmed; empty means unset. Exports use it as the title and fall back to the file name. |
+| `description` | string                       | no       | What the saga does; trimmed, empty means unset. Shown under the title in exports.                                                                       |
+| `direction`   | `top-bottom` \| `left-right` | no       | Layout direction. Defaults to `top-bottom`.                                                                                                             |
+| `nodes`       | list                         | no       | Defaults to empty.                                                                                                                                      |
+| `edges`       | list                         | no       | Defaults to empty. Every `source`/`target` must be a node id.                                                                                           |
 
 ### Node (state)
 
@@ -146,7 +150,7 @@ Everything else is unchanged.
 
 The writer (`src/app/model/diagram-yaml.ts`) guarantees stable output:
 
-- keys are always written in the order listed above;
+- keys are always written in the order listed above (`version`, `name`, `description`, `direction`, `nodes`, `edges`);
 - nodes, edges and activities keep their order in the diagram (new elements are appended);
 - optional fields that are not set (or empty) are omitted;
 - lines are never wrapped.

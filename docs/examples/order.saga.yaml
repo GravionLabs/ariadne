@@ -1,4 +1,6 @@
 version: 3
+name: OrderSaga
+description: Example Order SAGA
 direction: top-bottom
 nodes:
   - id: start-1

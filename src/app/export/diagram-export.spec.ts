@@ -67,6 +67,14 @@ describe('DiagramExport', () => {
     expect(await blob.text()).toMatch(/^# untitled\n/);
   });
 
+  it("titles the documentation page with the diagram's own name", async () => {
+    TestBed.inject(DiagramStore).setDetails({ name: 'Order Saga' });
+    await exporter.exportMarkdown();
+    const [blob, name] = exportFile.mock.calls[0];
+    expect(name).toBe('untitled.docs.md');
+    expect(await blob.text()).toMatch(/^# Order Saga\n/);
+  });
+
   it('copies Mermaid to the clipboard and says so', async () => {
     const writeText = vi.fn(async () => undefined);
     stubClipboard({ writeText });

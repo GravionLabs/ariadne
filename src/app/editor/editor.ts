@@ -33,11 +33,13 @@ import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
 import { AddStepButton } from './add-step-button';
+import { DiagramDetails } from './diagram-details';
 import { DiagramLayout, SLOT_SIZE, nodeSize } from './diagram-layout';
 import { EditorStore } from './editor-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
+import { NewDiagramDialog } from './new-diagram-dialog';
 import { SourcePanel } from './source-panel';
 import { NodeCard } from './node-card';
 import { APPEND_TYPES, DECISION, NODE_TYPES } from './node-types';
@@ -48,10 +50,12 @@ const FIT_PADDING = { x: 80, y: 80 };
 @Component({
   imports: [
     AddStepButton,
+    DiagramDetails,
     ExportMenu,
     FFlowModule,
     Icon,
     Inspector,
+    NewDiagramDialog,
     NodeCard,
     SourcePanel,
     TransitionLabel,
@@ -69,6 +73,7 @@ export class Editor {
   protected readonly store = inject(DiagramStore);
   protected readonly file = inject(DiagramDocument);
   protected readonly ui = inject(EditorStore);
+  private readonly newDialog = viewChild.required(NewDiagramDialog);
   protected readonly layout = inject(DiagramLayout);
   protected readonly theme = inject(Theme);
   protected readonly appendTypes = APPEND_TYPES;
@@ -162,9 +167,12 @@ export class Editor {
     this.store.setDirection(direction);
   }
 
-  protected newDiagram(): void {
+  /** Asks for the saga's name (and description) first, so a new diagram never starts unnamed. */
+  protected async newDiagram(): Promise<void> {
     if (!this.confirmDiscard()) return;
-    this.file.newDiagram();
+    const details = await this.newDialog().open();
+    if (!details) return;
+    this.file.newDiagram(details);
     this.afterReplace();
   }
 

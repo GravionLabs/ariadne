@@ -1,6 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { Diagram, emptyDiagram } from '../model/diagram';
+import { updateDetails } from '../model/diagram-edits';
 import { DiagramStore } from '../model/diagram-store';
 import { parseDiagramWithNotes, serializeDiagram } from '../model/diagram-yaml';
 import { FileRef, FileStorage, UNTITLED_NAME, diagramFileName } from './file-storage';
@@ -64,8 +65,14 @@ export const DiagramDocument = signalStore(
       });
 
     const saveAs = (): Promise<boolean> =>
-      // Always suggest a `*.saga.yaml` name, also for a legacy `.yaml` file opened before.
-      write((content) => storage.saveAs(content, diagramFileName(store.name())));
+      // Always suggest a `*.saga.yaml` name, also for a legacy `.yaml` file opened before. A new
+      // file takes it from the diagram's name, if it has one.
+      write((content) =>
+        storage.saveAs(
+          content,
+          diagramFileName(store.file() ? store.name() : (slug(diagram.diagram().name) ?? '')),
+        ),
+      );
 
     return {
       setError(error: string | null): void {
@@ -76,8 +83,9 @@ export const DiagramDocument = signalStore(
         patchState(store, { notice });
       },
 
-      newDiagram(): void {
-        replace(emptyDiagram(), null);
+      /** An empty diagram, named if `details` has a name; it is not unsaved until edited. */
+      newDiagram(details: { name?: string; description?: string } = {}): void {
+        replace(updateDetails(emptyDiagram(), details), null);
       },
 
       /** Returns false if the user cancelled or the file was invalid. */
@@ -104,3 +112,15 @@ export const DiagramDocument = signalStore(
 );
 
 export type DiagramDocument = InstanceType<typeof DiagramDocument>;
+
+/** `Order Saga` becomes `order-saga`, a file name that stays readable and portable. */
+function slug(name: string | undefined): string | undefined {
+  return (
+    name
+      ?.normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || undefined
+  );
+}

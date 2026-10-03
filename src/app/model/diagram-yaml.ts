@@ -43,13 +43,15 @@ export class DiagramFormatError extends Error {
 export function serializeDiagram(diagram: Diagram): string {
   const file = {
     version: FORMAT_VERSION,
+    name: diagram.name,
+    description: diagram.description,
     direction: diagram.direction,
     nodes: diagram.nodes.map(serializeNode),
     edges: diagram.edges.map(({ id, source, target, kind, event, eventSource }) =>
       withoutUndefined({ id, source, target, kind, event, eventSource }),
     ),
   };
-  return stringify(file, { lineWidth: 0 });
+  return stringify(withoutUndefined(file), { lineWidth: 0 });
 }
 
 function serializeNode(node: DiagramNode): Record<string, unknown> {
@@ -111,7 +113,18 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
   );
   const edges = parsedEdges.map((p) => p.edge);
   const notes = version < 3 ? moveActivitiesToStates(nodes, parsedEdges) : [];
-  return { diagram: { direction: direction as Direction, nodes, edges }, notes };
+  const name = optionalString(root['name'], 'name')?.trim() || undefined;
+  const description = optionalString(root['description'], 'description')?.trim() || undefined;
+  return {
+    diagram: withoutUndefined({
+      name,
+      description,
+      direction: direction as Direction,
+      nodes,
+      edges,
+    }),
+    notes,
+  };
 }
 
 /**

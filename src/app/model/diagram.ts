@@ -85,6 +85,10 @@ export interface DiagramEdge {
 
 /** Node positions are not stored: the editor lays the graph out in `direction`. */
 export interface Diagram {
+  /** Title of the saga, e.g. `Order Saga`. Absent: exports use the file name. */
+  name?: string;
+  /** A sentence or two about what the saga does; shown under the title in exports. */
+  description?: string;
   direction: Direction;
   nodes: DiagramNode[];
   edges: DiagramEdge[];

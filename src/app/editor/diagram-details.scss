@@ -1,0 +1,91 @@
+// A card in the top left of the canvas, in the same family as the toolbox and the inspector.
+:host {
+  position: absolute;
+  z-index: 10;
+  top: 16px;
+  left: 16px;
+  display: grid;
+  gap: 4px;
+  width: min(280px, calc(100% - 32px));
+  padding: 4px;
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.name,
+.description {
+  min-width: 0;
+  color: var(--c-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 13px;
+
+  &:hover {
+    background: var(--c-surface-2);
+  }
+
+  &:focus-visible {
+    background: var(--c-surface-2);
+    border-color: var(--c-primary);
+    outline: none;
+  }
+
+  &::placeholder {
+    color: var(--c-text-subtle);
+  }
+}
+
+.name {
+  flex: 1;
+  padding: 6px 8px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.description {
+  padding: 6px 8px;
+  resize: vertical;
+}
+
+.toggle {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--c-text-subtle);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--c-text);
+    background: var(--c-surface-3);
+    outline: none;
+  }
+
+  // A dot tells that there is a description while the card is collapsed.
+  &.filled::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 6px;
+    height: 6px;
+    background: var(--c-primary);
+    border-radius: 50%;
+  }
+}

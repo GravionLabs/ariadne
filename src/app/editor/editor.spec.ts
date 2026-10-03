@@ -13,6 +13,7 @@ import { FileStorage } from '../storage/file-storage';
 import type { Mock } from 'vitest';
 import { CODE_EDITOR_FACTORY, CodeEditor, CodeEditorOptions } from './code-editor';
 import { Editor } from './editor';
+import './native-dialog.testing';
 
 // jsdom has no ResizeObserver; f-flow uses it to track node sizes.
 globalThis.ResizeObserver ??= class {
@@ -424,6 +425,44 @@ describe('Editor', () => {
     TestBed.inject(DiagramDocument).newDiagram();
     await settle();
     expect(el.querySelector('[aria-label="Unsaved changes"]')).toBeNull();
+  });
+
+  it('asks for a name and description before starting a new diagram', async () => {
+    const { el, settle, store } = await setup();
+    store.appendNode('start-1', 'state');
+    const newButton = [...el.querySelectorAll<HTMLButtonElement>('.file-actions button')].find(
+      (b) => b.textContent?.trim() === 'New',
+    )!;
+    // The unsaved change asks first; confirm it.
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    newButton.click();
+    await settle();
+    const dialog = el.querySelector('app-new-diagram-dialog')!;
+    expect(dialog).toBeTruthy();
+    const name = dialog.querySelector<HTMLInputElement>('input')!;
+    name.value = 'Order Saga';
+    name.dispatchEvent(new Event('input'));
+    await settle();
+    dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
+    await settle();
+    expect(store.diagram().name).toBe('Order Saga');
+    expect(store.nodes().map((n) => n.type)).toEqual(['start']);
+    expect(el.querySelector('app-new-diagram-dialog dialog[open]')).toBeNull();
+  });
+
+  it('keeps the diagram when the new-diagram popup is cancelled', async () => {
+    const { el, settle, store } = await setup();
+    store.appendNode('start-1', 'state');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    [...el.querySelectorAll<HTMLButtonElement>('.file-actions button')]
+      .find((b) => b.textContent?.trim() === 'New')!
+      .click();
+    await settle();
+    document
+      .querySelector<HTMLButtonElement>('app-new-diagram-dialog button[type=button]')!
+      .click();
+    await settle();
+    expect(store.nodes()).toHaveLength(2);
   });
 
   it('shows file errors and lets them be dismissed', async () => {

@@ -1,0 +1,28 @@
+<dialog #dialog aria-labelledby="new-diagram-title" (close)="onClose()">
+  <form class="dialog" (submit)="create($event)">
+    <h2 id="new-diagram-title">New saga</h2>
+    <label>
+      <span>Name</span>
+      <input
+        type="text"
+        placeholder="e.g. Order Saga"
+        required
+        [value]="name()"
+        (input)="name.set($any($event.target).value)"
+      />
+    </label>
+    <label>
+      <span>Description <small>(optional)</small></span>
+      <textarea
+        rows="3"
+        placeholder="What the saga does"
+        [value]="description()"
+        (input)="description.set($any($event.target).value)"
+      ></textarea>
+    </label>
+    <div class="actions">
+      <button type="button" class="menu-button" (click)="cancel()">Cancel</button>
+      <button type="submit" class="menu-button primary" [disabled]="!valid()">Create</button>
+    </div>
+  </form>
+</dialog>

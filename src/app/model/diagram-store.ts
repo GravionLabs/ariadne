@@ -2,11 +2,11 @@ import { computed } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { Diagram, Direction, EdgeKind, NodeType, emptyDiagram } from './diagram';
 import * as edits from './diagram-edits';
-import { EdgePatch, NodePatch } from './diagram-edits';
+import { DetailsPatch, EdgePatch, NodePatch } from './diagram-edits';
 import { serializeDiagram } from './diagram-yaml';
 import { withUndoRedo } from './with-undo-redo';
 
-export type { EdgePatch, NodePatch };
+export type { DetailsPatch, EdgePatch, NodePatch };
 
 /** App-owned diagram state (f-flow's "classic" mode): all edits go through this store. */
 export const DiagramStore = signalStore(
@@ -70,6 +70,14 @@ export const DiagramStore = signalStore(
 
       updateEdge(id: string, patch: EdgePatch): void {
         store._commit((d) => edits.updateEdge(d, id, patch));
+      },
+
+      /** Sets the saga's name and/or description as one undo step; no change, no step. */
+      setDetails(patch: DetailsPatch): void {
+        const next = edits.updateDetails(store.diagram(), patch);
+        const current = store.diagram();
+        if (next.name === current.name && next.description === current.description) return;
+        store._commit(() => next);
       },
 
       setDirection(direction: Direction): void {

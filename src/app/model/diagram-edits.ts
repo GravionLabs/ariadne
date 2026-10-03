@@ -11,6 +11,7 @@ import {
 } from './diagram';
 
 export type NodePatch = Partial<Omit<DiagramNode, 'id' | 'type'>>;
+export type DetailsPatch = Partial<Pick<Diagram, 'name' | 'description'>>;
 export type EdgePatch = Partial<Pick<DiagramEdge, 'event' | 'eventSource' | 'kind'>>;
 
 /** A new diagram plus the id of the element the edit created. */
@@ -86,6 +87,16 @@ export function updateEdge(d: Diagram, id: string, patch: EdgePatch): Diagram {
     ...d,
     edges: d.edges.map((e) => (e.id === id ? withoutUndefined({ ...e, ...patch }) : e)),
   };
+}
+
+/** Sets the saga's name and/or description; an empty text removes it. */
+export function updateDetails(d: Diagram, patch: DetailsPatch): Diagram {
+  const text = (value: string | undefined) => value?.trim() || undefined;
+  return withoutUndefined({
+    ...d,
+    ...('name' in patch ? { name: text(patch.name) } : {}),
+    ...('description' in patch ? { description: text(patch.description) } : {}),
+  });
 }
 
 /** Connects two nodes. `null` if the connection is not allowed or already exists. */

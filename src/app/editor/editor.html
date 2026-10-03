@@ -221,6 +221,8 @@
       </div>
     }
 
+    <app-diagram-details />
+
     @if (ui.inspectorOpen()) {
       <app-inspector
         class="inspector"
@@ -343,3 +345,5 @@
     <app-source-panel class="source" [style.width.px]="sourceWidth()" (closed)="closeSource()" />
   }
 </div>
+
+<app-new-diagram-dialog />
