@@ -1,61 +1,84 @@
-import { Dialog } from '@angular/cdk/dialog';
-import { TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { askNewDiagram } from './new-diagram-dialog';
+import { Component, viewChild } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it } from 'vitest';
+import './native-dialog.testing';
+import { NewDiagramDialog } from './new-diagram-dialog';
 
-describe('askNewDiagram', () => {
-  let dialog: Dialog;
+@Component({ imports: [NewDiagramDialog], template: '<app-new-diagram-dialog />' })
+class Host {
+  readonly dialog = viewChild.required(NewDiagramDialog);
+}
 
-  const q = <T extends HTMLElement>(selector: string) =>
-    document.querySelector<T>(`.cdk-overlay-container ${selector}`)!;
-  const type = (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
-    el.value = value;
-    el.dispatchEvent(new Event('input'));
+describe('NewDiagramDialog', () => {
+  let fixture: ComponentFixture<Host>;
+  let el: HTMLElement;
+
+  const dialog = () => el.querySelector('dialog')!;
+  const field = <T extends HTMLElement>(selector: string) => el.querySelector<T>(selector)!;
+  const submit = () => field<HTMLButtonElement>('button[type=submit]');
+  const type = (selector: string, value: string) => {
+    const input = field<HTMLInputElement | HTMLTextAreaElement>(selector);
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
   };
-  const open = async () => {
-    const result = askNewDiagram(dialog);
-    TestBed.tick();
-    await Promise.resolve();
+  const open = () => {
+    const result = fixture.componentInstance.dialog().open();
+    fixture.detectChanges();
     return result;
   };
 
   beforeEach(() => {
-    dialog = TestBed.inject(Dialog);
+    fixture = TestBed.createComponent(Host);
+    el = fixture.nativeElement;
+    fixture.detectChanges();
   });
 
-  afterEach(() => {
-    dialog.closeAll();
-    document.querySelector('.cdk-overlay-container')?.replaceChildren();
+  it('is closed until opened', () => {
+    expect(dialog().hasAttribute('open')).toBe(false);
+    open();
+    expect(dialog().hasAttribute('open')).toBe(true);
   });
 
   it('returns the name and description', async () => {
     const result = open();
-    await Promise.resolve();
-    type(q<HTMLInputElement>('input'), '  Order Saga ');
-    type(q<HTMLTextAreaElement>('textarea'), ' Takes an order. ');
-    TestBed.tick();
-    q<HTMLButtonElement>('button[type=submit]').click();
+    type('input', '  Order Saga ');
+    type('textarea', ' Takes an order. ');
+    submit().click();
     expect(await result).toEqual({ name: 'Order Saga', description: 'Takes an order.' });
+    expect(dialog().hasAttribute('open')).toBe(false);
   });
 
   it('leaves the description out when it is empty', async () => {
     const result = open();
-    await Promise.resolve();
-    type(q<HTMLInputElement>('input'), 'Order Saga');
-    TestBed.tick();
-    q<HTMLButtonElement>('button[type=submit]').click();
+    type('input', 'Order Saga');
+    submit().click();
     expect(await result).toEqual({ name: 'Order Saga' });
   });
 
   it('needs a name', async () => {
     const result = open();
-    await Promise.resolve();
-    TestBed.tick();
-    expect(q<HTMLButtonElement>('button[type=submit]').disabled).toBe(true);
-    type(q<HTMLInputElement>('input'), '   ');
-    TestBed.tick();
-    expect(q<HTMLButtonElement>('button[type=submit]').disabled).toBe(true);
-    q<HTMLButtonElement>('button[type=button]').click();
+    expect(submit().disabled).toBe(true);
+    type('input', '   ');
+    expect(submit().disabled).toBe(true);
+    field<HTMLButtonElement>('button[type=button]').click();
     expect(await result).toBeUndefined();
+  });
+
+  it('resolves to undefined when closed with Escape', async () => {
+    const result = open();
+    type('input', 'Order Saga');
+    dialog().close();
+    expect(await result).toBeUndefined();
+  });
+
+  it('starts empty each time and forgets a cancelled name', async () => {
+    const first = open();
+    type('input', 'Old');
+    dialog().close();
+    await first;
+    open();
+    expect(field<HTMLInputElement>('input').value).toBe('');
+    expect(submit().disabled).toBe(true);
   });
 });

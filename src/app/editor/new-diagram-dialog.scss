@@ -1,4 +1,13 @@
-// The dialog lives in the CDK overlay container; emulated encapsulation still scopes these styles.
+dialog {
+  padding: 0;
+  background: transparent;
+  border: 0;
+
+  &::backdrop {
+    background: var(--c-selection-overlay);
+  }
+}
+
 .dialog {
   display: grid;
   gap: 12px;
@@ -58,7 +67,7 @@
     gap: 8px;
   }
 
-  // Same look as the top bar's buttons (`.menu-button` in editor.scss, which does not reach the overlay).
+  // Same look as the top bar's buttons (`.menu-button` in editor.scss, which does not reach in here).
   .menu-button {
     height: 32px;
     padding: 0 14px;

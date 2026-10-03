@@ -13,6 +13,7 @@ import { FileStorage } from '../storage/file-storage';
 import type { Mock } from 'vitest';
 import { CODE_EDITOR_FACTORY, CodeEditor, CodeEditorOptions } from './code-editor';
 import { Editor } from './editor';
+import './native-dialog.testing';
 
 // jsdom has no ResizeObserver; f-flow uses it to track node sizes.
 globalThis.ResizeObserver ??= class {
@@ -436,7 +437,7 @@ describe('Editor', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     newButton.click();
     await settle();
-    const dialog = document.querySelector('.cdk-overlay-container app-new-diagram-dialog')!;
+    const dialog = el.querySelector('app-new-diagram-dialog')!;
     expect(dialog).toBeTruthy();
     const name = dialog.querySelector<HTMLInputElement>('input')!;
     name.value = 'Order Saga';
@@ -446,7 +447,7 @@ describe('Editor', () => {
     await settle();
     expect(store.diagram().name).toBe('Order Saga');
     expect(store.nodes().map((n) => n.type)).toEqual(['start']);
-    expect(document.querySelector('app-new-diagram-dialog')).toBeNull();
+    expect(el.querySelector('app-new-diagram-dialog dialog[open]')).toBeNull();
   });
 
   it('keeps the diagram when the new-diagram popup is cancelled', async () => {

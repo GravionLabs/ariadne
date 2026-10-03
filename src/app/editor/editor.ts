@@ -1,4 +1,3 @@
-import { Dialog } from '@angular/cdk/dialog';
 import {
   Component,
   ElementRef,
@@ -40,7 +39,7 @@ import { EditorStore } from './editor-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
-import { askNewDiagram } from './new-diagram-dialog';
+import { NewDiagramDialog } from './new-diagram-dialog';
 import { SourcePanel } from './source-panel';
 import { NodeCard } from './node-card';
 import { APPEND_TYPES, DECISION, NODE_TYPES } from './node-types';
@@ -56,6 +55,7 @@ const FIT_PADDING = { x: 80, y: 80 };
     FFlowModule,
     Icon,
     Inspector,
+    NewDiagramDialog,
     NodeCard,
     SourcePanel,
     TransitionLabel,
@@ -73,7 +73,7 @@ export class Editor {
   protected readonly store = inject(DiagramStore);
   protected readonly file = inject(DiagramDocument);
   protected readonly ui = inject(EditorStore);
-  private readonly dialog = inject(Dialog);
+  private readonly newDialog = viewChild.required(NewDiagramDialog);
   protected readonly layout = inject(DiagramLayout);
   protected readonly theme = inject(Theme);
   protected readonly appendTypes = APPEND_TYPES;
@@ -170,7 +170,7 @@ export class Editor {
   /** Asks for the saga's name (and description) first, so a new diagram never starts unnamed. */
   protected async newDiagram(): Promise<void> {
     if (!this.confirmDiscard()) return;
-    const details = await askNewDiagram(this.dialog);
+    const details = await this.newDialog().open();
     if (!details) return;
     this.file.newDiagram(details);
     this.afterReplace();
