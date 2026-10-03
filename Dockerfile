@@ -3,7 +3,8 @@
 #   docker run -p 8080:8080 ariadne
 
 # ---- build the app and the server
-FROM node:22-alpine AS build
+# The build output is plain JavaScript, so it is built once on the build machine, whatever the target.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 RUN corepack enable
 WORKDIR /repo
 # The manifests first: the install layer is reused until a dependency changes.
@@ -22,10 +23,13 @@ COPY docs/examples docs/examples
 COPY samples/sagas samples/sagas
 RUN pnpm --filter @ariadne/web build && pnpm --filter @ariadne/server build
 
+# ---- the node binary for the target platform
+FROM node:22-alpine AS node
+
 # ---- run: the node binary, the bundled server and the built app, nothing else (no npm, no yarn)
 FROM alpine:3.22
 RUN apk add --no-cache libstdc++ && adduser -D -u 10001 ariadne
-COPY --from=build /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
 WORKDIR /app
 COPY --from=build /repo/apps/server/dist/server.mjs ./server.mjs
 COPY --from=build /repo/apps/web/dist/ariadne/browser ./web
