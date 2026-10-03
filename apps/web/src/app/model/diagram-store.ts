@@ -7,16 +7,18 @@ import {
   Direction,
   EdgeKind,
   EdgePatch,
+  EventInfoPatch,
   edits,
   emptyDiagram,
   MessageKind,
   NodePatch,
+  SagaPatch,
   NodeType,
   renameMessage,
   serializeDiagram,
 } from '@ariadne/core';
 
-export type { DetailsPatch, EdgePatch, NodePatch };
+export type { DetailsPatch, EdgePatch, EventInfoPatch, NodePatch, SagaPatch };
 
 /** App-owned diagram state (f-flow's "classic" mode): all edits go through this store. */
 export const DiagramStore = signalStore(
@@ -111,6 +113,20 @@ export const DiagramStore = signalStore(
         if (!next) return false;
         store._commit(() => next);
         return true;
+      },
+
+      /** Sets fields of the saga's code metadata (class, namespace, …) as one undo step. */
+      setSaga(patch: SagaPatch): void {
+        const next = edits.updateSaga(store.diagram(), patch);
+        if (JSON.stringify(next.saga) === JSON.stringify(store.diagram().saga)) return;
+        store._commit(() => next);
+      },
+
+      /** Sets the message type and/or correlation of an event, shared by its transitions. */
+      setEventInfo(name: string, patch: EventInfoPatch): void {
+        const next = edits.updateEventInfo(store.diagram(), name, patch);
+        if (JSON.stringify(next.events) === JSON.stringify(store.diagram().events)) return;
+        store._commit(() => next);
       },
 
       setDirection(direction: Direction): void {

@@ -109,6 +109,10 @@ export function renameMessage(
   if (taken) return null;
   return {
     ...diagram,
+    // What is known in code about the event moves with its name.
+    ...(kind === 'event' && diagram.events?.some((e) => e.name === from)
+      ? { events: diagram.events.map((e) => (e.name === from ? { ...e, name } : e)) }
+      : {}),
     nodes: diagram.nodes.map((n) =>
       n.activities?.some((a) => a.kind === kind && a.name === from)
         ? {

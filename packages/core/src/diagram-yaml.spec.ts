@@ -569,3 +569,87 @@ describe('joins', () => {
     expect(() => parseDiagram(`version: 3\nnodes:\n  - ${node}`)).toThrow(message);
   });
 });
+
+describe('saga and event metadata', () => {
+  const coded: Diagram = {
+    ...sample,
+    name: 'Order Saga',
+    saga: {
+      className: 'OrderStateMachine',
+      namespace: 'Shop.Orders',
+      instanceType: 'OrderState',
+      stateProperty: 'CurrentState',
+      contractsNamespace: 'Shop.Orders.Contracts',
+    },
+    events: [
+      { name: 'OrderReceived', messageType: 'SubmitOrder', correlation: 'x => x.OrderId' },
+      { name: 'PaymentCharged', correlation: 'CorrelationId' },
+    ],
+  };
+
+  it('writes them after the name and description, with the keys of the format', () => {
+    const lines = serializeDiagram(coded).split('\n');
+    expect(lines.slice(0, 15)).toEqual([
+      'version: 3',
+      'name: Order Saga',
+      'saga:',
+      '  class: OrderStateMachine',
+      '  namespace: Shop.Orders',
+      '  instance: OrderState',
+      '  stateProperty: CurrentState',
+      '  contractsNamespace: Shop.Orders.Contracts',
+      'events:',
+      '  - name: OrderReceived',
+      '    messageType: SubmitOrder',
+      '    correlation: x => x.OrderId',
+      '  - name: PaymentCharged',
+      '    correlation: CorrelationId',
+      'direction: top-bottom',
+    ]);
+  });
+
+  it('round-trips, byte for byte', () => {
+    const text = serializeDiagram(coded);
+    expect(parseDiagram(text)).toEqual(coded);
+    expect(serializeDiagram(parseDiagram(text))).toBe(text);
+  });
+
+  it('leaves older files and files without them unchanged', () => {
+    const plain = serializeDiagram(sample);
+    expect(plain).not.toMatch(/^(saga|events):/m);
+    const parsed = parseDiagram(plain);
+    expect('saga' in parsed).toBe(false);
+    expect('events' in parsed).toBe(false);
+  });
+
+  it('takes part of the saga block, trims, and drops what is empty', () => {
+    const parsed = parseDiagram(
+      'version: 3\nsaga:\n  class: "  OrderStateMachine "\n  namespace: ""\nevents: []\nnodes: []',
+    );
+    expect(parsed.saga).toEqual({ className: 'OrderStateMachine' });
+    expect('events' in parsed).toBe(false);
+    expect('saga' in parseDiagram('version: 3\nsaga: {}\nnodes: []')).toBe(false);
+  });
+
+  it.each([
+    ['saga: text', /saga must be a mapping/],
+    ['saga:\n  class: 3', /saga\.class must be a string/],
+    ['saga:\n  instance: [a]', /saga\.instance must be a string/],
+    ['events: x', /events must be a list/],
+    ['events:\n  - messageType: X', /events\[0\]\.name must be a non-empty string/],
+    ['events:\n  - { name: A, correlation: 3 }', /events\[0\]\.correlation must be a string/],
+    [
+      'events:\n  - { name: A }\n  - { name: A, messageType: B }',
+      /events\[1\]: the event "A" is described twice/,
+    ],
+  ])('rejects %s', (block, message) => {
+    expect(() => parseDiagram(`version: 3\n${block}\nnodes: []`)).toThrow(message);
+  });
+
+  it('accepts an event that no transition uses and a transition whose event is not described', () => {
+    const parsed = parseDiagram(
+      'version: 3\nevents:\n  - { name: Unused, messageType: X }\nnodes:\n  - { id: a, type: state, name: A }\nedges:\n  - { id: e, source: a, target: a, event: Other }',
+    );
+    expect(parsed.events).toEqual([{ name: 'Unused', messageType: 'X' }]);
+  });
+});

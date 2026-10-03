@@ -1,6 +1,8 @@
 import {
   DEFAULT_NAMES,
   Diagram,
+  EventInfo,
+  SagaInfo,
   DiagramEdge,
   DiagramNode,
   EdgeKind,
@@ -11,6 +13,8 @@ import {
 } from './diagram';
 
 export type NodePatch = Partial<Omit<DiagramNode, 'id' | 'type'>>;
+export type SagaPatch = Partial<SagaInfo>;
+export type EventInfoPatch = Partial<Omit<EventInfo, 'name'>>;
 export type DetailsPatch = Partial<Pick<Diagram, 'name' | 'description'>>;
 export type EdgePatch = Partial<Pick<DiagramEdge, 'event' | 'eventSource' | 'guard' | 'kind'>>;
 
@@ -129,6 +133,43 @@ export function updateDetails(d: Diagram, patch: DetailsPatch): Diagram {
     ...('name' in patch ? { name: text(patch.name) } : {}),
     ...('description' in patch ? { description: text(patch.description) } : {}),
   });
+}
+
+/** The diagram without one optional field. */
+const omit = (d: Diagram, key: 'saga' | 'events'): Diagram =>
+  Object.fromEntries(Object.entries(d).filter(([k]) => k !== key)) as unknown as Diagram;
+
+/** The text, trimmed; `undefined` when nothing is left. */
+const text = (value: string | undefined): string | undefined => value?.trim() || undefined;
+
+/** Sets fields of the saga's code metadata; an empty text removes a field, no field removes the block. */
+export function updateSaga(d: Diagram, patch: SagaPatch): Diagram {
+  const merged = withoutUndefined({
+    ...d.saga,
+    ...Object.fromEntries(Object.entries(patch).map(([key, value]) => [key, text(value)])),
+  }) as SagaInfo;
+  return Object.keys(merged).length ? { ...d, saga: merged } : omit(d, 'saga');
+}
+
+/**
+ * Sets what is known in code about an event (message type, correlation). The entry is created when
+ * needed and removed again when nothing is left in it. Entries keep the order they were created in.
+ */
+export function updateEventInfo(d: Diagram, name: string, patch: EventInfoPatch): Diagram {
+  const events = d.events ?? [];
+  const current = events.find((e) => e.name === name);
+  const next: EventInfo = withoutUndefined({
+    name,
+    messageType: 'messageType' in patch ? text(patch.messageType) : current?.messageType,
+    correlation: 'correlation' in patch ? text(patch.correlation) : current?.correlation,
+  });
+  const empty = next.messageType === undefined && next.correlation === undefined;
+  const list = current
+    ? events.map((e) => (e.name === name ? next : e)).filter((e) => !(e === next && empty))
+    : empty
+      ? events
+      : [...events, next];
+  return list.length ? { ...d, events: list } : omit(d, 'events');
 }
 
 /**

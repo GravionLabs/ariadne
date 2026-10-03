@@ -137,12 +137,48 @@ export interface DiagramEdge {
 export const eventLabel = (edge: Pick<DiagramEdge, 'event' | 'guard'>): string =>
   edge.event ? `${edge.event}${edge.guard ? ` [${edge.guard}]` : ''}` : '';
 
+/**
+ * What generating or importing C# needs to know about the saga. All optional: a diagram without it
+ * is as valid as before, and the generator falls back to names derived from the diagram.
+ */
+export interface SagaInfo {
+  /** The state machine class, e.g. `OrderStateMachine`. */
+  className?: string;
+  /** Namespace of the state machine and the saga instance, e.g. `Shop.Orders`. */
+  namespace?: string;
+  /** The saga instance type (`SagaStateMachineInstance`), e.g. `OrderState`. */
+  instanceType?: string;
+  /** The instance property holding the current state, e.g. `CurrentState`. */
+  stateProperty?: string;
+  /** Namespace of the message contracts (commands and events), when not the saga's. */
+  contractsNamespace?: string;
+}
+
+/**
+ * What an event is in code. A transition refers to it by `name`; an event no entry describes is
+ * implicitly defined (message type = name, correlated by `CorrelationId`).
+ */
+export interface EventInfo {
+  name: string;
+  /** The message type, when it is not called like the event, e.g. `SubmitOrder`. */
+  messageType?: string;
+  /** `CorrelationId`, or the expression for `CorrelateBy`, e.g. `x => x.OrderId`. */
+  correlation?: string;
+}
+
+/** How events are correlated when nothing else is said. */
+export const DEFAULT_CORRELATION = 'CorrelationId';
+
 /** Node positions are not stored: the editor lays the graph out in `direction`. */
 export interface Diagram {
   /** Title of the saga, e.g. `Order Saga`. Absent: exports use the file name. */
   name?: string;
   /** A sentence or two about what the saga does; shown under the title in exports. */
   description?: string;
+  /** Code metadata for the C# round trip (#79). */
+  saga?: SagaInfo;
+  /** Code metadata per event; shared by every transition with that event. */
+  events?: EventInfo[];
   direction: Direction;
   nodes: DiagramNode[];
   edges: DiagramEdge[];
