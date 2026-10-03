@@ -1,6 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { FCreateConnectionEvent, FDraggableDirective, FSelectionChangeEvent } from '@foblex/flow';
+import {
+  FCanvasComponent,
+  FCreateConnectionEvent,
+  FDraggableDirective,
+  FSelectionChangeEvent,
+} from '@foblex/flow';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { FileStorage } from '../storage/file-storage';
@@ -240,6 +245,30 @@ describe('Editor', () => {
     await settle();
     expect(store.direction()).toBe('left-right');
     expect(el.querySelector('.workspace')?.getAttribute('data-direction')).toBe('left-right');
+  });
+
+  it('fits the diagram when a layout option changes, but not when it is edited', async () => {
+    const { fixture, store, settle } = await setup();
+    const canvas = fixture.debugElement.query(By.directive(FCanvasComponent))
+      .componentInstance as FCanvasComponent;
+    const fit = vi.spyOn(canvas, 'fitToScreen');
+    /** Lets the layout finish and the deferred fit run. */
+    const flush = async () => {
+      await settle();
+      await new Promise((resolve) => setTimeout(resolve));
+    };
+
+    store.setDirection('left-right');
+    await flush();
+    expect(fit).toHaveBeenCalledTimes(1);
+
+    store.undo();
+    await flush();
+    expect(fit).toHaveBeenCalledTimes(2);
+
+    store.appendNode(store.nodes()[0].id, 'state');
+    await flush();
+    expect(fit).toHaveBeenCalledTimes(2);
   });
 
   it('offers to add the initial state when the diagram is empty', async () => {
