@@ -1,6 +1,6 @@
 version: 3
 name: OrderSaga
-description: Example Order SAGA
+description: Takes an order from the shop to delivery. Stock and payment can fail, a payment is retried up to three times, and it times out after 30 seconds.
 direction: top-bottom
 nodes:
   - id: start-1
@@ -20,6 +20,9 @@ nodes:
     description: Waits for the payment service.
     activities:
       - command: ChargePayment
+    timers:
+      - schedule: PaymentTimeout
+        delay: 30s
     retry: 3 attempts
     timeout: 30s
     compensation:
@@ -27,12 +30,16 @@ nodes:
   - id: state-3
     type: state
     name: Shipping
+    color: teal
     activities:
       - command: ShipOrder
       - event: OrderAccepted
+    ignores:
+      - PaymentCharged
   - id: end-1
     type: end
     name: Completed
+    color: green
   - id: end-2
     type: end
     name: Cancelled
@@ -67,9 +74,22 @@ edges:
     kind: forward
     event: PaymentFailed
     eventSource: Payment service
+    guard: attempts >= 3
   - id: edge-6
     source: state-3
     target: end-1
     kind: forward
     event: OrderShipped
     eventSource: Warehouse service
+  - id: edge-7
+    source: state-2
+    target: state-2
+    kind: forward
+    event: PaymentFailed
+    eventSource: Payment service
+    guard: attempts < 3
+  - id: edge-8
+    source: state-2
+    target: end-2
+    kind: forward
+    event: PaymentTimeout
