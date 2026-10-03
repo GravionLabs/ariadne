@@ -1,4 +1,4 @@
-import { Diagram, DiagramEdge, DiagramNode, NodeColor, Point } from '../model/diagram';
+import { Diagram, DiagramEdge, DiagramNode, NodeColor, Point, eventLabel } from '../model/diagram';
 import {
   INSERT_OVERHANG,
   LABEL_PADDING,
@@ -209,7 +209,7 @@ function transitionLabel(
   const external = !!edge.event && !published.has(edge.event);
   const rows = labelRows(edge);
   const height = rows * LABEL_ROW + 2 * LABEL_PADDING;
-  const texts = [edge.event ?? '', edge.eventSource ? `from ${edge.eventSource}` : ''];
+  const texts = [eventLabel(edge), edge.eventSource ? `from ${edge.eventSource}` : ''];
   const boxWidth = Math.min(
     240,
     Math.max(110, Math.ceil(44 + Math.max(...texts.map((t) => t.length)) * 6.6)),
@@ -227,7 +227,7 @@ function transitionLabel(
     const color = external ? COLORS.external : COLORS.event;
     parts.push(
       text('⚡', x + 10, rowY, { size: 11, fill: color }),
-      text(fit(edge.event, textWidth, 11), x + 29, rowY, {
+      text(fit(eventLabel(edge), textWidth, 11), x + 29, rowY, {
         size: 11,
         fill: mix(color, COLORS.text, 0.75),
       }),

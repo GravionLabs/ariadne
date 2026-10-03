@@ -291,6 +291,24 @@ describe('Editor', () => {
     expect(final.textContent).toContain('Final');
   });
 
+  it('lets a transition on an event have a guard, shown after the event', async () => {
+    const { el, store, select, fill } = await setup();
+    store.appendNode('start-1', 'state');
+    await select([], ['edge-1']);
+    // No event, no guard.
+    expect(el.querySelector('app-inspector input[placeholder="e.g. amount > 100"]')).toBeNull();
+
+    await fill('input[placeholder="e.g. PaymentCharged"]', 'OrderSubmitted');
+    await fill('input[placeholder="e.g. amount > 100"]', 'amount > 100');
+    expect(store.edges()[0].guard).toBe('amount > 100');
+    expect(el.querySelector('app-transition-label .event .text')?.textContent?.trim()).toBe(
+      'OrderSubmitted [amount > 100]',
+    );
+
+    await fill('input[placeholder="e.g. amount > 100"]', '');
+    expect(store.edges()[0].guard).toBeUndefined();
+  });
+
   it('marks events nobody in the saga publishes as external, with their source', async () => {
     const { el, store, select, fill, settle } = await setup();
     store.appendNode('start-1', 'state');

@@ -1,5 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
-import { DiagramEdge, Direction, NodeType } from '../model/diagram';
+import { DiagramEdge, Direction, NodeType, eventLabel } from '../model/diagram';
 import { AddStepButton } from './add-step-button';
 import { LABEL_PADDING, LABEL_ROW, labelRows } from './diagram-layout';
 import { Icon } from './icon';
@@ -33,6 +33,7 @@ export class TransitionLabel {
   readonly inserted = output<NodeType>();
 
   protected readonly insertTypes = INSERT_TYPES;
+  protected readonly label = computed(() => eventLabel(this.edge()));
   protected readonly rows = computed(() => labelRows(this.edge()));
   protected readonly cardHeight = computed(() => this.rows() * LABEL_ROW + 2 * LABEL_PADDING);
 }

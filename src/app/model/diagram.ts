@@ -81,7 +81,17 @@ export interface DiagramEdge {
    * can arrive from outside in any state, not only the initial one.
    */
   eventSource?: string;
+  /**
+   * Condition under which the transition is taken, free text such as `amount > 100`
+   * (MassTransit's `If` / `IfElse`). Only with an `event`; several transitions on the same event
+   * with different guards are the branches.
+   */
+  guard?: string;
 }
+
+/** The event of a transition as shown on it: `PaymentCharged [amount > 100]`. */
+export const eventLabel = (edge: Pick<DiagramEdge, 'event' | 'guard'>): string =>
+  edge.event ? `${edge.event}${edge.guard ? ` [${edge.guard}]` : ''}` : '';
 
 /** Node positions are not stored: the editor lays the graph out in `direction`. */
 export interface Diagram {

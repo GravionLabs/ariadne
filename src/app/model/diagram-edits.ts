@@ -12,7 +12,7 @@ import {
 
 export type NodePatch = Partial<Omit<DiagramNode, 'id' | 'type'>>;
 export type DetailsPatch = Partial<Pick<Diagram, 'name' | 'description'>>;
-export type EdgePatch = Partial<Pick<DiagramEdge, 'event' | 'eventSource' | 'kind'>>;
+export type EdgePatch = Partial<Pick<DiagramEdge, 'event' | 'eventSource' | 'guard' | 'kind'>>;
 
 /** A new diagram plus the id of the element the edit created. */
 export interface Created {

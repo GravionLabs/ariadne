@@ -99,14 +99,15 @@ edges:
 
 ### Edge (transition)
 
-| Field         | Type                        | Required | Notes                                                             |
-| ------------- | --------------------------- | -------- | ----------------------------------------------------------------- |
-| `id`          | string                      | yes      | e.g. `edge-4`.                                                    |
-| `source`      | string                      | yes      | Node id: the state the saga is in.                                |
-| `target`      | string                      | yes      | Node id: the state the transition enters.                         |
-| `kind`        | `forward` \| `compensation` | no       | Defaults to `forward`. Compensation transitions are not laid out. |
-| `event`       | string                      | no       | The event that triggers the transition, e.g. `PaymentCharged`.    |
-| `eventSource` | string                      | no       | Where an external event comes from, e.g. `Shop API`.              |
+| Field         | Type                        | Required | Notes                                                                                                      |
+| ------------- | --------------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `id`          | string                      | yes      | e.g. `edge-4`.                                                                                             |
+| `source`      | string                      | yes      | Node id: the state the saga is in.                                                                         |
+| `target`      | string                      | yes      | Node id: the state the transition enters.                                                                  |
+| `kind`        | `forward` \| `compensation` | no       | Defaults to `forward`. Compensation transitions are not laid out.                                          |
+| `event`       | string                      | no       | The event that triggers the transition, e.g. `PaymentCharged`.                                             |
+| `eventSource` | string                      | no       | Where an external event comes from, e.g. `Shop API`.                                                       |
+| `guard`       | string                      | no       | Condition for taking the transition, e.g. `amount > 100`. Needs an `event`. Free text, documentation only. |
 
 An event a transition reacts to is **internal** when some state of the same diagram publishes it
 (an `event:` activity), and **external** otherwise. External events can arrive in any state, not only
@@ -122,6 +123,16 @@ An **activity** is a mapping with exactly one key, the kind of message, followin
   imperative, e.g. `SubmitOrder`, `ChargePayment`.
 - `event: <Name>`: **publish** a fact to any number of subscribers. Named noun–verb in the past tense,
   e.g. `OrderSubmitted`, `PaymentCharged`.
+
+## MassTransit mapping
+
+How the constructs relate to a MassTransit `MassTransitStateMachine<T>`. The importer (#83) and the
+generator (#93) follow this table.
+
+| Diagram                                | MassTransit                                                                                  |
+| -------------------------------------- | -------------------------------------------------------------------------------------------- |
+| transition with `guard`                | `When(E).If(ctx => <guard>, then => then.TransitionTo(A)).TransitionTo(B)`                   |
+| transitions on one event, other guards | `When(E).IfElse(ctx => <guard>, then => then.TransitionTo(A), else => else.TransitionTo(B))` |
 
 ## Version 1
 

@@ -131,4 +131,13 @@ describe('diagram layout', () => {
     expect(isCompact({ id: 'a', type: 'state', name: 'A' })).toBe(false);
     expect(nodeSize({ id: 'a', type: 'state', name: 'A' }).width).toBeGreaterThan(pill.width);
   });
+
+  it('makes room for a guard in the label', () => {
+    const plain = labelSize(saga.edges[0], 'top-bottom');
+    const guarded = labelSize(
+      { ...saga.edges[0], guard: 'the order total is more than a hundred' },
+      'top-bottom',
+    );
+    expect(guarded.width).toBeGreaterThan(plain.width);
+  });
 });

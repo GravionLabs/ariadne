@@ -1,5 +1,5 @@
 import { ACTIVITY_VERBS } from '../editor/node-types';
-import { Diagram, DiagramEdge, DiagramNode } from '../model/diagram';
+import { Diagram, DiagramEdge, DiagramNode, eventLabel } from '../model/diagram';
 
 /** Words Mermaid's state diagram grammar treats as keywords; an id must not be one of them. */
 const RESERVED = new Set([
@@ -55,7 +55,7 @@ const text = (s: string): string =>
  */
 function transitionLabel(edge: DiagramEdge, target: DiagramNode): string {
   const event =
-    edge.event && `${edge.event}${edge.eventSource ? ` (from ${edge.eventSource})` : ''}`;
+    edge.event && `${eventLabel(edge)}${edge.eventSource ? ` (from ${edge.eventSource})` : ''}`;
   const activities = (target.activities ?? [])
     .map((a) => `${ACTIVITY_VERBS[a.kind]} ${a.name}`)
     .join(', ');

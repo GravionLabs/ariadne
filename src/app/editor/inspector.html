@@ -222,6 +222,19 @@
       <p class="hint">{{ hint }}</p>
     }
     @if (edge.event) {
+      <label class="field">
+        <span>Guard</span>
+        <input
+          type="text"
+          placeholder="e.g. amount > 100"
+          [value]="edge.guard ?? ''"
+          (change)="setGuard($event)"
+        />
+        <small
+          >A condition on the event. Give transitions on the same event different guards to
+          branch.</small
+        >
+      </label>
       @if (publishers().length) {
         <p class="origin">
           <app-icon name="trigger" />

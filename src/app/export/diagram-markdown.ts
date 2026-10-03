@@ -51,14 +51,17 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
       : none,
   );
 
+  // The Guard column only appears when some transition has one.
+  const guarded = edges.some((e) => e.guard);
   out.push(
     '## Transitions',
     edges.length
       ? table(
-          ['From', 'Event', 'Source', 'To', 'Kind'],
+          ['From', 'Event', ...(guarded ? ['Guard'] : []), 'Source', 'To', 'Kind'],
           edges.map((e) => [
             name(e.source),
             e.event ?? '',
+            ...(guarded ? [e.guard ?? ''] : []),
             e.eventSource ??
               (e.event && !published.has(e.event) ? 'external' : e.event ? 'saga' : ''),
             name(e.target),

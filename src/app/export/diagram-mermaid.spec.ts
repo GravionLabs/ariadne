@@ -170,4 +170,13 @@ describe('diagramToMermaid title', () => {
       true,
     );
   });
+
+  it('shows a guard in square brackets after the event', () => {
+    const edges = orderSaga.edges.map((e) =>
+      e.event === 'PaymentFailed' ? { ...e, guard: 'attempts >= 3' } : e,
+    );
+    expect(diagramToMermaid({ ...orderSaga, edges })).toContain(
+      'Charging_payment --> Cancelled : PaymentFailed [attempts >= 3]',
+    );
+  });
 });

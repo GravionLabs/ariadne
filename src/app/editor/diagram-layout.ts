@@ -1,6 +1,14 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import dagre from '@dagrejs/dagre';
-import { Diagram, DiagramEdge, DiagramNode, Direction, Point, hasOutput } from '../model/diagram';
+import {
+  Diagram,
+  DiagramEdge,
+  DiagramNode,
+  Direction,
+  Point,
+  eventLabel,
+  hasOutput,
+} from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 
 export interface Size {
@@ -96,7 +104,7 @@ export const labelRows = (edge: DiagramEdge): number =>
 export function labelSize(edge: DiagramEdge, direction: Direction): Size {
   const rows = labelRows(edge);
   if (rows === 0) return { width: INSERT_SIZE, height: INSERT_SIZE };
-  const texts = [edge.event ?? '', edge.eventSource ? `from ${edge.eventSource}` : ''];
+  const texts = [eventLabel(edge), edge.eventSource ? `from ${edge.eventSource}` : ''];
   const longest = Math.max(...texts.map((t) => t.length));
   const width = Math.min(
     LABEL_MAX_WIDTH,

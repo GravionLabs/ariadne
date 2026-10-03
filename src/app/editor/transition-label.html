@@ -4,10 +4,10 @@
     class="card"
     [class.selected]="selected()"
     [style.height.px]="cardHeight()"
-    [attr.aria-label]="'Transition' + (edge().event ? ' on ' + edge().event : '')"
+    [attr.aria-label]="'Transition' + (edge().event ? ' on ' + label() : '')"
     (click)="selectRequested.emit()"
   >
-    @if (edge().event; as event) {
+    @if (edge().event) {
       <span
         class="row event"
         [class.external]="external()"
@@ -18,7 +18,7 @@
         "
       >
         <app-icon name="trigger" />
-        <span class="text">{{ event }}</span>
+        <span class="text">{{ label() }}</span>
       </span>
       @if (edge().eventSource; as source) {
         <span class="row source">

@@ -138,4 +138,12 @@ describe('renderDiagramSvg title', () => {
     expect(svg).not.toContain('<title>');
     expect(svg).not.toContain('<desc>');
   });
+
+  it('shows a guard after the event in the label', () => {
+    const edges = orderSaga.edges.map((e) =>
+      e.event === 'PaymentFailed' ? { ...e, guard: 'attempts >= 3' } : e,
+    );
+    const { svg } = renderDiagramSvg({ ...orderSaga, edges });
+    expect(svg).toContain('PaymentFailed [attempts &gt;= 3]');
+  });
 });

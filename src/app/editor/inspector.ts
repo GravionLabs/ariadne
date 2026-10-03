@@ -195,6 +195,12 @@ export class Inspector {
     if (edge && value !== edge.eventSource) this.store.updateEdge(edge.id, { eventSource: value });
   }
 
+  protected setGuard(event: Event): void {
+    const edge = this.edge();
+    const value = optional(event);
+    if (edge && value !== edge.guard) this.store.updateEdge(edge.id, { guard: value });
+  }
+
   protected setEvent(event: Event): void {
     const edge = this.edge();
     const value = optional(event);

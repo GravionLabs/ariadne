@@ -24,6 +24,7 @@ import {
   DiagramNode,
   Direction,
   NodeType,
+  eventLabel,
   inputId,
   nodeIdOfConnector,
   outputId,
@@ -115,7 +116,7 @@ export class Editor {
   protected edgeLabel(edge: DiagramEdge): string {
     const name = (id: string) => this.store.nodes().find((n) => n.id === id)?.name ?? id;
     const kind = edge.kind === 'compensation' ? 'Compensation' : 'Transition';
-    return `${kind} from ${name(edge.source)} to ${name(edge.target)}${edge.event ? ` on ${edge.event}` : ''}`;
+    return `${kind} from ${name(edge.source)} to ${name(edge.target)}${edge.event ? ` on ${eventLabel(edge)}` : ''}`;
   }
 
   protected readonly edgesById = computed(() => new Map(this.store.edges().map((e) => [e.id, e])));

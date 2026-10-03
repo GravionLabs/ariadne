@@ -157,4 +157,14 @@ describe('diagramToMarkdown', () => {
   it('falls back to the given title without a name', () => {
     expect(diagramToMarkdown(orderSaga, { title: 'order' })).toMatch(/^# order\n/);
   });
+
+  it('adds a Guard column only when a transition has a guard', () => {
+    expect(diagramToMarkdown(orderSaga)).not.toContain('| Guard |');
+    const edges = orderSaga.edges.map((e) =>
+      e.event === 'PaymentFailed' ? { ...e, guard: 'attempts >= 3' } : e,
+    );
+    const md = diagramToMarkdown({ ...orderSaga, edges });
+    expect(md).toContain('| From | Event | Guard | Source | To | Kind |');
+    expect(md).toContain('attempts >= 3');
+  });
 });

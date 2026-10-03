@@ -330,3 +330,41 @@ describe('name and description', () => {
     expect(() => parseDiagram(`version: 3\n${line}\nnodes: []`)).toThrow(message);
   });
 });
+
+describe('guard', () => {
+  const guarded: Diagram = {
+    ...sample,
+    edges: [
+      {
+        id: 'e1',
+        source: 'start-1',
+        target: 'state-1',
+        kind: 'forward',
+        event: 'Go',
+        guard: 'amount > 100',
+      },
+      { id: 'e2', source: 'start-1', target: 'end-1', kind: 'forward', event: 'Go' },
+    ],
+  };
+
+  it('is written after the event source and round-trips', () => {
+    const text = serializeDiagram(guarded);
+    expect(text).toContain('    event: Go\n    guard: amount > 100\n');
+    expect(parseDiagram(text)).toEqual(guarded);
+  });
+
+  it('is omitted when empty', () => {
+    const parsed = parseDiagram(
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A }\nedges:\n  - { id: e, source: a, target: a, event: Go, guard: "  " }',
+    );
+    expect('guard' in parsed.edges[0]).toBe(false);
+  });
+
+  it('needs an event', () => {
+    expect(() =>
+      parseDiagram(
+        'version: 3\nnodes:\n  - { id: a, type: state, name: A }\nedges:\n  - { id: e, source: a, target: a, guard: x }',
+      ),
+    ).toThrow(/edges\[0\]\.guard needs an event/);
+  });
+});

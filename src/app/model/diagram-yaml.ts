@@ -47,8 +47,8 @@ export function serializeDiagram(diagram: Diagram): string {
     description: diagram.description,
     direction: diagram.direction,
     nodes: diagram.nodes.map(serializeNode),
-    edges: diagram.edges.map(({ id, source, target, kind, event, eventSource }) =>
-      withoutUndefined({ id, source, target, kind, event, eventSource }),
+    edges: diagram.edges.map(({ id, source, target, kind, event, eventSource, guard }) =>
+      withoutUndefined({ id, source, target, kind, event, eventSource, guard }),
     ),
   };
   return stringify(withoutUndefined(file), { lineWidth: 0 });
@@ -254,6 +254,10 @@ function parseEdge(
           parseActivity(a, `${at}.activities[${i}]`),
         )
       : [];
+  const guard = optionalString(edge['guard'], `${at}.guard`)?.trim();
+  if (guard && !edge['event']) {
+    throw new DiagramFormatError(`${at}.guard needs an event: a guard is a condition on an event`);
+  }
   const source = asString(edge['source'], `${at}.source`);
   const target = asString(edge['target'], `${at}.target`);
   for (const [field, id] of [
@@ -270,6 +274,7 @@ function parseEdge(
       kind: kind as EdgeKind,
       event: optionalString(edge['event'], `${at}.event`) || undefined,
       eventSource: optionalString(edge['eventSource'], `${at}.eventSource`) || undefined,
+      guard: guard || undefined,
     }),
     activities: legacy,
   };
