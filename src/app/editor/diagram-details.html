@@ -4,6 +4,7 @@
     class="name"
     aria-label="Saga name"
     placeholder="Untitled saga"
+    [readOnly]="locked()"
     [value]="store.diagram().name ?? ''"
     (change)="setName($event)"
   />
@@ -27,6 +28,7 @@
     rows="4"
     aria-label="Saga description"
     placeholder="What the saga does"
+    [readOnly]="locked()"
     [value]="store.diagram().description ?? ''"
     (change)="setDescription($event)"
   ></textarea>
