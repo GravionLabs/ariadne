@@ -6,6 +6,7 @@ import {
   connect,
   insertOnEdge,
   removeElements,
+  updateDetails,
   updateEdge,
   updateNode,
 } from './diagram-edits';
@@ -104,5 +105,15 @@ describe('diagram edits', () => {
     const { nodes, edges } = removeElements(path(), { edgeIds: ['edge-2'] });
     expect(nodes).toHaveLength(3);
     expect(edges.map((e) => e.id)).toEqual(['edge-1']);
+  });
+
+  it('sets and clears the name and description', () => {
+    const named = updateDetails(path(), { name: '  Order Saga ', description: 'About it' });
+    expect(named).toMatchObject({ name: 'Order Saga', description: 'About it' });
+    const renamed = updateDetails(named, { name: 'Other' });
+    expect(renamed).toMatchObject({ name: 'Other', description: 'About it' });
+    const cleared = updateDetails(renamed, { name: '   ', description: undefined });
+    expect('name' in cleared).toBe(false);
+    expect('description' in cleared).toBe(false);
   });
 });
