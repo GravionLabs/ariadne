@@ -144,4 +144,17 @@ describe('diagramToMarkdown', () => {
     });
     expect(md).not.toContain('Ghost');
   });
+
+  it("prefers the diagram's own name and description over the fallbacks", () => {
+    const md = diagramToMarkdown(
+      { ...orderSaga, name: 'Order Saga', description: 'Takes an order to done.' },
+      { title: 'order', description: 'Fallback' },
+    );
+    expect(md).toMatch(/^# Order Saga\n\nTakes an order to done\.\n\n## Diagram/);
+    expect(md).not.toContain('Fallback');
+  });
+
+  it('falls back to the given title without a name', () => {
+    expect(diagramToMarkdown(orderSaga, { title: 'order' })).toMatch(/^# order\n/);
+  });
 });

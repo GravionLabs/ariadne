@@ -121,3 +121,21 @@ describe('fit', () => {
     expect(cut.length).toBeLessThan(15);
   });
 });
+
+describe('renderDiagramSvg title', () => {
+  it('adds the name and description as <title> and <desc>, escaped', () => {
+    const { svg } = renderDiagramSvg({
+      ...orderSaga,
+      name: 'Order & Co',
+      description: 'Takes <orders>',
+    });
+    expect(svg).toContain('<title>Order &amp; Co</title>');
+    expect(svg).toContain('<desc>Takes &lt;orders&gt;</desc>');
+  });
+
+  it('has neither without a name', () => {
+    const { svg } = renderDiagramSvg(orderSaga);
+    expect(svg).not.toContain('<title>');
+    expect(svg).not.toContain('<desc>');
+  });
+});

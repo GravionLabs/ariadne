@@ -65,7 +65,7 @@ function transitionLabel(edge: DiagramEdge, target: DiagramNode): string {
 }
 
 /**
- * The diagram as Mermaid `stateDiagram-v2` text.
+ * The diagram as Mermaid `stateDiagram-v2` text. A named diagram starts with `title` front matter.
  *
  * - The initial state is `[*]`; a final state is a named state with `--> [*]`, so its name stays
  *   visible (an alias pointing to `[*]` would render as the bare end marker, without the name).
@@ -79,6 +79,9 @@ export function diagramToMermaid(diagram: Diagram): string {
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const ref = (id: string) => (nodes.get(id)?.type === 'start' ? '[*]' : ids.get(id)!);
   const lines = [
+    ...(diagram.name?.trim()
+      ? ['---', `title: ${JSON.stringify(diagram.name.trim())}`, '---']
+      : []),
     'stateDiagram-v2',
     `  direction ${diagram.direction === 'left-right' ? 'LR' : 'TB'}`,
   ];

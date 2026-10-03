@@ -143,4 +143,27 @@ describe('DiagramDocument', () => {
     expect(store.nodes().map((n) => n.type)).toEqual(['start']);
     expect(doc.dirty()).toBe(false);
   });
+
+  it('suggests a file name from the diagram name for an untitled diagram', async () => {
+    store.setDetails({ name: 'Order Saga — Überweisung #2' });
+    await doc.saveAs();
+    expect(storage.saveAs).toHaveBeenCalledWith(
+      expect.any(String),
+      'order-saga-uberweisung-2.saga.yaml',
+    );
+  });
+
+  it('keeps suggesting the current file name once the diagram has one', async () => {
+    store.addNode('state');
+    await doc.save();
+    store.setDetails({ name: 'Order Saga' });
+    await doc.saveAs();
+    expect(storage.saveAs).toHaveBeenLastCalledWith(expect.any(String), 'chosen.saga.yaml');
+  });
+
+  it('counts a changed name as an unsaved change', async () => {
+    await doc.save();
+    store.setDetails({ name: 'Order Saga' });
+    expect(doc.dirty()).toBe(true);
+  });
 });

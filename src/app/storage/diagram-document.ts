@@ -64,8 +64,14 @@ export const DiagramDocument = signalStore(
       });
 
     const saveAs = (): Promise<boolean> =>
-      // Always suggest a `*.saga.yaml` name, also for a legacy `.yaml` file opened before.
-      write((content) => storage.saveAs(content, diagramFileName(store.name())));
+      // Always suggest a `*.saga.yaml` name, also for a legacy `.yaml` file opened before. A new
+      // file takes it from the diagram's name, if it has one.
+      write((content) =>
+        storage.saveAs(
+          content,
+          diagramFileName(store.file() ? store.name() : (slug(diagram.diagram().name) ?? '')),
+        ),
+      );
 
     return {
       setError(error: string | null): void {
@@ -104,3 +110,15 @@ export const DiagramDocument = signalStore(
 );
 
 export type DiagramDocument = InstanceType<typeof DiagramDocument>;
+
+/** `Order Saga` becomes `order-saga`, a file name that stays readable and portable. */
+function slug(name: string | undefined): string | undefined {
+  return (
+    name
+      ?.normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || undefined
+  );
+}

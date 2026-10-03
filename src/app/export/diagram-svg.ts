@@ -152,6 +152,8 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${n(minX)} ${n(minY)} ${width} ${height}" font-family="${esc(FONT)}">`,
+    ...(diagram.name?.trim() ? [`<title>${esc(diagram.name.trim())}</title>`] : []),
+    ...(diagram.description?.trim() ? [`<desc>${esc(diagram.description.trim())}</desc>`] : []),
     '<defs>',
     marker('forward', COLORS.line),
     marker('compensation', COLORS.compensation),
