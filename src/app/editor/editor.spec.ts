@@ -438,7 +438,7 @@ describe('Editor', () => {
 
   describe('source view', () => {
     const sourceButton = (el: HTMLElement) =>
-      el.querySelector<HTMLButtonElement>('[aria-label="Source"]')!;
+      el.querySelector<HTMLButtonElement>('.topbar .source-toggle')!;
 
     it('opens next to the canvas with the diagram as YAML, and closes again', async () => {
       const { el, store, editors, settle } = await setup();
@@ -457,6 +457,38 @@ describe('Editor', () => {
       await settle();
       expect(el.querySelector('app-source-panel')).toBeNull();
       expect(editors[0].destroy).toHaveBeenCalled();
+    });
+
+    it('has a labelled button in the top bar that opens the panel again after it was closed', async () => {
+      const { el, editors, settle } = await setup();
+      const button = sourceButton(el);
+      expect(button.textContent?.trim()).toBe('Source');
+      expect(button.classList).not.toContain('active');
+
+      button.click();
+      await settle();
+      expect(button.classList).toContain('active');
+      el.querySelector<HTMLButtonElement>('[aria-label="Close source"]')!.click();
+      await settle();
+      expect(button.classList).not.toContain('active');
+
+      // The button stays where it was, and works again.
+      expect(sourceButton(el)).toBe(button);
+      button.click();
+      await settle();
+      expect(el.querySelector('app-source-panel')).not.toBeNull();
+      expect(editors).toHaveLength(2);
+
+      // It toggles: pressing it with the panel open closes the panel.
+      button.click();
+      await settle();
+      expect(el.querySelector('app-source-panel')).toBeNull();
+    });
+
+    it('is not a second, hidden button in the toolbox', async () => {
+      const { el } = await setup();
+      expect(el.querySelectorAll('.source-toggle')).toHaveLength(1);
+      expect(el.querySelector('.toolbox .source-toggle')).toBeNull();
     });
 
     it('applies text typed in the panel to the diagram, as one undo step', async () => {
@@ -543,7 +575,7 @@ describe('Editor', () => {
 
     it('is remembered between visits, with its width', async () => {
       const first = await setup();
-      first.el.querySelector<HTMLButtonElement>('[aria-label="Source"]')!.click();
+      first.el.querySelector<HTMLButtonElement>('.topbar .source-toggle')!.click();
       await first.settle();
       const divider = first.el.querySelector<HTMLElement>('[role=separator]')!;
       divider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
