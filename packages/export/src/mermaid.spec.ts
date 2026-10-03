@@ -1,4 +1,4 @@
-import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
+import { diagramToMermaid, mermaidMarkdown } from './mermaid';
 import { Diagram } from '@ariadne/core';
 
 const orderSaga: Diagram = {

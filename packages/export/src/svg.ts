@@ -1,7 +1,7 @@
-import { DECISION, NODE_TYPES } from '../editor/node-types';
 import {
   ACTIVITY_VERBS,
   backEdgeIds,
+  DECISION_INFO,
   decisionIds,
   Diagram,
   DiagramEdge,
@@ -16,6 +16,7 @@ import {
   LABEL_ROW,
   labelRows,
   layoutDiagram,
+  NODE_INFO,
   NodeColor,
   nodeSize,
   Point,
@@ -326,7 +327,7 @@ function stateSvg(
   );
   const textX = badgeX + 40;
   const textWidth = x + size.width - textX - 12;
-  const label = (decision ? DECISION : NODE_TYPES[node.type]).label.toUpperCase();
+  const label = (decision ? DECISION_INFO : NODE_INFO[node.type]).label.toUpperCase();
   if (compact) {
     parts.push(
       text(fit(node.name, textWidth, 13, true), textX, y + size.height / 2, {

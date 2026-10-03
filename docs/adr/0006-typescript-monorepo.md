@@ -74,3 +74,11 @@ That code must not depend on Angular, or the CLI and the extension would drag it
   packages external and resolves them from the app, so `apps/web` also depends on `yaml` and
   `@dagrejs/dagre` (the bundler would find them in `packages/core`). Core's own tests run with plain
   Vitest (`globals`, node environment) and read the example sagas with `?raw`.
+- **`@ariadne/export` and the CLI (#168).** The exports that need no browser (SVG, Mermaid, the Markdown
+  page) are in `packages/export`; PNG stays in the web app (it needs a canvas) and the CLI rasterises the
+  SVG with `@resvg/resvg-js`. Node labels (`NODE_INFO`) moved to core so the exports do not need the
+  editor's icon table. `apps/cli` is the `ariadne` command: `lint` (exit 1 on errors or too many
+  warnings) and `export`. It is bundled with esbuild into one `dist/ariadne.mjs` (a script of its own
+  adds the `require` shim that bundled CommonJS packages such as `yaml` need), and its tests run the
+  built file against the sample sagas, since the bundle is what is installed. `import`, `generate` and
+  `diff` wait for the importer and the generator (#83, #93).

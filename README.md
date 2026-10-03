@@ -54,6 +54,19 @@ pnpm format:check    # Prettier (pnpm format fixes)
 pnpm build           # production build in apps/web/dist/
 ```
 
+## Command line
+
+`apps/cli` builds the `ariadne` command (Node 22 or later) for local use and CI:
+
+```sh
+pnpm --filter @ariadne/cli build
+node apps/cli/dist/ariadne.mjs lint docs/examples/*.saga.yaml      # exit 1 on errors
+node apps/cli/dist/ariadne.mjs lint --max-warnings 0 --format json order.saga.yaml
+node apps/cli/dist/ariadne.mjs export order.saga.yaml --format svg -o order.svg   # mermaid | svg | png | md
+```
+
+`lint` reports the same findings as the editor's Problems list. Importing from and generating C# will be added when those exist.
+
 ## Diagram files
 
 A diagram is one YAML file, named `*.saga.yaml`. Only the graph is stored, no positions, so diffs show real changes to the saga:
@@ -84,6 +97,7 @@ The full format, with every field and the migration rules, is in [docs/specs/dia
 
 ```
 apps/
+  cli/        the ariadne command: lint and export
   web/        the Angular editor
     src/app/
       model/      the diagram store with undo/redo (NgRx SignalStore)
@@ -92,6 +106,7 @@ apps/
       export/     SVG, PNG, Mermaid and Markdown
 packages/
   core/       @ariadne/core: model, YAML format, validation, layout, catalog, walkthrough (no framework)
+  export/     @ariadne/export: SVG, Mermaid and Markdown exports (no browser needed)
 docs/
   adr/        architecture decision records
   specs/      the diagram file format

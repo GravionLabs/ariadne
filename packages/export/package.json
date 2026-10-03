@@ -1,0 +1,22 @@
+{
+  "name": "@ariadne/export",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Diagram exports that run anywhere: SVG, Mermaid and a Markdown documentation page.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-export.xml"
+  },
+  "dependencies": {
+    "@ariadne/core": "workspace:*",
+    "@dagrejs/dagre": "^3.1.1",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.0"
+  }
+}

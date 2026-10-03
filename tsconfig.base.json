@@ -12,7 +12,8 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "paths": {
-      "@ariadne/core": ["./packages/core/src/index.ts"]
+      "@ariadne/core": ["./packages/core/src/index.ts"],
+      "@ariadne/export": ["./packages/export/src/index.ts"]
     }
   }
 }
