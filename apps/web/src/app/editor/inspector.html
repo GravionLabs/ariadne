@@ -14,6 +14,17 @@
       <strong>{{ ends.from }} → {{ ends.to }}</strong>
     </div>
   }
+  @if (canGoToCode()) {
+    <button
+      type="button"
+      class="icon-button"
+      aria-label="Go to code"
+      title="Open this in the C# file"
+      (click)="goToCode()"
+    >
+      <app-icon name="code" />
+    </button>
+  }
   <button
     type="button"
     class="icon-button"

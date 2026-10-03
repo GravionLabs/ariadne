@@ -17,16 +17,20 @@ export interface AriadneApi {
 }
 
 export function activate(context: vscode.ExtensionContext): AriadneApi {
-  const provider = new SagaEditorProvider(context.extensionUri);
   const virtual = new VirtualDocuments();
   const report = new ImportReport();
   const drift = new DriftService(virtual);
+  const provider = new SagaEditorProvider(context.extensionUri, (uri, target) =>
+    drift.goToCode(uri, target),
+  );
+  const lenses = new SagaCodeLensProvider(drift);
   void drift.start();
   context.subscriptions.push(
     report,
     drift,
     vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, virtual),
-    vscode.languages.registerCodeLensProvider({ pattern: '**/*.cs' }, new SagaCodeLensProvider()),
+    vscode.languages.registerCodeLensProvider({ pattern: '**/*.cs' }, lenses),
+    lenses,
     vscode.commands.registerCommand('ariadne.generateCsharp', (uri?: vscode.Uri) =>
       generateCsharpCommand(virtual, report.channel, uri),
     ),

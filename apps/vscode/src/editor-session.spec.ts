@@ -23,6 +23,7 @@ function setup(initial = 'a') {
     theme: () => 'dark',
     settings: () => ({ autoLayout: true }),
     showAsText: vi.fn(),
+    goToCode: vi.fn(),
     showError: (m) => shown.push(m),
   };
   const session = new EditorSession(document, view);
@@ -124,6 +125,12 @@ describe('EditorSession', () => {
     session.receive({ v: 1, type: 'error', message: 'broken' });
     expect(view.showAsText).toHaveBeenCalled();
     expect(shown).toEqual(['broken']);
+  });
+
+  it('passes "Go to code" on to the host window', () => {
+    const { session, view } = setup();
+    session.receive({ v: 1, type: 'goToCode', target: { kind: 'state', id: 'state-1' } });
+    expect(view.goToCode).toHaveBeenCalledWith({ kind: 'state', id: 'state-1' });
   });
 
   it('ignores messages that are not part of the protocol', () => {

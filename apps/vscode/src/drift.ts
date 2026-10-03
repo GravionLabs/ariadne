@@ -1,5 +1,7 @@
 import { DiagramFormatError, parseDiagram, type Diagram } from '@ariadne/core';
 import { diffDiagrams, type Difference } from '@ariadne/masstransit/diff';
+import type { CodeTarget } from '@ariadne/editor-protocol';
+import { locateInCode } from './locate';
 import { importFromCsharp, type ImportedDiagram } from './import-saga';
 import { importSagas, type CSharpParser, type ImportedSaga } from '@ariadne/masstransit';
 
@@ -89,4 +91,28 @@ export function diagramFromCode(
     : diagrams.length === 1
       ? diagrams[0]
       : undefined;
+}
+
+/** Where a state or transition of the diagram is in its C# file (`line` counts from 1). */
+export function findPlace(
+  diagramText: string,
+  csharpPath: string,
+  csharpText: string,
+  parser: CSharpParser,
+  target: CodeTarget,
+): { line: number } | undefined {
+  let diagram: Diagram;
+  try {
+    diagram = parseDiagram(diagramText);
+  } catch {
+    return undefined;
+  }
+  const { sagas } = importSagas([{ path: csharpPath, content: csharpText }], parser);
+  const wanted = diagram.saga?.className;
+  const code = wanted
+    ? sagas.find((s) => s.className === wanted)
+    : sagas.length === 1
+      ? sagas[0]
+      : undefined;
+  return code && locateInCode(diagram, code, target);
 }

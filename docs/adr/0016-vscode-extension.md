@@ -30,6 +30,14 @@ same git workflow, is worth more than a separate web page. There must not be a s
 - **Tests** run in a real VS Code with `@vscode/test-electron` (xvfb in CI); logic without the VS Code API is tested
   with Vitest.
 
+## Code integration (#189)
+
+- **`saga.source`** in the diagram names its C# file, relative to the diagram with `/`. It is how the extension links the two: import writes it, generate writes next to it, drift and the CodeLens read it.
+- **The C# parser runs in the extension host** (tree-sitter WebAssembly, loaded on first use from next to the bundle), not in the webview.
+- **Drift** is checked on save of either file and reported as warnings in the Problems panel on both files, with quick fixes "Update diagram from code" and "Open diff". It compares with `diffDiagrams` and can be switched off (`ariadne.drift.enabled`).
+- **"Go to code"** matches the diagram to the code by name (a state by its C# identifier, a transition by its two ends and event), because the ids differ; the importer's source locations give the line.
+- **Nothing is written without a look:** a different existing diagram is shown as a diff first, generated files are picked from a list, and changed ones can be compared.
+
 ## Consequences
 
 - The embedded build adds a few seconds to `pnpm build`; the Docker image does not build it.

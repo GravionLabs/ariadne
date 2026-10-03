@@ -3,7 +3,8 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { parseDiagram } from '@ariadne/core';
 import { csharpParser } from './csharp';
-import { compareWithCode, diagramFromCode, sagaLine } from './drift';
+import type { CodeTarget } from '@ariadne/editor-protocol';
+import { compareWithCode, diagramFromCode, findPlace, sagaLine } from './drift';
 import { resolveSource } from './paths';
 import { findStateMachines } from './state-machines';
 import type { VirtualDocuments } from './virtual-documents';
@@ -26,8 +27,9 @@ interface Pair {
  * code or to open a diff. Switched off with `ariadne.drift.enabled`.
  */
 export class DriftService implements vscode.CodeActionProvider, vscode.Disposable {
-  /** diagram file → the C# file it names */
+  /** diagram file → the C# file it names, and the class it implements */
   private readonly links = new Map<string, string>();
+  private readonly classes = new Map<string, string | undefined>();
   private readonly pairs = new Map<string, Pair>();
   private readonly diagnostics = vscode.languages.createDiagnosticCollection('ariadne-drift');
   private readonly subscriptions: vscode.Disposable[] = [];
@@ -71,6 +73,14 @@ export class DriftService implements vscode.CodeActionProvider, vscode.Disposabl
   async start(): Promise<void> {
     const files = await vscode.workspace.findFiles('**/*.saga.yaml', '**/node_modules/**');
     await Promise.all(files.map((f) => this.indexFile(f.fsPath)));
+  }
+
+  /** The diagram that implements `className` in this C# file (the first, if there are several). */
+  diagramFor(csharp: string, className: string): string | undefined {
+    return this.diagramsFor(csharp).find((d) => {
+      const wanted = this.classes.get(d);
+      return wanted === undefined || wanted === className;
+    });
   }
 
   /** The diagrams that name this C# file. */
@@ -210,6 +220,37 @@ export class DriftService implements vscode.CodeActionProvider, vscode.Disposabl
     return vscode.workspace.applyEdit(edit);
   }
 
+  /** "Go to code": opens the C# of the diagram at a state or transition. */
+  async goToCode(diagram: vscode.Uri, target: CodeTarget): Promise<void> {
+    const csharp = this.links.get(diagram.fsPath);
+    const [diagramText, csharpText] = await Promise.all([
+      this.text(diagram.fsPath),
+      csharp ? this.text(csharp) : undefined,
+    ]);
+    if (!csharp || diagramText === undefined) {
+      void vscode.window.showInformationMessage(
+        'This diagram names no C# file. Set the C# file in the saga details (saga.source).',
+      );
+      return;
+    }
+    if (csharpText === undefined) {
+      void vscode.window.showWarningMessage(`${path.basename(csharp)} cannot be read.`);
+      return;
+    }
+    const place = findPlace(diagramText, csharp, csharpText, await csharpParser(), target);
+    if (!place) {
+      void vscode.window.showInformationMessage(
+        `That ${target.kind} has no place in ${path.basename(csharp)}.`,
+      );
+      return;
+    }
+    const line = Math.max(0, place.line - 1);
+    await vscode.window.showTextDocument(vscode.Uri.file(csharp), {
+      selection: new vscode.Range(line, 0, line, 0),
+      preview: false,
+    });
+  }
+
   async openDiff(diagram: vscode.Uri): Promise<void> {
     const found = await this.imported(diagram);
     if (!found) return;
@@ -252,16 +293,21 @@ export class DriftService implements vscode.CodeActionProvider, vscode.Disposabl
 
   private index(file: string, text: string): void {
     let source: string | undefined;
+    let className: string | undefined;
     try {
-      source = parseDiagram(text).saga?.source;
+      const saga = parseDiagram(text).saga;
+      source = saga?.source;
+      className = saga?.className;
     } catch {
       source = undefined;
     }
     const before = this.links.get(file);
     const next = source ? resolveSource(path.dirname(file), source) : undefined;
-    if (next === before) return;
+    if (next === before && className === this.classes.get(file)) return;
+    this.classes.set(file, className);
     if (next) this.links.set(file, next);
     else {
+      this.classes.delete(file);
       this.links.delete(file);
       this.pairs.delete(file);
       this.publish();
