@@ -95,7 +95,7 @@ app-export-menu ::ng-deep .menu-button {
   }
 
   &:focus-visible {
-    outline: 2px solid var(--c-primary);
+    outline: 2px solid var(--c-focus);
     outline-offset: 1px;
   }
 
@@ -230,9 +230,43 @@ app-export-menu ::ng-deep .menu-button {
 // Workspace: canvas with floating inspector, toolbox and minimap.
 
 .body {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
+}
+
+// The document cannot be read: covers the canvas and says so, instead of showing a stale diagram.
+.document-error {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: var(--c-text);
+  background: var(--c-surface-1);
+
+  h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  p {
+    max-width: 560px;
+    margin: 0;
+  }
+
+  .problem {
+    color: var(--c-danger);
+    font-family: ui-monospace, monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
 }
 
 .workspace {
@@ -282,7 +316,7 @@ app-export-menu ::ng-deep .menu-button {
 
   // The flow is one tab stop (arrows move between its states): show that it has the focus.
   &:focus-visible {
-    outline: 2px solid var(--c-primary);
+    outline: 2px solid var(--c-focus);
     outline-offset: -2px;
   }
 }
@@ -381,7 +415,7 @@ app-export-menu ::ng-deep .menu-button {
   }
 
   &:focus-visible {
-    outline: 2px solid var(--c-primary);
+    outline: 2px solid var(--c-focus);
     outline-offset: -2px;
   }
 

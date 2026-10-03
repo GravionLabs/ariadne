@@ -53,12 +53,24 @@ jobs:
       - run: pnpm --filter @ariadne/cli build
       - run: scripts/compile-generated.sh
 
+  # The extension runs in a real VS Code (downloaded, headless under xvfb).
+  vscode-extension:
+    name: VS Code extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: GravionLabs/ci/node/setup@main
+        with:
+          package-manager: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter ariadne-vscode test:integration:ci
+
   # Every merge to main that passes the checks is a release (GravionLabs/ci docker-package):
   # GitVersion gives the version, the image is published to GHCR with the tags latest, 1, 1.0 and
   # 1.0.0, and a GitHub release v1.0.0 is created with notes from the Conventional Commits.
   release:
     name: Release
-    needs: [ci, format, generated-csharp]
+    needs: [ci, format, generated-csharp, vscode-extension]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: GravionLabs/ci/.github/workflows/docker-package.yml@main
     with:

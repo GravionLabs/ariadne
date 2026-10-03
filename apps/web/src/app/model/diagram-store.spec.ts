@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { DiagramStore } from './diagram-store';
 import { Diagram } from '@ariadne/core';
+import { EditorHost } from '../host/editor-host';
 
 const blank = (): Diagram => ({ direction: 'top-bottom', nodes: [], edges: [] });
 
@@ -435,5 +436,22 @@ describe('DiagramStore', () => {
       expect(store.diagram().events).toBeUndefined();
       expect(store.canUndo()).toBe(false);
     });
+  });
+});
+
+describe('DiagramStore in an embedded editor', () => {
+  it('keeps no undo history: the host undoes on the document', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: EditorHost,
+          useValue: { embedded: true, post: () => {}, listen: () => () => {} },
+        },
+      ],
+    });
+    const store = TestBed.inject(DiagramStore);
+    store.addNode('state');
+    expect(store.nodes().length).toBe(2);
+    expect(store.canUndo()).toBe(false);
   });
 });

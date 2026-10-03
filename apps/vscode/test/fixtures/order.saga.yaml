@@ -1,0 +1,16 @@
+version: 3
+name: Order Saga
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: end-1
+    type: end
+    name: Completed
+edges:
+  - id: edge-1
+    source: start-1
+    target: end-1
+    kind: forward
+    event: OrderCompleted

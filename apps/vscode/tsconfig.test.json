@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "vscode", "mocha"],
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "ignoreDeprecations": "6.0",
+    "outDir": "dist-test",
+    "rootDir": "test",
+    "paths": {}
+  },
+  "include": ["test/**/*.ts"]
+}

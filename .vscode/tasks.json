@@ -42,6 +42,12 @@
       "problemMatcher": []
     },
     {
+      "label": "pnpm: build vscode",
+      "type": "shell",
+      "command": "pnpm --filter ariadne-vscode build",
+      "problemMatcher": []
+    },
+    {
       "label": "pnpm: lint",
       "type": "shell",
       "command": "pnpm lint",

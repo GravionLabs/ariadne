@@ -6,49 +6,56 @@
 
   <span class="topbar-divider" aria-hidden="true"></span>
 
-  <nav class="file-actions" aria-label="File">
-    <button type="button" class="menu-button" (click)="newDiagram()" title="New diagram">
-      <app-icon name="newFile" /><span>New</span>
-    </button>
-    <button type="button" class="menu-button" (click)="open()" title="Open a YAML diagram (Ctrl+O)">
-      <app-icon name="open" /><span>Open…</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button"
-      (click)="importCsharp()"
-      title="Build a diagram from MassTransit saga state machines in C# files"
-    >
-      <app-icon name="code" /><span>Import C#…</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button"
-      (click)="generateCsharp()"
-      title="Generate a MassTransit saga state machine in C# from this diagram"
-    >
-      <app-icon name="code" /><span>Generate C#…</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button"
-      [class.primary]="file.dirty()"
-      (click)="file.save()"
-      title="Save (Ctrl+S)"
-    >
-      <app-icon name="save" /><span>Save</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button"
-      (click)="file.saveAs()"
-      title="Save as (Ctrl+Shift+S)"
-    >
-      <app-icon name="saveAs" /><span>Save as…</span>
-    </button>
-  </nav>
+  @if (!embedded) {
+    <nav class="file-actions" aria-label="File">
+      <button type="button" class="menu-button" (click)="newDiagram()" title="New diagram">
+        <app-icon name="newFile" /><span>New</span>
+      </button>
+      <button
+        type="button"
+        class="menu-button"
+        (click)="open()"
+        title="Open a YAML diagram (Ctrl+O)"
+      >
+        <app-icon name="open" /><span>Open…</span>
+      </button>
+      <button
+        type="button"
+        class="menu-button"
+        (click)="importCsharp()"
+        title="Build a diagram from MassTransit saga state machines in C# files"
+      >
+        <app-icon name="code" /><span>Import C#…</span>
+      </button>
+      <button
+        type="button"
+        class="menu-button"
+        (click)="generateCsharp()"
+        title="Generate a MassTransit saga state machine in C# from this diagram"
+      >
+        <app-icon name="code" /><span>Generate C#…</span>
+      </button>
+      <button
+        type="button"
+        class="menu-button"
+        [class.primary]="file.dirty()"
+        (click)="file.save()"
+        title="Save (Ctrl+S)"
+      >
+        <app-icon name="save" /><span>Save</span>
+      </button>
+      <button
+        type="button"
+        class="menu-button"
+        (click)="file.saveAs()"
+        title="Save as (Ctrl+Shift+S)"
+      >
+        <app-icon name="saveAs" /><span>Save as…</span>
+      </button>
+    </nav>
 
-  <app-export-menu />
+    <app-export-menu />
+  }
 
   <div class="topbar-end">
     @if (file.notice(); as notice) {
@@ -67,26 +74,30 @@
         </button>
       </p>
     }
-    <span class="file-name" [class.dirty]="file.dirty()" [title]="file.name()">
-      <app-icon name="file" />
-      <span class="file-label">{{ file.name() }}</span>
-      @if (file.dirty()) {
-        <span
-          class="dirty-dot"
-          role="img"
-          aria-label="Unsaved changes"
-          title="Unsaved changes"
-        ></span>
-      }
-    </span>
-    <button
-      type="button"
-      class="menu-button theme-toggle"
-      (click)="theme.toggle()"
-      [title]="theme.isDark() ? 'Switch to the light theme' : 'Switch to the dark theme'"
-    >
-      <app-icon name="theme" /><span>{{ theme.isDark() ? 'Light' : 'Dark' }}</span>
-    </button>
+    @if (!embedded) {
+      <span class="file-name" [class.dirty]="file.dirty()" [title]="file.name()">
+        <app-icon name="file" />
+        <span class="file-label">{{ file.name() }}</span>
+        @if (file.dirty()) {
+          <span
+            class="dirty-dot"
+            role="img"
+            aria-label="Unsaved changes"
+            title="Unsaved changes"
+          ></span>
+        }
+      </span>
+    }
+    @if (!embedded) {
+      <button
+        type="button"
+        class="menu-button theme-toggle"
+        (click)="theme.toggle()"
+        [title]="theme.isDark() ? 'Switch to the light theme' : 'Switch to the dark theme'"
+      >
+        <app-icon name="theme" /><span>{{ theme.isDark() ? 'Light' : 'Dark' }}</span>
+      </button>
+    }
     <button
       type="button"
       class="menu-button"
@@ -121,6 +132,18 @@
 </header>
 
 <div #body class="body">
+  @if (sync.invalid(); as problem) {
+    <div class="document-error" role="alert">
+      <h2>This diagram cannot be shown</h2>
+      <p class="problem">{{ problem }}</p>
+      <p>
+        The file is not changed. Fix it in the text editor; the diagram comes back when it is valid.
+      </p>
+      <button type="button" class="menu-button primary" (click)="sync.showAsText()">
+        Open as text
+      </button>
+    </div>
+  }
   <div class="workspace" [attr.data-direction]="store.direction()" [class.walking]="walking()">
     <f-flow
       fDraggable
@@ -310,26 +333,28 @@
       >
         <app-icon name="delete" />
       </button>
-      <button
-        type="button"
-        class="icon-button"
-        [disabled]="!store.canUndo() || walking()"
-        (click)="store.undo()"
-        aria-label="Undo"
-        title="Undo (Ctrl+Z)"
-      >
-        <app-icon name="undo" />
-      </button>
-      <button
-        type="button"
-        class="icon-button"
-        [disabled]="!store.canRedo() || walking()"
-        (click)="store.redo()"
-        aria-label="Redo"
-        title="Redo (Ctrl+Shift+Z)"
-      >
-        <app-icon name="redo" />
-      </button>
+      @if (!embedded) {
+        <button
+          type="button"
+          class="icon-button"
+          [disabled]="!store.canUndo() || walking()"
+          (click)="store.undo()"
+          aria-label="Undo"
+          title="Undo (Ctrl+Z)"
+        >
+          <app-icon name="undo" />
+        </button>
+        <button
+          type="button"
+          class="icon-button"
+          [disabled]="!store.canRedo() || walking()"
+          (click)="store.redo()"
+          aria-label="Redo"
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          <app-icon name="redo" />
+        </button>
+      }
       <div class="divider"></div>
       <div class="segmented" role="radiogroup" aria-label="Layout direction">
         <button

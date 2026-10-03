@@ -124,6 +124,8 @@
   --c-danger: #d14343;
   --c-warning: #b54708;
   --c-on-primary: #ffffff;
+  // The ring around what has the keyboard focus.
+  --c-focus: var(--c-primary);
 
   --radius-md: 8px;
   --radius-xl: 12px;
@@ -147,6 +149,19 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     @include dark-tokens;
+  }
+}
+
+// Hosted in VS Code (EmbeddedSync marks the page): the canvas, text, font and focus ring come from
+// the workbench, so the editor sits in the theme the user picked. The light, dark and
+// high-contrast token sets above still decide the rest (see ADR 0009 and the protocol spec).
+:root[data-host='vscode'] {
+  --c-bg: var(--vscode-editor-background);
+  --c-text: var(--vscode-foreground);
+  --c-focus: var(--vscode-focusBorder);
+
+  body {
+    font-family: var(--vscode-font-family, system-ui, sans-serif);
   }
 }
 

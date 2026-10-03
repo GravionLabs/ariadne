@@ -13,8 +13,11 @@ import {
 export const DEFAULT_HISTORY_LIMIT = 100;
 
 export interface UndoRedoOptions {
-  /** Most undo steps kept; the oldest are dropped first. */
-  limit?: number;
+  /**
+   * Most undo steps kept; the oldest are dropped first. A function is read when the store is
+   * created (in its injection context); 0 turns the history off.
+   */
+  limit?: number | (() => number);
 }
 
 interface History<T> {
@@ -33,7 +36,6 @@ export function withUndoRedo<K extends string, T extends object>(
   key: K,
   options: UndoRedoOptions = {},
 ) {
-  const limit = options.limit ?? DEFAULT_HISTORY_LIMIT;
   type Tracked = { [P in K]: T };
 
   return signalStoreFeature(
@@ -48,6 +50,8 @@ export function withUndoRedo<K extends string, T extends object>(
       };
     }),
     withMethods((store) => {
+      const configured = typeof options.limit === 'function' ? options.limit() : options.limit;
+      const limit = configured ?? DEFAULT_HISTORY_LIMIT;
       const tracked = store as unknown as WritableStateSource<Record<string, T>>;
       const history = store as unknown as WritableStateSource<History<T>>;
       const current = () => getState(tracked)[key];
@@ -58,7 +62,7 @@ export function withUndoRedo<K extends string, T extends object>(
           const before = current();
           patchState(tracked, { [key]: change(before) });
           patchState(history, ({ _past }) => ({
-            _past: [..._past, before].slice(-limit),
+            _past: limit > 0 ? [..._past, before].slice(-limit) : [],
             _future: [],
           }));
         },

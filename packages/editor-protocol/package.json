@@ -1,0 +1,17 @@
+{
+  "name": "@ariadne/editor-protocol",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The messages between the VS Code extension and the Ariadne editor in its webview. No framework, no VS Code API.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-editor-protocol.xml"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.0"
+  }
+}
