@@ -32,48 +32,7 @@
     </button>
   </nav>
 
-  <nav class="file-actions" aria-label="Export">
-    <button
-      type="button"
-      class="menu-button"
-      (click)="exporter.exportSvg()"
-      title="Export the diagram as an SVG image"
-    >
-      <app-icon name="saveAs" /><span>Export SVG</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button"
-      (click)="exporter.exportPng()"
-      title="Export the diagram as a PNG image (2×)"
-    >
-      <app-icon name="saveAs" /><span>Export PNG</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button"
-      (click)="exporter.copyMermaid()"
-      title="Copy the diagram as Mermaid text"
-    >
-      <app-icon name="saveAs" /><span>Copy Mermaid</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button"
-      (click)="exporter.exportMermaid('mmd')"
-      title="Save the diagram as a Mermaid file (.mmd)"
-    >
-      <app-icon name="saveAs" /><span>.mmd</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button"
-      (click)="exporter.exportMermaid('md')"
-      title="Save the diagram as Markdown with a Mermaid block (.md)"
-    >
-      <app-icon name="saveAs" /><span>.md</span>
-    </button>
-  </nav>
+  <app-export-menu />
 
   <div class="topbar-end">
     @if (file.notice(); as notice) {

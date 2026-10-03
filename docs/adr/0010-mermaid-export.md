@@ -28,7 +28,7 @@ GitHub renders it in READMEs and wikis.
   `compensation` class (amber, as in the editor).
 - `"` and `;` in names and labels become `#quot;` and `#59;`.
 
-The top bar copies the text to the clipboard or saves it as `.mmd` or `.md` (a fenced block), through
+The top bar has one **Export** menu (SVG, PNG, Mermaid, Mermaid in Markdown, Copy Mermaid) instead of a button per format. Mermaid is copied to the clipboard or saved as `.mmd` or `.md` (a fenced block), through
 `FileStorage.exportFile()`.
 
 ## Consequences

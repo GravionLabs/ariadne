@@ -21,11 +21,11 @@ import {
   publishedEvents,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
-import { DiagramExport } from '../export/diagram-export';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
 import { AddStepButton } from './add-step-button';
 import { DiagramLayout, SLOT_SIZE, nodeSize } from './diagram-layout';
+import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
 import { SourcePanel } from './source-panel';
@@ -36,7 +36,16 @@ import { TransitionLabel } from './transition-label';
 const FIT_PADDING = { x: 80, y: 80 };
 
 @Component({
-  imports: [AddStepButton, FFlowModule, Icon, Inspector, NodeCard, SourcePanel, TransitionLabel],
+  imports: [
+    AddStepButton,
+    ExportMenu,
+    FFlowModule,
+    Icon,
+    Inspector,
+    NodeCard,
+    SourcePanel,
+    TransitionLabel,
+  ],
   providers: [provideFFlow(withA11y()), DiagramLayout],
   host: {
     '(window:keydown)': 'onKeydown($event)',
@@ -49,7 +58,6 @@ const FIT_PADDING = { x: 80, y: 80 };
 export class Editor {
   protected readonly store = inject(DiagramStore);
   protected readonly file = inject(DiagramDocument);
-  protected readonly exporter = inject(DiagramExport);
   protected readonly layout = inject(DiagramLayout);
   protected readonly theme = inject(Theme);
   protected readonly appendTypes = APPEND_TYPES;
