@@ -47,6 +47,14 @@ export class ExportMenu {
     },
   ];
 
+  protected readonly documentation: readonly ExportEntry[] = [
+    {
+      label: 'Markdown page',
+      hint: 'States, transitions, messages (.docs.md)',
+      run: () => this.exporter.exportMarkdown(),
+    },
+  ];
+
   protected toggle(): void {
     this.isOpen.update((open) => !open);
   }

@@ -4,13 +4,14 @@ import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { FileStorage } from '../storage/file-storage';
 import { PngOptions, svgToPng } from './diagram-png';
+import { diagramToMarkdown } from './diagram-markdown';
 import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
 import { renderDiagramSvg } from './diagram-svg';
 
 /** Name of an export of `diagramName`: `order.saga.yaml` becomes `order.svg`. */
 export function exportFileName(
   diagramName: string,
-  extension: 'svg' | 'png' | 'mmd' | 'md',
+  extension: 'svg' | 'png' | 'mmd' | 'md' | 'docs.md',
 ): string {
   const base = diagramName.replace(/\.(saga\.)?ya?ml$/i, '') || 'diagram';
   return `${base}.${extension}`;
@@ -49,6 +50,15 @@ export class DiagramExport {
     });
   }
 
+  /** Saves a Markdown page documenting the saga, titled with the file name. */
+  exportMarkdown(): Promise<boolean> {
+    return this.run('docs.md', async () => {
+      const title = exportFileName(this.document.name(), 'docs.md').replace(/\.docs\.md$/, '');
+      const markdown = diagramToMarkdown(this.store.diagram(), { title });
+      return new Blob([markdown], { type: 'text/markdown' });
+    });
+  }
+
   async copyMermaid(): Promise<boolean> {
     try {
       const clipboard = this.window?.navigator.clipboard;
@@ -64,7 +74,7 @@ export class DiagramExport {
   }
 
   private async run(
-    extension: 'svg' | 'png' | 'mmd' | 'md',
+    extension: 'svg' | 'png' | 'mmd' | 'md' | 'docs.md',
     render: () => Promise<Blob>,
   ): Promise<boolean> {
     try {

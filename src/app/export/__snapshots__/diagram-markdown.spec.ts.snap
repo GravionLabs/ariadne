@@ -1,0 +1,68 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`diagramToMarkdown > renders the order saga 1`] = `
+"# Order saga
+
+Takes an order to shipping.
+
+## Diagram
+
+\`\`\`mermaid
+stateDiagram-v2
+  direction TB
+  state "Awaiting order" as Awaiting_order
+  state "Reserving stock" as Reserving_stock
+  state "Charging payment" as Charging_payment
+  [*] --> Awaiting_order
+  Awaiting_order --> Reserving_stock : OrderReceived (from Shop API) / Send ReserveStock
+  Reserving_stock --> Charging_payment : StockReserved / Send ChargePayment, Publish PaymentRequested
+  Charging_payment --> Completed : PaymentCharged
+  Charging_payment --> Cancelled : PaymentFailed
+  Charging_payment --> Reserving_stock : compensate: Undo / Send ReserveStock
+  Completed --> [*]
+  Cancelled --> [*]
+  classDef compensation fill:#fef3c7,stroke:#f59e0b,color:#92400e
+  class Reserving_stock compensation
+\`\`\`
+
+## States
+
+| State | Type | Description | Activities | Compensation | Retry | Timeout |
+| --- | --- | --- | --- | --- | --- | --- |
+| Initial | Initial |  |  |  |  |  |
+| Awaiting order | State | Waits for the shop. |  |  |  |  |
+| Reserving stock | State |  | Send ReserveStock | ReleaseStock: Gives the stock back | 3 attempts | 30s |
+| Charging payment | Decision |  | Send ChargePayment<br>Publish PaymentRequested |  |  |  |
+| Completed | Final |  |  |  |  |  |
+| Cancelled | Final |  |  |  |  |  |
+
+## Transitions
+
+| From | Event | Source | To | Kind |
+| --- | --- | --- | --- | --- |
+| Initial |  |  | Awaiting order | Forward |
+| Awaiting order | OrderReceived | Shop API | Reserving stock | Forward |
+| Reserving stock | StockReserved | external | Charging payment | Forward |
+| Charging payment | PaymentCharged | external | Completed | Forward |
+| Charging payment | PaymentFailed | external | Cancelled | Forward |
+| Charging payment | Undo | external | Reserving stock | Compensation |
+
+## Commands
+
+| Command | Sent in |
+| --- | --- |
+| ChargePayment | Charging payment |
+| ReserveStock | Reserving stock |
+
+## Events
+
+| Event | Origin | Published in | Triggers |
+| --- | --- | --- | --- |
+| OrderReceived | External |  | Awaiting order → Reserving stock |
+| PaymentCharged | External |  | Charging payment → Completed |
+| PaymentFailed | External |  | Charging payment → Cancelled |
+| PaymentRequested | Internal | Charging payment |  |
+| StockReserved | External |  | Reserving stock → Charging payment |
+| Undo | External |  | Charging payment → Reserving stock |
+"
+`;
