@@ -167,4 +167,16 @@ describe('diagramToMarkdown', () => {
     expect(md).toContain('| From | Event | Guard | Source | To | Kind |');
     expect(md).toContain('attempts >= 3');
   });
+
+  it('adds an Ignores column only when a state ignores events, and names the any node', () => {
+    expect(diagramToMarkdown(orderSaga)).not.toContain('| Ignores |');
+    const nodes = [
+      ...orderSaga.nodes.map((n) => (n.id === 'state-1' ? { ...n, ignores: ['Ping', 'Pong'] } : n)),
+      { id: 'any-1', type: 'any' as const, name: 'Any state' },
+    ];
+    const md = diagramToMarkdown({ ...orderSaga, nodes });
+    expect(md).toContain('| State | Type | Description | Activities | Ignores |');
+    expect(md).toContain('Ping<br>Pong');
+    expect(md).toMatch(/\| Any state \| Any state \|/);
+  });
 });

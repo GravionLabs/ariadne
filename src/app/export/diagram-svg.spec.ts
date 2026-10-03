@@ -146,4 +146,28 @@ describe('renderDiagramSvg title', () => {
     const { svg } = renderDiagramSvg({ ...orderSaga, edges });
     expect(svg).toContain('PaymentFailed [attempts &gt;= 3]');
   });
+
+  it('draws ignored events struck through and the any node dashed', () => {
+    const nodes = [
+      ...orderSaga.nodes.map((n) => (n.id === 'state-1' ? { ...n, ignores: ['Ping'] } : n)),
+      { id: 'any-1', type: 'any' as const, name: 'Any state' },
+    ];
+    const { svg } = renderDiagramSvg({
+      ...orderSaga,
+      nodes,
+      edges: [
+        ...orderSaga.edges,
+        {
+          id: 'edge-9',
+          source: 'any-1',
+          target: 'end-2',
+          kind: 'forward' as const,
+          event: 'Abort',
+        },
+      ],
+    });
+    expect(svg).toMatch(/text-decoration="line-through"[^>]*>Ping</);
+    expect(svg).toContain('stroke-dasharray="5 4"');
+    expect(svg).toContain('Any state');
+  });
 });

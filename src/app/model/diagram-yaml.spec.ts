@@ -368,3 +368,59 @@ describe('guard', () => {
     ).toThrow(/edges\[0\]\.guard needs an event/);
   });
 });
+
+describe('ignored events and the any node', () => {
+  const withBoth: Diagram = {
+    ...sample,
+    nodes: [
+      ...sample.nodes.map((n) =>
+        n.id === 'state-1' ? { ...n, ignores: ['OrderCancelled', 'Ping'] } : n,
+      ),
+      { id: 'any-1', type: 'any', name: 'Any state' },
+    ],
+    edges: [{ id: 'e1', source: 'any-1', target: 'end-1', kind: 'forward', event: 'Abort' }],
+  };
+
+  it('round-trips, writing ignores after the activities', () => {
+    const text = serializeDiagram(withBoth);
+    expect(text).toMatch(/ {4}ignores:\n {6}- OrderCancelled\n {6}- Ping\n {4}retry: 3 attempts/);
+    expect(parseDiagram(text)).toEqual(withBoth);
+  });
+
+  it('omits an empty ignores list', () => {
+    const parsed = parseDiagram(
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A, ignores: [] }',
+    );
+    expect('ignores' in parsed.nodes[0]).toBe(false);
+  });
+
+  it.each([
+    [
+      '{ id: a, type: end, name: A, ignores: [X] }',
+      /nodes\[0\]\.ignores is only allowed on states/,
+    ],
+    [
+      '{ id: a, type: any, name: A, ignores: [X] }',
+      /nodes\[0\]\.ignores is only allowed on states/,
+    ],
+    [
+      '{ id: a, type: state, name: A, ignores: [""] }',
+      /nodes\[0\]\.ignores\[0\] must be a non-empty string/,
+    ],
+    ['{ id: a, type: state, name: A, ignores: X }', /nodes\[0\]\.ignores must be a list/],
+    [
+      '{ id: a, type: any, name: A, activities: [{ command: X }] }',
+      /activities is only allowed on states, not on the "any" node/,
+    ],
+  ])('rejects %s', (node, message) => {
+    expect(() => parseDiagram(`version: 3\nnodes:\n  - ${node}`)).toThrow(message);
+  });
+
+  it('allows only one any node', () => {
+    expect(() =>
+      parseDiagram(
+        'version: 3\nnodes:\n  - { id: a, type: any, name: A }\n  - { id: b, type: any, name: B }',
+      ),
+    ).toThrow(/only one node of type "any"/);
+  });
+});

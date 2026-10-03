@@ -309,6 +309,48 @@ describe('Editor', () => {
     expect(store.edges()[0].guard).toBeUndefined();
   });
 
+  it('lists ignored events of a state as struck-through chips and edits them in the inspector', async () => {
+    const { el, store, select, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    await select(['state-1']);
+    const ignoreInputs = () => el.querySelectorAll<HTMLInputElement>('app-inspector .ignore input');
+    inspectorButton(el, 'Ignore an event').click();
+    await settle();
+    expect(store.nodes()[1].ignores).toEqual(['SomethingHappened']);
+
+    const field = ignoreInputs()[0];
+    field.value = 'OrderCancelled';
+    field.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[1].ignores).toEqual(['OrderCancelled']);
+    expect(el.querySelector('app-node-card .chip-ignore')?.textContent?.trim()).toBe(
+      'OrderCancelled',
+    );
+
+    // An empty name removes it again.
+    field.value = '';
+    field.dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.nodes()[1].ignores).toBeUndefined();
+    expect(el.querySelector('.chip-ignore')).toBeNull();
+  });
+
+  it('adds the one Any state from the toolbox and opens it', async () => {
+    const { el, store, settle } = await setup();
+    const add = () => el.querySelector<HTMLButtonElement>('[aria-label="Add the Any state"]')!;
+    add().click();
+    await settle();
+    expect(store.nodes().map((n) => n.type)).toEqual(['start', 'any']);
+    expect(el.querySelector('app-inspector')?.getAttribute('aria-label')).toBe(
+      'Any state settings',
+    );
+    expect(el.querySelector('app-node-card[data-type="any"]')).toBeTruthy();
+
+    add().click();
+    await settle();
+    expect(store.nodes()).toHaveLength(2);
+  });
+
   it('marks events nobody in the saga publishes as external, with their source', async () => {
     const { el, store, select, fill, settle } = await setup();
     store.appendNode('start-1', 'state');

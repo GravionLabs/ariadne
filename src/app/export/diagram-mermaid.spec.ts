@@ -179,4 +179,13 @@ describe('diagramToMermaid title', () => {
       'Charging_payment --> Cancelled : PaymentFailed [attempts >= 3]',
     );
   });
+
+  it('notes the events a state ignores', () => {
+    const nodes = orderSaga.nodes.map((n) =>
+      n.name === 'Shipping' ? { ...n, ignores: ['OrderCancelled', 'Ping'] } : n,
+    );
+    expect(diagramToMermaid({ ...orderSaga, nodes })).toContain(
+      'note right of Shipping : Ignores OrderCancelled, Ping',
+    );
+  });
 });

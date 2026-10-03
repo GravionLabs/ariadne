@@ -15,6 +15,11 @@ export const NODE_TYPES: Record<NodeType, NodeTypeInfo> = {
     description: 'Waits for events; each event leads on through a transition.',
   },
   end: { label: 'Final', icon: 'end', description: 'The saga is finished.' },
+  any: {
+    label: 'Any state',
+    icon: 'any',
+    description: 'Transitions that apply in every state.',
+  },
 };
 
 /** How a state that several transitions leave is shown: it decides by the event it receives. */

@@ -30,7 +30,7 @@
   }
 </div>
 
-@if (node().activities?.length || node().compensation) {
+@if (node().activities?.length || node().ignores?.length || node().compensation) {
   <ul class="chips">
     @for (activity of node().activities ?? []; track $index) {
       <li
@@ -42,6 +42,12 @@
         <span
           ><span class="verb">{{ verbs[activity.kind] }}</span> {{ activity.name }}</span
         >
+      </li>
+    }
+    @for (event of node().ignores ?? []; track $index) {
+      <li class="chip chip-ignore" title="Ignored while in this state">
+        <app-icon name="ignore" />
+        <span>{{ event }}</span>
       </li>
     }
     @if (node().compensation; as compensation) {

@@ -164,6 +164,11 @@ export class Editor {
     this.ui.selectNode(this.store.addNode('start'));
   }
 
+  /** The "any" node, whose transitions apply in every state. There is only one. */
+  protected addAny(): void {
+    this.ui.selectNode(this.store.addNode('any'));
+  }
+
   protected setDirection(direction: Direction): void {
     this.store.setDirection(direction);
   }

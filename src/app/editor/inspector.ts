@@ -16,6 +16,7 @@ import {
   NodeColor,
   NodeType,
   hasActivities,
+  hasIgnores,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { namingHint } from '../model/messages';
@@ -63,6 +64,7 @@ export class Inspector {
 
   protected readonly namingHint = namingHint;
   protected readonly hasActivities = hasActivities;
+  protected readonly hasIgnores = hasIgnores;
   protected readonly colors = NODE_COLORS;
 
   protected readonly customColor = computed(() => {
@@ -164,6 +166,48 @@ export class Inspector {
         node,
         (node.activities ?? []).filter((_, i) => i !== index),
       );
+  }
+
+  protected addIgnore(): void {
+    const node = this.node();
+    if (!node) return;
+    this.setIgnores(node, [...(node.ignores ?? []), 'SomethingHappened']);
+    afterNextRender(
+      () => {
+        const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>('.ignore input');
+        const last = inputs[inputs.length - 1];
+        last?.focus();
+        last?.select();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** An empty name removes the ignored event. */
+  protected setIgnore(index: number, event: Event): void {
+    const node = this.node();
+    const name = optional(event);
+    const ignores = node?.ignores ?? [];
+    if (!node || name === ignores[index]) return;
+    this.setIgnores(
+      node,
+      name
+        ? ignores.map((e, i) => (i === index ? name : e))
+        : ignores.filter((_, i) => i !== index),
+    );
+  }
+
+  protected removeIgnore(index: number): void {
+    const node = this.node();
+    if (node)
+      this.setIgnores(
+        node,
+        (node.ignores ?? []).filter((_, i) => i !== index),
+      );
+  }
+
+  private setIgnores(node: DiagramNode, ignores: string[]): void {
+    this.store.updateNode(node.id, { ignores: ignores.length ? ignores : undefined });
   }
 
   private setActivities(node: DiagramNode, activities: Activity[]): void {

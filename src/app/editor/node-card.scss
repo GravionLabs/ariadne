@@ -38,6 +38,9 @@
 :host([data-type='end']) {
   --node-color: var(--c-end);
 }
+:host([data-type='any']) {
+  --node-color: var(--c-any);
+}
 
 // Accent bar along the top edge, in the node's color.
 :host(.f-node)::before {
@@ -84,6 +87,11 @@
   align-items: center;
   padding: 0 14px 0 8px;
   border-radius: 999px;
+}
+
+// The "any" node is not a state the saga is in: a dashed pill.
+:host(.f-node.compact[data-type='any']) {
+  border-style: dashed;
 }
 
 // The final state ends the saga: a double ring, like UML's final state, so it cannot be mistaken
@@ -233,6 +241,15 @@
 
 .chip-compensation {
   --chip-color: var(--c-compensation);
+}
+
+// An ignored event: grey and struck through.
+.chip-ignore {
+  --chip-color: var(--c-text-subtle);
+
+  span {
+    text-decoration: line-through;
+  }
 }
 
 .verb {

@@ -22,7 +22,8 @@ export const DiagramStore = signalStore(
     /** Applies an edit that creates something as one undo step; `null` leaves the store alone. */
     const create = (edit: edits.Created | null): string | null => {
       if (!edit) return null;
-      store._commit(() => edit.diagram);
+      // An edit that changed nothing (the one "any" node already exists) is not an undo step.
+      if (edit.diagram !== store.diagram()) store._commit(() => edit.diagram);
       return edit.id;
     };
 

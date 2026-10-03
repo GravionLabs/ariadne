@@ -100,6 +100,13 @@ export function diagramToMermaid(diagram: Diagram): string {
   for (const node of diagram.nodes) {
     if (node.type === 'end') lines.push(`  ${ids.get(node.id)} --> [*]`);
   }
+  for (const node of diagram.nodes) {
+    if (node.ignores?.length) {
+      lines.push(
+        `  note right of ${ids.get(node.id)} : ${text(`Ignores ${node.ignores.join(', ')}`)}`,
+      );
+    }
+  }
   const compensated = diagram.nodes.filter((n) => n.compensation).map((n) => ids.get(n.id)!);
   if (compensated.length) {
     lines.push('  classDef compensation fill:#fef3c7,stroke:#f59e0b,color:#92400e');

@@ -5,9 +5,10 @@ export interface Point {
 
 /**
  * Nodes are the states of a saga state machine: the initial state (`start`), the final state
- * (`end`) and the states in between. A state that several transitions leave is a decision.
+ * (`end`) and the states in between. A state that several transitions leave is a decision. The
+ * `any` node is not a state the saga is in: its transitions apply in every state (`DuringAny`).
  */
-export type NodeType = 'start' | 'end' | 'state';
+export type NodeType = 'start' | 'end' | 'state' | 'any';
 export type EdgeKind = 'forward' | 'compensation';
 export type Direction = 'top-bottom' | 'left-right';
 
@@ -64,6 +65,8 @@ export interface DiagramNode {
    */
   activities?: Activity[];
   compensation?: Compensation;
+  /** Events the state ignores instead of failing on them (`Ignore(E)`). Only on states. */
+  ignores?: string[];
   /** Free-text notes, e.g. "3 attempts, exponential backoff" / "30s". Documentation only. */
   retry?: string;
   timeout?: string;
@@ -107,6 +110,9 @@ export interface Diagram {
 /** Only plain states can have {@link Activity activities}; the initial and final states cannot. */
 export const hasActivities = (type: NodeType): boolean => type === 'state';
 
+/** Only plain states can list {@link DiagramNode.ignores ignored events}. */
+export const hasIgnores = (type: NodeType): boolean => type === 'state';
+
 /**
  * Names of the events the saga publishes itself (an activity of some state). Every other event a
  * transition reacts to comes from outside.
@@ -120,13 +126,14 @@ export function publishedEvents(diagram: Diagram): Set<string> {
 }
 
 /** The initial state has no incoming transitions, the final state no outgoing ones. */
-export const hasInput = (type: NodeType): boolean => type !== 'start';
+export const hasInput = (type: NodeType): boolean => type !== 'start' && type !== 'any';
 export const hasOutput = (type: NodeType): boolean => type !== 'end';
 
 export const DEFAULT_NAMES: Record<NodeType, string> = {
   start: 'Initial',
   end: 'Final',
   state: 'State',
+  any: 'Any state',
 };
 
 /** A new diagram: the initial state to build from. */

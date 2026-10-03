@@ -1,5 +1,12 @@
 import { Diagram } from '../model/diagram';
-import { isCompact, labelSize, layoutDiagram, nodeSize, slotSources } from './diagram-layout';
+import {
+  decisionIds,
+  isCompact,
+  labelSize,
+  layoutDiagram,
+  nodeSize,
+  slotSources,
+} from './diagram-layout';
 
 const saga: Diagram = {
   direction: 'top-bottom',
@@ -139,5 +146,26 @@ describe('diagram layout', () => {
       'top-bottom',
     );
     expect(guarded.width).toBeGreaterThan(plain.width);
+  });
+
+  it('gives each ignored event a chip row on the card', () => {
+    const plain = { id: 'a', type: 'state', name: 'a' } as const;
+    const ignoring = { ...plain, ignores: ['X', 'Y'] };
+    expect(nodeSize(ignoring).height).toBe(nodeSize(plain).height + 2 * 24 + 6);
+  });
+
+  it('draws the any node as a pill, and never as a decision', () => {
+    const any = { id: 'any-1', type: 'any', name: 'Any state' } as const;
+    expect(isCompact(any)).toBe(true);
+    const diagram: Diagram = {
+      direction: 'top-bottom',
+      nodes: [any, ...saga.nodes],
+      edges: [
+        { id: 'a1', source: 'any-1', target: 'state-1', kind: 'forward', event: 'X' },
+        { id: 'a2', source: 'any-1', target: 'state-2', kind: 'forward', event: 'Y' },
+      ],
+    };
+    expect(decisionIds(diagram).has('any-1')).toBe(false);
+    expect(layoutDiagram(diagram).positions.has('any-1')).toBe(true);
   });
 });

@@ -68,12 +68,13 @@ const LABEL_MAX_WIDTH = 240;
  */
 export function nodeSize(node: DiagramNode, expanded = false): Size {
   if (isCompact(node)) return { width: 180, height: 48 };
-  const rows = (node.activities?.length ?? 0) + (node.compensation ? 1 : 0);
+  const rows =
+    (node.activities?.length ?? 0) + (node.ignores?.length ?? 0) + (node.compensation ? 1 : 0);
   const base = CARD_HEADER + (rows ? rows * CHIP_ROW + 6 : 0);
   return { width: CARD_WIDTH, height: base + (expanded ? descriptionHeight(node) : 0) };
 }
 
-/** The initial and the final state are small pills; only states are full cards. */
+/** The initial, the final and the "any" node are small pills; only states are full cards. */
 export const isCompact = (node: DiagramNode): boolean => node.type !== 'state';
 
 /** Whether a node's card can unfold its description. */
@@ -123,6 +124,14 @@ export function outgoingCounts(diagram: Diagram): Map<string, number> {
     if (e.kind === 'forward') counts.set(e.source, (counts.get(e.source) ?? 0) + 1);
   }
   return counts;
+}
+
+/** States several transitions leave. The "any" node is not one: it fans out by design. */
+export function decisionIds(diagram: Diagram): Set<string> {
+  const anyIds = new Set(diagram.nodes.filter((n) => n.type === 'any').map((n) => n.id));
+  return new Set(
+    [...outgoingCounts(diagram)].filter(([id, n]) => n > 1 && !anyIds.has(id)).map(([id]) => id),
+  );
 }
 
 /**
@@ -217,7 +226,6 @@ export class DiagramLayout {
   readonly labels = computed(() => this.result().labels);
   /** Ids of states that several transitions leave: shown as decisions. */
   readonly decisions = computed(() => {
-    const counts = outgoingCounts(this.store.diagram());
-    return new Set([...counts].filter(([, n]) => n > 1).map(([id]) => id));
+    return decisionIds(this.store.diagram());
   });
 }

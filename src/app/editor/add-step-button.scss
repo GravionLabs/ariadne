@@ -90,6 +90,10 @@
   &[data-type='end'] {
     --node-color: var(--c-end);
   }
+
+  &[data-type='any'] {
+    --node-color: var(--c-any);
+  }
 }
 
 .option-icon {

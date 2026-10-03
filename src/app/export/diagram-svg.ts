@@ -8,7 +8,7 @@ import {
   labelRows,
   layoutDiagram,
   nodeSize,
-  outgoingCounts,
+  decisionIds,
 } from '../editor/diagram-layout';
 import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from '../editor/node-types';
 
@@ -25,6 +25,7 @@ const COLORS = {
   start: '#22c55e',
   step: '#3b82f6',
   decision: '#8b5cf6',
+  any: '#64748b',
   end: '#f43f5e',
   compensation: '#f59e0b',
   command: '#2563eb',
@@ -66,7 +67,7 @@ export interface SvgExport {
 export function renderDiagramSvg(diagram: Diagram): SvgExport {
   const { positions, labels } = layoutDiagram(diagram);
   const lr = diagram.direction === 'left-right';
-  const counts = outgoingCounts(diagram);
+  const decisions = decisionIds(diagram);
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const rect = (id: string) => ({ ...positions.get(id)!, ...nodeSize(nodes.get(id)!) });
   /** A point from its position along the flow (`main`) and across it (`cross`). */
@@ -147,7 +148,7 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
 
   const nodeSvg = diagram.nodes.map((n) => {
     const { x, y, width: w, height: h } = rect(n.id);
-    return stateSvg(n, x, y, { width: w, height: h }, (counts.get(n.id) ?? 0) > 1);
+    return stateSvg(n, x, y, { width: w, height: h }, decisions.has(n.id));
   });
 
   const svg = [
@@ -253,8 +254,10 @@ function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision:
   const r = compact ? size.height / 2 : 8;
   if (compact) {
     const end = node.type === 'end';
+    // The "any" node is drawn dashed: it is not a state the saga is in.
+    const dash = node.type === 'any' ? ' stroke-dasharray="5 4"' : '';
     parts.push(
-      `<rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="${size.height}" rx="${r}" fill="${COLORS.surface}" stroke="${end ? color : COLORS.border}" stroke-width="${end ? 2 : 1}"/>`,
+      `<rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="${size.height}" rx="${r}" fill="${COLORS.surface}" stroke="${end ? color : node.type === 'any' ? COLORS.any : COLORS.border}" stroke-width="${end ? 2 : 1}"${dash}/>`,
     );
     if (end) {
       parts.push(
@@ -318,6 +321,13 @@ function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision:
         `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(color, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">${verb}</tspan> ${esc(name)}</text>`,
     );
   }
+  for (const event of node.ignores ?? []) {
+    chip(
+      COLORS.textSubtle,
+      text('⊘', x + 20, chipY + 10, { size: 11, fill: COLORS.textSubtle }) +
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" text-decoration="line-through" fill="${COLORS.textSubtle}">${esc(fit(event, chipWidth, 11))}</text>`,
+    );
+  }
   if (node.compensation) {
     chip(
       COLORS.compensation,
@@ -343,6 +353,8 @@ function badgeGlyph(
   if (decision)
     return `<path d="M${n(cx)} ${n(cy - 8)}L${n(cx + 8)} ${n(cy)}L${n(cx)} ${n(cy + 8)}L${n(cx - 8)} ${n(cy)}z" fill="${color}"/>`;
   if (node.type === 'start') return `<circle cx="${n(cx)}" cy="${n(cy)}" r="7" fill="${color}"/>`;
+  if (node.type === 'any')
+    return `<circle cx="${n(cx)}" cy="${n(cy)}" r="7" fill="none" stroke="${color}" stroke-width="2" stroke-dasharray="3 2"/>`;
   if (node.type === 'end') {
     return `<circle cx="${n(cx)}" cy="${n(cy)}" r="7" fill="none" stroke="${color}" stroke-width="2"/><circle cx="${n(cx)}" cy="${n(cy)}" r="3.5" fill="${color}"/>`;
   }
@@ -354,7 +366,7 @@ function accent(node: DiagramNode, decision: boolean): string {
   if (custom)
     return custom.startsWith('#') ? custom : COLORS.palette[custom as keyof typeof COLORS.palette];
   if (decision) return COLORS.decision;
-  return { start: COLORS.start, end: COLORS.end, state: COLORS.step }[node.type];
+  return { start: COLORS.start, end: COLORS.end, state: COLORS.step, any: COLORS.any }[node.type];
 }
 
 interface TextStyle {

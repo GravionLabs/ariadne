@@ -26,6 +26,9 @@ function newNode(d: Diagram, type: NodeType): DiagramNode {
 
 /** Adds an unconnected node, e.g. the start of an empty diagram. */
 export function addNode(d: Diagram, type: NodeType): Created {
+  // There is only one "any" node: asking for another gives the existing one, unchanged.
+  const existing = type === 'any' ? d.nodes.find((n) => n.type === 'any') : undefined;
+  if (existing) return { diagram: d, id: existing.id };
   const node = newNode(d, type);
   return { diagram: { ...d, nodes: [...d.nodes, node] }, id: node.id };
 }

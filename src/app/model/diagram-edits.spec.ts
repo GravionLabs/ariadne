@@ -116,4 +116,25 @@ describe('diagram edits', () => {
     expect('name' in cleared).toBe(false);
     expect('description' in cleared).toBe(false);
   });
+
+  it('adds the any node once; asking again gives the same diagram', () => {
+    const first = addNode(path(), 'any');
+    expect(first.diagram.nodes.at(-1)).toMatchObject({
+      id: 'any-1',
+      type: 'any',
+      name: 'Any state',
+    });
+    const again = addNode(first.diagram, 'any');
+    expect(again.diagram).toBe(first.diagram);
+    expect(again.id).toBe('any-1');
+  });
+
+  it('lets transitions leave the any node but never enter it', () => {
+    const { diagram } = addNode(path(), 'any');
+    expect(connect(diagram, 'any-1', 'state-1')).not.toBeNull();
+    expect(appendNode(diagram, 'any-1', 'state')).not.toBeNull();
+    expect(connect(diagram, 'state-1', 'any-1')).toBeNull();
+    expect(insertOnEdge(diagram, 'edge-1', 'any')).toBeNull();
+    expect(appendNode(diagram, 'state-1', 'any')).toBeNull();
+  });
 });

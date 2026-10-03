@@ -1,4 +1,4 @@
-import { outgoingCounts } from '../editor/diagram-layout';
+import { decisionIds } from '../editor/diagram-layout';
 import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from '../editor/node-types';
 import { Diagram, DiagramNode, publishedEvents } from '../model/diagram';
 import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
@@ -19,9 +19,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const published = publishedEvents(diagram);
   const name = (id: string) => nodes.get(id)?.name ?? id;
-  const decisions = new Set(
-    [...outgoingCounts(diagram)].filter(([, n]) => n > 1).map(([id]) => id),
-  );
+  const decisions = decisionIds(diagram);
   const typeLabel = (n: DiagramNode) => (decisions.has(n.id) ? DECISION : NODE_TYPES[n.type]).label;
   const edges = diagram.edges.filter((e) => nodes.has(e.source) && nodes.has(e.target));
 
@@ -31,16 +29,28 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
   if (description) out.push(description);
   out.push('## Diagram', mermaidMarkdown(diagramToMermaid(diagram)).trimEnd());
 
+  // The Ignores column only appears when some state ignores an event.
+  const ignoring = diagram.nodes.some((n) => n.ignores?.length);
   out.push(
     '## States',
     diagram.nodes.length
       ? table(
-          ['State', 'Type', 'Description', 'Activities', 'Compensation', 'Retry', 'Timeout'],
+          [
+            'State',
+            'Type',
+            'Description',
+            'Activities',
+            ...(ignoring ? ['Ignores'] : []),
+            'Compensation',
+            'Retry',
+            'Timeout',
+          ],
           diagram.nodes.map((n) => [
             n.name,
             typeLabel(n),
             n.description ?? '',
             (n.activities ?? []).map((a) => `${ACTIVITY_VERBS[a.kind]} ${a.name}`).join('\n'),
+            ...(ignoring ? [(n.ignores ?? []).join('\n')] : []),
             n.compensation
               ? [n.compensation.name, n.compensation.description].filter(Boolean).join(': ')
               : '',

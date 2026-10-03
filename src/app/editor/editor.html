@@ -236,6 +236,16 @@
       <button
         type="button"
         class="icon-button"
+        (click)="addAny()"
+        aria-label="Add the Any state"
+        title="Add the Any state: transitions that apply in every state"
+      >
+        <app-icon name="any" />
+      </button>
+      <div class="divider"></div>
+      <button
+        type="button"
+        class="icon-button"
         [disabled]="!ui.hasSelection()"
         (click)="deleteSelection()"
         aria-label="Delete selection"
