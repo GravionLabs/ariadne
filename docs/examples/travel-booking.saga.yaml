@@ -1,0 +1,232 @@
+version: 3
+name: Travel booking
+description: Books a flight and a hotel, authorizes the payment and confirms the trip. Uses every construct the editor supports.
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: any-1
+    type: any
+    name: Any state
+  - id: state-1
+    type: state
+    name: Validating traveller
+    description: Asks the identity service whether the traveller may book.
+    color: purple
+    requests:
+      - request: ValidateTraveller
+        timeout: 10s
+  - id: state-2
+    type: state
+    name: Reserving flight
+    description: Holds a seat for 15 minutes while the rest of the trip is booked.
+    color: blue
+    activities:
+      - command: ReserveFlight
+    ignores:
+      - TravellerUpdated
+    timers:
+      - schedule: FlightHoldExpired
+        delay: 15m
+    retry: 3 attempts, exponential backoff
+    timeout: 30s
+    compensation:
+      name: CancelFlight
+      description: Releases the held seat.
+  - id: state-3
+    type: state
+    name: Reserving hotel
+    description: Checks availability first, then books the room.
+    activities:
+      - command: ReserveHotel
+      - event: HotelRequested
+    requests:
+      - request: CheckAvailability
+        timeout: 5s
+    compensation:
+      name: CancelHotel
+  - id: state-4
+    type: state
+    name: Authorizing payment
+    color: green
+    activities:
+      - command: AuthorizePayment
+    timers:
+      - unschedule: FlightHoldExpired
+    retry: 2 attempts
+    compensation:
+      name: VoidAuthorization
+  - id: join-1
+    type: join
+    name: BookingReady
+  - id: state-5
+    type: state
+    name: Confirming booking
+    color: teal
+    activities:
+      - command: ConfirmBooking
+      - event: BookingConfirmed
+    ignores:
+      - TravellerUpdated
+      - HotelRequested
+  - id: state-6
+    type: state
+    name: Cancelling
+    description: Undoes what was booked so far.
+    color: orange
+    activities:
+      - command: RefundPayment
+      - command: CancelReservations
+  - id: end-1
+    type: end
+    name: Completed
+  - id: end-2
+    type: end
+    name: Rejected
+  - id: end-3
+    type: end
+    name: Cancelled
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-1
+    kind: forward
+    event: TravellerSubmitted
+    eventSource: Booking API
+  - id: edge-2
+    source: state-1
+    target: state-2
+    kind: forward
+    event: ValidateTraveller.Completed
+  - id: edge-3
+    source: state-1
+    target: end-2
+    kind: forward
+    event: ValidateTraveller.Faulted
+  - id: edge-4
+    source: state-1
+    target: state-1
+    kind: forward
+    event: ValidateTraveller.TimeoutExpired
+    guard: attempts < 3
+  - id: edge-5
+    source: state-1
+    target: end-2
+    kind: forward
+    event: ValidateTraveller.TimeoutExpired
+    guard: attempts >= 3
+  - id: edge-6
+    source: state-2
+    target: state-3
+    kind: forward
+    event: FlightReserved
+    eventSource: Airline gateway
+    guard: cabin = business
+  - id: edge-7
+    source: state-2
+    target: state-3
+    kind: forward
+    event: FlightReserved
+    eventSource: Airline gateway
+    guard: cabin = economy
+  - id: edge-8
+    source: state-2
+    target: state-4
+    kind: forward
+    event: PaymentMethodConfirmed
+    eventSource: Booking API
+  - id: edge-9
+    source: state-2
+    target: state-2
+    kind: forward
+    event: FlightRejected
+    eventSource: Airline gateway
+    guard: attempts < 3
+  - id: edge-10
+    source: state-2
+    target: end-2
+    kind: forward
+    event: FlightRejected
+    eventSource: Airline gateway
+    guard: attempts >= 3
+  - id: edge-11
+    source: state-2
+    target: end-3
+    kind: forward
+    event: FlightHoldExpired
+  - id: edge-12
+    source: state-3
+    target: join-1
+    kind: forward
+    event: CheckAvailability.Completed
+  - id: edge-13
+    source: state-3
+    target: end-2
+    kind: forward
+    event: CheckAvailability.Faulted
+  - id: edge-14
+    source: state-3
+    target: end-3
+    kind: forward
+    event: CheckAvailability.TimeoutExpired
+  - id: edge-15
+    source: state-4
+    target: join-1
+    kind: forward
+    event: PaymentAuthorized
+    eventSource: Payment gateway
+  - id: edge-16
+    source: state-4
+    target: end-2
+    kind: forward
+    event: PaymentDeclined
+    eventSource: Payment gateway
+  - id: edge-17
+    source: join-1
+    target: state-5
+    kind: forward
+    event: BookingReady
+  - id: edge-18
+    source: state-5
+    target: end-1
+    kind: forward
+    event: ConfirmationSent
+    eventSource: Notification service
+  - id: edge-19
+    source: state-5
+    target: state-4
+    kind: forward
+    event: ConfirmationRejected
+    eventSource: Airline gateway
+    guard: attempts < 3
+  - id: edge-20
+    source: state-5
+    target: end-2
+    kind: forward
+    event: ConfirmationRejected
+    eventSource: Airline gateway
+    guard: attempts >= 3
+  - id: edge-21
+    source: any-1
+    target: state-6
+    kind: forward
+    event: CancelRequested
+    eventSource: Customer portal
+  - id: edge-22
+    source: state-6
+    target: end-3
+    kind: forward
+    event: RefundIssued
+    eventSource: Payment gateway
+  - id: edge-23
+    source: state-4
+    target: state-3
+    kind: compensation
+    event: PaymentDeclined
+    eventSource: Payment gateway
+  - id: edge-25
+    source: state-5
+    target: end-1
+    kind: forward
+    event: BookingConfirmed
