@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
 import { emptyDiagram, serializeDiagram } from '@ariadne/core';
+import { SagaCodeLensProvider } from './code-lens';
+import { ImportReport, importFromCsharpCommand } from './import-command';
+import { VIRTUAL_SCHEME, VirtualDocuments } from './virtual-documents';
 import { OpenEditor, SAGA_EDITOR_VIEW_TYPE, SagaEditorProvider } from './saga-editor-provider';
 
 /** What the extension exports; the integration tests drive the editors through it. */
@@ -9,7 +12,22 @@ export interface AriadneApi {
 
 export function activate(context: vscode.ExtensionContext): AriadneApi {
   const provider = new SagaEditorProvider(context.extensionUri);
+  const virtual = new VirtualDocuments();
+  const report = new ImportReport();
   context.subscriptions.push(
+    report,
+    vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, virtual),
+    vscode.languages.registerCodeLensProvider({ pattern: '**/*.cs' }, new SagaCodeLensProvider()),
+    vscode.commands.registerCommand(
+      'ariadne.importFromCsharp',
+      (uri?: vscode.Uri, className?: string) =>
+        importFromCsharpCommand(
+          report,
+          virtual,
+          uri instanceof vscode.Uri ? uri : undefined,
+          className,
+        ),
+    ),
     vscode.window.registerCustomEditorProvider(SAGA_EDITOR_VIEW_TYPE, provider, {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: true,

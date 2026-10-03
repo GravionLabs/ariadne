@@ -65,7 +65,7 @@ export function serializeDiagram(diagram: Diagram): string {
   return stringify(withoutUndefined(file), { lineWidth: 0 });
 }
 
-/** The saga block in the file: `class` for `className`, `instance` for `instanceType`. */
+/** The saga block in the file: `class` for `className`, `instance` for `instanceType`; `source` is last. */
 function serializeSaga(saga: SagaInfo | undefined): Record<string, unknown> | undefined {
   if (!saga) return undefined;
   const block = withoutUndefined({
@@ -74,6 +74,7 @@ function serializeSaga(saga: SagaInfo | undefined): Record<string, unknown> | un
     instance: saga.instanceType,
     stateProperty: saga.stateProperty,
     contractsNamespace: saga.contractsNamespace,
+    source: saga.source,
   });
   return Object.keys(block).length ? block : undefined;
 }
@@ -217,6 +218,7 @@ function parseSaga(value: unknown): SagaInfo | undefined {
     instanceType: text('instance'),
     stateProperty: text('stateProperty'),
     contractsNamespace: text('contractsNamespace'),
+    source: text('source'),
   });
   return Object.keys(saga).length ? saga : undefined;
 }

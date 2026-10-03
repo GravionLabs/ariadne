@@ -1,6 +1,7 @@
 // Bundles the extension host into `dist/extension.js` (CommonJS, as VS Code loads it) and copies
 // the web app's embedded build next to it as `dist/webview`, where the webview reads it.
-import { cp, mkdir, rm } from 'node:fs/promises';
+import { copyFile, cp, mkdir, rm } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { build } from 'esbuild';
 
@@ -14,6 +15,9 @@ await build({
   external: ['vscode'],
   legalComments: 'none',
   sourcemap: true,
+  // web-tree-sitter reads `import.meta.url`, which a CommonJS bundle does not have.
+  define: { 'import.meta.url': '__importMetaUrl' },
+  banner: { js: "const __importMetaUrl = require('node:url').pathToFileURL(__filename).href;" },
 });
 
 const embedded = '../web/dist/embedded';
@@ -24,3 +28,14 @@ if (existsSync(embedded)) {
 } else {
   console.warn(`No embedded editor at ${embedded}; the webview shows a placeholder.`);
 }
+
+// The C# parser is WebAssembly (tree-sitter), read next to the bundle when a class is imported.
+const require = createRequire(import.meta.url);
+await copyFile(
+  require.resolve('tree-sitter-c-sharp/tree-sitter-c_sharp.wasm'),
+  'dist/tree-sitter-c_sharp.wasm',
+);
+await copyFile(
+  require.resolve('web-tree-sitter/web-tree-sitter.wasm'),
+  'dist/web-tree-sitter.wasm',
+);

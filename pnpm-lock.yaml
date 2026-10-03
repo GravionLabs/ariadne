@@ -88,6 +88,18 @@ importers:
       '@ariadne/editor-protocol':
         specifier: workspace:*
         version: link:../../packages/editor-protocol
+      '@ariadne/masstransit':
+        specifier: workspace:*
+        version: link:../../packages/masstransit
+      tree-sitter-c-sharp:
+        specifier: ^0.23.5
+        version: 0.23.5
+      web-tree-sitter:
+        specifier: ^0.27.0
+        version: 0.27.0
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
     devDependencies:
       '@types/mocha':
         specifier: ^10.0.10

@@ -608,6 +608,23 @@ describe('saga and event metadata', () => {
     ]);
   });
 
+  it('writes the C# source file last in the saga block, and reads it back', () => {
+    const withSource: Diagram = {
+      ...coded,
+      saga: { ...coded.saga, source: '../Sagas/OrderStateMachine.cs' },
+    };
+    const text = serializeDiagram(withSource);
+    expect(text).toContain(
+      '  contractsNamespace: Shop.Orders.Contracts\n  source: ../Sagas/OrderStateMachine.cs\nevents:',
+    );
+    expect(parseDiagram(text).saga?.source).toBe('../Sagas/OrderStateMachine.cs');
+    expect(serializeDiagram(parseDiagram(text))).toBe(text);
+  });
+
+  it('drops an empty source', () => {
+    expect(parseDiagram('version: 3\nsaga:\n  source: "  "\nnodes: []').saga).toBeUndefined();
+  });
+
   it('round-trips, byte for byte', () => {
     const text = serializeDiagram(coded);
     expect(parseDiagram(text)).toEqual(coded);

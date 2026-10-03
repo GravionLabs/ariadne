@@ -37,6 +37,7 @@ export class DiagramDetails {
       label: 'Contracts namespace',
       placeholder: 'Shop.Orders.Contracts',
     },
+    { key: 'source', label: 'C# file', placeholder: '../Sagas/OrderStateMachine.cs' },
   ];
   protected readonly saga = computed(() => this.store.diagram().saga ?? {});
   protected readonly codeCount = computed(() => Object.keys(this.saga()).length);
