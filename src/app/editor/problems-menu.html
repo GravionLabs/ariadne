@@ -1,0 +1,62 @@
+<button
+  #origin="cdkOverlayOrigin"
+  type="button"
+  class="icon-button problems"
+  cdkOverlayOrigin
+  aria-haspopup="dialog"
+  [attr.aria-expanded]="isOpen()"
+  [attr.aria-label]="'Problems: ' + summary()"
+  [attr.data-severity]="worstSeverity() ?? 'none'"
+  [title]="'Problems: ' + summary()"
+  [class.active]="isOpen()"
+  (click)="toggle()"
+>
+  <app-icon [name]="total() ? 'problems' : 'ok'" />
+  @for (severity of severities; track severity) {
+    @if (counts()[severity]; as n) {
+      <span class="count" [attr.data-severity]="severity">{{ n }}</span>
+    }
+  }
+</button>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="origin"
+  [cdkConnectedOverlayOpen]="isOpen()"
+  [cdkConnectedOverlayPositions]="positions"
+  [cdkConnectedOverlayHasBackdrop]="true"
+  [cdkConnectedOverlayPush]="true"
+  [cdkConnectedOverlayViewportMargin]="12"
+  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+  (backdropClick)="close()"
+  (detach)="close()"
+  (overlayKeydown)="onOverlayKeydown($event)"
+>
+  <section class="panel" role="dialog" aria-label="Problems">
+    <header>{{ summary() }}</header>
+    @if (total() === 0) {
+      <p class="empty">Nothing to point out.</p>
+    } @else {
+      <ul>
+        @for (finding of findings(); track $index) {
+          <li>
+            <button
+              type="button"
+              class="finding"
+              [attr.data-severity]="finding.severity"
+              [disabled]="!finding.elementId"
+              [title]="finding.elementId ? 'Show it in the diagram' : ''"
+              (click)="pick(finding)"
+            >
+              <span class="dot" aria-hidden="true"></span>
+              <span class="text">
+                <span class="severity">{{ finding.severity }}</span>
+                {{ finding.message }}
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</ng-template>

@@ -1,5 +1,6 @@
 import { Component, computed, input, output } from '@angular/core';
 import { DiagramEdge, Direction, EventKind, NodeType, eventLabel } from '../model/diagram';
+import { Severity } from '../model/validation';
 import { AddStepButton } from './add-step-button';
 import { LABEL_PADDING, LABEL_ROW, labelRows } from './diagram-layout';
 import { Icon, IconName } from './icon';
@@ -17,6 +18,7 @@ import { INSERT_TYPES } from './node-types';
     '[attr.data-direction]': 'direction()',
     '[class.empty]': 'rows() === 0',
     '[class.inline]': '!insertable()',
+    '[attr.data-highlight]': 'highlight() ?? null',
   },
   templateUrl: './transition-label.html',
   styleUrl: './transition-label.scss',
@@ -25,6 +27,10 @@ export class TransitionLabel {
   readonly edge = input.required<DiagramEdge>();
   readonly direction = input.required<Direction>();
   readonly selected = input(false);
+  /** Emphasised (`on`) or faded (`off`), like the states. */
+  readonly highlight = input<'on' | 'off'>();
+  /** The worst problem found with this transition: its card gets a coloured edge. */
+  readonly finding = input<Severity>();
   /** Where the event comes from: the saga itself, outside it, or a timeout firing. */
   readonly kind = input<EventKind>();
   /** Compensation transitions are not laid out and get no "+". */

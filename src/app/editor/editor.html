@@ -73,6 +73,26 @@
     </button>
     <button
       type="button"
+      class="menu-button"
+      [class.active]="leftPanel() === 'walkthrough'"
+      [attr.aria-pressed]="leftPanel() === 'walkthrough'"
+      (click)="toggleWalkthrough()"
+      title="Step through the saga event by event"
+    >
+      <app-icon name="trigger" /><span>Walkthrough</span>
+    </button>
+    <button
+      type="button"
+      class="menu-button"
+      [class.active]="leftPanel() === 'messages'"
+      [attr.aria-pressed]="leftPanel() === 'messages'"
+      (click)="toggleMessages()"
+      title="List the commands and events of the saga and where they are used"
+    >
+      <app-icon name="event" /><span>Messages</span>
+    </button>
+    <button
+      type="button"
       class="menu-button source-toggle"
       [class.active]="sourceOpen()"
       [attr.aria-pressed]="sourceOpen()"
@@ -85,7 +105,7 @@
 </header>
 
 <div #body class="body">
-  <div class="workspace" [attr.data-direction]="store.direction()">
+  <div class="workspace" [attr.data-direction]="store.direction()" [class.walking]="walking()">
     <f-flow
       fDraggable
       class="editor-flow"
@@ -112,6 +132,8 @@
             [fReassignDisabled]="true"
             [class.compensation]="edge.kind === 'compensation'"
             [class.timeout]="kindOf()(edge) === 'timeout' && edge.kind !== 'compensation'"
+            [attr.data-finding]="ui.severityOf(edge.id)"
+            [attr.data-highlight]="ui.highlightOf(edge.id)"
           >
             <f-connection-marker-arrow />
             @if (layout.routes().get(edge.id); as route) {
@@ -127,12 +149,14 @@
                 [direction]="store.direction()"
                 [selected]="ui.selectedEdge()?.id === edge.id"
                 [kind]="kindOf()(edge)"
+                [finding]="ui.severityOf(edge.id)"
+                [highlight]="ui.highlightOf(edge.id)"
                 (selectRequested)="selectEdge(edge.id)"
               />
             }
           </f-connection>
         }
-        @for (slot of layout.slots(); track slot.id) {
+        @for (slot of slots(); track slot.id) {
           <f-connection
             class="slot-connection"
             [fConnectionId]="'link:' + slot.id"
@@ -157,6 +181,8 @@
             [fConnectOnNode]="false"
             [node]="node"
             [events]="joins().get(node.id) ?? []"
+            [finding]="ui.severityOf(node.id)"
+            [highlight]="ui.highlightOf(node.id)"
             [expanded]="layout.expanded().has(node.id)"
             (expandToggled)="layout.toggleExpanded(node.id)"
             [decision]="layout.decisions().has(node.id)"
@@ -181,13 +207,16 @@
                 [direction]="store.direction()"
                 [selected]="ui.selectedEdge()?.id === edge.id"
                 [kind]="kindOf()(edge)"
+                [finding]="ui.severityOf(edge.id)"
+                [highlight]="ui.highlightOf(edge.id)"
+                [insertable]="!walking()"
                 (selectRequested)="selectEdge(edge.id)"
                 (inserted)="insert(edge.id, $event)"
               />
             }
           </div>
         }
-        @for (slot of layout.slots(); track slot.id) {
+        @for (slot of slots(); track slot.id) {
           <div
             fNode
             class="slot"
@@ -226,9 +255,15 @@
       </div>
     }
 
-    <app-diagram-details />
+    <app-diagram-details [locked]="walking()" />
 
-    @if (ui.inspectorOpen()) {
+    @if (leftPanel() === 'messages') {
+      <app-catalog-panel class="left-panel" (closed)="closeLeftPanel()" />
+    } @else if (leftPanel() === 'walkthrough') {
+      <app-walkthrough-panel class="left-panel" (closed)="closeLeftPanel()" />
+    }
+
+    @if (ui.inspectorOpen() && !walking()) {
       <app-inspector
         class="inspector"
         (closed)="clearSelection()"
@@ -241,6 +276,7 @@
       <button
         type="button"
         class="icon-button"
+        [disabled]="walking()"
         (click)="addAny()"
         aria-label="Add the Any state"
         title="Add the Any state: transitions that apply in every state"
@@ -251,7 +287,7 @@
       <button
         type="button"
         class="icon-button"
-        [disabled]="!ui.hasSelection()"
+        [disabled]="!ui.hasSelection() || walking()"
         (click)="deleteSelection()"
         aria-label="Delete selection"
         title="Delete (Del)"
@@ -261,7 +297,7 @@
       <button
         type="button"
         class="icon-button"
-        [disabled]="!store.canUndo()"
+        [disabled]="!store.canUndo() || walking()"
         (click)="store.undo()"
         aria-label="Undo"
         title="Undo (Ctrl+Z)"
@@ -271,7 +307,7 @@
       <button
         type="button"
         class="icon-button"
-        [disabled]="!store.canRedo()"
+        [disabled]="!store.canRedo() || walking()"
         (click)="store.redo()"
         aria-label="Redo"
         title="Redo (Ctrl+Shift+Z)"
@@ -286,6 +322,7 @@
           role="radio"
           [class.active]="store.direction() === 'top-bottom'"
           [attr.aria-checked]="store.direction() === 'top-bottom'"
+          [disabled]="walking()"
           (click)="setDirection('top-bottom')"
           aria-label="Top to bottom"
           title="Top to bottom"
@@ -298,6 +335,7 @@
           role="radio"
           [class.active]="store.direction() === 'left-right'"
           [attr.aria-checked]="store.direction() === 'left-right'"
+          [disabled]="walking()"
           (click)="setDirection('left-right')"
           aria-label="Left to right"
           title="Left to right"
@@ -305,6 +343,8 @@
           <app-icon name="directionRight" />
         </button>
       </div>
+      <div class="divider"></div>
+      <app-problems-menu (picked)="focusFinding($event)" />
       <div class="divider"></div>
       <button
         type="button"

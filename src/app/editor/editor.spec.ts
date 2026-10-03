@@ -633,6 +633,409 @@ describe('Editor', () => {
     expect(el.querySelectorAll('f-connection-waypoints').length).toBe(3);
   });
 
+  it('counts the problems in the toolbox, lists them, shows the element and marks it', async () => {
+    const { el, store, settle } = await setup();
+    const button = () => el.querySelector<HTMLButtonElement>('app-problems-menu button')!;
+    expect(button().getAttribute('aria-label')).toBe('Problems: No problems');
+    expect(el.querySelector('app-node-card[data-finding]')).toBeNull();
+
+    // A state nothing leads to: unreachable (error) and a dead end (warning).
+    store.addNode('state');
+    await settle();
+    expect(button().getAttribute('aria-label')).toBe('Problems: 1 error, 1 warning');
+    expect(button().getAttribute('data-severity')).toBe('error');
+    const counts = [...button().querySelectorAll('.count')].map((c) => c.textContent?.trim());
+    expect(counts).toEqual(['1', '1']);
+    expect(el.querySelector('app-node-card[data-finding="error"]')?.textContent).toContain('State');
+
+    button().click();
+    await settle();
+    const items = () => [
+      ...document.querySelectorAll<HTMLButtonElement>('.cdk-overlay-container .finding'),
+    ];
+    expect(items().map((i) => i.querySelector('.severity')?.textContent?.trim())).toEqual([
+      'error',
+      'warning',
+    ]);
+    expect(items()[0].textContent).toContain('cannot be reached');
+
+    // Picking a finding selects the element, which opens its inspector.
+    items()[0].click();
+    await settle();
+    expect(el.querySelector('app-inspector')?.getAttribute('aria-label')).toBe('State settings');
+
+    // Fixing the problem clears the badge and the marker.
+    store.appendNode('start-1', 'end');
+    store.connect('start-1', 'state-1');
+    store.connect('state-1', 'end-1');
+    store.updateEdge('edge-2', { event: 'OrderPlaced', eventSource: 'Shop' });
+    store.updateEdge('edge-3', { event: 'OrderShipped', eventSource: 'Shop' });
+    await settle();
+    expect(button().getAttribute('aria-label')).toBe('Problems: No problems');
+    expect(el.querySelector('app-node-card[data-finding]')).toBeNull();
+  });
+
+  it('marks a transition with a problem and opens it from the list', async () => {
+    const { el, store, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    await settle();
+    // state-1 → end-1 has no event: a warning, drawn in the warning colour.
+    expect(el.querySelector('f-connection[data-finding="warning"]')).toBeTruthy();
+    expect(el.querySelectorAll('f-connection[data-finding]')).toHaveLength(1);
+
+    el.querySelector<HTMLButtonElement>('app-problems-menu button')!.click();
+    await settle();
+    const item = document.querySelector<HTMLButtonElement>('.cdk-overlay-container .finding')!;
+    expect(item.textContent).toContain('has no event');
+    item.click();
+    await settle();
+    expect(el.querySelector('app-inspector')?.getAttribute('aria-label')).toBe(
+      'Transition settings',
+    );
+  });
+
+  describe('message catalog', () => {
+    async function withMessages() {
+      const ctx = await setup();
+      const { el, store, settle } = ctx;
+      store.appendNode('start-1', 'state');
+      store.appendNode('state-1', 'state');
+      store.appendNode('state-2', 'end');
+      store.updateNode('state-1', {
+        activities: [
+          { kind: 'command', name: 'ReserveStock' },
+          { kind: 'event', name: 'StockRequested' },
+        ],
+      });
+      store.updateEdge('edge-1', { event: 'OrderPlaced', eventSource: 'Shop' });
+      store.updateEdge('edge-2', { event: 'StockRequested' });
+      await settle();
+      const open = async () => {
+        [...el.querySelectorAll<HTMLButtonElement>('.menu-button')]
+          .find((b) => b.textContent?.trim() === 'Messages')!
+          .click();
+        await settle();
+      };
+      const entries = () => [...el.querySelectorAll<HTMLElement>('app-catalog-panel .entry')];
+      return { ...ctx, open, entries };
+    }
+
+    it('lists the commands and events with where they come from and where they are used', async () => {
+      const { el, open, entries } = await withMessages();
+      expect(el.querySelector('app-catalog-panel')).toBeNull();
+      await open();
+      expect(
+        entries().map((e) => (e.querySelector('input.name') as HTMLInputElement).value),
+      ).toEqual(['ReserveStock', 'OrderPlaced', 'StockRequested']);
+      const [command, external, internal] = entries();
+      expect(command.textContent).toContain('Sent by State');
+      expect(external.textContent).toContain('From outside');
+      expect(external.textContent).toContain('From Shop');
+      expect(external.textContent).toContain('Triggers Initial → State');
+      expect(internal.textContent).toContain('Published by State');
+      expect(internal.textContent).toContain('Triggers State → State');
+    });
+
+    it('filters by kind and by name', async () => {
+      const { el, open, entries, settle } = await withMessages();
+      await open();
+      const radio = (label: string) =>
+        [...el.querySelectorAll<HTMLButtonElement>('app-catalog-panel .segmented button')].find(
+          (b) => b.textContent?.trim() === label,
+        )!;
+      radio('Commands').click();
+      await settle();
+      expect(entries()).toHaveLength(1);
+      radio('Events').click();
+      await settle();
+      expect(entries()).toHaveLength(2);
+      radio('All').click();
+      const search = el.querySelector<HTMLInputElement>('app-catalog-panel .search')!;
+      search.value = 'stock';
+      search.dispatchEvent(new Event('input'));
+      await settle();
+      expect(entries()).toHaveLength(2);
+      search.value = 'nothing like it';
+      search.dispatchEvent(new Event('input'));
+      await settle();
+      expect(entries()).toHaveLength(0);
+      expect(el.querySelector('app-catalog-panel .none')?.textContent).toContain(
+        'No message matches',
+      );
+    });
+
+    it('emphasises the states and transitions of a message, and lets go of them again', async () => {
+      const { el, open, entries, settle } = await withMessages();
+      await open();
+      const cards = () =>
+        [...el.querySelectorAll('app-node-card')].map((c) => c.getAttribute('data-highlight'));
+      expect(cards().every((h) => h === null)).toBe(true);
+
+      // StockRequested: published in State (state-1), reacted to by the edge state-1 → state-2.
+      entries()[2].querySelector<HTMLButtonElement>('.pick')!.click();
+      await settle();
+      expect(cards()).toEqual(['off', 'on', 'on', 'off']);
+      expect(el.querySelectorAll('f-connection[data-highlight="on"]')).toHaveLength(1);
+
+      entries()[2].querySelector<HTMLButtonElement>('.pick')!.click();
+      await settle();
+      expect(cards().every((h) => h === null)).toBe(true);
+
+      // Closing the panel lets go too.
+      entries()[0].querySelector<HTMLButtonElement>('.pick')!.click();
+      await settle();
+      expect(cards().some((h) => h === 'on')).toBe(true);
+      el.querySelector<HTMLButtonElement>(
+        'app-catalog-panel [aria-label="Close messages"]',
+      )!.click();
+      await settle();
+      expect(el.querySelector('app-catalog-panel')).toBeNull();
+      expect(cards().every((h) => h === null)).toBe(true);
+    });
+
+    it('renames a message everywhere in one undo step, and says why when it cannot', async () => {
+      const { el, store, open, entries, settle } = await withMessages();
+      await open();
+      const name = (i: number) => entries()[i].querySelector<HTMLInputElement>('input.name')!;
+
+      name(2).value = 'StockAsked';
+      name(2).dispatchEvent(new Event('change'));
+      await settle();
+      expect(store.nodes()[1].activities?.[1].name).toBe('StockAsked');
+      expect(store.edges()[1].event).toBe('StockAsked');
+      expect(
+        entries().map((e) => (e.querySelector('input.name') as HTMLInputElement).value),
+      ).toEqual(['ReserveStock', 'OrderPlaced', 'StockAsked']);
+      store.undo();
+      await settle();
+      expect(store.edges()[1].event).toBe('StockRequested');
+
+      // A name another event has: refused, the field goes back, a message tells why.
+      name(2).value = 'OrderPlaced';
+      name(2).dispatchEvent(new Event('change'));
+      await settle();
+      expect(name(2).value).toBe('StockRequested');
+      expect(el.querySelector('app-catalog-panel .error')?.textContent).toContain(
+        'already a event called “OrderPlaced”',
+      );
+      name(0).value = '  ';
+      name(0).dispatchEvent(new Event('change'));
+      await settle();
+      expect(el.querySelector('app-catalog-panel .error')?.textContent).toContain('needs a name');
+    });
+
+    it('shows the fixed names of timeouts and replies without a field to rename them', async () => {
+      const { store, open, entries, settle } = await withMessages();
+      store.updateNode('state-1', { timers: [{ action: 'schedule', name: 'StockTimeout' }] });
+      store.updateEdge('edge-1', { event: 'StockTimeout' });
+      await settle();
+      await open();
+      const timeout = entries().find((e) => e.textContent?.includes('StockTimeout'))!;
+      expect(timeout.textContent).toContain('Timeout');
+      expect(timeout.querySelector('input.name')).toBeNull();
+      expect(timeout.querySelector('.fixed')?.textContent).toContain('StockTimeout');
+    });
+  });
+
+  describe('walkthrough', () => {
+    async function walking() {
+      const ctx = await setup();
+      const { el, store, settle } = ctx;
+      store.appendNode('start-1', 'state');
+      store.appendNode('state-1', 'state');
+      store.appendNode('state-2', 'end');
+      store.updateNode('state-1', {
+        name: 'Reserving',
+        activities: [{ kind: 'command', name: 'ReserveStock' }],
+      });
+      store.updateNode('state-2', { name: 'Charging' });
+      store.updateEdge('edge-1', { event: 'OrderPlaced', eventSource: 'Shop' });
+      store.updateEdge('edge-2', { event: 'StockReserved', eventSource: 'Warehouse' });
+      store.updateEdge('edge-3', { event: 'PaymentCharged', eventSource: 'Payments' });
+      await settle();
+      const button = () =>
+        [...el.querySelectorAll<HTMLButtonElement>('.menu-button')].find(
+          (b) => b.textContent?.trim() === 'Walkthrough',
+        )!;
+      const panel = () => el.querySelector('app-walkthrough-panel');
+      const options = () => [
+        ...el.querySelectorAll<HTMLButtonElement>('app-walkthrough-panel .option'),
+      ];
+      const now = () => el.querySelector('app-walkthrough-panel .now .state')?.textContent?.trim();
+      const action = (label: string) =>
+        [...el.querySelectorAll<HTMLButtonElement>('app-walkthrough-panel .actions button')].find(
+          (b) => b.textContent?.trim() === label,
+        )!;
+      const start = async () => {
+        button().click();
+        await settle();
+      };
+      return { ...ctx, button, panel, options, now, action, start };
+    }
+
+    it('starts in the initial state and offers the events it reacts to', async () => {
+      const { panel, options, now, start } = await walking();
+      expect(panel()).toBeNull();
+      await start();
+      expect(panel()).toBeTruthy();
+      expect(now()).toBe('Initial');
+      expect(
+        options().map((o) => [
+          o.querySelector('.event')?.textContent,
+          o.querySelector('.target')?.textContent,
+        ]),
+      ).toEqual([['OrderPlaced', 'Reserving']]);
+    });
+
+    it('follows the picked event, highlights it and shows what the next state does', async () => {
+      const { el, options, now, start, settle } = await walking();
+      await start();
+      options()[0].click();
+      await settle();
+      expect(now()).toBe('Reserving');
+      expect(el.querySelector('app-walkthrough-panel .doings')?.textContent).toContain(
+        'Send ReserveStock',
+      );
+      const cards = [...el.querySelectorAll('app-node-card')].map((c) =>
+        c.getAttribute('data-highlight'),
+      );
+      expect(cards).toEqual(['off', 'on', 'off', 'off']);
+      expect(el.querySelectorAll('f-connection[data-highlight="on"]')).toHaveLength(1);
+      expect(
+        [...el.querySelectorAll('app-walkthrough-panel .path li')].map((l) =>
+          l.textContent?.replace(/\s+/g, ' ').trim(),
+        ),
+      ).toEqual(['Initial', 'OrderPlaced → Reserving']);
+    });
+
+    it('goes back and restarts, and says when the saga ends', async () => {
+      const { el, options, now, action, start, settle } = await walking();
+      await start();
+      options()[0].click();
+      await settle();
+      options()[0].click();
+      await settle();
+      expect(now()).toBe('Charging');
+      // The final state: nothing more can happen.
+      options()[0].click();
+      await settle();
+      expect(el.querySelector('app-walkthrough-panel .none')?.textContent).toContain(
+        'The saga ends here',
+      );
+      action('Back').click();
+      await settle();
+      expect(now()).toBe('Charging');
+      action('Restart').click();
+      await settle();
+      expect(now()).toBe('Initial');
+      expect(action('Back').disabled).toBe(true);
+      expect(action('Restart').disabled).toBe(true);
+    });
+
+    it('copies the path as text', async () => {
+      const { options, action, start, settle } = await walking();
+      const writeText = vi.fn(async () => undefined);
+      vi.stubGlobal('navigator', { clipboard: { writeText } });
+      try {
+        await start();
+        options()[0].click();
+        await settle();
+        action('Copy path').click();
+        await settle();
+        expect(writeText).toHaveBeenCalledWith(
+          'Initial\n1. OrderPlaced → Reserving\n   Send ReserveStock',
+        );
+        expect(action('Copied')).toBeTruthy();
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it('is read-only: no inspector, no "+", no editing from the toolbox or the keyboard', async () => {
+      const { el, store, select, start, settle } = await walking();
+      const before = store.diagram();
+      await select(['state-1']);
+      expect(el.querySelector('app-inspector')).toBeTruthy();
+      await start();
+      expect(el.querySelector('app-inspector')).toBeNull();
+      expect(el.querySelector('.slot')).toBeNull();
+      expect(el.querySelector('[aria-label="Insert a state here"]')).toBeNull();
+      const disabled = (label: string) =>
+        el.querySelector<HTMLButtonElement>(`.toolbox [aria-label="${label}"]`)!.disabled;
+      for (const label of [
+        'Add the Any state',
+        'Delete selection',
+        'Undo',
+        'Redo',
+        'Top to bottom',
+        'Left to right',
+      ]) {
+        expect(disabled(label), label).toBe(true);
+      }
+      expect(el.querySelector<HTMLInputElement>('app-diagram-details input.name')!.readOnly).toBe(
+        true,
+      );
+
+      // The keyboard does not delete or undo either.
+      await select(['state-1']);
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }));
+      await settle();
+      expect(store.diagram()).toBe(before);
+    });
+
+    it('ends when closed: the editor can be edited again and nothing stays highlighted', async () => {
+      const { el, options, button, panel, start, settle } = await walking();
+      await start();
+      options()[0].click();
+      await settle();
+      el.querySelector<HTMLButtonElement>(
+        'app-walkthrough-panel [aria-label="Close walkthrough"]',
+      )!.click();
+      await settle();
+      expect(panel()).toBeNull();
+      expect(
+        [...el.querySelectorAll('app-node-card')].every((c) => !c.hasAttribute('data-highlight')),
+      ).toBe(true);
+      expect(el.querySelectorAll('.slot').length).toBeGreaterThanOrEqual(0);
+      expect(
+        el.querySelector<HTMLButtonElement>('.toolbox [aria-label="Add the Any state"]')!.disabled,
+      ).toBe(false);
+      // Starting again begins in the initial state.
+      button().click();
+      await settle();
+      expect(el.querySelector('app-walkthrough-panel .now .state')?.textContent?.trim()).toBe(
+        'Initial',
+      );
+    });
+
+    it('ends when the path no longer holds, e.g. after the text was edited', async () => {
+      const { store, options, panel, start, settle } = await walking();
+      await start();
+      options()[0].click();
+      await settle();
+      store.remove({ edgeIds: ['edge-1'] });
+      await settle();
+      expect(panel()).toBeNull();
+    });
+
+    it('swaps with the message catalog: only one panel at a time', async () => {
+      const { el, start, panel, settle } = await walking();
+      await start();
+      [...el.querySelectorAll<HTMLButtonElement>('.menu-button')]
+        .find((b) => b.textContent?.trim() === 'Messages')!
+        .click();
+      await settle();
+      expect(panel()).toBeNull();
+      expect(el.querySelector('app-catalog-panel')).toBeTruthy();
+      // Walking is over, so the editor is editable again.
+      expect(
+        el.querySelector<HTMLButtonElement>('.toolbox [aria-label="Add the Any state"]')!.disabled,
+      ).toBe(false);
+    });
+  });
+
   it('adds the one Any state from the toolbox and opens it', async () => {
     const { el, store, settle } = await setup();
     const add = () => el.querySelector<HTMLButtonElement>('[aria-label="Add the Any state"]')!;

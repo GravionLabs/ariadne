@@ -143,6 +143,36 @@
   }
 }
 
+// Looking at one message or one step: what belongs to it stays, the rest fades.
+:host([data-highlight='off']) {
+  opacity: 0.3;
+}
+:host([data-highlight='on']) {
+  box-shadow:
+    0 0 0 3px var(--c-primary),
+    var(--shadow-md);
+}
+
+// A marker for the worst problem found with the node (see the Problems list).
+:host([data-finding])::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  background: var(--c-info);
+  border: 2px solid var(--c-surface-1);
+  border-radius: 50%;
+  pointer-events: none;
+}
+:host([data-finding='error'])::after {
+  background: var(--c-error);
+}
+:host([data-finding='warning'])::after {
+  background: var(--c-warning-marker);
+}
+
 // The "any" node is not a state the saga is in: a dashed pill.
 :host(.f-node.compact[data-type='any']) {
   border-style: dashed;

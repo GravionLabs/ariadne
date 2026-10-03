@@ -1,0 +1,84 @@
+<header class="head">
+  <span class="title"><app-icon name="trigger" /> Walkthrough</span>
+  <span class="note">read-only</span>
+  <button
+    type="button"
+    class="icon-button"
+    aria-label="Close walkthrough"
+    title="Close walkthrough"
+    (click)="closed.emit()"
+  >
+    <app-icon name="close" />
+  </button>
+</header>
+
+<div class="body">
+  @if (walk.current(); as node) {
+    <section class="now" aria-label="Current state">
+      <span class="kicker">The saga is in</span>
+      <strong class="state">{{ node.name }}</strong>
+      <span class="type">{{ type() }}</span>
+      @if (walk.doings().length) {
+        <ul class="doings" aria-label="On entering it">
+          @for (doing of walk.doings(); track $index) {
+            <li>{{ doing }}</li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="next" aria-label="What can happen next">
+      <span class="kicker">What happens next</span>
+      @for (edge of walk.options(); track edge.id) {
+        <button type="button" class="option" (click)="walk.take(edge.id)">
+          <span class="event">{{ label(edge) }}</span>
+          <span class="arrow" aria-hidden="true">→</span>
+          <span class="target">{{ targetName(edge) }}</span>
+          @if (fromAny(edge)) {
+            <span class="any" title="Applies in every state">any state</span>
+          }
+        </button>
+      } @empty {
+        <p class="none">
+          @if (node.type === 'end') {
+            The saga ends here.
+          } @else {
+            No transition leaves this state.
+          }
+        </p>
+      }
+    </section>
+
+    <section class="path" aria-label="Path taken">
+      <span class="kicker">Path taken</span>
+      <ol>
+        <li>{{ initial()?.name }}</li>
+        @for (step of steps(); track $index) {
+          <li>
+            <span class="event">{{ label(step.edge) }}</span> → {{ step.to.name }}
+          </li>
+        }
+      </ol>
+    </section>
+  }
+</div>
+
+<footer class="actions">
+  <button type="button" class="menu-button" [disabled]="!walk.steps().length" (click)="walk.back()">
+    Back
+  </button>
+  <button
+    type="button"
+    class="menu-button"
+    [disabled]="!walk.steps().length"
+    (click)="walk.restart()"
+  >
+    Restart
+  </button>
+  <button type="button" class="menu-button primary" (click)="copy()">
+    {{ copied() ? 'Copied' : 'Copy path' }}
+  </button>
+</footer>
+@if (failed()) {
+  <p class="error" role="alert">The path could not be copied.</p>
+}

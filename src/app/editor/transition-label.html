@@ -3,6 +3,7 @@
     type="button"
     class="card"
     [class.selected]="selected()"
+    [attr.data-finding]="finding() ?? null"
     [style.height.px]="cardHeight()"
     [attr.aria-label]="'Transition' + (edge().event ? ' on ' + label() : '')"
     (click)="selectRequested.emit()"

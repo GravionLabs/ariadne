@@ -1,0 +1,110 @@
+<header class="head">
+  <span class="title"><app-icon name="event" /> Messages</span>
+  <span class="note">{{ counts().command }} commands · {{ counts().event }} events</span>
+  <button
+    type="button"
+    class="icon-button"
+    aria-label="Close messages"
+    title="Close messages"
+    (click)="closed.emit()"
+  >
+    <app-icon name="close" />
+  </button>
+</header>
+
+<div class="tools">
+  <input
+    type="search"
+    class="search"
+    placeholder="Find a message"
+    aria-label="Find a message"
+    [value]="query()"
+    (input)="setQuery($event)"
+  />
+  <div class="segmented" role="radiogroup" aria-label="Show">
+    @for (
+      option of [
+        ['all', 'All'],
+        ['command', 'Commands'],
+        ['event', 'Events'],
+      ];
+      track option[0]
+    ) {
+      <button
+        type="button"
+        role="radio"
+        [class.active]="filter() === option[0]"
+        [attr.aria-checked]="filter() === option[0]"
+        (click)="setFilter($any(option[0]))"
+      >
+        {{ option[1] }}
+      </button>
+    }
+  </div>
+</div>
+
+@if (error(); as message) {
+  <p class="error" role="alert">{{ message }}</p>
+}
+
+<ul class="list">
+  @for (entry of entries(); track key(entry)) {
+    <li class="entry" [attr.data-kind]="entry.kind" [class.picked]="selectedHighlight(entry)">
+      <div class="top">
+        <button
+          type="button"
+          class="pick"
+          [attr.aria-pressed]="selectedHighlight(entry)"
+          [title]="
+            selectedHighlight(entry)
+              ? 'Stop emphasising it in the diagram'
+              : 'Emphasise it in the diagram'
+          "
+          (click)="pick(entry)"
+        >
+          <app-icon [name]="entry.kind" />
+          <span class="kind">{{ entry.kind === 'command' ? 'Command' : 'Event' }}</span>
+        </button>
+        @if (entry.renamable) {
+          <input
+            type="text"
+            class="name"
+            [attr.aria-label]="'Name of ' + entry.name"
+            [value]="entry.name"
+            (change)="rename(entry, $event)"
+          />
+        } @else {
+          <strong class="name fixed" title="Named where it is defined">{{ entry.name }}</strong>
+        }
+      </div>
+
+      @if (entry.origin; as origin) {
+        <p class="line origin" [attr.data-origin]="origin">{{ origins[origin] }}</p>
+      }
+      @if (entry.sources.length) {
+        <p class="line"><span class="label">From</span> {{ entry.sources.join(', ') }}</p>
+      }
+      @if (entry.producers.length) {
+        <p class="line">
+          <span class="label">{{ entry.kind === 'command' ? 'Sent by' : 'Published by' }}</span>
+          {{ entry.producers.map(producerName).join(', ') }}
+        </p>
+      }
+      @if (entry.reactions.length) {
+        <p class="line">
+          <span class="label">Triggers</span>
+          {{ entry.reactions.map(reactionText).join(' · ') }}
+        </p>
+      }
+    </li>
+  } @empty {
+    <li class="none">
+      @if (catalog().length) {
+        No message matches.
+      } @else {
+        The saga has no messages yet: states send commands and publish events, and transitions react
+        to events.
+      }
+    </li>
+  }
+</ul>

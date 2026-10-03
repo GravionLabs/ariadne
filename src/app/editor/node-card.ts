@@ -1,5 +1,6 @@
 import { Component, computed, input, output } from '@angular/core';
 import { EFConnectableSide, FFlowModule } from '@foblex/flow';
+import { Severity } from '../model/validation';
 import { DiagramNode, Direction, hasInput, hasOutput, inputId, outputId } from '../model/diagram';
 import { canExpand, isBar, isCompact } from './diagram-layout';
 import { Icon } from './icon';
@@ -18,6 +19,8 @@ import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from './node-types';
     '[style.--node-color]': 'custom()',
     '[class.compact]': 'compact()',
     '[class.bar]': 'bar()',
+    '[attr.data-finding]': 'finding() ?? null',
+    '[attr.data-highlight]': 'highlight() ?? null',
     '[attr.title]': 'open() ? null : node().description || null',
   },
   templateUrl: './node-card.html',
@@ -26,6 +29,10 @@ import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from './node-types';
 export class NodeCard {
   readonly node = input.required<DiagramNode>();
   readonly direction = input.required<Direction>();
+  /** Emphasised (`on`) or faded (`off`) while a message or a step is being looked at. */
+  readonly highlight = input<'on' | 'off'>();
+  /** The worst problem found with this node, shown as a marker. */
+  readonly finding = input<Severity>();
   /** For a join: the events of the transitions leading into it. */
   readonly events = input<readonly string[]>([]);
   /** Several transitions leave this state: it is drawn as a decision. */

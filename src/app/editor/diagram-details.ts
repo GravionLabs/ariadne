@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, input, signal } from '@angular/core';
 import { DiagramStore } from '../model/diagram-store';
 import { Icon } from './icon';
 
@@ -14,6 +14,9 @@ import { Icon } from './icon';
 })
 export class DiagramDetails {
   protected readonly store = inject(DiagramStore);
+
+  /** The diagram is being walked through: look, don't edit. */
+  readonly locked = input(false);
 
   protected readonly expanded = signal(false);
 

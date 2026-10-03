@@ -1,6 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { DiagramStore } from '../model/diagram-store';
+import { SEVERITIES, Severity, findingsByElement, validate, worst } from '../model/validation';
 
 interface EditorState {
   nodeIds: string[];
@@ -9,6 +10,8 @@ interface EditorState {
   fitPending: boolean;
   /** Node to select in f-flow once the layout has placed it. */
   pendingSelect: string | null;
+  /** States and transitions to emphasise (a message of the catalog, a step of the walkthrough). */
+  highlight: { nodeIds: string[]; edgeIds: string[] } | null;
 }
 
 const initialState: EditorState = {
@@ -16,6 +19,7 @@ const initialState: EditorState = {
   edgeIds: [],
   fitPending: false,
   pendingSelect: null,
+  highlight: null,
 };
 
 /**
@@ -48,7 +52,44 @@ export const EditorStore = signalStore(
     /** The inspector shows while a single state or transition is selected. */
     inspectorOpen: computed(() => !!selectedNode() || !!selectedEdge()),
   })),
+  withComputed(() => {
+    const diagram = inject(DiagramStore);
+    const findings = computed(() => validate(diagram.diagram()));
+    const byElement = computed(() => findingsByElement(findings()));
+    return {
+      /** What is wrong or doubtful about the diagram (see `validate`). */
+      findings,
+      findingsByElement: byElement,
+      findingCounts: computed(
+        () =>
+          Object.fromEntries(
+            SEVERITIES.map((s) => [s, findings().filter((f) => f.severity === s).length]),
+          ) as Record<Severity, number>,
+      ),
+    };
+  }),
   withMethods((store) => ({
+    /** Emphasises these states and transitions and fades the rest; `null` removes it. */
+    setHighlight(nodeIds: string[], edgeIds: string[]): void {
+      patchState(store, { highlight: { nodeIds, edgeIds } });
+    },
+
+    clearHighlight(): void {
+      patchState(store, { highlight: null });
+    },
+
+    /** `on` for what is emphasised, `off` for the rest, `undefined` while nothing is. */
+    highlightOf(id: string): 'on' | 'off' | undefined {
+      const highlight = store.highlight();
+      if (!highlight) return undefined;
+      return highlight.nodeIds.includes(id) || highlight.edgeIds.includes(id) ? 'on' : 'off';
+    },
+
+    /** The worst severity of the findings on one node or transition. */
+    severityOf(id: string): Severity | undefined {
+      return worst(store.findingsByElement().get(id) ?? []);
+    },
+
     /** The canvas reported a new selection (or it was replaced from code). */
     setSelection(nodeIds: string[], edgeIds: string[]): void {
       patchState(store, { nodeIds, edgeIds });

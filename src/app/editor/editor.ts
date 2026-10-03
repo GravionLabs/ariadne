@@ -32,16 +32,21 @@ import {
   joinEventsOf,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
+import { Finding } from '../model/validation';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
 import { AddStepButton } from './add-step-button';
 import { DiagramDetails } from './diagram-details';
-import { DiagramLayout, SLOT_SIZE, backEdgeIds, nodeSize } from './diagram-layout';
+import { DiagramLayout, SLOT_SIZE, backEdgeIds, labelId, nodeSize } from './diagram-layout';
 import { EditorStore } from './editor-store';
+import { WalkthroughPanel } from './walkthrough-panel';
+import { WalkthroughStore } from './walkthrough-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
+import { CatalogPanel } from './catalog-panel';
 import { NewDiagramDialog } from './new-diagram-dialog';
+import { ProblemsMenu } from './problems-menu';
 import { SourcePanel } from './source-panel';
 import { NodeCard } from './node-card';
 import { APPEND_TYPES, DECISION, NODE_TYPES } from './node-types';
@@ -52,6 +57,8 @@ const FIT_PADDING = { x: 80, y: 80 };
 @Component({
   imports: [
     AddStepButton,
+    CatalogPanel,
+    WalkthroughPanel,
     DiagramDetails,
     ExportMenu,
     FFlowModule,
@@ -59,10 +66,11 @@ const FIT_PADDING = { x: 80, y: 80 };
     Inspector,
     NewDiagramDialog,
     NodeCard,
+    ProblemsMenu,
     SourcePanel,
     TransitionLabel,
   ],
-  providers: [provideFFlow(withA11y()), DiagramLayout, EditorStore],
+  providers: [provideFFlow(withA11y()), DiagramLayout, EditorStore, WalkthroughStore],
   host: {
     '(window:keydown)': 'onKeydown($event)',
     '(window:beforeunload)': 'onBeforeUnload($event)',
@@ -75,6 +83,9 @@ export class Editor {
   protected readonly store = inject(DiagramStore);
   protected readonly file = inject(DiagramDocument);
   protected readonly ui = inject(EditorStore);
+  protected readonly walk = inject(WalkthroughStore);
+  /** Walking through the saga: the diagram is read-only. */
+  protected readonly walking = this.walk.active;
   private readonly newDialog = viewChild.required(NewDiagramDialog);
   protected readonly layout = inject(DiagramLayout);
   protected readonly theme = inject(Theme);
@@ -110,6 +121,9 @@ export class Editor {
   protected readonly joins = computed(() => joinEventsOf(this.store.diagram()));
 
   /** Transitions that close a loop: not laid out, their label rides on the line. */
+  /** The "+" slots; none while walking, since nothing can be added then. */
+  protected readonly slots = computed(() => (this.walking() ? [] : this.layout.slots()));
+
   protected readonly loops = computed(() => backEdgeIds(this.store.diagram()));
 
   /** What kind of event each transition reacts to (from the saga, outside it, a timeout). */
@@ -150,6 +164,22 @@ export class Editor {
       });
       onCleanup(() => clearTimeout(timer));
     });
+
+    // Walking: emphasise where the saga is and the transition it just took, and keep it in view.
+    effect((onCleanup) => {
+      const node = this.walk.current();
+      if (!node) return;
+      const last = this.walk.lastStep();
+      untracked(() => this.ui.setHighlight([node.id], last ? [last] : []));
+      const timer = setTimeout(() =>
+        this.canvas()?.centerGroupOrNode(node.id, !prefersReducedMotion()),
+      );
+      onCleanup(() => clearTimeout(timer));
+    });
+    // The text was edited while walking and the path no longer holds: the walk is over.
+    effect(() => {
+      if (!this.walk.valid()) untracked(() => this.closeLeftPanel());
+    });
   }
 
   protected onFirstRender(): void {
@@ -158,26 +188,31 @@ export class Editor {
 
   /** "+" after a state: the picked state follows it. */
   protected append(sourceId: string, type: NodeType): void {
+    if (this.walking()) return;
     const id = this.store.appendNode(sourceId, type);
     if (id) this.ui.selectNode(id);
   }
 
   /** "+" on a transition: the picked state goes between its two ends. */
   protected insert(edgeId: string, type: NodeType): void {
+    if (this.walking()) return;
     const id = this.store.insertOnEdge(edgeId, type);
     if (id) this.ui.selectNode(id);
   }
 
   protected addStart(): void {
+    if (this.walking()) return;
     this.ui.selectNode(this.store.addNode('start'));
   }
 
   /** The "any" node, whose transitions apply in every state. There is only one. */
   protected addAny(): void {
+    if (this.walking()) return;
     this.ui.selectNode(this.store.addNode('any'));
   }
 
   protected setDirection(direction: Direction): void {
+    if (this.walking()) return;
     this.store.setDirection(direction);
   }
 
@@ -195,6 +230,7 @@ export class Editor {
   }
 
   private afterReplace(): void {
+    if (this.walking()) this.closeLeftPanel();
     this.clearSelection();
     this.ui.requestFit();
   }
@@ -223,6 +259,8 @@ export class Editor {
       else void this.file.save();
     } else if (typing) {
       return;
+    } else if (this.walking()) {
+      return;
     } else if (key === 'z' && !event.shiftKey) this.store.undo();
     else if ((key === 'z' && event.shiftKey) || key === 'y') this.store.redo();
     else return;
@@ -245,6 +283,7 @@ export class Editor {
    * two, onto empty canvas it adds a state after the source.
    */
   protected onCreateConnection(event: FCreateConnectionEvent): void {
+    if (this.walking()) return;
     const source = nodeIdOfConnector(event.sourceId);
     if (event.targetId) {
       this.store.connect(source, nodeIdOfConnector(event.targetId));
@@ -254,8 +293,35 @@ export class Editor {
   }
 
   protected deleteSelection(): void {
+    if (this.walking()) return;
     this.store.remove(this.ui.selection());
     this.clearSelection();
+  }
+
+  /** The panel on the left of the canvas: the message catalog, or the walkthrough. */
+  protected readonly leftPanel = signal<'messages' | 'walkthrough' | null>(null);
+
+  protected toggleMessages(): void {
+    const opening = this.leftPanel() !== 'messages';
+    this.closeLeftPanel();
+    if (opening) this.leftPanel.set('messages');
+  }
+
+  protected toggleWalkthrough(): void {
+    const opening = this.leftPanel() !== 'walkthrough';
+    this.closeLeftPanel();
+    if (!opening) return;
+    this.walk.start();
+    this.leftPanel.set('walkthrough');
+  }
+
+  /** Closes whichever panel is open; leaving a walkthrough ends it and lets the diagram go. */
+  protected closeLeftPanel(): void {
+    if (this.walk.active()) {
+      this.walk.stop();
+      this.ui.clearHighlight();
+    }
+    this.leftPanel.set(null);
   }
 
   protected toggleSource(): void {
@@ -340,6 +406,26 @@ export class Editor {
     this.canvas()?.resetScaleAndCenter();
   }
 
+  /** A problem was picked: select the node or transition it is about and bring it into view. */
+  protected focusFinding(finding: Finding): void {
+    const id = finding.elementId;
+    if (!id) return;
+    const edge = this.edgesById().get(id);
+    if (edge) {
+      this.selectEdge(id);
+      // A laid-out transition has a label node to centre on; otherwise its source state.
+      const laidOut = this.layout.labels().some((l) => l.edgeId === id);
+      this.canvas()?.centerGroupOrNode(
+        laidOut ? labelId(id) : edge.source,
+        !prefersReducedMotion(),
+      );
+      return;
+    }
+    this.ui.setSelection([id], []);
+    this.flow()?.select([id], [], false);
+    this.canvas()?.centerGroupOrNode(id, !prefersReducedMotion());
+  }
+
   /** A transition label was clicked: select its transition, as clicking the line would. */
   protected selectEdge(id: string): void {
     this.ui.selectEdge(id);
@@ -353,6 +439,7 @@ export class Editor {
   }
 
   protected onDelete(event: FDeleteSelectedEvent): void {
+    if (this.walking()) return;
     this.store.remove({ nodeIds: event.nodeIds, edgeIds: event.connectionIds });
     this.clearSelection();
   }

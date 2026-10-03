@@ -381,4 +381,31 @@ describe('DiagramStore', () => {
       });
     });
   });
+
+  describe('renaming a message', () => {
+    it('renames it everywhere as one undo step, and refuses a taken or empty name', () => {
+      store.load(blank());
+      const start = store.addNode('start');
+      const first = store.appendNode(start, 'state')!;
+      const second = store.appendNode(first, 'state')!;
+      store.updateNode(first, { activities: [{ kind: 'event', name: 'StockRequested' }] });
+      const edge = store.edges().find((e) => e.target === second)!;
+      store.updateEdge(edge.id, { event: 'StockRequested' });
+      store.updateEdge(store.edges()[0].id, { event: 'OrderPlaced' });
+      store.load(store.diagram());
+
+      expect(store.renameMessage('event', 'StockRequested', 'OrderPlaced')).toBe(false);
+      expect(store.renameMessage('event', 'StockRequested', ' ')).toBe(false);
+      expect(store.canUndo()).toBe(false);
+
+      expect(store.renameMessage('event', 'StockRequested', 'StockAsked')).toBe(true);
+      expect(store.nodes().find((n) => n.id === first)?.activities).toEqual([
+        { kind: 'event', name: 'StockAsked' },
+      ]);
+      expect(store.edges().find((e) => e.id === edge.id)?.event).toBe('StockAsked');
+      store.undo();
+      expect(store.edges().find((e) => e.id === edge.id)?.event).toBe('StockRequested');
+      expect(store.canUndo()).toBe(false);
+    });
+  });
 });
