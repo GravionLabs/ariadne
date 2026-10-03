@@ -138,10 +138,13 @@ describe('Code navigation', () => {
       )![1]!;
     await vscode.commands.executeCommand('workbench.action.closeAllEditors');
     editor.session.receive({ v: 1, type: 'goToCode', target: { kind: 'transition', id: edge } });
-    const during = await until('the C# at the transition', () => {
+    // The editor opens first and the selection follows: wait for the line.
+    await until('the C# at the transition', () => {
       const e = vscode.window.activeTextEditor;
-      return e?.document.uri.fsPath === csharp.fsPath && e;
+      return (
+        e?.document.uri.fsPath === csharp.fsPath &&
+        /OrderShipped/.test(e.document.lineAt(e.selection.active.line).text)
+      );
     });
-    assert.match(during.document.lineAt(during.selection.active.line).text, /OrderShipped/);
   });
 });
