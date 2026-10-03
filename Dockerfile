@@ -30,6 +30,9 @@ FROM node:22-alpine AS node
 
 # ---- run: the node binary, the bundled server and the built app, nothing else (no npm, no yarn)
 FROM alpine:3.22
+# Unpinned on purpose: the Alpine release is pinned above, and a pinned patch version disappears from its
+# repository when Alpine publishes a fix, which would break the build.
+# hadolint ignore=DL3018
 RUN apk add --no-cache libstdc++ && adduser -D -u 10001 ariadne
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 WORKDIR /app
