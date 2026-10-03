@@ -27,64 +27,77 @@
 
 <div class="content">
   @if (node(); as node) {
-    <label class="field">
-      <span>Name</span>
-      <input type="text" [value]="node.name" (change)="setName($event)" />
-    </label>
-
-    <!-- The initial and final state are pills that cannot show a description, so they have none. -->
-    @if (node.type === 'state') {
-      <label class="field">
-        <span>Description</span>
-        <textarea
-          rows="3"
-          placeholder="What the saga waits for here"
-          [value]="node.description ?? ''"
-          (change)="setText('description', $event)"
-        ></textarea>
-      </label>
-    }
-
-    <div class="field">
-      <span id="node-color-label">Color</span>
-      <div class="swatches" role="radiogroup" aria-labelledby="node-color-label">
-        <button
-          type="button"
-          role="radio"
-          class="swatch none"
-          title="Default"
-          aria-label="Default"
-          [attr.aria-checked]="!node.color"
-          (click)="setColor(undefined)"
-        ></button>
-        @for (c of colors; track c) {
-          <button
-            type="button"
-            role="radio"
-            class="swatch"
-            [style.background]="'var(--c-node-' + c + ')'"
-            [title]="c"
-            [attr.aria-label]="c"
-            [attr.aria-checked]="node.color === c"
-            (click)="setColor(c)"
-          ></button>
-        }
-        <label
-          class="custom-color"
-          [class.active]="node.color?.startsWith('#')"
-          [style.--picked]="node.color?.startsWith('#') ? node.color : null"
-        >
-          <span class="dot"></span>
-          <span>Custom…</span>
-          <input
-            type="color"
-            aria-label="Custom color"
-            [value]="customColor()"
-            (change)="pickColor($event)"
-          />
+    <section class="group" aria-label="Details">
+      <button
+        type="button"
+        class="group-toggle"
+        [attr.aria-expanded]="isOpen('details', 0)"
+        (click)="toggle('details', 0)"
+      >
+        <app-icon [name]="isOpen('details', 0) ? 'expandLess' : 'expandMore'" />
+        <span>Details</span>
+      </button>
+      @if (isOpen('details', 0)) {
+        <label class="field">
+          <span>Name</span>
+          <input type="text" [value]="node.name" (change)="setName($event)" />
         </label>
-      </div>
-    </div>
+
+        <!-- The initial and final state are pills that cannot show a description, so they have none. -->
+        @if (node.type === 'state') {
+          <label class="field">
+            <span>Description</span>
+            <textarea
+              rows="3"
+              placeholder="What the saga waits for here"
+              [value]="node.description ?? ''"
+              (change)="setText('description', $event)"
+            ></textarea>
+          </label>
+        }
+
+        <div class="field">
+          <span id="node-color-label">Color</span>
+          <div class="swatches" role="radiogroup" aria-labelledby="node-color-label">
+            <button
+              type="button"
+              role="radio"
+              class="swatch none"
+              title="Default"
+              aria-label="Default"
+              [attr.aria-checked]="!node.color"
+              (click)="setColor(undefined)"
+            ></button>
+            @for (c of colors; track c) {
+              <button
+                type="button"
+                role="radio"
+                class="swatch"
+                [style.background]="'var(--c-node-' + c + ')'"
+                [title]="c"
+                [attr.aria-label]="c"
+                [attr.aria-checked]="node.color === c"
+                (click)="setColor(c)"
+              ></button>
+            }
+            <label
+              class="custom-color"
+              [class.active]="node.color?.startsWith('#')"
+              [style.--picked]="node.color?.startsWith('#') ? node.color : null"
+            >
+              <span class="dot"></span>
+              <span>Custom…</span>
+              <input
+                type="color"
+                aria-label="Custom color"
+                [value]="customColor()"
+                (change)="pickColor($event)"
+              />
+            </label>
+          </div>
+        </div>
+      }
+    </section>
 
     @if (hasActivities(node.type)) {
       <section class="group" aria-label="Activities">
@@ -407,36 +420,82 @@
     }
 
     @if (node.type === 'state') {
-      <label class="field">
-        <span>Compensation</span>
-        <input
-          type="text"
-          placeholder="e.g. RefundPayment"
-          [value]="node.compensation?.name ?? ''"
-          (change)="setCompensation($event)"
-        />
-      </label>
+      <section class="group" aria-label="Recovery">
+        <button
+          type="button"
+          class="group-toggle"
+          [attr.aria-expanded]="
+            isOpen(
+              'recovery',
+              (node.compensation ? 1 : 0) + (node.retry ? 1 : 0) + (node.timeout ? 1 : 0)
+            )
+          "
+          (click)="
+            toggle(
+              'recovery',
+              (node.compensation ? 1 : 0) + (node.retry ? 1 : 0) + (node.timeout ? 1 : 0)
+            )
+          "
+        >
+          <app-icon
+            [name]="
+              isOpen(
+                'recovery',
+                (node.compensation ? 1 : 0) + (node.retry ? 1 : 0) + (node.timeout ? 1 : 0)
+              )
+                ? 'expandLess'
+                : 'expandMore'
+            "
+          />
+          <span>Recovery</span>
+          @if ((node.compensation ? 1 : 0) + (node.retry ? 1 : 0) + (node.timeout ? 1 : 0)) {
+            <span class="count">{{
+              (node.compensation ? 1 : 0) + (node.retry ? 1 : 0) + (node.timeout ? 1 : 0)
+            }}</span>
+          }
+        </button>
+        @if (
+          isOpen(
+            'recovery',
+            (node.compensation ? 1 : 0) + (node.retry ? 1 : 0) + (node.timeout ? 1 : 0)
+          )
+        ) {
+          <small class="group-desc">
+            What undoes the work of “{{ node.name }}” if the saga fails later, and how long and how
+            often it is tried.
+          </small>
+          <label class="field">
+            <span>Compensation</span>
+            <input
+              type="text"
+              placeholder="e.g. RefundPayment"
+              [value]="node.compensation?.name ?? ''"
+              (change)="setCompensation($event)"
+            />
+          </label>
 
-      <div class="pair">
-        <label class="field">
-          <span>Retry</span>
-          <input
-            type="text"
-            placeholder="3 attempts"
-            [value]="node.retry ?? ''"
-            (change)="setText('retry', $event)"
-          />
-        </label>
-        <label class="field">
-          <span>Timeout</span>
-          <input
-            type="text"
-            placeholder="30s"
-            [value]="node.timeout ?? ''"
-            (change)="setText('timeout', $event)"
-          />
-        </label>
-      </div>
+          <div class="pair">
+            <label class="field">
+              <span>Retry</span>
+              <input
+                type="text"
+                placeholder="3 attempts"
+                [value]="node.retry ?? ''"
+                (change)="setText('retry', $event)"
+              />
+            </label>
+            <label class="field">
+              <span>Timeout</span>
+              <input
+                type="text"
+                placeholder="30s"
+                [value]="node.timeout ?? ''"
+                (change)="setText('timeout', $event)"
+              />
+            </label>
+          </div>
+        }
+      </section>
     }
 
     @if (node.type !== 'end') {

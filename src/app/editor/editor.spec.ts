@@ -172,12 +172,13 @@ describe('Editor', () => {
   });
 
   it('edits a state in the inspector and adds transitions from it', async () => {
-    const { el, store, select, fill, settle } = await setup();
+    const { el, store, select, fill, settle, expand } = await setup();
     store.appendNode('start-1', 'state');
     await select(['state-1']);
 
     await fill('input[type=text]', 'Charging payment');
     await fill('input[type=text]', '   '); // an empty name reverts
+    await expand('Recovery');
     await fill('input[placeholder="e.g. RefundPayment"]', 'RefundPayment');
     expect(store.nodes()[1]).toEqual({
       id: 'state-1',
@@ -522,6 +523,43 @@ describe('Editor', () => {
     store.undo();
     await settle();
     expect(store.edges().find((e) => e.id === 'edge-3')?.target).toBe('end-1');
+  });
+
+  it('groups name, description and colour in Details, and compensation, retry and timeout in Recovery', async () => {
+    const { el, store, select, settle, expand } = await setup();
+    store.appendNode('start-1', 'state');
+    await select(['state-1']);
+    const section = (label: string) => el.querySelector(`app-inspector [aria-label="${label}"]`)!;
+    const expanded = (label: string) =>
+      section(label).querySelector('.group-toggle')!.getAttribute('aria-expanded');
+
+    // Details starts open; Recovery is empty, so closed, with nothing in it.
+    expect(expanded('Details')).toBe('true');
+    expect(section('Details').querySelector('input[type=text]')).toBeTruthy();
+    expect(section('Details').querySelector('textarea')).toBeTruthy();
+    expect(section('Details').querySelector('.swatches')).toBeTruthy();
+    expect(expanded('Recovery')).toBe('false');
+    expect(section('Recovery').querySelector('input')).toBeNull();
+
+    await expand('Recovery');
+    const inputs = [...section('Recovery').querySelectorAll<HTMLInputElement>('input')];
+    expect(inputs.map((i) => i.placeholder)).toEqual(['e.g. RefundPayment', '3 attempts', '30s']);
+
+    // Filled in, it starts open and counts what is set.
+    store.updateNode('state-1', { retry: '3 attempts', timeout: '30s' });
+    await select(['state-1']);
+    await select([]);
+    await select(['state-1']);
+    expect(expanded('Recovery')).toBe('true');
+    expect(section('Recovery').querySelector('.count')?.textContent?.trim()).toBe('2');
+
+    // Details can be folded away, and the initial state has no Recovery.
+    section('Details').querySelector<HTMLButtonElement>('.group-toggle')!.click();
+    await settle();
+    expect(section('Details').querySelector('input')).toBeNull();
+    await select(['start-1']);
+    expect(el.querySelector('app-inspector [aria-label="Recovery"]')).toBeNull();
+    expect(expanded('Details')).toBe('true');
   });
 
   it('adds the one Any state from the toolbox and opens it', async () => {

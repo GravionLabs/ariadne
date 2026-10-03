@@ -37,7 +37,7 @@ import { Icon } from './icon';
 import { DECISION, NODE_TYPES } from './node-types';
 
 /** Inspector sections that start expanded even when empty. */
-const ALWAYS_OPEN = ['activities', 'transitions'];
+const ALWAYS_OPEN = ['details', 'activities', 'transitions'];
 
 const NEW_MESSAGE: Record<MessageKind, string> = {
   command: 'DoSomething',
