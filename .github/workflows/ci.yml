@@ -52,3 +52,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @ariadne/cli build
       - run: scripts/compile-generated.sh
+
+  # Every merge to main that passes the checks is a release (GravionLabs/ci docker-package):
+  # GitVersion gives the version, the image is published to GHCR with the tags latest, 1, 1.0 and
+  # 1.0.0, and a GitHub release v1.0.0 is created with notes from the Conventional Commits.
+  release:
+    name: Release
+    needs: [ci, format, generated-csharp]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: GravionLabs/ci/.github/workflows/docker-package.yml@main
+    with:
+      image-name: ${{ github.repository }}
+      gitversion-config-file: GitVersion.yml
+      cliff-config: cliff.toml
+    secrets:
+      registry-username: ${{ github.actor }}
+      registry-token: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+      packages: write

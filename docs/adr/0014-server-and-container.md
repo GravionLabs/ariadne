@@ -27,8 +27,8 @@ a few runtime settings.
   run time. Plus `X-Content-Type-Options`, `Referrer-Policy` and `Permissions-Policy`.
 - **The image** is built in two stages: pnpm builds the app and the server; the final stage is Alpine with only the
   Node binary, `server.mjs` and the app (no npm, no yarn), running as a non-root user with a health check.
-  It is published to GHCR by a workflow when a `v*` tag is pushed (tags `1.2.3`, `1.2`, `latest`); pull requests that
-  touch it build the image and check `/health`.
+  It is published to GHCR on every release ([ADR 0015](0015-versioning-and-releases.md)); pull requests that touch it
+  build the image and check `/health`.
 - **Static hosting** works without the server. The `Pages` workflow publishes `main` to GitHub Pages, but only when
   the repository variable `DEPLOY_PAGES` is `true`, because a public site is the owner's decision.
 

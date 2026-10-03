@@ -1,0 +1,5 @@
+# The version comes from the git history (GitVersion, via GravionLabs/ci). Every merge to main is a
+# release: the patch number counts up from the last tag, `+semver: minor` or `+semver: major` in a
+# commit message bumps that part. The first release is 1.0.0.
+mode: ContinuousDeployment
+next-version: 1.0.0

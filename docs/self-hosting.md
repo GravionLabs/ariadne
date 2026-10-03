@@ -65,8 +65,9 @@ Node 22 or later.
 docker build -t ariadne .
 ```
 
-The image is published by the `Container` workflow when a tag `vX.Y.Z` is pushed; pull requests that change the
-Dockerfile or the server build the image and check `/health`.
+The image is published when a change is merged to `main` and the checks pass (see
+[releases](../docs/adr/0015-versioning-and-releases.md)); a pull request that changes the image or what goes into it
+builds the image and checks `/health`.
 
 ## Static hosting
 
