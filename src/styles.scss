@@ -3,6 +3,71 @@
 // Overlay container for the add-node picker.
 @include cdk.overlay();
 
+// The dark and high-contrast token sets. They apply with an explicit `data-theme` on <html>
+// (the theme toggle, or the host the editor is embedded in), and the dark set also follows
+// `prefers-color-scheme` while nothing was chosen. See `Theme` in src/app/theme.ts.
+@mixin dark-tokens {
+  color-scheme: dark;
+  --c-bg: #14161c;
+  --c-surface-1: #1c1f27;
+  --c-surface-2: #222630;
+  --c-surface-3: #2a2f3b;
+
+  --c-border: #333949;
+  --c-border-muted: #6b7388;
+
+  --c-text: #e8eaf0;
+  --c-text-subtle: #a0a7bb;
+
+  --c-primary: #8b93f8;
+  --c-primary-hover: #a5acfa;
+  --c-primary-soft: rgba(139, 147, 248, 0.16);
+  --c-on-primary: #11131a;
+  --c-selection-overlay: rgba(28, 31, 39, 0.6);
+
+  --c-start: #4ade80;
+  --c-step: #60a5fa;
+  --c-decision: #a78bfa;
+  --c-end: #fb7185;
+  --c-compensation: #fbbf24;
+  --c-node-red: #f87171;
+  --c-node-orange: #fb923c;
+  --c-node-amber: #facc15;
+  --c-node-green: #4ade80;
+  --c-node-teal: #2dd4bf;
+  --c-node-blue: #60a5fa;
+  --c-node-purple: #a78bfa;
+  --c-node-pink: #f472b6;
+  --c-command: #60a5fa;
+  --c-event: #c084fc;
+  --c-external: #2dd4bf;
+  --c-danger: #f87171;
+  --c-warning: #fdb022;
+
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.6);
+  --shadow-selected: 0 0 0 2px var(--c-primary), 0 4px 16px rgba(139, 147, 248, 0.3);
+}
+
+// Dark, with the contrast raised: black ground, white text, solid borders.
+@mixin high-contrast-tokens {
+  @include dark-tokens;
+  --c-bg: #000000;
+  --c-surface-1: #000000;
+  --c-surface-2: #0a0a0a;
+  --c-surface-3: #1a1a1a;
+  --c-border: #ffffff;
+  --c-border-muted: #d0d0d0;
+  --c-text: #ffffff;
+  --c-text-subtle: #e0e0e0;
+  --c-primary: #ffd60a;
+  --c-primary-hover: #ffe55c;
+  --c-primary-soft: rgba(255, 214, 10, 0.2);
+  --c-on-primary: #000000;
+  --c-danger: #ff8080;
+}
+
 // Design tokens, after the Foblex call-center example.
 :root {
   --c-bg: #f4f5f7;
@@ -41,6 +106,8 @@
   // Events that arrive from outside the saga.
   --c-external: #0d9488;
   --c-danger: #d14343;
+  --c-warning: #b54708;
+  --c-on-primary: #ffffff;
 
   --radius-md: 8px;
   --radius-xl: 12px;
@@ -51,6 +118,20 @@
   --shadow-selected: 0 0 0 2px var(--c-primary), 0 4px 16px rgba(99, 102, 241, 0.2);
 
   --transition-fast: 0.12s ease;
+}
+
+:root[data-theme='dark'] {
+  @include dark-tokens;
+}
+
+:root[data-theme='high-contrast'] {
+  @include high-contrast-tokens;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    @include dark-tokens;
+  }
 }
 
 html,

@@ -20,6 +20,7 @@ import {
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
+import { Theme } from '../theme';
 import { AddStepButton } from './add-step-button';
 import { DiagramLayout, SLOT_SIZE, nodeSize } from './diagram-layout';
 import { Icon } from './icon';
@@ -46,6 +47,7 @@ export class Editor {
   protected readonly store = inject(DiagramStore);
   protected readonly file = inject(DiagramDocument);
   protected readonly layout = inject(DiagramLayout);
+  protected readonly theme = inject(Theme);
   protected readonly appendTypes = APPEND_TYPES;
   protected readonly slotSize = SLOT_SIZE;
   protected readonly nodeSize = nodeSize;

@@ -63,6 +63,15 @@
     </span>
     <button
       type="button"
+      class="menu-button theme-toggle"
+      [attr.aria-pressed]="theme.isDark()"
+      (click)="theme.toggle()"
+      title="Switch between the light and the dark theme"
+    >
+      <app-icon name="theme" /><span>Dark</span>
+    </button>
+    <button
+      type="button"
       class="menu-button source-toggle"
       [class.active]="sourceOpen()"
       [attr.aria-pressed]="sourceOpen()"

@@ -28,7 +28,7 @@
 
   &:hover,
   :host(.open) & {
-    color: #fff;
+    color: var(--c-on-primary);
     background: var(--c-primary);
     border-color: var(--c-primary);
     transform: scale(1.08);
