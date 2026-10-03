@@ -16,7 +16,7 @@ import { INSERT_TYPES } from './node-types';
   host: {
     '[attr.data-direction]': 'direction()',
     '[class.empty]': 'rows() === 0',
-    '[class.floating]': '!insertable()',
+    '[class.inline]': '!insertable()',
   },
   templateUrl: './transition-label.html',
   styleUrl: './transition-label.scss',
