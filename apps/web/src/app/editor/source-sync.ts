@@ -1,9 +1,13 @@
 import { DestroyRef, Injectable, effect, inject, signal, untracked } from '@angular/core';
-import { Diagram } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
-import { DiagramFormatError, parseDiagramWithNotes, serializeDiagram } from '../model/diagram-yaml';
 import { locateSourceError } from './source-errors';
 import { DiagramDocument } from '../storage/diagram-document';
+import {
+  Diagram,
+  DiagramFormatError,
+  parseDiagramWithNotes,
+  serializeDiagram,
+} from '@ariadne/core';
 
 /** Pause after the last keystroke before the text is parsed and applied. */
 export const SOURCE_DEBOUNCE_MS = 300;

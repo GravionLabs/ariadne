@@ -1,5 +1,5 @@
-import { Diagram } from '../model/diagram';
 import { fit, renderDiagramSvg } from './diagram-svg';
+import { Diagram } from '@ariadne/core';
 
 /** The order saga: external trigger, activities, a decision, a compensation and a final state. */
 const orderSaga: Diagram = {

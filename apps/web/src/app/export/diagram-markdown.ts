@@ -1,7 +1,14 @@
-import { decisionIds } from '../editor/diagram-layout';
-import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from '../editor/node-types';
-import { Diagram, DiagramNode, EventKind, eventKindOf, joinEventsOf } from '../model/diagram';
+import { DECISION, NODE_TYPES } from '../editor/node-types';
 import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
+import {
+  ACTIVITY_VERBS,
+  decisionIds,
+  Diagram,
+  DiagramNode,
+  EventKind,
+  eventKindOf,
+  joinEventsOf,
+} from '@ariadne/core';
 
 export interface MarkdownOptions {
   /** Page title when the diagram has no name of its own (the editor passes the file name). */

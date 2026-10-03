@@ -10,34 +10,34 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { DiagramStore } from '../model/diagram-store';
+import { DiagramLayout } from './diagram-layout';
+import { EditorStore } from './editor-store';
+import { Icon } from './icon';
+import { DECISION, NODE_TYPES } from './node-types';
 import {
   Activity,
   DiagramEdge,
   DiagramNode,
   EdgeKind,
-  MessageKind,
-  NODE_COLORS,
-  NodeColor,
-  NodeType,
   eventLabel,
   hasActivities,
-  REQUEST_OUTCOMES,
-  Request,
-  Timer,
-  hasInput,
   hasIgnores,
+  hasInput,
   hasRequests,
   hasTimers,
   joinEventsOf,
+  MessageKind,
+  namingHint,
+  NODE_COLORS,
+  NodeColor,
+  NodeType,
+  Request,
+  REQUEST_OUTCOMES,
   requestEvent,
-} from '../model/diagram';
-import { sameTransition } from '../model/diagram-edits';
-import { DiagramStore } from '../model/diagram-store';
-import { namingHint } from '../model/messages';
-import { DiagramLayout } from './diagram-layout';
-import { EditorStore } from './editor-store';
-import { Icon } from './icon';
-import { DECISION, NODE_TYPES } from './node-types';
+  sameTransition,
+  Timer,
+} from '@ariadne/core';
 
 /** Inspector sections that start expanded even when empty. */
 const ALWAYS_OPEN = ['details', 'activities', 'transitions'];

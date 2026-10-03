@@ -1,9 +1,9 @@
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 import { Component, input, output, signal } from '@angular/core';
 import { FFlowModule } from '@foblex/flow';
-import { NodeType } from '../model/diagram';
 import { Icon } from './icon';
 import { NODE_TYPES } from './node-types';
+import { NodeType } from '@ariadne/core';
 
 /**
  * Round "+" that opens a picker of node types (or adds the only one directly); used after states

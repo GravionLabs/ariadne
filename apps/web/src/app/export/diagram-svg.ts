@@ -1,27 +1,26 @@
+import { DECISION, NODE_TYPES } from '../editor/node-types';
 import {
+  ACTIVITY_VERBS,
+  backEdgeIds,
+  decisionIds,
   Diagram,
   DiagramEdge,
   DiagramNode,
-  NodeColor,
-  Point,
   eventKindOf,
   eventLabel,
-  joinEventsOf,
-} from '../model/diagram';
-import {
   INSERT_OVERHANG,
-  LABEL_PADDING,
-  LABEL_ROW,
-  Size,
   isBar,
   isCompact,
+  joinEventsOf,
+  LABEL_PADDING,
+  LABEL_ROW,
   labelRows,
   layoutDiagram,
+  NodeColor,
   nodeSize,
-  backEdgeIds,
-  decisionIds,
-} from '../editor/diagram-layout';
-import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from '../editor/node-types';
+  Point,
+  Size,
+} from '@ariadne/core';
 
 /**
  * Light theme tokens from styles.scss, written out: an exported file has no CSS variables to

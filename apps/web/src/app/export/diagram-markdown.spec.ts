@@ -1,5 +1,5 @@
-import { Diagram } from '../model/diagram';
 import { diagramToMarkdown } from './diagram-markdown';
+import { Diagram } from '@ariadne/core';
 
 const orderSaga: Diagram = {
   direction: 'top-bottom',

@@ -22,6 +22,9 @@ export type Direction = 'top-bottom' | 'left-right';
 export type MessageKind = 'command' | 'event';
 export const MESSAGE_KINDS: readonly MessageKind[] = ['command', 'event'];
 
+/** How a state's activity reads: it sends a command or publishes an event. */
+export const ACTIVITY_VERBS: Record<MessageKind, string> = { command: 'Send', event: 'Publish' };
+
 /**
  * Something a state does when the saga enters it: send a command or publish an event
  * (MassTransit's `WhenEnter(State, binder => binder.Send(...).Publish(...))`).

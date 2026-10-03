@@ -1,5 +1,4 @@
-import { ACTIVITY_VERBS } from '../editor/node-types';
-import { Diagram, DiagramEdge, DiagramNode, eventLabel } from './diagram';
+import { ACTIVITY_VERBS, Diagram, DiagramEdge, DiagramNode, eventLabel } from './diagram';
 
 /** The state a walk starts in: the initial state. */
 export function startOf(diagram: Diagram): DiagramNode | undefined {

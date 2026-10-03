@@ -19,25 +19,12 @@ import {
   provideFFlow,
   withA11y,
 } from '@foblex/flow';
-import {
-  DiagramEdge,
-  DiagramNode,
-  Direction,
-  NodeType,
-  eventLabel,
-  inputId,
-  nodeIdOfConnector,
-  outputId,
-  eventKindOf,
-  joinEventsOf,
-} from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
-import { Finding } from '../model/validation';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
 import { AddStepButton } from './add-step-button';
 import { DiagramDetails } from './diagram-details';
-import { DiagramLayout, SLOT_SIZE, backEdgeIds, labelId, nodeSize } from './diagram-layout';
+import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
 import { WalkthroughPanel } from './walkthrough-panel';
 import { WalkthroughStore } from './walkthrough-store';
@@ -51,6 +38,23 @@ import { SourcePanel } from './source-panel';
 import { NodeCard } from './node-card';
 import { APPEND_TYPES, DECISION, NODE_TYPES } from './node-types';
 import { TransitionLabel } from './transition-label';
+import {
+  backEdgeIds,
+  DiagramEdge,
+  DiagramNode,
+  Direction,
+  eventKindOf,
+  eventLabel,
+  Finding,
+  inputId,
+  joinEventsOf,
+  labelId,
+  nodeIdOfConnector,
+  nodeSize,
+  NodeType,
+  outputId,
+  SLOT_SIZE,
+} from '@ariadne/core';
 
 const FIT_PADDING = { x: 80, y: 80 };
 

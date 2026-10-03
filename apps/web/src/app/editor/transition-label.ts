@@ -1,10 +1,18 @@
 import { Component, computed, input, output } from '@angular/core';
-import { DiagramEdge, Direction, EventKind, NodeType, eventLabel } from '../model/diagram';
-import { Severity } from '../model/validation';
 import { AddStepButton } from './add-step-button';
-import { LABEL_PADDING, LABEL_ROW, labelRows } from './diagram-layout';
 import { Icon, IconName } from './icon';
 import { INSERT_TYPES } from './node-types';
+import {
+  DiagramEdge,
+  Direction,
+  EventKind,
+  eventLabel,
+  LABEL_PADDING,
+  LABEL_ROW,
+  labelRows,
+  NodeType,
+  Severity,
+} from '@ariadne/core';
 
 /**
  * The label on a transition: the event that triggers it (and where an external one comes from),

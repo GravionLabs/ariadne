@@ -1,8 +1,8 @@
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 import { Component, computed, inject, output, signal } from '@angular/core';
-import { Finding, SEVERITIES, Severity } from '../model/validation';
 import { EditorStore } from './editor-store';
 import { Icon } from './icon';
+import { Finding, SEVERITIES, Severity } from '@ariadne/core';
 
 const LABELS: Record<Severity, [string, string]> = {
   error: ['error', 'errors'],

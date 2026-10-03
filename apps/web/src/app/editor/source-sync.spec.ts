@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { DiagramStore } from '../model/diagram-store';
-import { serializeDiagram } from '../model/diagram-yaml';
 import { DiagramDocument } from '../storage/diagram-document';
 import { FileStorage } from '../storage/file-storage';
 import { SOURCE_DEBOUNCE_MS, SourceSync } from './source-sync';
+import { serializeDiagram } from '@ariadne/core';
 
 describe('SourceSync', () => {
   let store: DiagramStore;

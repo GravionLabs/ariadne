@@ -1,5 +1,5 @@
-import { Diagram } from '../model/diagram';
 import { diagramToMermaid, mermaidMarkdown } from './diagram-mermaid';
+import { Diagram } from '@ariadne/core';
 
 const orderSaga: Diagram = {
   direction: 'top-bottom',
