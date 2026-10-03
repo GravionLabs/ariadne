@@ -1,4 +1,13 @@
-import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import {
   FCanvasComponent,
   FCreateConnectionEvent,
@@ -25,6 +34,7 @@ import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
 import { AddStepButton } from './add-step-button';
 import { DiagramLayout, SLOT_SIZE, nodeSize } from './diagram-layout';
+import { EditorStore } from './editor-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
 import { Inspector } from './inspector';
@@ -46,7 +56,7 @@ const FIT_PADDING = { x: 80, y: 80 };
     SourcePanel,
     TransitionLabel,
   ],
-  providers: [provideFFlow(withA11y()), DiagramLayout],
+  providers: [provideFFlow(withA11y()), DiagramLayout, EditorStore],
   host: {
     '(window:keydown)': 'onKeydown($event)',
     '(window:beforeunload)': 'onBeforeUnload($event)',
@@ -58,6 +68,7 @@ const FIT_PADDING = { x: 80, y: 80 };
 export class Editor {
   protected readonly store = inject(DiagramStore);
   protected readonly file = inject(DiagramDocument);
+  protected readonly ui = inject(EditorStore);
   protected readonly layout = inject(DiagramLayout);
   protected readonly theme = inject(Theme);
   protected readonly appendTypes = APPEND_TYPES;
@@ -67,15 +78,9 @@ export class Editor {
   protected readonly outputId = outputId;
   protected readonly slotInputId = (slotId: string) => `${slotId}:in`;
 
-  private readonly selection = signal<{ nodeIds: string[]; edgeIds: string[] }>({
-    nodeIds: [],
-    edgeIds: [],
-  });
   private readonly flow = viewChild(FFlowComponent);
   private readonly canvas = viewChild(FCanvasComponent);
   private readonly zoom = viewChild(FZoomDirective);
-  /** Set when the next layout should be fitted into view (new file, layout option change). */
-  private fitPending = false;
   /** The layout options seen by the last relayout; a change means the whole graph moved. */
   private lastLayoutKey: string | null = null;
 
@@ -85,8 +90,6 @@ export class Editor {
    * New layout options (spacing, ranker) belong here.
    */
   private readonly layoutKey = computed(() => this.store.direction());
-  /** Node to select in f-flow once the layout has placed it. */
-  private pendingSelect: string | null = null;
 
   /** The source panel (the diagram as YAML) next to the canvas; open state and width are remembered. */
   protected readonly sourceOpen = signal(remembered('source-open') === '1');
@@ -94,18 +97,6 @@ export class Editor {
     clamp(Number(remembered('source-width')) || SOURCE_DEFAULT_WIDTH, SOURCE_MIN_WIDTH, 4000),
   );
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
-
-  protected readonly hasSelection = computed(() => {
-    const { nodeIds, edgeIds } = this.selection();
-    return nodeIds.length + edgeIds.length > 0;
-  });
-
-  /** The selected node if exactly one node (and nothing else) is selected. */
-  protected readonly selectedNode = computed(() => {
-    const { nodeIds, edgeIds } = this.selection();
-    if (nodeIds.length !== 1 || edgeIds.length > 0) return undefined;
-    return this.store.nodes().find((n) => n.id === nodeIds[0]);
-  });
 
   /** Events the saga publishes itself; every other event comes from outside. */
   protected readonly published = computed(() => publishedEvents(this.store.diagram()));
@@ -124,32 +115,24 @@ export class Editor {
 
   protected readonly edgesById = computed(() => new Map(this.store.edges().map((e) => [e.id, e])));
 
-  /** The selected edge if exactly one edge (and nothing else) is selected. */
-  protected readonly selectedEdge = computed(() => {
-    const { nodeIds, edgeIds } = this.selection();
-    if (edgeIds.length !== 1 || nodeIds.length > 0) return undefined;
-    return this.store.edges().find((e) => e.id === edgeIds[0]);
-  });
-
   constructor() {
     // Runs after every relayout: fit or select once the new geometry is on the canvas.
     effect((onCleanup) => {
       this.layout.positions();
       // Any layout option change (also via undo/redo) refits; plain edits do not.
       const key = this.layoutKey();
-      if (this.lastLayoutKey !== null && key !== this.lastLayoutKey) this.fitPending = true;
+      if (this.lastLayoutKey !== null && key !== this.lastLayoutKey) this.ui.requestFit();
       this.lastLayoutKey = key;
-      if (!this.fitPending && !this.pendingSelect) return;
+      // Pending work is read untracked: only a relayout, not requesting it, may run this effect.
+      if (!untracked(() => this.ui.fitPending() || this.ui.pendingSelect())) return;
       const timer = setTimeout(() => {
-        if (this.fitPending) this.fitToScreen();
-        if (this.pendingSelect) {
-          this.flow()?.select([this.pendingSelect], [], false);
+        const { fit, select } = this.ui.takePending();
+        if (fit) this.fitToScreen();
+        if (select) {
+          this.flow()?.select([select], [], false);
           // Keep the node being worked on in view as the graph grows.
-          if (!this.fitPending)
-            this.canvas()?.centerGroupOrNode(this.pendingSelect, !prefersReducedMotion());
+          if (!fit) this.canvas()?.centerGroupOrNode(select, !prefersReducedMotion());
         }
-        this.fitPending = false;
-        this.pendingSelect = null;
       });
       onCleanup(() => clearTimeout(timer));
     });
@@ -162,17 +145,17 @@ export class Editor {
   /** "+" after a state: the picked state follows it. */
   protected append(sourceId: string, type: NodeType): void {
     const id = this.store.appendNode(sourceId, type);
-    if (id) this.selectNode(id);
+    if (id) this.ui.selectNode(id);
   }
 
   /** "+" on a transition: the picked state goes between its two ends. */
   protected insert(edgeId: string, type: NodeType): void {
     const id = this.store.insertOnEdge(edgeId, type);
-    if (id) this.selectNode(id);
+    if (id) this.ui.selectNode(id);
   }
 
   protected addStart(): void {
-    this.selectNode(this.store.addNode('start'));
+    this.ui.selectNode(this.store.addNode('start'));
   }
 
   protected setDirection(direction: Direction): void {
@@ -191,7 +174,7 @@ export class Editor {
 
   private afterReplace(): void {
     this.clearSelection();
-    this.fitPending = true;
+    this.ui.requestFit();
   }
 
   private confirmDiscard(): boolean {
@@ -203,7 +186,7 @@ export class Editor {
   }
 
   protected onSelection(event: FSelectionChangeEvent): void {
-    this.selection.set({ nodeIds: event.nodeIds, edgeIds: event.connectionIds });
+    this.ui.setSelection(event.nodeIds, event.connectionIds);
   }
 
   protected onKeydown(event: KeyboardEvent): void {
@@ -249,7 +232,7 @@ export class Editor {
   }
 
   protected deleteSelection(): void {
-    this.store.remove(this.selection());
+    this.store.remove(this.ui.selection());
     this.clearSelection();
   }
 
@@ -314,7 +297,7 @@ export class Editor {
   }
 
   protected clearSelection(): void {
-    this.selection.set({ nodeIds: [], edgeIds: [] });
+    this.ui.clearSelection();
     this.flow()?.clearSelection();
   }
 
@@ -337,14 +320,14 @@ export class Editor {
 
   /** A transition label was clicked: select its transition, as clicking the line would. */
   protected selectEdge(id: string): void {
-    this.selection.set({ nodeIds: [], edgeIds: [id] });
+    this.ui.selectEdge(id);
     this.flow()?.select([], [id], false);
   }
 
-  private selectNode(id: string): void {
-    this.selection.set({ nodeIds: [id], edgeIds: [] });
-    // f-flow can only select the node once the layout has placed and rendered it.
-    this.pendingSelect = id;
+  /** The inspector's "Add transition": a new state follows the selected one. */
+  protected appendToSelected(type: NodeType): void {
+    const node = this.ui.selectedNode();
+    if (node) this.append(node.id, type);
   }
 
   protected onDelete(event: FDeleteSelectedEvent): void {
