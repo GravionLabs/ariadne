@@ -70,7 +70,15 @@ const FIT_PADDING = { x: 80, y: 80 };
     SourcePanel,
     TransitionLabel,
   ],
-  providers: [provideFFlow(withA11y()), DiagramLayout, EditorStore, WalkthroughStore],
+  providers: [
+    // FF1011 (a node rendered away from its fNodePosition) is switched off: nodes are only ever
+    // placed through fNodePosition, and the check misfires while the canvas pans or zooms (a 150 ms
+    // CSS transition on the canvas, so every node reads as displaced by the length of the move).
+    provideFFlow({ diagnostics: { maxNodePositionDrift: 0 } }, withA11y()),
+    DiagramLayout,
+    EditorStore,
+    WalkthroughStore,
+  ],
   host: {
     '(window:keydown)': 'onKeydown($event)',
     '(window:beforeunload)': 'onBeforeUnload($event)',

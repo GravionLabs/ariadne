@@ -4,6 +4,7 @@ import {
   FCanvasComponent,
   FCreateConnectionEvent,
   FDraggableDirective,
+  F_FLOW_CONFIG,
   FSelectionChangeEvent,
 } from '@foblex/flow';
 import { DiagramStore } from '../model/diagram-store';
@@ -1034,6 +1035,12 @@ describe('Editor', () => {
         el.querySelector<HTMLButtonElement>('.toolbox [aria-label="Add the Any state"]')!.disabled,
       ).toBe(false);
     });
+  });
+
+  it("switches off only f-flow's node-drift diagnostic (it misfires while the canvas animates)", async () => {
+    const { fixture } = await setup();
+    const config = fixture.debugElement.query(By.css('f-flow')).injector.get(F_FLOW_CONFIG);
+    expect(config.diagnostics).toEqual({ maxNodePositionDrift: 0 });
   });
 
   it('adds the one Any state from the toolbox and opens it', async () => {
