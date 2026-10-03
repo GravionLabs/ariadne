@@ -471,6 +471,21 @@
     }
   } @else if (edge(); as edge) {
     <label class="field">
+      <span>To</span>
+      <select aria-label="Target state" (change)="setTarget($event)">
+        @for (target of targets(); track target.id) {
+          <option
+            [value]="target.id"
+            [selected]="target.id === edge.target"
+            [disabled]="target.taken"
+          >
+            {{ target.name }}
+          </option>
+        }
+      </select>
+      <small>Point it at an earlier state to make a loop, e.g. a retry.</small>
+    </label>
+    <label class="field">
       <span>Event</span>
       <input
         type="text"

@@ -491,6 +491,39 @@ describe('Editor', () => {
     expect(expanded('Timers')).toBe('true');
   });
 
+  it('lets a transition point at another state; an earlier one makes a loop with its label on the line', async () => {
+    const { el, store, select, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'state');
+    store.appendNode('state-2', 'end');
+    store.updateEdge('edge-3', { event: 'Done' });
+    await select([], ['edge-2']);
+
+    const target = () =>
+      el.querySelector<HTMLSelectElement>('app-inspector select[aria-label="Target state"]')!;
+    // Everything that can be entered, except the source itself and the initial state.
+    expect([...target().options].map((o) => o.textContent?.trim())).toEqual(['State', 'Final']);
+    expect(target().value).toBe('state-2');
+    expect(el.querySelectorAll('app-transition-label')).toHaveLength(3);
+
+    // state-1 → state-2 cannot point at state-1 (itself), but state-2 → state-1 can.
+    await select([], ['edge-3']);
+    target().value = 'state-1';
+    target().dispatchEvent(new Event('change'));
+    await settle();
+    expect(store.edges().find((e) => e.id === 'edge-3')).toMatchObject({
+      source: 'state-2',
+      target: 'state-1',
+    });
+    // The loop's label rides on its line instead of being laid out as a node.
+    expect(el.querySelectorAll('.transition app-transition-label')).toHaveLength(2);
+    expect(el.querySelectorAll('f-connection app-transition-label')).toHaveLength(1);
+
+    store.undo();
+    await settle();
+    expect(store.edges().find((e) => e.id === 'edge-3')?.target).toBe('end-1');
+  });
+
   it('adds the one Any state from the toolbox and opens it', async () => {
     const { el, store, settle } = await setup();
     const add = () => el.querySelector<HTMLButtonElement>('[aria-label="Add the Any state"]')!;

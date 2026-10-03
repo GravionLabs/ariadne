@@ -35,7 +35,7 @@ import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
 import { AddStepButton } from './add-step-button';
 import { DiagramDetails } from './diagram-details';
-import { DiagramLayout, SLOT_SIZE, nodeSize } from './diagram-layout';
+import { DiagramLayout, SLOT_SIZE, backEdgeIds, nodeSize } from './diagram-layout';
 import { EditorStore } from './editor-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
@@ -105,6 +105,9 @@ export class Editor {
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
 
   /** Events the saga publishes itself; every other event comes from outside. */
+  /** Transitions that close a loop: not laid out, their label rides on the line. */
+  protected readonly loops = computed(() => backEdgeIds(this.store.diagram()));
+
   /** What kind of event each transition reacts to (from the saga, outside it, a timeout). */
   protected readonly kindOf = computed(() => eventKindOf(this.store.diagram()));
 

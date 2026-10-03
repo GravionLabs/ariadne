@@ -23,6 +23,7 @@ import {
   Request,
   Timer,
   hasCombines,
+  hasInput,
   hasIgnores,
   hasRequests,
   hasTimers,
@@ -476,6 +477,28 @@ export class Inspector {
     const edge = this.edge();
     const value = optional(event);
     if (edge && value !== edge.eventSource) this.store.updateEdge(edge.id, { eventSource: value });
+  }
+
+  /** States the selected transition could lead to: everything that can be entered. */
+  protected readonly targets = computed(() => {
+    const edge = this.edge();
+    if (!edge) return [];
+    const taken = new Set(
+      this.store
+        .edges()
+        .filter((e) => e.id !== edge.id && e.source === edge.source && e.kind === edge.kind)
+        .map((e) => e.target),
+    );
+    return this.store
+      .nodes()
+      .filter((n) => hasInput(n.type) && n.id !== edge.source)
+      .map((n) => ({ id: n.id, name: n.name, taken: taken.has(n.id) }));
+  });
+
+  protected setTarget(event: Event): void {
+    const edge = this.edge();
+    const select = event.target as HTMLSelectElement;
+    if (edge && !this.store.setEdgeTarget(edge.id, select.value)) select.value = edge.target;
   }
 
   protected setGuard(event: Event): void {

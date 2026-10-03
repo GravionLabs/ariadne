@@ -92,6 +92,24 @@ export function updateEdge(d: Diagram, id: string, patch: EdgePatch): Diagram {
   };
 }
 
+/**
+ * Points a transition at another state. `null` if the transition or the state is unknown, the
+ * state cannot be entered, it is the transition's own source, or the transition would duplicate
+ * another one (same source, target and kind). Pointing it back at an earlier state makes a loop.
+ */
+export function retargetEdge(d: Diagram, edgeId: string, target: string): Diagram | null {
+  const edge = d.edges.find((e) => e.id === edgeId);
+  const to = d.nodes.find((n) => n.id === target);
+  if (!edge || !to || !hasInput(to.type) || target === edge.source) return null;
+  if (target === edge.target) return d;
+  const duplicate = d.edges.some(
+    (e) =>
+      e.id !== edgeId && e.source === edge.source && e.target === target && e.kind === edge.kind,
+  );
+  if (duplicate) return null;
+  return { ...d, edges: d.edges.map((e) => (e.id === edgeId ? { ...e, target } : e)) };
+}
+
 /** Sets the saga's name and/or description; an empty text removes it. */
 export function updateDetails(d: Diagram, patch: DetailsPatch): Diagram {
   const text = (value: string | undefined) => value?.trim() || undefined;
