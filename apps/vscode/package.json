@@ -56,6 +56,12 @@
         "title": "Import Saga from C#…",
         "category": "Ariadne",
         "icon": "$(arrow-right)"
+      },
+      {
+        "command": "ariadne.generateCsharp",
+        "title": "Generate C#",
+        "category": "Ariadne",
+        "icon": "$(file-code)"
       }
     ],
     "menus": {
@@ -67,6 +73,10 @@
         {
           "command": "ariadne.openDiagram",
           "when": "resourceFilename =~ /\\.saga\\.yaml$/ && activeCustomEditorId != ariadne.sagaEditor"
+        },
+        {
+          "command": "ariadne.generateCsharp",
+          "when": "activeCustomEditorId == ariadne.sagaEditor || resourceFilename =~ /\\.saga\\.yaml$/"
         }
       ],
       "editor/title": [
@@ -79,6 +89,11 @@
           "command": "ariadne.openDiagram",
           "when": "resourceFilename =~ /\\.saga\\.yaml$/ && activeCustomEditorId != ariadne.sagaEditor",
           "group": "navigation"
+        },
+        {
+          "command": "ariadne.generateCsharp",
+          "when": "activeCustomEditorId == ariadne.sagaEditor",
+          "group": "navigation"
         }
       ],
       "explorer/context": [
@@ -90,6 +105,11 @@
         {
           "command": "ariadne.importFromCsharp",
           "when": "resourceExtname == .cs",
+          "group": "navigation"
+        },
+        {
+          "command": "ariadne.generateCsharp",
+          "when": "resourceFilename =~ /\\.saga\\.yaml$/",
           "group": "navigation"
         }
       ],
@@ -118,6 +138,18 @@
           "type": "string",
           "default": "",
           "description": "Folder for diagrams imported from C#, relative to the workspace folder. Empty: next to the C# file.",
+          "scope": "resource"
+        },
+        "ariadne.generate.folder": {
+          "type": "string",
+          "default": "",
+          "description": "Folder for generated C#, relative to the workspace folder. Empty: next to the C# file named in the diagram (saga.source), else next to the diagram.",
+          "scope": "resource"
+        },
+        "ariadne.generate.namespace": {
+          "type": "string",
+          "default": "",
+          "description": "Namespace for generated C# when the diagram does not name one (saga.namespace).",
           "scope": "resource"
         }
       }

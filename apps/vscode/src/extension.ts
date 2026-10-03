@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { emptyDiagram, serializeDiagram } from '@ariadne/core';
 import { SagaCodeLensProvider } from './code-lens';
+import { generateCsharpCommand, type ChooseFiles } from './generate-command';
 import { ImportReport, importFromCsharpCommand } from './import-command';
 import { VIRTUAL_SCHEME, VirtualDocuments } from './virtual-documents';
 import { OpenEditor, SAGA_EDITOR_VIEW_TYPE, SagaEditorProvider } from './saga-editor-provider';
@@ -8,6 +9,8 @@ import { OpenEditor, SAGA_EDITOR_VIEW_TYPE, SagaEditorProvider } from './saga-ed
 /** What the extension exports; the integration tests drive the editors through it. */
 export interface AriadneApi {
   openEditors(): OpenEditor[];
+  /** "Generate C#" with the choice of files given, instead of asking. */
+  generateCsharp(uri: vscode.Uri, choose: ChooseFiles): Promise<string[]>;
 }
 
 export function activate(context: vscode.ExtensionContext): AriadneApi {
@@ -18,6 +21,9 @@ export function activate(context: vscode.ExtensionContext): AriadneApi {
     report,
     vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, virtual),
     vscode.languages.registerCodeLensProvider({ pattern: '**/*.cs' }, new SagaCodeLensProvider()),
+    vscode.commands.registerCommand('ariadne.generateCsharp', (uri?: vscode.Uri) =>
+      generateCsharpCommand(virtual, report.channel, uri),
+    ),
     vscode.commands.registerCommand(
       'ariadne.importFromCsharp',
       (uri?: vscode.Uri, className?: string) =>
@@ -65,7 +71,10 @@ export function activate(context: vscode.ExtensionContext): AriadneApi {
       await vscode.commands.executeCommand('vscode.openWith', file, SAGA_EDITOR_VIEW_TYPE);
     }),
   );
-  return { openEditors: () => [...provider.open] };
+  return {
+    openEditors: () => [...provider.open],
+    generateCsharp: (uri, choose) => generateCsharpCommand(virtual, report.channel, uri, choose),
+  };
 }
 
 export function deactivate(): void {}
