@@ -24,6 +24,14 @@
     <button
       type="button"
       class="menu-button"
+      (click)="generateCsharp()"
+      title="Generate a MassTransit saga state machine in C# from this diagram"
+    >
+      <app-icon name="code" /><span>Generate C#…</span>
+    </button>
+    <button
+      type="button"
+      class="menu-button"
       [class.primary]="file.dirty()"
       (click)="file.save()"
       title="Save (Ctrl+S)"
@@ -411,3 +419,4 @@
 
 <app-new-diagram-dialog />
 <app-import-dialog />
+<app-generate-dialog />

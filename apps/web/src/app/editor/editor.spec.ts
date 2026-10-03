@@ -18,7 +18,9 @@ import type { Mock } from 'vitest';
 import { CODE_EDITOR_FACTORY, CodeEditor, CodeEditorOptions } from './code-editor';
 import { Editor } from './editor';
 import './native-dialog.testing';
-import { serializeDiagram } from '@ariadne/core';
+import { parseDiagram, serializeDiagram } from '@ariadne/core';
+import orderYaml from '../../../../../docs/examples/order.saga.yaml';
+import travelYaml from '../../../../../docs/examples/travel-booking.saga.yaml';
 
 // jsdom has no ResizeObserver; f-flow uses it to track node sizes.
 globalThis.ResizeObserver ??= class {
@@ -62,6 +64,7 @@ describe('Editor', () => {
       save: vi.fn(async () => null),
       saveAs: vi.fn(async () => null),
       openFiles: vi.fn(async (): Promise<TextFile[] | null> => null),
+      saveFiles: vi.fn(async () => true),
     };
     await TestBed.configureTestingModule({
       imports: [Editor],
@@ -1085,6 +1088,81 @@ describe('Editor', () => {
     await fill('[aria-label="Event in code"] input[placeholder="PaymentCharged"]', '');
     await fill('[aria-label="Event in code"] input[placeholder="CorrelationId"]', '');
     expect(store.diagram().events).toBeUndefined();
+  });
+
+  describe('generate C#', () => {
+    async function generating() {
+      const ctx = await setup();
+      ctx.store.load(parseDiagram(orderYaml));
+      await ctx.settle();
+      const dialog = () => ctx.el.querySelector('app-generate-dialog dialog') as HTMLDialogElement;
+      const button = (label: string) =>
+        [...dialog().querySelectorAll<HTMLButtonElement>('button')].find(
+          (b) => b.textContent?.trim() === label,
+        )!;
+      const start = async () => {
+        [...ctx.el.querySelectorAll<HTMLButtonElement>('.file-actions button')]
+          .find((b) => b.textContent?.includes('Generate C#'))!
+          .click();
+        await vi.waitFor(
+          () => {
+            ctx.fixture.detectChanges();
+            expect(dialog().open).toBe(true);
+          },
+          { timeout: 15_000 },
+        );
+      };
+      return { ...ctx, dialog, button, start };
+    }
+
+    it('shows the generated files, one at a time, with the TODOs marked', async () => {
+      const { dialog, start, settle } = await generating();
+      await start();
+      const tabs = () => [...dialog().querySelectorAll('.tab')].map((t) => t.textContent?.trim());
+      expect(tabs()).toEqual(['OrderStateMachine.cs', 'OrderState.cs', 'Contracts.cs']);
+      expect(dialog().querySelector('.code')?.textContent).toContain(
+        'class OrderStateMachine : MassTransitStateMachine<OrderState>',
+      );
+      expect(dialog().querySelectorAll('.code .todo').length).toBeGreaterThan(0);
+
+      (dialog().querySelectorAll('.tab')[2] as HTMLButtonElement).click();
+      await settle();
+      expect(dialog().querySelector('.code')?.textContent).toContain('public record ReserveStock');
+      expect(dialog().querySelector('.tab.current')?.textContent?.trim()).toBe('Contracts.cs');
+    });
+
+    it('saves all files together, named after the diagram', async () => {
+      const { dialog, button, start, settle, storage } = await generating();
+      await start();
+      button('Save all…').click();
+      await settle();
+      const [files, folder] = storage.saveFiles.mock.calls[0] as unknown as [TextFile[], string];
+      expect(files.map((f) => f.name)).toEqual([
+        'OrderStateMachine.cs',
+        'OrderState.cs',
+        'Contracts.cs',
+      ]);
+      expect(folder).toBe('untitled.saga.yaml'.replace(/\.saga\.yaml$/, ''));
+      expect(dialog().querySelector('.status')?.textContent).toBe('Saved 3 files.');
+    });
+
+    it('copies the file that is shown', async () => {
+      const { dialog, button, start, settle } = await generating();
+      const writeText = vi.fn(async () => undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      await start();
+      button('Copy file').click();
+      await settle();
+      expect(writeText).toHaveBeenCalledWith(expect.stringContaining('OrderStateMachine'));
+      expect(dialog().querySelector('.status')?.textContent).toBe('OrderStateMachine.cs copied.');
+    });
+
+    it('lists what could not be generated', async () => {
+      const { store, dialog, start } = await generating();
+      store.load(parseDiagram(travelYaml));
+      await start();
+      expect(dialog().querySelectorAll('.warnings li').length).toBeGreaterThan(0);
+    });
   });
 
   describe('import from C#', () => {

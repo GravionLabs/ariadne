@@ -33,6 +33,7 @@ import { Icon } from './icon';
 import { Inspector } from './inspector';
 import { SagaImport } from '../import/saga-import';
 import { CatalogPanel } from './catalog-panel';
+import { GenerateDialog } from './generate-dialog';
 import { ImportDialog } from './import-dialog';
 import { NewDiagramDialog } from './new-diagram-dialog';
 import { ProblemsMenu } from './problems-menu';
@@ -70,6 +71,7 @@ const FIT_PADDING = { x: 80, y: 80 };
     FFlowModule,
     Icon,
     Inspector,
+    GenerateDialog,
     ImportDialog,
     NewDiagramDialog,
     NodeCard,
@@ -103,6 +105,7 @@ export class Editor {
   protected readonly walking = this.walk.active;
   private readonly newDialog = viewChild.required(NewDiagramDialog);
   private readonly importDialog = viewChild.required(ImportDialog);
+  private readonly generateDialog = viewChild.required(GenerateDialog);
   private readonly sagaImport = inject(SagaImport);
   protected readonly layout = inject(DiagramLayout);
   protected readonly theme = inject(Theme);
@@ -265,6 +268,17 @@ export class Editor {
     } catch (e) {
       this.file.setNotice(null);
       this.file.setError(`The C# files could not be read: ${(e as Error).message}`);
+    }
+  }
+
+  /** Shows the C# for the diagram: generated here, in the browser, and not written anywhere yet. */
+  protected async generateCsharp(): Promise<void> {
+    try {
+      const { generateSaga } = await import('@ariadne/masstransit/generate');
+      const folder = this.file.name().replace(/\.(saga\.)?ya?ml$/i, '') || 'saga';
+      this.generateDialog().open(generateSaga(this.store.diagram()), folder);
+    } catch (e) {
+      this.file.setError(`C# could not be generated: ${(e as Error).message}`);
     }
   }
 

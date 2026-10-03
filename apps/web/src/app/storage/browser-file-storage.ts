@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
+import { zipFiles } from './zip';
 import {
   DIAGRAM_EXTENSIONS,
   FileRef,
@@ -21,7 +22,11 @@ interface FilePickerOptions {
   multiple?: boolean;
   types?: { description: string; accept: Record<string, string[]> }[];
 }
+interface DirectoryHandle {
+  getFileHandle(name: string, options: { create: boolean }): Promise<FileHandle>;
+}
 interface FileSystemAccessWindow {
+  showDirectoryPicker?(options?: { mode?: 'readwrite' }): Promise<DirectoryHandle>;
   showOpenFilePicker(options?: FilePickerOptions): Promise<FileHandle[]>;
   showSaveFilePicker(options?: FilePickerOptions): Promise<FileHandle>;
 }
@@ -103,6 +108,26 @@ export class BrowserFileStorage extends FileStorage {
     }
     this.download(content, suggestedName);
     return { name: suggestedName };
+  }
+
+  async saveFiles(files: readonly TextFile[], folderName: string): Promise<boolean> {
+    const picker = (this.document.defaultView as unknown as Partial<FileSystemAccessWindow> | null)
+      ?.showDirectoryPicker;
+    if (picker) {
+      const directory = await cancelled(
+        picker.call(this.document.defaultView, { mode: 'readwrite' }),
+      );
+      if (!directory) return false;
+      for (const file of files) {
+        await write(await directory.getFileHandle(file.name, { create: true }), file.content);
+      }
+      return true;
+    }
+    this.downloadBlob(
+      new Blob([zipFiles(files)], { type: 'application/zip' }),
+      `${folderName}.zip`,
+    );
+    return true;
   }
 
   async exportFile(content: Blob, suggestedName: string): Promise<FileRef | null> {

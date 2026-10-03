@@ -36,6 +36,12 @@ export abstract class FileStorage {
    */
   abstract openFiles(options: PickFilesOptions): Promise<TextFile[] | null>;
 
+  /**
+   * Saves several generated files (C# sources): into a folder the user picks where the platform
+   * can, otherwise as one zip named after `folderName`. Resolves to `false` when the user cancels.
+   */
+  abstract saveFiles(files: readonly TextFile[], folderName: string): Promise<boolean>;
+
   /** Writes to `ref` in place when possible, otherwise asks where to save. */
   abstract save(content: string, ref: FileRef): Promise<FileRef | null>;
 

@@ -3,6 +3,7 @@ import { BrowserFileStorage } from './browser-file-storage';
 
 /** The File System Access API is not in jsdom; the storage only needs these two functions. */
 interface PickerWindow {
+  showDirectoryPicker?: unknown;
   showOpenFilePicker?: unknown;
   showSaveFilePicker?: unknown;
 }
@@ -20,6 +21,7 @@ describe('BrowserFileStorage', () => {
     vi.restoreAllMocks();
     delete win.showOpenFilePicker;
     delete win.showSaveFilePicker;
+    delete win.showDirectoryPicker;
   });
 
   describe('with the File System Access API', () => {
@@ -77,6 +79,38 @@ describe('BrowserFileStorage', () => {
       });
       win.showSaveFilePicker = vi.fn();
       expect(await storage.openFiles({ extensions: ['.cs'], description: 'C#' })).toBeNull();
+    });
+
+    it('writes several files into the folder the user picks', async () => {
+      const written = new Map<string, string>();
+      const directory = {
+        getFileHandle: async (name: string) => ({
+          name,
+          createWritable: async () => ({
+            write: async (data: string) => void written.set(name, data),
+            close: vi.fn(),
+          }),
+        }),
+      };
+      win.showDirectoryPicker = vi.fn(async () => directory);
+
+      const saved = await storage.saveFiles(
+        [
+          { name: 'A.cs', content: 'class A {}' },
+          { name: 'B.cs', content: 'class B {}' },
+        ],
+        'order',
+      );
+
+      expect(saved).toBe(true);
+      expect(Object.fromEntries(written)).toEqual({ 'A.cs': 'class A {}', 'B.cs': 'class B {}' });
+    });
+
+    it('saves nothing when the folder picker is cancelled', async () => {
+      win.showDirectoryPicker = vi.fn(async () => {
+        throw new DOMException('cancelled', 'AbortError');
+      });
+      expect(await storage.saveFiles([{ name: 'A.cs', content: 'x' }], 'order')).toBe(false);
     });
 
     it('exports an image through the save picker, filtered to its extension', async () => {
@@ -167,6 +201,31 @@ describe('BrowserFileStorage', () => {
 
       expect(created[0].download).toBe('order.svg');
       expect(ref).toEqual({ name: 'order.svg' });
+    });
+
+    it('downloads several files as one zip', async () => {
+      const created: HTMLAnchorElement[] = [];
+      const realCreate = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        const el = realCreate(tag);
+        if (tag === 'a') {
+          created.push(el as HTMLAnchorElement);
+          (el as HTMLAnchorElement).click = vi.fn();
+        }
+        return el;
+      });
+      let blob: Blob | undefined;
+      URL.createObjectURL = vi.fn((b: Blob) => {
+        blob = b;
+        return 'blob:x';
+      });
+      URL.revokeObjectURL = vi.fn();
+
+      const saved = await storage.saveFiles([{ name: 'A.cs', content: 'class A {}' }], 'order');
+
+      expect(saved).toBe(true);
+      expect(created[0].download).toBe('order.zip');
+      expect(blob?.type).toBe('application/zip');
     });
 
     it('lets the file input pick *.saga.yaml files', async () => {
