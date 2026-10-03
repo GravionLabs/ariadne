@@ -100,7 +100,15 @@ describe('Editor', () => {
       field.dispatchEvent(new Event('change'));
       await settle();
     };
-    return { fixture, el, store, storage, editors, settle, draggable, pick, select, fill };
+    /** Opens a collapsed section of the inspector, e.g. "Timers". */
+    const expand = async (section: string) => {
+      const toggle = el.querySelector<HTMLButtonElement>(
+        `app-inspector [aria-label="${section}"] .group-toggle`,
+      )!;
+      if (toggle.getAttribute('aria-expanded') === 'false') toggle.click();
+      await settle();
+    };
+    return { fixture, el, store, storage, editors, settle, draggable, pick, select, fill, expand };
   }
 
   const slotButton = (el: HTMLElement) =>
@@ -308,10 +316,11 @@ describe('Editor', () => {
   });
 
   it('lists ignored events of a state as struck-through chips and edits them in the inspector', async () => {
-    const { el, store, select, settle } = await setup();
+    const { el, store, select, settle, expand } = await setup();
     store.appendNode('start-1', 'state');
     await select(['state-1']);
     const ignoreInputs = () => el.querySelectorAll<HTMLInputElement>('app-inspector .ignore input');
+    await expand('Ignored events');
     inspectorButton(el, 'Ignore an event').click();
     await settle();
     expect(store.nodes()[1].ignores).toEqual(['SomethingHappened']);
@@ -334,10 +343,11 @@ describe('Editor', () => {
   });
 
   it('schedules a timeout on a state; the event of that name is a timeout transition', async () => {
-    const { el, store, select, settle, fill } = await setup();
+    const { el, store, select, settle, fill, expand } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'end');
     await select(['state-1']);
+    await expand('Timers');
     inspectorButton(el, 'Schedule a timeout').click();
     await settle();
     expect(store.nodes()[1].timers).toEqual([
@@ -373,10 +383,11 @@ describe('Editor', () => {
   });
 
   it('makes a request on a state; its three answers are recognised as transitions', async () => {
-    const { el, store, select, settle, fill } = await setup();
+    const { el, store, select, settle, fill, expand } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'end');
     await select(['state-1']);
+    await expand('Requests');
     inspectorButton(el, 'Make a request').click();
     await settle();
     expect(store.nodes()[1].requests).toEqual([{ name: 'DoSomething', timeout: '30s' }]);
@@ -408,7 +419,7 @@ describe('Editor', () => {
   });
 
   it('adds a join from the "+", lists what it waits for, and recognises its event', async () => {
-    const { el, store, select, settle, fill, pick } = await setup();
+    const { el, store, select, settle, fill, pick, expand } = await setup();
     store.appendNode('start-1', 'state');
     await settle();
     await pick(slotButton(el), 'join');
@@ -416,6 +427,7 @@ describe('Editor', () => {
     expect(el.querySelector('app-node-card[data-type="join"] .bar')).toBeTruthy();
     expect(el.querySelector('app-inspector')?.getAttribute('aria-label')).toBe('Join settings');
 
+    await expand('Combined events');
     inspectorButton(el, 'Add an event').click();
     await settle();
     const field = el.querySelector<HTMLInputElement>('app-inspector .combine input')!;
@@ -443,6 +455,40 @@ describe('Editor', () => {
     again.dispatchEvent(new Event('change'));
     await settle();
     expect(store.nodes()[2].combines).toBeUndefined();
+  });
+
+  it('collapses the inspector sections: entries open them, empty ones start closed', async () => {
+    const { el, store, select, settle, expand } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'state');
+    store.updateNode('state-1', { timers: [{ action: 'schedule', name: 'T' }] });
+    await select(['state-1']);
+    const toggle = (section: string) =>
+      el.querySelector<HTMLButtonElement>(`app-inspector [aria-label="${section}"] .group-toggle`)!;
+    const expanded = (section: string) => toggle(section).getAttribute('aria-expanded');
+
+    // Activities and Transitions always start open; Timers has an entry; the rest are empty.
+    expect(expanded('Activities')).toBe('true');
+    expect(expanded('Transitions')).toBe('true');
+    expect(expanded('Timers')).toBe('true');
+    expect(toggle('Timers').querySelector('.count')?.textContent?.trim()).toBe('1');
+    expect(expanded('Requests')).toBe('false');
+    expect(expanded('Ignored events')).toBe('false');
+    expect(inspectorButton(el, 'Make a request')).toBeUndefined();
+
+    await expand('Requests');
+    expect(expanded('Requests')).toBe('true');
+    expect(inspectorButton(el, 'Make a request')).toBeTruthy();
+
+    // By hand: close Timers, then another state brings the defaults back.
+    toggle('Timers').click();
+    await settle();
+    expect(expanded('Timers')).toBe('false');
+    expect(inspectorButton(el, 'Schedule a timeout')).toBeUndefined();
+    await select(['state-2']);
+    expect(expanded('Requests')).toBe('false');
+    await select(['state-1']);
+    expect(expanded('Timers')).toBe('true');
   });
 
   it('adds the one Any state from the toolbox and opens it', async () => {

@@ -88,248 +88,321 @@
 
     @if (hasActivities(node.type)) {
       <section class="group" aria-label="Activities">
-        <div class="group-title">
+        <button
+          type="button"
+          class="group-toggle"
+          [attr.aria-expanded]="isOpen('activities', node.activities?.length ?? 0)"
+          (click)="toggle('activities', node.activities?.length ?? 0)"
+        >
+          <app-icon
+            [name]="
+              isOpen('activities', node.activities?.length ?? 0) ? 'expandLess' : 'expandMore'
+            "
+          />
           <span>Activities</span>
-          <small>
+          @if (node.activities?.length ?? 0) {
+            <span class="count">{{ node.activities?.length ?? 0 }}</span>
+          }
+        </button>
+        @if (isOpen('activities', node.activities?.length ?? 0)) {
+          <small class="group-desc">
             Run in order when the saga enters “{{ node.name }}”: send a command to one consumer, or
             publish an event to all subscribers.
           </small>
-        </div>
-        @for (activity of node.activities ?? []; track $index; let i = $index) {
-          <div class="message" [attr.data-kind]="activity.kind">
-            <div class="segmented" role="radiogroup" [attr.aria-label]="'Kind of ' + activity.name">
-              <button
-                type="button"
-                role="radio"
-                [attr.aria-checked]="activity.kind === 'command'"
-                [class.active]="activity.kind === 'command'"
-                title="Send a command: an instruction to exactly one consumer"
-                (click)="setActivityKind(i, 'command')"
+          @for (activity of node.activities ?? []; track $index; let i = $index) {
+            <div class="message" [attr.data-kind]="activity.kind">
+              <div
+                class="segmented"
+                role="radiogroup"
+                [attr.aria-label]="'Kind of ' + activity.name"
               >
-                <app-icon name="command" /> Send command
-              </button>
-              <button
-                type="button"
-                role="radio"
-                [attr.aria-checked]="activity.kind === 'event'"
-                [class.active]="activity.kind === 'event'"
-                title="Publish an event: a fact for any number of subscribers"
-                (click)="setActivityKind(i, 'event')"
-              >
-                <app-icon name="event" /> Publish event
-              </button>
+                <button
+                  type="button"
+                  role="radio"
+                  [attr.aria-checked]="activity.kind === 'command'"
+                  [class.active]="activity.kind === 'command'"
+                  title="Send a command: an instruction to exactly one consumer"
+                  (click)="setActivityKind(i, 'command')"
+                >
+                  <app-icon name="command" /> Send command
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  [attr.aria-checked]="activity.kind === 'event'"
+                  [class.active]="activity.kind === 'event'"
+                  title="Publish an event: a fact for any number of subscribers"
+                  (click)="setActivityKind(i, 'event')"
+                >
+                  <app-icon name="event" /> Publish event
+                </button>
+              </div>
+              <div class="row">
+                <input
+                  type="text"
+                  aria-label="Message name"
+                  [placeholder]="
+                    activity.kind === 'command' ? 'e.g. ShipOrder' : 'e.g. OrderAccepted'
+                  "
+                  [value]="activity.name"
+                  (change)="setActivityName(i, $event)"
+                />
+                <button
+                  type="button"
+                  class="icon-button"
+                  [attr.aria-label]="'Remove ' + activity.name"
+                  title="Remove"
+                  (click)="removeActivity(i)"
+                >
+                  <app-icon name="delete" />
+                </button>
+              </div>
+              @if (namingHint(activity.kind, activity.name); as hint) {
+                <p class="hint">{{ hint }}</p>
+              }
             </div>
-            <div class="row">
-              <input
-                type="text"
-                aria-label="Message name"
-                [placeholder]="
-                  activity.kind === 'command' ? 'e.g. ShipOrder' : 'e.g. OrderAccepted'
-                "
-                [value]="activity.name"
-                (change)="setActivityName(i, $event)"
-              />
-              <button
-                type="button"
-                class="icon-button"
-                [attr.aria-label]="'Remove ' + activity.name"
-                title="Remove"
-                (click)="removeActivity(i)"
-              >
-                <app-icon name="delete" />
-              </button>
-            </div>
-            @if (namingHint(activity.kind, activity.name); as hint) {
-              <p class="hint">{{ hint }}</p>
-            }
+          }
+          <div class="add-row">
+            <button type="button" class="ghost" (click)="addActivity('command')">
+              <app-icon name="command" /> Send command
+            </button>
+            <button type="button" class="ghost" (click)="addActivity('event')">
+              <app-icon name="event" /> Publish event
+            </button>
           </div>
         }
-        <div class="add-row">
-          <button type="button" class="ghost" (click)="addActivity('command')">
-            <app-icon name="command" /> Send command
-          </button>
-          <button type="button" class="ghost" (click)="addActivity('event')">
-            <app-icon name="event" /> Publish event
-          </button>
-        </div>
       </section>
     }
 
     @if (hasCombines(node.type)) {
       <section class="group" aria-label="Combined events">
-        <div class="group-title">
+        <button
+          type="button"
+          class="group-toggle"
+          [attr.aria-expanded]="isOpen('combines', node.combines?.length ?? 0)"
+          (click)="toggle('combines', node.combines?.length ?? 0)"
+        >
+          <app-icon
+            [name]="isOpen('combines', node.combines?.length ?? 0) ? 'expandLess' : 'expandMore'"
+          />
           <span>Waits for</span>
-          <small>
+          @if (node.combines?.length ?? 0) {
+            <span class="count">{{ node.combines?.length ?? 0 }}</span>
+          }
+        </button>
+        @if (isOpen('combines', node.combines?.length ?? 0)) {
+          <small class="group-desc">
             When all of these events have arrived, “{{ node.name }}” is raised: give the transition
             leaving this join that event.
           </small>
-        </div>
-        @for (combined of node.combines ?? []; track $index; let i = $index) {
-          <div class="combine row">
-            <input
-              type="text"
-              aria-label="Combined event"
-              placeholder="e.g. PaymentCharged"
-              [value]="combined"
-              (change)="setCombine(i, $event)"
-            />
-            <button
-              type="button"
-              class="icon-button"
-              [attr.aria-label]="'Remove ' + combined"
-              title="Remove"
-              (click)="removeCombine(i)"
-            >
-              <app-icon name="delete" />
+          @for (combined of node.combines ?? []; track $index; let i = $index) {
+            <div class="combine row">
+              <input
+                type="text"
+                aria-label="Combined event"
+                placeholder="e.g. PaymentCharged"
+                [value]="combined"
+                (change)="setCombine(i, $event)"
+              />
+              <button
+                type="button"
+                class="icon-button"
+                [attr.aria-label]="'Remove ' + combined"
+                title="Remove"
+                (click)="removeCombine(i)"
+              >
+                <app-icon name="delete" />
+              </button>
+            </div>
+          }
+          <div class="add-row">
+            <button type="button" class="ghost" (click)="addCombine()">
+              <app-icon name="event" /> Add an event
             </button>
           </div>
         }
-        <div class="add-row">
-          <button type="button" class="ghost" (click)="addCombine()">
-            <app-icon name="event" /> Add an event
-          </button>
-        </div>
       </section>
     }
 
     @if (hasRequests(node.type)) {
       <section class="group" aria-label="Requests">
-        <div class="group-title">
+        <button
+          type="button"
+          class="group-toggle"
+          [attr.aria-expanded]="isOpen('requests', node.requests?.length ?? 0)"
+          (click)="toggle('requests', node.requests?.length ?? 0)"
+        >
+          <app-icon
+            [name]="isOpen('requests', node.requests?.length ?? 0) ? 'expandLess' : 'expandMore'"
+          />
           <span>Requests</span>
-          <small>
+          @if (node.requests?.length ?? 0) {
+            <span class="count">{{ node.requests?.length ?? 0 }}</span>
+          }
+        </button>
+        @if (isOpen('requests', node.requests?.length ?? 0)) {
+          <small class="group-desc">
             Made when the saga enters “{{ node.name }}”. The answer comes back as
             <em>&lt;Name&gt;.Completed</em>, <em>.Faulted</em> or <em>.TimeoutExpired</em>: give a
             transition each of those events.
           </small>
-        </div>
-        @for (request of node.requests ?? []; track $index; let i = $index) {
-          <div class="request message" data-kind="request">
-            <span class="timer-title"><app-icon name="command" /> Request</span>
-            <div class="row">
+          @for (request of node.requests ?? []; track $index; let i = $index) {
+            <div class="request message" data-kind="request">
+              <span class="timer-title"><app-icon name="command" /> Request</span>
+              <div class="row">
+                <input
+                  type="text"
+                  class="name"
+                  aria-label="Request"
+                  placeholder="e.g. ValidateAddress"
+                  [value]="request.name"
+                  (change)="setRequestName(i, $event)"
+                />
+                <button
+                  type="button"
+                  class="icon-button"
+                  [attr.aria-label]="'Remove ' + request.name"
+                  title="Remove"
+                  (click)="removeRequest(i)"
+                >
+                  <app-icon name="delete" />
+                </button>
+              </div>
               <input
                 type="text"
-                class="name"
-                aria-label="Request"
-                placeholder="e.g. ValidateAddress"
-                [value]="request.name"
-                (change)="setRequestName(i, $event)"
+                class="timeout"
+                aria-label="Timeout"
+                placeholder="Wait for the answer, e.g. 30s"
+                [value]="request.timeout ?? ''"
+                (change)="setRequestTimeout(i, $event)"
               />
-              <button
-                type="button"
-                class="icon-button"
-                [attr.aria-label]="'Remove ' + request.name"
-                title="Remove"
-                (click)="removeRequest(i)"
-              >
-                <app-icon name="delete" />
-              </button>
             </div>
-            <input
-              type="text"
-              class="timeout"
-              aria-label="Timeout"
-              placeholder="Wait for the answer, e.g. 30s"
-              [value]="request.timeout ?? ''"
-              (change)="setRequestTimeout(i, $event)"
-            />
+          }
+          <div class="add-row">
+            <button type="button" class="ghost" (click)="addRequest()">
+              <app-icon name="command" /> Make a request
+            </button>
           </div>
         }
-        <div class="add-row">
-          <button type="button" class="ghost" (click)="addRequest()">
-            <app-icon name="command" /> Make a request
-          </button>
-        </div>
       </section>
     }
 
     @if (hasTimers(node.type)) {
       <section class="group" aria-label="Timers">
-        <div class="group-title">
+        <button
+          type="button"
+          class="group-toggle"
+          [attr.aria-expanded]="isOpen('timers', node.timers?.length ?? 0)"
+          (click)="toggle('timers', node.timers?.length ?? 0)"
+        >
+          <app-icon
+            [name]="isOpen('timers', node.timers?.length ?? 0) ? 'expandLess' : 'expandMore'"
+          />
           <span>Timers</span>
-          <small>
+          @if (node.timers?.length ?? 0) {
+            <span class="count">{{ node.timers?.length ?? 0 }}</span>
+          }
+        </button>
+        @if (isOpen('timers', node.timers?.length ?? 0)) {
+          <small class="group-desc">
             Run in order when the saga enters “{{ node.name }}”. A scheduled timeout is received as
             an event when it fires: give a transition that event.
           </small>
-        </div>
-        @for (timer of node.timers ?? []; track $index; let i = $index) {
-          <div class="timer message" data-kind="timer">
-            <span class="timer-title">
-              <app-icon name="clock" />
-              {{ timer.action === 'schedule' ? 'Schedule' : 'Unschedule' }}
-            </span>
-            <div class="row">
-              <input
-                type="text"
-                class="name"
-                aria-label="Timeout message"
-                placeholder="e.g. PaymentTimeout"
-                [value]="timer.name"
-                (change)="setTimerName(i, $event)"
-              />
-              <button
-                type="button"
-                class="icon-button"
-                [attr.aria-label]="'Remove ' + timer.name"
-                title="Remove"
-                (click)="removeTimer(i)"
-              >
-                <app-icon name="delete" />
-              </button>
+          @for (timer of node.timers ?? []; track $index; let i = $index) {
+            <div class="timer message" data-kind="timer">
+              <span class="timer-title">
+                <app-icon name="clock" />
+                {{ timer.action === 'schedule' ? 'Schedule' : 'Unschedule' }}
+              </span>
+              <div class="row">
+                <input
+                  type="text"
+                  class="name"
+                  aria-label="Timeout message"
+                  placeholder="e.g. PaymentTimeout"
+                  [value]="timer.name"
+                  (change)="setTimerName(i, $event)"
+                />
+                <button
+                  type="button"
+                  class="icon-button"
+                  [attr.aria-label]="'Remove ' + timer.name"
+                  title="Remove"
+                  (click)="removeTimer(i)"
+                >
+                  <app-icon name="delete" />
+                </button>
+              </div>
+              @if (timer.action === 'schedule') {
+                <input
+                  type="text"
+                  class="delay"
+                  aria-label="Delay"
+                  placeholder="Delay, e.g. 30s"
+                  [value]="timer.delay ?? ''"
+                  (change)="setTimerDelay(i, $event)"
+                />
+              }
             </div>
-            @if (timer.action === 'schedule') {
-              <input
-                type="text"
-                class="delay"
-                aria-label="Delay"
-                placeholder="Delay, e.g. 30s"
-                [value]="timer.delay ?? ''"
-                (change)="setTimerDelay(i, $event)"
-              />
-            }
+          }
+          <div class="add-row">
+            <button type="button" class="ghost" (click)="addTimer('schedule')">
+              <app-icon name="clock" /> Schedule a timeout
+            </button>
+            <button type="button" class="ghost" (click)="addTimer('unschedule')">
+              <app-icon name="clock" /> Unschedule
+            </button>
           </div>
         }
-        <div class="add-row">
-          <button type="button" class="ghost" (click)="addTimer('schedule')">
-            <app-icon name="clock" /> Schedule a timeout
-          </button>
-          <button type="button" class="ghost" (click)="addTimer('unschedule')">
-            <app-icon name="clock" /> Unschedule
-          </button>
-        </div>
       </section>
     }
 
     @if (hasIgnores(node.type)) {
       <section class="group" aria-label="Ignored events">
-        <div class="group-title">
+        <button
+          type="button"
+          class="group-toggle"
+          [attr.aria-expanded]="isOpen('ignores', node.ignores?.length ?? 0)"
+          (click)="toggle('ignores', node.ignores?.length ?? 0)"
+        >
+          <app-icon
+            [name]="isOpen('ignores', node.ignores?.length ?? 0) ? 'expandLess' : 'expandMore'"
+          />
           <span>Ignored events</span>
-          <small> Events “{{ node.name }}” receives and drops, instead of failing on them. </small>
-        </div>
-        @for (ignored of node.ignores ?? []; track $index; let i = $index) {
-          <div class="ignore row">
-            <input
-              type="text"
-              aria-label="Ignored event"
-              placeholder="e.g. OrderCancelled"
-              [value]="ignored"
-              (change)="setIgnore(i, $event)"
-            />
-            <button
-              type="button"
-              class="icon-button"
-              [attr.aria-label]="'Remove ' + ignored"
-              title="Remove"
-              (click)="removeIgnore(i)"
-            >
-              <app-icon name="delete" />
+          @if (node.ignores?.length ?? 0) {
+            <span class="count">{{ node.ignores?.length ?? 0 }}</span>
+          }
+        </button>
+        @if (isOpen('ignores', node.ignores?.length ?? 0)) {
+          <small class="group-desc">
+            Events “{{ node.name }}” receives and drops, instead of failing on them.
+          </small>
+          @for (ignored of node.ignores ?? []; track $index; let i = $index) {
+            <div class="ignore row">
+              <input
+                type="text"
+                aria-label="Ignored event"
+                placeholder="e.g. OrderCancelled"
+                [value]="ignored"
+                (change)="setIgnore(i, $event)"
+              />
+              <button
+                type="button"
+                class="icon-button"
+                [attr.aria-label]="'Remove ' + ignored"
+                title="Remove"
+                (click)="removeIgnore(i)"
+              >
+                <app-icon name="delete" />
+              </button>
+            </div>
+          }
+          <div class="add-row">
+            <button type="button" class="ghost" (click)="addIgnore()">
+              <app-icon name="ignore" /> Ignore an event
             </button>
           </div>
         }
-        <div class="add-row">
-          <button type="button" class="ghost" (click)="addIgnore()">
-            <app-icon name="ignore" /> Ignore an event
-          </button>
-        </div>
       </section>
     }
 
@@ -368,21 +441,32 @@
 
     @if (node.type !== 'end') {
       <section class="group" aria-label="Transitions">
-        <div class="group-title">
+        <button
+          type="button"
+          class="group-toggle"
+          [attr.aria-expanded]="isOpen('transitions', 0)"
+          (click)="toggle('transitions', 0)"
+        >
+          <app-icon [name]="isOpen('transitions', 0) ? 'expandLess' : 'expandMore'" />
           <span>Transitions</span>
-          <small>
+          @if (0) {
+            <span class="count">{{ 0 }}</span>
+          }
+        </button>
+        @if (isOpen('transitions', 0)) {
+          <small class="group-desc">
             Each event this state receives leads on through its own transition; with more than one,
             the state is a decision.
           </small>
-        </div>
-        <div class="add-row">
-          <button type="button" class="ghost" (click)="transitionAdded.emit('state')">
-            <app-icon name="step" /> To a new state
-          </button>
-          <button type="button" class="ghost" (click)="transitionAdded.emit('end')">
-            <app-icon name="end" /> To a final state
-          </button>
-        </div>
+          <div class="add-row">
+            <button type="button" class="ghost" (click)="transitionAdded.emit('state')">
+              <app-icon name="step" /> To a new state
+            </button>
+            <button type="button" class="ghost" (click)="transitionAdded.emit('end')">
+              <app-icon name="end" /> To a final state
+            </button>
+          </div>
+        }
       </section>
     }
   } @else if (edge(); as edge) {

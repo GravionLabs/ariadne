@@ -4,8 +4,11 @@ import {
   Injector,
   afterNextRender,
   computed,
+  effect,
   inject,
   output,
+  signal,
+  untracked,
 } from '@angular/core';
 import {
   Activity,
@@ -31,6 +34,9 @@ import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
 import { Icon } from './icon';
 import { DECISION, NODE_TYPES } from './node-types';
+
+/** Inspector sections that start expanded even when empty. */
+const ALWAYS_OPEN = ['activities', 'transitions'];
 
 const NEW_MESSAGE: Record<MessageKind, string> = {
   command: 'DoSomething',
@@ -68,6 +74,16 @@ export class Inspector {
   readonly deleted = output<void>();
   /** "Add transition": a new state of this type should follow the selected one. */
   readonly transitionAdded = output<NodeType>();
+
+  private readonly selected = computed(() => this.node()?.id ?? this.edge()?.id);
+
+  constructor() {
+    // Another state or transition: sections go back to their defaults.
+    effect(() => {
+      this.selected();
+      untracked(() => this.toggled.set({}));
+    });
+  }
 
   protected readonly namingHint = namingHint;
   protected readonly hasActivities = hasActivities;
@@ -176,6 +192,19 @@ export class Inspector {
         node,
         (node.activities ?? []).filter((_, i) => i !== index),
       );
+  }
+
+  /** Sections the user opened or closed by hand; reset when another element is selected. */
+  private readonly toggled = signal<Record<string, boolean>>({});
+
+  /** A section with entries starts open; the main ones (activities, transitions) always do. */
+  protected isOpen(key: string, count: number): boolean {
+    return this.toggled()[key] ?? (count > 0 || ALWAYS_OPEN.includes(key));
+  }
+
+  protected toggle(key: string, count: number): void {
+    const open = !this.isOpen(key, count);
+    this.toggled.update((t) => ({ ...t, [key]: open }));
   }
 
   protected addRequest(): void {
