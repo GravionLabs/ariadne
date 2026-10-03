@@ -58,7 +58,9 @@
   gap: 2px;
 }
 
-.menu-button {
+// Also the trigger inside <app-export-menu>, which has its own encapsulation.
+.menu-button,
+app-export-menu ::ng-deep .menu-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;

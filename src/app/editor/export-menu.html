@@ -1,0 +1,44 @@
+<button
+  #origin="cdkOverlayOrigin"
+  type="button"
+  class="menu-button"
+  cdkOverlayOrigin
+  aria-haspopup="menu"
+  title="Export the diagram"
+  [attr.aria-expanded]="isOpen()"
+  [class.open]="isOpen()"
+  (click)="toggle()"
+>
+  <app-icon name="saveAs" /><span>Export</span><app-icon class="chevron" name="expandMore" />
+</button>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="origin"
+  [cdkConnectedOverlayOpen]="isOpen()"
+  [cdkConnectedOverlayPositions]="positions"
+  [cdkConnectedOverlayHasBackdrop]="true"
+  [cdkConnectedOverlayPush]="true"
+  [cdkConnectedOverlayViewportMargin]="12"
+  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+  (backdropClick)="close()"
+  (detach)="close()"
+  (overlayKeydown)="onOverlayKeydown($event)"
+>
+  <section class="menu" role="menu" aria-label="Export">
+    <header>Image</header>
+    @for (entry of images; track entry.label) {
+      <button type="button" role="menuitem" class="item" (click)="pick(entry)">
+        <strong>{{ entry.label }}</strong
+        ><small>{{ entry.hint }}</small>
+      </button>
+    }
+    <header>Mermaid</header>
+    @for (entry of mermaid; track entry.label) {
+      <button type="button" role="menuitem" class="item" (click)="pick(entry)">
+        <strong>{{ entry.label }}</strong
+        ><small>{{ entry.hint }}</small>
+      </button>
+    }
+  </section>
+</ng-template>

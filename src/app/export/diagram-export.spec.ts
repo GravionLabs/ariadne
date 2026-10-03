@@ -10,10 +10,21 @@ describe('exportFileName', () => {
     expect(exportFileName('order.yml', 'png')).toBe('order.png');
     expect(exportFileName('order', 'png')).toBe('order.png');
     expect(exportFileName('.saga.yaml', 'svg')).toBe('diagram.svg');
+    expect(exportFileName('order.saga.yaml', 'mmd')).toBe('order.mmd');
   });
 });
 
+/** jsdom has no clipboard; defined per test and removed again. */
+function stubClipboard(clipboard: { writeText: (text: string) => Promise<void> }): void {
+  Object.defineProperty(window.navigator, 'clipboard', { value: clipboard, configurable: true });
+}
+
 describe('DiagramExport', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    Reflect.deleteProperty(window.navigator, 'clipboard');
+  });
+
   const exportFile = vi.fn();
   let exporter: DiagramExport;
   let doc: DiagramDocument;
@@ -34,6 +45,36 @@ describe('DiagramExport', () => {
     expect(name).toBe('untitled.svg');
     expect(blob.type).toBe('image/svg+xml');
     expect(await blob.text()).toContain('<svg');
+  });
+
+  it('saves Mermaid as .mmd, or fenced as .md', async () => {
+    expect(await exporter.exportMermaid('mmd')).toBe(true);
+    const [mmd, mmdName] = exportFile.mock.calls[0];
+    expect(mmdName).toBe('untitled.mmd');
+    expect(await mmd.text()).toMatch(/^stateDiagram-v2\n/);
+
+    await exporter.exportMermaid('md');
+    const [md, mdName] = exportFile.mock.calls[1];
+    expect(mdName).toBe('untitled.md');
+    expect((await md.text()).startsWith('```mermaid\nstateDiagram-v2\n')).toBe(true);
+  });
+
+  it('copies Mermaid to the clipboard and says so', async () => {
+    const writeText = vi.fn(async () => undefined);
+    stubClipboard({ writeText });
+    expect(await exporter.copyMermaid()).toBe(true);
+    expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^stateDiagram-v2\n/));
+    expect(doc.notice()).toBe('Mermaid copied to clipboard.');
+  });
+
+  it('shows an error when the clipboard refuses', async () => {
+    stubClipboard({
+      writeText: vi.fn(async () => {
+        throw new Error('denied');
+      }),
+    });
+    expect(await exporter.copyMermaid()).toBe(false);
+    expect(doc.error()).toBe('denied');
   });
 
   it('reports false without an error when the user cancels', async () => {

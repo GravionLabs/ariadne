@@ -91,7 +91,7 @@ export class BrowserFileStorage extends FileStorage {
           suggestedName,
           types: [
             {
-              description: `${extension.slice(1).toUpperCase()} image`,
+              description: `${extension.slice(1).toUpperCase()} ${content.type.startsWith('image/') ? 'image' : 'file'}`,
               accept: { [content.type]: [extension] },
             },
           ],

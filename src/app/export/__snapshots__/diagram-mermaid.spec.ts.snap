@@ -1,0 +1,19 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`diagramToMermaid > renders the order saga 1`] = `
+"stateDiagram-v2
+  direction TB
+  state "Awaiting order" as Awaiting_order
+  state "Reserving stock" as Reserving_stock
+  state "Charging payment" as Charging_payment
+  [*] --> Awaiting_order
+  Awaiting_order --> Reserving_stock : OrderReceived (from Shop API) / Send ReserveStock
+  Reserving_stock --> Charging_payment : StockReserved / Send ChargePayment
+  Charging_payment --> Shipping : PaymentCharged / Send ShipOrder, Publish OrderAccepted
+  Charging_payment --> Cancelled : PaymentFailed
+  Charging_payment --> Reserving_stock : compensate: Undo / Send ReserveStock
+  Cancelled --> [*]
+  classDef compensation fill:#fef3c7,stroke:#f59e0b,color:#92400e
+  class Reserving_stock compensation
+"
+`;
