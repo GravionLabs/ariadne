@@ -61,6 +61,53 @@ dialog {
     }
   }
 
+  .samples {
+    display: grid;
+    gap: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--c-border);
+
+    h3 {
+      margin: 0;
+      color: var(--c-text-subtle);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+  }
+
+  .sample {
+    display: grid;
+    gap: 2px;
+    padding: 8px 10px;
+    color: var(--c-text);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--c-primary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--c-primary);
+      outline-offset: 1px;
+    }
+
+    .title {
+      font-weight: 600;
+    }
+
+    .about {
+      color: var(--c-text-subtle);
+      font-size: 12px;
+    }
+  }
+
   .actions {
     display: flex;
     justify-content: flex-end;

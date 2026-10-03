@@ -1090,6 +1090,21 @@ describe('Editor', () => {
     expect(store.diagram().events).toBeUndefined();
   });
 
+  describe('samples', () => {
+    it('opens a sample from the New popup as an unsaved copy', async () => {
+      const { el, store, settle } = await setup();
+      [...el.querySelectorAll<HTMLButtonElement>('.file-actions button')]
+        .find((b) => b.textContent?.includes('New'))!
+        .click();
+      await settle();
+      el.querySelector<HTMLButtonElement>('app-new-diagram-dialog .sample')!.click();
+      await settle();
+      expect(store.diagram().name).toBe('OrderSaga');
+      expect(store.nodes().length).toBeGreaterThan(4);
+      expect(el.querySelector('[aria-label="Unsaved changes"]')).toBeTruthy();
+    });
+  });
+
   describe('generate C#', () => {
     async function generating() {
       const ctx = await setup();

@@ -2,6 +2,7 @@ import { Component, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import './native-dialog.testing';
+import { sampleDiagram } from '../samples';
 import { NewDiagramDialog } from './new-diagram-dialog';
 
 @Component({ imports: [NewDiagramDialog], template: '<app-new-diagram-dialog />' })
@@ -80,5 +81,19 @@ describe('NewDiagramDialog', () => {
     open();
     expect(field<HTMLInputElement>('input').value).toBe('');
     expect(submit().disabled).toBe(true);
+  });
+
+  it('offers the samples, and returns the one that is picked', async () => {
+    const promise = open();
+    const buttons = [...el.querySelectorAll<HTMLButtonElement>('.sample')];
+    expect(buttons.map((b) => b.querySelector('.title')?.textContent)).toEqual([
+      'Order saga',
+      'Booking saga',
+      'Travel booking',
+    ]);
+    buttons[2].click();
+    const result = await promise;
+    expect(result?.sample?.id).toBe('travel-booking');
+    expect(sampleDiagram(result!.sample!).nodes.length).toBeGreaterThan(5);
   });
 });
