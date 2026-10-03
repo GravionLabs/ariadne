@@ -22,11 +22,11 @@ import {
   REQUEST_OUTCOMES,
   Request,
   Timer,
-  hasCombines,
   hasInput,
   hasIgnores,
   hasRequests,
   hasTimers,
+  joinEventsOf,
   requestEvent,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
@@ -91,7 +91,6 @@ export class Inspector {
   protected readonly hasIgnores = hasIgnores;
   protected readonly hasTimers = hasTimers;
   protected readonly hasRequests = hasRequests;
-  protected readonly hasCombines = hasCombines;
   protected readonly colors = NODE_COLORS;
 
   protected readonly customColor = computed(() => {
@@ -348,48 +347,6 @@ export class Inspector {
     this.store.updateNode(node.id, { timers: timers.length ? timers : undefined });
   }
 
-  protected addCombine(): void {
-    const node = this.node();
-    if (!node) return;
-    this.setCombines(node, [...(node.combines ?? []), 'SomethingHappened']);
-    afterNextRender(
-      () => {
-        const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>('.combine input');
-        const last = inputs[inputs.length - 1];
-        last?.focus();
-        last?.select();
-      },
-      { injector: this.injector },
-    );
-  }
-
-  /** An empty name removes the event. */
-  protected setCombine(index: number, event: Event): void {
-    const node = this.node();
-    const name = optional(event);
-    const combines = node?.combines ?? [];
-    if (!node || name === combines[index]) return;
-    this.setCombines(
-      node,
-      name
-        ? combines.map((e, i) => (i === index ? name : e))
-        : combines.filter((_, i) => i !== index),
-    );
-  }
-
-  protected removeCombine(index: number): void {
-    const node = this.node();
-    if (node)
-      this.setCombines(
-        node,
-        (node.combines ?? []).filter((_, i) => i !== index),
-      );
-  }
-
-  private setCombines(node: DiagramNode, combines: string[]): void {
-    this.store.updateNode(node.id, { combines: combines.length ? combines : undefined });
-  }
-
   /** The join whose composite event the selected transition reacts to. */
   protected readonly joinOfEvent = computed(() => {
     const event = this.edge()?.event;
@@ -397,6 +354,16 @@ export class Inspector {
       ? this.store.nodes().find((n) => n.type === 'join' && n.name === event)
       : undefined;
   });
+
+  private readonly joins = computed(() => joinEventsOf(this.store.diagram()));
+
+  /** For a join: the events of the transitions leading into it, which it waits for. */
+  protected readonly waitsFor = computed(() => this.joins().get(this.node()?.id ?? '') ?? []);
+
+  /** The events that raise the join the selected transition leaves on. */
+  protected readonly joinRaisedBy = computed(
+    () => this.joins().get(this.joinOfEvent()?.id ?? '') ?? [],
+  );
 
   protected addIgnore(): void {
     const node = this.node();

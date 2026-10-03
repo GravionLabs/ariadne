@@ -26,6 +26,8 @@ import { ACTIVITY_VERBS, DECISION, NODE_TYPES } from './node-types';
 export class NodeCard {
   readonly node = input.required<DiagramNode>();
   readonly direction = input.required<Direction>();
+  /** For a join: the events of the transitions leading into it. */
+  readonly events = input<readonly string[]>([]);
   /** Several transitions leave this state: it is drawn as a decision. */
   readonly decision = input(false);
   /** The description is unfolded under the heading. */

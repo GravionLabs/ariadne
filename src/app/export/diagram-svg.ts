@@ -6,6 +6,7 @@ import {
   Point,
   eventKindOf,
   eventLabel,
+  joinEventsOf,
 } from '../model/diagram';
 import {
   INSERT_OVERHANG,
@@ -84,6 +85,7 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
   const lr = diagram.direction === 'left-right';
   const decisions = decisionIds(diagram);
   const back = backEdgeIds(diagram);
+  const joins = joinEventsOf(diagram);
   const kindOf = eventKindOf(diagram);
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const rect = (id: string) => ({ ...positions.get(id)!, ...nodeSize(nodes.get(id)!) });
@@ -173,7 +175,7 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
 
   const nodeSvg = diagram.nodes.map((n) => {
     const { x, y, width: w, height: h } = rect(n.id);
-    return stateSvg(n, x, y, { width: w, height: h }, decisions.has(n.id));
+    return stateSvg(n, x, y, { width: w, height: h }, decisions.has(n.id), joins.get(n.id) ?? []);
   });
 
   const svg = [
@@ -268,9 +270,16 @@ function transitionLabel(
   return { svg: `<g>${parts.join('')}</g>`, x, y, ...card };
 }
 
-function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision: boolean): string {
+function stateSvg(
+  node: DiagramNode,
+  x: number,
+  y: number,
+  size: Size,
+  decision: boolean,
+  joinEvents: readonly string[],
+): string {
   const color = accent(node, decision);
-  if (isBar(node)) return barSvg(node, x, y, size, color);
+  if (isBar(node)) return barSvg(node, joinEvents, x, y, size, color);
   const compact = isCompact(node);
   const parts: string[] = [];
   const r = compact ? size.height / 2 : 8;
@@ -390,10 +399,17 @@ function stateSvg(node: DiagramNode, x: number, y: number, size: Size, decision:
 }
 
 /** A join: a thick bar, with its name and the events it waits for under it. */
-function barSvg(node: DiagramNode, x: number, y: number, size: Size, color: string): string {
+function barSvg(
+  node: DiagramNode,
+  events: readonly string[],
+  x: number,
+  y: number,
+  size: Size,
+  color: string,
+): string {
   const cx = x + size.width / 2;
   const width = size.width - 8;
-  const combines = (node.combines ?? []).join(' + ') || 'no events yet';
+  const combines = events.join(' + ') || 'no events yet';
   return `<g><rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="10" rx="5" fill="${color}"/>${text(
     fit(node.name, width, 13, true),
     cx,

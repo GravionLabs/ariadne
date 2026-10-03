@@ -153,6 +153,7 @@
             [fNodeDraggingDisabled]="true"
             [fConnectOnNode]="false"
             [node]="node"
+            [events]="joins().get(node.id) ?? []"
             [expanded]="layout.expanded().has(node.id)"
             (expandToggled)="layout.toggleExpanded(node.id)"
             [decision]="layout.decisions().has(node.id)"

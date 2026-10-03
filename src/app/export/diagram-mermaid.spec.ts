@@ -217,19 +217,27 @@ describe('diagramToMermaid title', () => {
     );
   });
 
-  it('draws a join as a Mermaid bar, with a note for its name and events', () => {
+  it('draws a join as a Mermaid bar, with a note for its name and the events it waits for', () => {
     const nodes = [
       ...orderSaga.nodes,
-      {
-        id: 'join-1',
-        type: 'join' as const,
-        name: 'Order ready',
-        combines: ['PaymentCharged', 'StockReserved'],
-      },
+      { id: 'join-1', type: 'join' as const, name: 'Order ready' },
     ];
     const edges = [
       ...orderSaga.edges,
-      { id: 'j1', source: 'state-1', target: 'join-1', kind: 'forward' as const },
+      {
+        id: 'j1',
+        source: 'state-1',
+        target: 'join-1',
+        kind: 'forward' as const,
+        event: 'PaymentCharged',
+      },
+      {
+        id: 'j3',
+        source: 'state-2',
+        target: 'join-1',
+        kind: 'forward' as const,
+        event: 'StockReserved',
+      },
       {
         id: 'j2',
         source: 'join-1',

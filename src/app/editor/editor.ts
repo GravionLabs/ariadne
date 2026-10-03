@@ -29,6 +29,7 @@ import {
   nodeIdOfConnector,
   outputId,
   eventKindOf,
+  joinEventsOf,
 } from '../model/diagram';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
@@ -105,6 +106,9 @@ export class Editor {
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
 
   /** Events the saga publishes itself; every other event comes from outside. */
+  /** The events each join waits for (those of its incoming transitions). */
+  protected readonly joins = computed(() => joinEventsOf(this.store.diagram()));
+
   /** Transitions that close a loop: not laid out, their label rides on the line. */
   protected readonly loops = computed(() => backEdgeIds(this.store.diagram()));
 

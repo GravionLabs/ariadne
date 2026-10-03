@@ -183,7 +183,7 @@ describe('diagram layout', () => {
   });
 
   it('draws a join as a bar with room for its text, and never as a decision', () => {
-    const join: DiagramNode = { id: 'join-1', type: 'join', name: 'Ready', combines: ['A', 'B'] };
+    const join: DiagramNode = { id: 'join-1', type: 'join', name: 'Ready' };
     expect(nodeSize(join)).toEqual({ width: 200, height: 50 });
     const diagram: Diagram = {
       direction: 'top-bottom',
