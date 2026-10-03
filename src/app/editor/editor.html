@@ -114,6 +114,9 @@
             [class.timeout]="kindOf()(edge) === 'timeout' && edge.kind !== 'compensation'"
           >
             <f-connection-marker-arrow />
+            @if (layout.routes().get(edge.id); as route) {
+              <f-connection-waypoints [waypoints]="[...route]" [visibility]="false" />
+            }
             @if (edge.kind === 'compensation' || loops().has(edge.id)) {
               <!-- Compensation and loop transitions are not laid out, so their label rides on the line. -->
               <app-transition-label

@@ -35,6 +35,12 @@ export interface DiagramLayoutResult {
   positions: ReadonlyMap<string, Point>;
   slots: readonly AddSlot[];
   labels: readonly TransitionLabel[];
+  /**
+   * Waypoints a transition's line has to pass, in canvas coordinates. Only for transitions that
+   * cannot take the straight way between their two states: parallel ones (each goes through its
+   * own label), loops and transitions outside the layout (they run around the diagram).
+   */
+  routes: ReadonlyMap<string, readonly Point[]>;
 }
 
 export const SLOT_SIZE: Size = { width: 40, height: 40 };
@@ -198,7 +204,8 @@ export function layoutDiagram(
   diagram: Diagram,
   expanded: ReadonlySet<string> = new Set(),
 ): DiagramLayoutResult {
-  const graph = new dagre.graphlib.Graph();
+  // A multigraph: several transitions between the same two states are separate edges.
+  const graph = new dagre.graphlib.Graph({ multigraph: true });
   graph.setGraph({
     rankdir: diagram.direction === 'left-right' ? 'LR' : 'TB',
     nodesep: NODE_GAP,
@@ -216,7 +223,7 @@ export function layoutDiagram(
   const forward = diagram.edges.filter((e) => e.kind === 'forward' && !back.has(e.id));
   const labelSizes = new Map(forward.map((e) => [e.id, labelSize(e, diagram.direction)]));
   forward.forEach((e) =>
-    graph.setEdge(e.source, e.target, { ...labelSizes.get(e.id)!, labelpos: 'c' }),
+    graph.setEdge(e.source, e.target, { ...labelSizes.get(e.id)!, labelpos: 'c' }, e.id),
   );
   const sources = slotSources(diagram);
   sources.forEach((n) => {
@@ -232,19 +239,111 @@ export function layoutDiagram(
     y: y - height / 2,
   });
   const topLeft = (id: string) => corner(graph.node(id), sizes.get(id)!);
-  return {
-    positions: new Map(diagram.nodes.map((n) => [n.id, topLeft(n.id)])),
-    slots: sources.map((n) => ({
-      id: slotId(n.id),
-      sourceId: n.id,
-      position: topLeft(slotId(n.id)),
-    })),
-    labels: forward.map((e) => {
-      const size = labelSizes.get(e.id)!;
-      const { x, y } = graph.edge(e.source, e.target);
-      return { id: labelId(e.id), edgeId: e.id, position: corner({ x, y }, size), size };
-    }),
+  const positions = new Map(diagram.nodes.map((n) => [n.id, topLeft(n.id)]));
+  const slotList = sources.map((n) => ({
+    id: slotId(n.id),
+    sourceId: n.id,
+    position: topLeft(slotId(n.id)),
+  }));
+  const labels = forward.map((e) => {
+    const size = labelSizes.get(e.id)!;
+    const { x, y } = graph.edge(e.source, e.target, e.id);
+    return { id: labelId(e.id), edgeId: e.id, position: corner({ x, y }, size), size };
+  });
+  const routes = routeTransitions(diagram, back, positions, labels, sizes, slotList);
+  return { positions, slots: slotList, labels, routes };
+}
+
+/** Room a loop on one state leaves beside it, and how far a lane runs from the diagram. */
+const LOOP_GAP = 36;
+const LANE_GAP = 40;
+const LANE_STEP = 16;
+/** Straight run out of / into a state before a loop turns. */
+const STUB = 36;
+
+function routeTransitions(
+  diagram: Diagram,
+  back: ReadonlySet<string>,
+  positions: ReadonlyMap<string, Point>,
+  labels: readonly TransitionLabel[],
+  sizes: ReadonlyMap<string, Size>,
+  slots: readonly AddSlot[],
+): Map<string, Point[]> {
+  const lr = diagram.direction === 'left-right';
+  const rect = (id: string) => ({ ...positions.get(id)!, ...sizes.get(id)! });
+  const routes = new Map<string, Point[]>();
+
+  // Parallel transitions (same two states): each line goes through its own label.
+  const parallel = new Map<string, TransitionLabel[]>();
+  for (const label of labels) {
+    const e = diagram.edges.find((x) => x.id === label.edgeId)!;
+    const key = `${e.source}>${e.target}`;
+    parallel.set(key, [...(parallel.get(key) ?? []), label]);
+  }
+  for (const group of parallel.values()) {
+    if (group.length < 2) continue;
+    for (const { edgeId, position, size } of group) {
+      // The label box ends in the overhang of the "+"; the card is the rest.
+      routes.set(edgeId, [
+        lr
+          ? { x: position.x + (size.width - INSERT_OVERHANG) / 2, y: position.y + size.height / 2 }
+          : { x: position.x + size.width / 2, y: position.y + (size.height - INSERT_OVERHANG) / 2 },
+      ]);
+    }
+  }
+
+  // Everything else outside the layout runs around the diagram, in lanes beyond its edge.
+  const boxes = [
+    ...diagram.nodes.map((n) => rect(n.id)),
+    ...labels.map((l) => ({ ...l.position, ...l.size })),
+    ...slots.map((s) => ({ ...s.position, ...SLOT_SIZE })),
+  ];
+  const edgeOfDiagram = lr
+    ? Math.max(...boxes.map((b) => b.y + b.height))
+    : Math.max(...boxes.map((b) => b.x + b.width));
+  /** Room the line needs beside its state or the diagram: half its label, which rides on it. */
+  const room = (e: DiagramEdge, least: number): number => {
+    if (!e.event) return least;
+    const size = labelSize(e, diagram.direction);
+    return Math.max(least, (lr ? size.height : size.width) / 2 + 16);
   };
+  let lane = 0;
+  for (const e of diagram.edges) {
+    const outside = e.kind === 'compensation' || back.has(e.id);
+    if (!outside || !positions.has(e.source) || !positions.has(e.target)) continue;
+    const from = rect(e.source);
+    const to = rect(e.target);
+    if (e.source === e.target) {
+      const gap = room(e, LOOP_GAP);
+      routes.set(
+        e.id,
+        lr
+          ? [
+              { x: from.x + from.width + STUB, y: from.y + from.height + gap },
+              { x: from.x - STUB, y: from.y + from.height + gap },
+            ]
+          : [
+              { x: from.x + from.width + gap, y: from.y + from.height + STUB },
+              { x: from.x + from.width + gap, y: from.y - STUB },
+            ],
+      );
+      continue;
+    }
+    const far = edgeOfDiagram + room(e, LANE_GAP) + lane++ * LANE_STEP;
+    routes.set(
+      e.id,
+      lr
+        ? [
+            { x: from.x + from.width + STUB, y: far },
+            { x: to.x - STUB, y: far },
+          ]
+        : [
+            { x: far, y: from.y + from.height + STUB },
+            { x: far, y: to.y - STUB },
+          ],
+    );
+  }
+  return routes;
 }
 
 /** Layout of the store's diagram; recalculated after every change (incl. undo/redo). */
@@ -268,6 +367,7 @@ export class DiagramLayout {
   readonly positions = computed(() => this.result().positions);
   readonly slots = computed(() => this.result().slots);
   readonly labels = computed(() => this.result().labels);
+  readonly routes = computed(() => this.result().routes);
   /** Ids of states that several transitions leave: shown as decisions. */
   readonly decisions = computed(() => {
     return decisionIds(this.store.diagram());

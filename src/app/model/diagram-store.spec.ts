@@ -28,15 +28,23 @@ describe('DiagramStore', () => {
       expect(store.nodes()).toHaveLength(3);
     });
 
-    it('connects nodes but rejects self-loops, duplicates and unknown nodes', () => {
+    it('connects nodes but rejects duplicates and unknown nodes', () => {
       store.addNode('state');
       store.addNode('state');
       expect(store.connect('state-1', 'state-2')).toBe('edge-1');
       expect(store.connect('state-1', 'state-2')).toBeNull();
-      expect(store.connect('state-1', 'state-1')).toBeNull();
       expect(store.connect('state-1', 'nope')).toBeNull();
       expect(store.connect('state-1', 'state-2', 'compensation')).toBe('edge-2');
       expect(store.edges()).toHaveLength(2);
+    });
+
+    it('lets a state lead to itself, once', () => {
+      store.addNode('state');
+      expect(store.connect('state-1', 'state-1')).toBe('edge-1');
+      expect(store.connect('state-1', 'state-1')).toBeNull();
+      expect(store.edges()).toEqual([
+        { id: 'edge-1', source: 'state-1', target: 'state-1', kind: 'forward' },
+      ]);
     });
 
     it('rejects edges out of end nodes or into start nodes', () => {
@@ -276,7 +284,7 @@ describe('DiagramStore', () => {
       store.undo();
       expect(store.canUndo()).toBe(false);
       store.addNode('state');
-      store.connect('state-1', 'state-1');
+      store.connect('state-1', 'nope');
       store.appendNode('nope', 'state');
       store.remove({});
       store.undo();
@@ -347,7 +355,6 @@ describe('DiagramStore', () => {
       store.load(store.diagram());
       const edge = store.edges().find((e) => e.target === second)!;
 
-      expect(store.setEdgeTarget(edge.id, first)).toBe(false);
       expect(store.setEdgeTarget(edge.id, 'nope')).toBe(false);
       expect(store.setEdgeTarget(edge.id, start)).toBe(false);
       expect(store.setEdgeTarget(edge.id, second)).toBe(true);
@@ -358,6 +365,20 @@ describe('DiagramStore', () => {
       store.undo();
       expect(store.edges().find((e) => e.id === edge.id)?.target).toBe(second);
       expect(store.canUndo()).toBe(false);
+    });
+
+    it('can point a transition back at its own state', () => {
+      store.load(blank());
+      const start = store.addNode('start');
+      const first = store.appendNode(start, 'state')!;
+      const second = store.appendNode(first, 'state')!;
+      store.load(store.diagram());
+      const edge = store.edges().find((e) => e.target === second)!;
+      expect(store.setEdgeTarget(edge.id, first)).toBe(true);
+      expect(store.edges().find((e) => e.id === edge.id)).toMatchObject({
+        source: first,
+        target: first,
+      });
     });
   });
 });

@@ -14,10 +14,23 @@
   align-items: center;
 }
 
-:host(.floating) {
+:host(.inline) {
   width: max-content;
   max-width: 240px;
   height: auto;
+}
+
+:host(.inline) {
+  // f-flow frames a connection's content (white, padded); the card draws its own frame.
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:host(.inline.empty) {
+  display: none;
 }
 
 :host(.empty) {

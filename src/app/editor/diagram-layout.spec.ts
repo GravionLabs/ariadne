@@ -255,4 +255,79 @@ describe('diagram layout', () => {
       expect(decisionIds(looped).has('b')).toBe(true);
     });
   });
+
+  describe('routes', () => {
+    const base: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'start-1', type: 'start', name: 'Initial' },
+        { id: 'a', type: 'state', name: 'A' },
+        { id: 'b', type: 'state', name: 'B' },
+      ],
+      edges: [
+        { id: 'e1', source: 'start-1', target: 'a', kind: 'forward' },
+        { id: 'e2', source: 'a', target: 'b', kind: 'forward', event: 'Paid', guard: 'big' },
+        { id: 'e3', source: 'a', target: 'b', kind: 'forward', event: 'Paid', guard: 'small' },
+      ],
+    };
+
+    it('gives parallel transitions a label each, side by side, and a route through each', () => {
+      const { labels, routes } = layoutDiagram(base);
+      const [one, two] = ['e2', 'e3'].map((id) => labels.find((l) => l.edgeId === id)!);
+      expect(one).toBeTruthy();
+      expect(two).toBeTruthy();
+      expect(one.position).not.toEqual(two.position);
+      expect(routes.get('e2')).toHaveLength(1);
+      expect(routes.get('e3')).toHaveLength(1);
+      expect(routes.get('e2')).not.toEqual(routes.get('e3'));
+      // A single transition between two states needs no route.
+      expect(routes.has('e1')).toBe(false);
+    });
+
+    it('routes a transition from a state to itself around the state', () => {
+      const looped: Diagram = {
+        ...base,
+        edges: [
+          ...base.edges.slice(0, 2),
+          { id: 'self', source: 'b', target: 'b', kind: 'forward', event: 'Retry' },
+        ],
+      };
+      const { positions, routes, labels } = layoutDiagram(looped);
+      const b = positions.get('b')!;
+      const size = nodeSize(looped.nodes[2]);
+      const [down, up] = routes.get('self')!;
+      expect(labels.map((l) => l.edgeId)).not.toContain('self');
+      // Out below the state, along its right side, back in above it.
+      // Far enough from the state for its label (110 wide at least) to sit on the line.
+      expect(down.x).toBeGreaterThanOrEqual(b.x + size.width + 55 + 16);
+      expect(down.y).toBeGreaterThan(b.y + size.height);
+      expect(up.x).toBe(down.x);
+      expect(up.y).toBeLessThan(b.y);
+    });
+
+    it('runs loops and compensation transitions in lanes beyond the diagram', () => {
+      const looped: Diagram = {
+        ...base,
+        edges: [
+          ...base.edges.slice(0, 2),
+          { id: 'back', source: 'b', target: 'a', kind: 'forward', event: 'Again' },
+          { id: 'undo', source: 'b', target: 'start-1', kind: 'compensation' },
+        ],
+      };
+      const { positions, routes } = layoutDiagram(looped);
+      const right = Math.max(
+        ...looped.nodes.map((n) => positions.get(n.id)!.x + nodeSize(n).width),
+      );
+      const lane = (id: string) => routes.get(id)![0].x;
+      expect(lane('back')).toBeGreaterThan(right);
+      expect(lane('undo')).toBeGreaterThan(right);
+      expect(lane('undo')).not.toBe(lane('back'));
+      // Left to right, the lanes run below the diagram.
+      const lr = layoutDiagram({ ...looped, direction: 'left-right' });
+      const bottom = Math.max(
+        ...looped.nodes.map((n) => lr.positions.get(n.id)!.y + nodeSize(n).height),
+      );
+      expect(lr.routes.get('back')![0].y).toBeGreaterThan(bottom);
+    });
+  });
 });

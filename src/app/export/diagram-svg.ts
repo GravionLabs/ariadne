@@ -63,6 +63,8 @@ const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Ar
 const MARGIN = 24;
 /** Straight run out of / into a node before a transition turns, as on the canvas. */
 const STUB = 24;
+/** How far a parallel transition runs before and after the label it passes through. */
+const PARALLEL_JOG = 12;
 const CORNER = 8;
 const LANE_GAP = 14;
 /** Average glyph widths (em) for the font stack; used to truncate text, as the canvas does. */
@@ -81,7 +83,7 @@ export interface SvgExport {
  * ("+" slots, selection) are left out. Output is deterministic, so it diffs and snapshots well.
  */
 export function renderDiagramSvg(diagram: Diagram): SvgExport {
-  const { positions, labels } = layoutDiagram(diagram);
+  const { positions, labels, routes } = layoutDiagram(diagram);
   const lr = diagram.direction === 'left-right';
   const decisions = decisionIds(diagram);
   const back = backEdgeIds(diagram);
@@ -132,7 +134,18 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
       const mid = label
         ? mainOf(label.position) + (lr ? label.size.width : label.size.height) / 2
         : (mainOf(out) + mainOf(inn)) / 2;
-      points = [out, pt(mid, crossOf(out)), pt(mid, crossOf(inn)), inn];
+      const through = routes.get(edge.id)?.[0];
+      // Parallel transitions each go through their own label (the layout's one waypoint).
+      points = through
+        ? [
+            out,
+            pt(mainOf(through) - PARALLEL_JOG, crossOf(out)),
+            pt(mainOf(through) - PARALLEL_JOG, crossOf(through)),
+            pt(mainOf(through) + PARALLEL_JOG, crossOf(through)),
+            pt(mainOf(through) + PARALLEL_JOG, crossOf(inn)),
+            inn,
+          ]
+        : [out, pt(mid, crossOf(out)), pt(mid, crossOf(inn)), inn];
       labelCentre = label
         ? {
             x: label.position.x + label.size.width / 2,
