@@ -38,7 +38,7 @@
     @if (file.notice(); as notice) {
       <p class="error-pill notice-pill" role="status">
         <span [title]="notice">{{ notice }}</span>
-        <button type="button" aria-label="Dismiss notice" (click)="file.notice.set(null)">
+        <button type="button" aria-label="Dismiss notice" (click)="file.setNotice(null)">
           <app-icon name="close" />
         </button>
       </p>
@@ -46,7 +46,7 @@
     @if (file.error(); as error) {
       <p class="error-pill" role="alert">
         <span>{{ error }}</span>
-        <button type="button" aria-label="Dismiss error" (click)="file.error.set(null)">
+        <button type="button" aria-label="Dismiss error" (click)="file.setError(null)">
           <app-icon name="close" />
         </button>
       </p>

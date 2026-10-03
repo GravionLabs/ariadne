@@ -78,7 +78,7 @@ export class SourceSync {
     try {
       const { diagram, notes } = parseDiagramWithNotes(this._text());
       if (this.store.replace(diagram)) this.applied = this.store.diagram();
-      if (notes.length > 0) this.document.notice.set(notes.join(' '));
+      if (notes.length > 0) this.document.setNotice(notes.join(' '));
       this._status.set({ kind: 'synced' });
     } catch (e) {
       if (!(e instanceof DiagramFormatError)) throw e;
