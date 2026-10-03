@@ -233,6 +233,19 @@ describe('Editor', () => {
     expect(section()).not.toBeNull();
   });
 
+  it('describes states only: the initial and final pills have no description field', async () => {
+    const { el, store, select } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    const description = () => el.querySelector('app-inspector textarea');
+    await select(['start-1']);
+    expect(description()).toBeNull();
+    await select(['end-1']);
+    expect(description()).toBeNull();
+    await select(['state-1']);
+    expect(description()).not.toBeNull();
+  });
+
   it('keeps the final state a pill, marked as final', async () => {
     const { el, store, settle } = await setup();
     store.appendNode('start-1', 'end');

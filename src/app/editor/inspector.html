@@ -32,15 +32,18 @@
       <input type="text" [value]="node.name" (change)="setName($event)" />
     </label>
 
-    <label class="field">
-      <span>Description</span>
-      <textarea
-        rows="3"
-        placeholder="What the saga waits for here"
-        [value]="node.description ?? ''"
-        (change)="setText('description', $event)"
-      ></textarea>
-    </label>
+    <!-- The initial and final state are pills that cannot show a description, so they have none. -->
+    @if (node.type === 'state') {
+      <label class="field">
+        <span>Description</span>
+        <textarea
+          rows="3"
+          placeholder="What the saga waits for here"
+          [value]="node.description ?? ''"
+          (change)="setText('description', $event)"
+        ></textarea>
+      </label>
+    }
 
     <div class="field">
       <span id="node-color-label">Color</span>
