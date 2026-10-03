@@ -42,6 +42,17 @@
       "skipFiles": ["<node_internals>/**"]
     },
     {
+      "name": "Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "preLaunchTask": "pnpm: build vscode",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/vscode",
+        "${workspaceFolder}/samples"
+      ],
+      "outFiles": ["${workspaceFolder}/apps/vscode/dist/**/*.js"]
+    },
+    {
       "name": "ng test (Vitest)",
       "type": "node",
       "request": "launch",

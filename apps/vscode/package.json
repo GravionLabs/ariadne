@@ -1,0 +1,118 @@
+{
+  "name": "ariadne-vscode",
+  "displayName": "Ariadne",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Edit MassTransit saga diagrams (*.saga.yaml) next to the code.",
+  "publisher": "gravionlabs",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.96.0",
+    "node": ">=22"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "ariadne.sagaEditor",
+        "displayName": "Ariadne Saga Diagram",
+        "selector": [
+          {
+            "filenamePattern": "*.saga.yaml"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ariadne.newDiagram",
+        "title": "New Saga Diagram",
+        "category": "Ariadne"
+      },
+      {
+        "command": "ariadne.showAsText",
+        "title": "Show Saga Diagram as Text",
+        "category": "Ariadne",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "ariadne.openDiagram",
+        "title": "Open Saga Diagram",
+        "category": "Ariadne",
+        "icon": "$(preview)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "ariadne.showAsText",
+          "when": "activeCustomEditorId == ariadne.sagaEditor"
+        },
+        {
+          "command": "ariadne.openDiagram",
+          "when": "resourceFilename =~ /\\.saga\\.yaml$/ && activeCustomEditorId != ariadne.sagaEditor"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "ariadne.showAsText",
+          "when": "activeCustomEditorId == ariadne.sagaEditor",
+          "group": "navigation"
+        },
+        {
+          "command": "ariadne.openDiagram",
+          "when": "resourceFilename =~ /\\.saga\\.yaml$/ && activeCustomEditorId != ariadne.sagaEditor",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "ariadne.newDiagram",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Ariadne",
+      "properties": {
+        "ariadne.editor.defaultToDiagram": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open *.saga.yaml files as a diagram. When off, they open as text; use \"Open Saga Diagram\" to see the diagram."
+        },
+        "ariadne.editor.autoLayout": {
+          "type": "boolean",
+          "default": true,
+          "description": "Arrange new diagram elements automatically."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-vscode.xml",
+    "test:integration": "node build.mjs && tsc -p tsconfig.test.json && node dist-test/run-tests.js",
+    "test:integration:ci": "xvfb-run -a pnpm test:integration"
+  },
+  "dependencies": {
+    "@ariadne/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.19.1",
+    "@types/vscode": "^1.96.0",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.28.2",
+    "mocha": "^11.7.0",
+    "vitest": "^5.0.0"
+  }
+}

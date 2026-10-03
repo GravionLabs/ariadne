@@ -2,7 +2,7 @@ import angular from 'angular-eslint';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/.angular/**', '**/node_modules/**', '**/test-results/**'] },
+  { ignores: ['**/dist/**', '**/.angular/**', '**/node_modules/**', '**/test-results/**', '**/.vscode-test/**', '**/dist-test/**'] },
   {
     files: ['**/*.ts'],
     extends: [...tseslint.configs.recommended, ...angular.configs.tsRecommended],
