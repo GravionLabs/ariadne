@@ -33,6 +33,7 @@ import { Icon } from './icon';
 import { Inspector } from './inspector';
 import { SagaImport } from '../import/saga-import';
 import { CatalogPanel } from './catalog-panel';
+import { sampleDiagram } from '../samples';
 import { GenerateDialog } from './generate-dialog';
 import { ImportDialog } from './import-dialog';
 import { NewDiagramDialog } from './new-diagram-dialog';
@@ -241,7 +242,9 @@ export class Editor {
     if (!this.confirmDiscard()) return;
     const details = await this.newDialog().open();
     if (!details) return;
-    this.file.newDiagram(details);
+    // A sample opens like an import: a copy that is not saved anywhere yet.
+    if (details.sample) this.file.openImported(sampleDiagram(details.sample));
+    else this.file.newDiagram(details);
     this.afterReplace();
   }
 

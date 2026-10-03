@@ -54,9 +54,11 @@ pnpm format:check    # Prettier (pnpm format fixes)
 pnpm build           # production build in apps/web/dist/
 ```
 
-## Command line
+## Self-hosting
 
-Self-hosting: `docker run -p 8080:8080 ghcr.io/gravionlabs/ariadne:latest`, see [docs/self-hosting.md](docs/self-hosting.md).
+`docker run -p 8080:8080 ghcr.io/gravionlabs/ariadne:latest`, see [docs/self-hosting.md](docs/self-hosting.md). The [user guide](docs/guide/README.md) explains the editor, the C# import and generation, and the exports.
+
+## Command line
 
 `apps/cli` builds the `ariadne` command (Node 22 or later) for local use and CI:
 
