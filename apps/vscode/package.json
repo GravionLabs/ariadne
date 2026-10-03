@@ -62,6 +62,16 @@
         "title": "Generate C#",
         "category": "Ariadne",
         "icon": "$(file-code)"
+      },
+      {
+        "command": "ariadne.updateDiagramFromCode",
+        "title": "Update Diagram from Code",
+        "category": "Ariadne"
+      },
+      {
+        "command": "ariadne.openDriftDiff",
+        "title": "Compare Diagram with Code",
+        "category": "Ariadne"
       }
     ],
     "menus": {
@@ -77,6 +87,14 @@
         {
           "command": "ariadne.generateCsharp",
           "when": "activeCustomEditorId == ariadne.sagaEditor || resourceFilename =~ /\\.saga\\.yaml$/"
+        },
+        {
+          "command": "ariadne.updateDiagramFromCode",
+          "when": "false"
+        },
+        {
+          "command": "ariadne.openDriftDiff",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -150,6 +168,12 @@
           "type": "string",
           "default": "",
           "description": "Namespace for generated C# when the diagram does not name one (saga.namespace).",
+          "scope": "resource"
+        },
+        "ariadne.drift.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "On save, compare a diagram with the C# file it names (saga.source) and report differences in the Problems panel.",
           "scope": "resource"
         }
       }

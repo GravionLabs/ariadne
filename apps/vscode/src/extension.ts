@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { emptyDiagram, serializeDiagram } from '@ariadne/core';
 import { SagaCodeLensProvider } from './code-lens';
+import { DriftService } from './drift-service';
 import { generateCsharpCommand, type ChooseFiles } from './generate-command';
 import { ImportReport, importFromCsharpCommand } from './import-command';
 import { VIRTUAL_SCHEME, VirtualDocuments } from './virtual-documents';
@@ -11,14 +12,19 @@ export interface AriadneApi {
   openEditors(): OpenEditor[];
   /** "Generate C#" with the choice of files given, instead of asking. */
   generateCsharp(uri: vscode.Uri, choose: ChooseFiles): Promise<string[]>;
+  /** The drift service, to compare now instead of waiting for a save. */
+  drift: DriftService;
 }
 
 export function activate(context: vscode.ExtensionContext): AriadneApi {
   const provider = new SagaEditorProvider(context.extensionUri);
   const virtual = new VirtualDocuments();
   const report = new ImportReport();
+  const drift = new DriftService(virtual);
+  void drift.start();
   context.subscriptions.push(
     report,
+    drift,
     vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, virtual),
     vscode.languages.registerCodeLensProvider({ pattern: '**/*.cs' }, new SagaCodeLensProvider()),
     vscode.commands.registerCommand('ariadne.generateCsharp', (uri?: vscode.Uri) =>
@@ -73,6 +79,7 @@ export function activate(context: vscode.ExtensionContext): AriadneApi {
   );
   return {
     openEditors: () => [...provider.open],
+    drift,
     generateCsharp: (uri, choose) => generateCsharpCommand(virtual, report.channel, uri, choose),
   };
 }
