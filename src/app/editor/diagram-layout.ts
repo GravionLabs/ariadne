@@ -65,12 +65,8 @@ export function nodeSize(node: DiagramNode, expanded = false): Size {
   return { width: CARD_WIDTH, height: base + (expanded ? descriptionHeight(node) : 0) };
 }
 
-/**
- * The initial state and a final state without activities are drawn as small pills. A final state
- * that does something on entry (e.g. publishes `OrderCompleted`) needs a full card for its chips.
- */
-export const isCompact = (node: DiagramNode): boolean =>
-  node.type === 'start' || (node.type === 'end' && !node.activities?.length);
+/** The initial and the final state are small pills; only states are full cards. */
+export const isCompact = (node: DiagramNode): boolean => node.type !== 'state';
 
 /** Whether a node's card can unfold its description. */
 export const canExpand = (node: DiagramNode): boolean =>

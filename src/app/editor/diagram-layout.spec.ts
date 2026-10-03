@@ -122,16 +122,13 @@ describe('diagram layout', () => {
     expect(two.height - one.height).toBe(2 * (compensated.height - plain.height - 6) + 0);
   });
 
-  it('draws a final state as a pill, or as a card when it does something on entry', () => {
-    const final = { id: 'e', type: 'end', name: 'Completed' } as const;
-    const withActivity = { ...final, activities: [{ kind: 'event', name: 'OrderCompleted' }] };
-    expect(isCompact(final)).toBe(true);
-    expect(nodeSize(final)).toEqual({ width: 180, height: 48 });
-    expect(isCompact(withActivity as never)).toBe(false);
-    expect(nodeSize(withActivity as never).width).toBe(
-      nodeSize({ id: 'a', type: 'state', name: 'A' }).width,
-    );
-    // The initial state is never entered through a transition, so it stays a pill.
+  it('draws the initial and the final state as pills, and only states as cards', () => {
+    const pill = { width: 180, height: 48 };
+    expect(nodeSize({ id: 's', type: 'start', name: 'S' })).toEqual(pill);
+    expect(nodeSize({ id: 'e', type: 'end', name: 'E' })).toEqual(pill);
     expect(isCompact({ id: 's', type: 'start', name: 'S' })).toBe(true);
+    expect(isCompact({ id: 'e', type: 'end', name: 'E' })).toBe(true);
+    expect(isCompact({ id: 'a', type: 'state', name: 'A' })).toBe(false);
+    expect(nodeSize({ id: 'a', type: 'state', name: 'A' }).width).toBeGreaterThan(pill.width);
   });
 });

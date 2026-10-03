@@ -179,20 +179,38 @@ edges:
       const activities = (id: string) => diagram.nodes.find((n) => n.id === id)?.activities;
       expect(activities('a')).toEqual([{ kind: 'command', name: 'ReserveStock' }]);
       expect(activities('b')).toEqual([{ kind: 'command', name: 'ChargePayment' }]);
-      // Both transitions into the final state send/publish the same two: kept once.
-      expect(activities('f')).toEqual([
-        { kind: 'command', name: 'ShipOrder' },
-        { kind: 'event', name: 'OrderAccepted' },
-      ]);
+      // A final state cannot do anything: what the transitions into it did is dropped.
+      expect(activities('f')).toBeUndefined();
       expect(diagram.nodes.find((n) => n.id === 's')).not.toHaveProperty('activities');
       expect(diagram.edges.every((e) => !('activities' in e))).toBe(true);
     });
 
-    it('reports what was moved, once, naming the states', () => {
+    it('reports what was moved and what had to be dropped, naming the states', () => {
       const { notes } = parseDiagramWithNotes(v2);
-      expect(notes).toHaveLength(1);
-      expect(notes[0]).toContain('"Reserving stock", "Completed"');
+      expect(notes).toHaveLength(2);
+      expect(notes[0]).toContain('"Reserving stock"');
       expect(notes[0]).not.toContain('Charging payment');
+      expect(notes[0]).not.toContain('Completed');
+      expect(notes[1]).toContain('"Completed" (send ShipOrder, publish OrderAccepted)');
+    });
+
+    it('merges what several transitions into one state did, without duplicates', () => {
+      const text = `
+version: 2
+nodes:
+  - { id: a, type: state, name: A }
+  - { id: b, type: state, name: B }
+  - { id: c, type: state, name: C }
+edges:
+  - { id: e1, source: a, target: c, activities: [{ command: X }, { event: Y }] }
+  - { id: e2, source: b, target: c, activities: [{ event: Y }, { command: Z }] }
+`;
+      const { diagram } = parseDiagramWithNotes(text);
+      expect(diagram.nodes[2].activities).toEqual([
+        { kind: 'command', name: 'X' },
+        { kind: 'event', name: 'Y' },
+        { kind: 'command', name: 'Z' },
+      ]);
     });
 
     it('writes the migrated diagram as version 3 without transition activities', () => {
@@ -239,6 +257,14 @@ edges:
     [
       'version: 3\nnodes:\n  - { id: a, type: state, name: A, activities: [{ command: "" }] }',
       /nodes\[0\]\.activities\[0\]\.command must be a non-empty string/,
+    ],
+    [
+      'version: 3\nnodes:\n  - { id: a, type: end, name: A, activities: [{ event: X }] }',
+      /nodes\[0\]\.activities is only allowed on states, not on the final state/,
+    ],
+    [
+      'version: 3\nnodes:\n  - { id: a, type: start, name: A, activities: [{ command: X }] }',
+      /nodes\[0\]\.activities is only allowed on states, not on the initial state/,
     ],
     [
       'version: 3\nnodes:\n  - { id: a, type: state, name: A, activities: [{ command: X, event: Y }] }',

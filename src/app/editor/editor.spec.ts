@@ -220,7 +220,7 @@ describe('Editor', () => {
     expect(store.nodes()[1].activities).toEqual([{ kind: 'event', name: 'OrderAccepted' }]);
   });
 
-  it('offers activities on states and final states, not on the initial state', async () => {
+  it('offers activities on states only: the initial and the final state do nothing', async () => {
     const { el, store, select } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'end');
@@ -228,21 +228,19 @@ describe('Editor', () => {
     await select(['start-1']);
     expect(section()).toBeNull();
     await select(['end-1']);
+    expect(section()).toBeNull();
+    await select(['state-1']);
     expect(section()).not.toBeNull();
   });
 
-  it('draws a final state with activities as a card with chips', async () => {
+  it('keeps the final state a pill, marked as final', async () => {
     const { el, store, settle } = await setup();
     store.appendNode('start-1', 'end');
     await settle();
-    const final = () => el.querySelector('app-node-card[data-type="end"]')!;
-    expect(final().classList).toContain('compact');
-    store.updateNode('end-1', { activities: [{ kind: 'event', name: 'OrderCompleted' }] });
-    await settle();
-    expect(final().classList).not.toContain('compact');
-    expect(final().querySelector('.chip-event')?.textContent?.trim()).toBe(
-      'Publish OrderCompleted',
-    );
+    const final = el.querySelector('app-node-card[data-type="end"]')!;
+    expect(final.classList).toContain('compact');
+    expect(final.querySelector('.chip')).toBeNull();
+    expect(final.textContent).toContain('Final');
   });
 
   it('marks events nobody in the saga publishes as external, with their source', async () => {

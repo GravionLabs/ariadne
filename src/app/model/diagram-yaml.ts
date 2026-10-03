@@ -12,6 +12,7 @@ import {
   NodeColor,
   isNodeColor,
   NodeType,
+  hasActivities,
 } from './diagram';
 
 /** Current version of the file format; see docs/specs/diagram-format.md. */
@@ -115,7 +116,8 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
 
 /**
  * Version 2 wrote activities on transitions. They now belong to the state the transition leads
- * into: moved in edge order, without duplicates (ADR 0005). Returns a note per migrated file.
+ * into: moved in edge order, without duplicates (ADR 0005). A final state cannot have any, so
+ * what a transition into one did is dropped, and the notes say so.
  */
 function moveActivitiesToStates(nodes: DiagramNode[], parsed: ParsedEdge[]): string[] {
   const moved = new Map<string, Activity[]>();
@@ -127,18 +129,31 @@ function moveActivitiesToStates(nodes: DiagramNode[], parsed: ParsedEdge[]): str
     }
     moved.set(edge.target, list);
   }
-  const names: string[] = [];
+  const received: string[] = [];
+  const dropped: string[] = [];
   for (const node of nodes) {
     const list = moved.get(node.id);
     if (!list) continue;
-    node.activities = [...(node.activities ?? []), ...list];
-    names.push(`"${node.name}"`);
+    if (hasActivities(node.type)) {
+      node.activities = [...(node.activities ?? []), ...list];
+      received.push(`"${node.name}"`);
+    } else {
+      const what = list.map((a) => `${a.kind === 'command' ? 'send' : 'publish'} ${a.name}`);
+      dropped.push(`"${node.name}" (${what.join(', ')})`);
+    }
   }
-  return names.length
-    ? [
-        `Activities (send command / publish event) moved from transitions onto the state they lead into: ${names.join(', ')}.`,
-      ]
-    : [];
+  const notes: string[] = [];
+  if (received.length) {
+    notes.push(
+      `Activities (send command / publish event) moved from transitions onto the state they lead into: ${received.join(', ')}.`,
+    );
+  }
+  if (dropped.length) {
+    notes.push(
+      `Final and initial states cannot have activities, so these were dropped: ${dropped.join('; ')}. Add them to a state if they are still needed.`,
+    );
+  }
+  return notes;
 }
 
 function parseNode(value: unknown, index: number, version: number): DiagramNode {
@@ -159,6 +174,11 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     node['compensation'] === undefined
       ? undefined
       : asRecord(node['compensation'], `${at}.compensation`);
+  if (node['activities'] !== undefined && !hasActivities(type as NodeType)) {
+    throw new DiagramFormatError(
+      `${at}.activities is only allowed on states, not on the ${type === 'end' ? 'final' : 'initial'} state`,
+    );
+  }
   const activities =
     node['activities'] === undefined
       ? undefined

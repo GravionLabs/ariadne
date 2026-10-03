@@ -59,8 +59,8 @@ export interface DiagramNode {
   /** Accent color shown at the top of the card; absent = the default of the node's type. */
   color?: NodeColor;
   /**
-   * What the saga does on entering this state, in order. States and the final state have them;
-   * the initial state is not entered through a transition, so it has none.
+   * What the saga does on entering this state, in order. Only states have them: the initial state
+   * is not entered through a transition, and nothing happens in a final state, it ends the saga.
    */
   activities?: Activity[];
   compensation?: Compensation;
@@ -90,8 +90,8 @@ export interface Diagram {
   edges: DiagramEdge[];
 }
 
-/** A node that can have {@link Activity activities}: the ones a transition leads into. */
-export const hasActivities = (type: NodeType): boolean => type !== 'start';
+/** Only plain states can have {@link Activity activities}; the initial and final states cannot. */
+export const hasActivities = (type: NodeType): boolean => type === 'state';
 
 /**
  * Names of the events the saga publishes itself (an activity of some state). Every other event a

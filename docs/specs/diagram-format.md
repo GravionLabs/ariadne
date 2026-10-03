@@ -34,17 +34,18 @@ nodes:
     timeout: 30s
     compensation:
       name: RefundPayment
-  - id: end-1
-    type: end
-    name: Completed
+  - id: state-2
+    type: state
+    name: Shipping
     activities:
       - command: ShipOrder
       - event: OrderAccepted
+  - id: end-1
+    type: end
+    name: Completed
   - id: end-2
     type: end
     name: Cancelled
-    activities:
-      - event: OrderRejected
 edges:
   - id: edge-1
     source: start-1
@@ -54,9 +55,14 @@ edges:
     eventSource: Shop API
   - id: edge-2
     source: state-1
-    target: end-1
+    target: state-2
     kind: forward
     event: PaymentCharged
+  - id: edge-4
+    source: state-2
+    target: end-1
+    kind: forward
+    event: OrderShipped
   - id: edge-3
     source: state-1
     target: end-2
@@ -75,17 +81,17 @@ edges:
 
 ### Node (state)
 
-| Field          | Type                                                                                           | Required | Notes                                                                                                                |
-| -------------- | ---------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
-| `id`           | string                                                                                         | yes      | Unique within the file, e.g. `state-3`.                                                                              |
-| `type`         | `start` \| `state` \| `end`                                                                    | yes      | Initial state (no incoming transitions), state, final state (no outgoing).                                           |
-| `name`         | string                                                                                         | yes      | Label shown on the canvas.                                                                                           |
-| `description`  | string                                                                                         | no       | Documentation only.                                                                                                  |
-| `activities`   | list of activities                                                                             | no       | What the saga does on entering this state, in order. Not on the initial state (`start`), which no transition enters. |
-| `color`        | `red` \| `orange` \| `amber` \| `green` \| `teal` \| `blue` \| `purple` \| `pink` \| `#rrggbb` | no       | Accent color at the top of the card: a palette name or a custom hex value. Defaults to the color of the node's type. |
-| `retry`        | string                                                                                         | no       | Free text, e.g. `3 attempts`. Documentation only.                                                                    |
-| `timeout`      | string                                                                                         | no       | Free text, e.g. `30s`. Documentation only.                                                                           |
-| `compensation` | `{ name: string, description?: string }`                                                       | no       | Undo action for the work done to reach this state.                                                                   |
+| Field          | Type                                                                                           | Required | Notes                                                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                                                                                         | yes      | Unique within the file, e.g. `state-3`.                                                                                     |
+| `type`         | `start` \| `state` \| `end`                                                                    | yes      | Initial state (no incoming transitions), state, final state (no outgoing).                                                  |
+| `name`         | string                                                                                         | yes      | Label shown on the canvas.                                                                                                  |
+| `description`  | string                                                                                         | no       | Documentation only.                                                                                                         |
+| `activities`   | list of activities                                                                             | no       | What the saga does on entering this state, in order. Only on `state` nodes: nothing runs in the initial or the final state. |
+| `color`        | `red` \| `orange` \| `amber` \| `green` \| `teal` \| `blue` \| `purple` \| `pink` \| `#rrggbb` | no       | Accent color at the top of the card: a palette name or a custom hex value. Defaults to the color of the node's type.        |
+| `retry`        | string                                                                                         | no       | Free text, e.g. `3 attempts`. Documentation only.                                                                           |
+| `timeout`      | string                                                                                         | no       | Free text, e.g. `30s`. Documentation only.                                                                                  |
+| `compensation` | `{ name: string, description?: string }`                                                       | no       | Undo action for the work done to reach this state.                                                                          |
 
 ### Edge (transition)
 
@@ -129,8 +135,10 @@ Version 2 wrote activities on transitions. They are read and **moved onto the st
 leads into** (see [ADR 0005](../adr/0005-activities-on-states.md)):
 
 - in edge order, appended after the state's own activities, without duplicates;
-- the app tells the user which states received activities, and treats the file as unsaved until it is
-  saved as version 3.
+- a transition into the initial or a final state cannot keep its activities, since nothing runs in
+  those states: they are dropped;
+- the app tells the user which states received activities and which were dropped, and treats the
+  file as unsaved until it is saved as version 3.
 
 Everything else is unchanged.
 
@@ -150,5 +158,6 @@ names the offending path. For example:
 
 - `nodes[2].type must be one of start, end, state`
 - `nodes[1].activities[0] must be "command: <Name>" or "event: <Name>"`
+- `nodes[2].activities is only allowed on states, not on the final state`
 - `edges[0].activities is not allowed: activities belong to states (nodes[].activities)`
 - `edges[0].target "state-9" is not a node`
