@@ -15,7 +15,11 @@
     "Other"
   ],
   "main": "./dist/extension.js",
-  "activationEvents": [],
+  "activationEvents": [
+    "workspaceContains:**/*.saga.yaml",
+    "workspaceContains:**/*.cs",
+    "onLanguage:csharp"
+  ],
   "contributes": {
     "customEditors": [
       {
@@ -46,6 +50,18 @@
         "title": "Open Saga Diagram",
         "category": "Ariadne",
         "icon": "$(preview)"
+      },
+      {
+        "command": "ariadne.importFromCsharp",
+        "title": "Import Saga from C#…",
+        "category": "Ariadne",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "ariadne.generateCsharp",
+        "title": "Generate C#",
+        "category": "Ariadne",
+        "icon": "$(file-code)"
       }
     ],
     "menus": {
@@ -57,6 +73,10 @@
         {
           "command": "ariadne.openDiagram",
           "when": "resourceFilename =~ /\\.saga\\.yaml$/ && activeCustomEditorId != ariadne.sagaEditor"
+        },
+        {
+          "command": "ariadne.generateCsharp",
+          "when": "activeCustomEditorId == ariadne.sagaEditor || resourceFilename =~ /\\.saga\\.yaml$/"
         }
       ],
       "editor/title": [
@@ -69,12 +89,34 @@
           "command": "ariadne.openDiagram",
           "when": "resourceFilename =~ /\\.saga\\.yaml$/ && activeCustomEditorId != ariadne.sagaEditor",
           "group": "navigation"
+        },
+        {
+          "command": "ariadne.generateCsharp",
+          "when": "activeCustomEditorId == ariadne.sagaEditor",
+          "group": "navigation"
         }
       ],
       "explorer/context": [
         {
           "command": "ariadne.newDiagram",
           "when": "explorerResourceIsFolder",
+          "group": "navigation"
+        },
+        {
+          "command": "ariadne.importFromCsharp",
+          "when": "resourceExtname == .cs",
+          "group": "navigation"
+        },
+        {
+          "command": "ariadne.generateCsharp",
+          "when": "resourceFilename =~ /\\.saga\\.yaml$/",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "ariadne.importFromCsharp",
+          "when": "resourceExtname == .cs",
           "group": "navigation"
         }
       ]
@@ -91,6 +133,24 @@
           "type": "boolean",
           "default": true,
           "description": "Arrange new diagram elements automatically."
+        },
+        "ariadne.import.folder": {
+          "type": "string",
+          "default": "",
+          "description": "Folder for diagrams imported from C#, relative to the workspace folder. Empty: next to the C# file.",
+          "scope": "resource"
+        },
+        "ariadne.generate.folder": {
+          "type": "string",
+          "default": "",
+          "description": "Folder for generated C#, relative to the workspace folder. Empty: next to the C# file named in the diagram (saga.source), else next to the diagram.",
+          "scope": "resource"
+        },
+        "ariadne.generate.namespace": {
+          "type": "string",
+          "default": "",
+          "description": "Namespace for generated C# when the diagram does not name one (saga.namespace).",
+          "scope": "resource"
         }
       }
     }
@@ -105,7 +165,11 @@
   },
   "dependencies": {
     "@ariadne/core": "workspace:*",
-    "@ariadne/editor-protocol": "workspace:*"
+    "@ariadne/editor-protocol": "workspace:*",
+    "@ariadne/masstransit": "workspace:*",
+    "tree-sitter-c-sharp": "^0.23.5",
+    "web-tree-sitter": "^0.27.0",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

@@ -72,13 +72,14 @@ describe('DiagramDetails', () => {
       refresh();
     });
 
-    it('is folded away until opened, and lists the five fields', () => {
+    it('is folded away until opened, and lists the six fields', () => {
       expect(fields().map((f) => f.getAttribute('aria-label'))).toEqual([
         'State machine class',
         'Namespace',
         'Saga instance type',
         'Current state property',
         'Contracts namespace',
+        'C# file',
       ]);
       expect(toggle().getAttribute('aria-expanded')).toBe('true');
       toggle().click();

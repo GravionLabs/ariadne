@@ -152,6 +152,11 @@ export interface SagaInfo {
   stateProperty?: string;
   /** Namespace of the message contracts (commands and events), when not the saga's. */
   contractsNamespace?: string;
+  /**
+   * The C# file that implements the saga, relative to the diagram file with `/` as separator, e.g.
+   * `../Sagas/OrderStateMachine.cs`. Editors use it to compare the two and to jump between them.
+   */
+  source?: string;
 }
 
 /**
