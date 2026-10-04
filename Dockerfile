@@ -23,6 +23,7 @@ COPY packages packages
 # The app bundles the sample sagas.
 COPY docs/examples docs/examples
 COPY samples/sagas samples/sagas
+COPY samples/library samples/library
 RUN pnpm --filter @ariadne/web build && pnpm --filter @ariadne/server build
 
 # ---- the node binary for the target platform

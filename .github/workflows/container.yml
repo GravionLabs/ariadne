@@ -12,6 +12,7 @@ on:
       - packages/**
       - docs/examples/**
       - samples/sagas/**
+      - samples/library/**
       - pnpm-lock.yaml
       - .github/workflows/container.yml
 
