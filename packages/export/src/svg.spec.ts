@@ -187,23 +187,43 @@ describe('fit', () => {
   });
 });
 
-describe('renderDiagramSvg title', () => {
-  it('adds the name and description as <title> and <desc>, escaped', () => {
+describe('renderDiagramSvg text alternative', () => {
+  it('labels the picture with a title and a description, by id', () => {
+    const { svg } = renderDiagramSvg({ ...orderSaga, name: 'Order Saga' });
+    expect(svg).toMatch(/<svg [^>]*role="img" aria-labelledby="title desc"/);
+    expect(svg).toContain('<title id="title">Order Saga</title>');
+    expect(svg).toMatch(
+      /<desc id="desc">\d+ states and \d+ transitions, from Initial to Completed( or [^<]+)?\.<\/desc>/,
+    );
+  });
+
+  it('puts the description before the summary, and escapes both', () => {
     const { svg } = renderDiagramSvg({
       ...orderSaga,
       name: 'Order & Co',
       description: 'Takes <orders>',
     });
-    expect(svg).toContain('<title>Order &amp; Co</title>');
-    expect(svg).toContain('<desc>Takes &lt;orders&gt;</desc>');
+    expect(svg).toContain('<title id="title">Order &amp; Co</title>');
+    expect(svg).toContain('<desc id="desc">Takes &lt;orders&gt; ');
   });
 
-  it('has neither without a name', () => {
+  it('always has a title and a description, also without a name', () => {
     const { svg } = renderDiagramSvg(orderSaga);
-    expect(svg).not.toContain('<title>');
-    expect(svg).not.toContain('<desc>');
+    expect(svg).toContain('<title id="title">Saga diagram</title>');
+    expect(svg).toMatch(/<desc id="desc">\d+ states and \d+ transitions/);
   });
 
+  it('uses the id prefix, so that several pictures on a page do not share ids', () => {
+    const { svg } = renderDiagramSvg(orderSaga, { idPrefix: 'order-' });
+    expect(svg).toContain('aria-labelledby="order-title order-desc"');
+    expect(svg).toContain('<title id="order-title">');
+    expect(svg).toContain('<desc id="order-desc">');
+    const ids = [...svg.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe('renderDiagramSvg', () => {
   it('shows a guard after the event in the label', () => {
     const edges = orderSaga.edges.map((e) =>
       e.event === 'PaymentFailed' ? { ...e, guard: 'attempts >= 3' } : e,

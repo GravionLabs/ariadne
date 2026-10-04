@@ -1,3 +1,4 @@
+import { diagramAlternative, diagramTitle } from './describe';
 import {
   ACTIVITY_VERBS,
   backEdgeIds,
@@ -254,9 +255,10 @@ function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
   });
 
   const svg = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${n(minX)} ${n(minY)} ${width} ${height}" font-family="${esc(FONT)}">`,
-    ...(diagram.name?.trim() ? [`<title>${esc(diagram.name.trim())}</title>`] : []),
-    ...(diagram.description?.trim() ? [`<desc>${esc(diagram.description.trim())}</desc>`] : []),
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${n(minX)} ${n(minY)} ${width} ${height}" font-family="${esc(FONT)}" role="img" aria-labelledby="${prefix}title ${prefix}desc">`,
+    // The text alternative (WCAG 1.1.1): a title and a description, always, also for a screen reader.
+    `<title id="${prefix}title">${esc(diagramTitle(diagram))}</title>`,
+    `<desc id="${prefix}desc">${esc(diagramAlternative(diagram))}</desc>`,
     '<defs>',
     marker(prefix, 'forward', paint.line),
     marker(prefix, 'compensation', paint.compensation),

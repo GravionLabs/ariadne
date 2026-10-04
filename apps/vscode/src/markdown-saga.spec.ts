@@ -42,9 +42,25 @@ describe('fenced saga blocks', () => {
     expect(html).toContain('<p>Before</p>');
     expect(html).toContain('<p>After</p>');
     expect(html).toContain('class="ariadne-saga"');
-    expect(html).toContain('alt="Saga diagram: Order Saga"');
+    // The name, then what the picture is made of: two states and a transition, from the initial one.
+    expect(html).toContain(
+      'alt="Saga diagram: Order Saga. 2 states and 1 transition, from Initial."',
+    );
     expect(svgOf(html)).toContain('Submitted');
     expect(html).not.toContain('<pre><code');
+  });
+
+  it('describe the image for a screen reader: the name, the description, and what is in it', () => {
+    const described = DIAGRAM.replace(
+      'name: Order Saga',
+      'name: Order Saga\ndescription: Takes "an order" & ships it.',
+    );
+    expect(described).not.toBe(DIAGRAM);
+    const html = md().render('```saga\n' + described + '```\n');
+    // Escaped for the attribute, and in the order: name, description, summary.
+    expect(html).toMatch(
+      /alt="Saga diagram: Order Saga\. Takes &quot;an order&quot; &amp; ships it\. \d+ states? and /,
+    );
   });
 
   it('leave other code blocks alone', () => {

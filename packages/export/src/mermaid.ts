@@ -1,3 +1,4 @@
+import { diagramAlternative, diagramTitle } from './describe';
 import {
   ACTIVITY_VERBS,
   Diagram,
@@ -55,6 +56,13 @@ const text = (s: string): string =>
     .replace(/\s*\n\s*/g, ' ')
     .trim();
 
+/** Text for `accTitle` and `accDescr`, which run to the end of the line: no line breaks, and `%%` would start a comment. */
+const accessible = (s: string): string =>
+  s
+    .replace(/\s*\n\s*/g, ' ')
+    .replace(/%%/g, '% %')
+    .trim();
+
 /**
  * `Event / Send A, Publish B`: the event that triggers the transition, then what the saga does on
  * entering the target state. An event from outside the saga is marked `(from Shop API)`.
@@ -90,6 +98,9 @@ export function diagramToMermaid(diagram: Diagram): string {
       ? ['---', `title: ${JSON.stringify(diagram.name.trim())}`, '---']
       : []),
     'stateDiagram-v2',
+    // Mermaid's accessibility syntax: GitHub draws it into the title and description of its SVG.
+    `  accTitle: ${accessible(diagramTitle(diagram))}`,
+    `  accDescr: ${accessible(diagramAlternative(diagram))}`,
     `  direction ${diagram.direction === 'left-right' ? 'LR' : 'TB'}`,
   ];
 

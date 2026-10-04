@@ -1,7 +1,9 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`renderDiagramSvg > renders the order saga 1`] = `
-"<svg xmlns="http://www.w3.org/2000/svg" width="607" height="711" viewBox="56 -24 607 711" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+"<svg xmlns="http://www.w3.org/2000/svg" width="607" height="711" viewBox="56 -24 607 711" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" role="img" aria-labelledby="title desc">
+<title id="title">Saga diagram</title>
+<desc id="desc">5 states and 5 transitions, from Initial to Completed or Cancelled.</desc>
 <defs>
 <marker id="arrow-forward" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 L9 5 L1 9 z" fill="#868ea3"/></marker>
 <marker id="arrow-compensation" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 L9 5 L1 9 z" fill="#ce8408"/></marker>

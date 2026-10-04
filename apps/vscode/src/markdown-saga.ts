@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { DiagramFormatError, parseDiagram } from '@ariadne/core';
-import { renderDiagramSvg } from '@ariadne/export';
+import { diagramAlternative, renderDiagramSvg } from '@ariadne/export';
 import type MarkdownItClass from 'markdown-it';
 
 /** An instance of markdown-it: the preview hands one over. */
@@ -81,8 +81,9 @@ function diagramHtml(md: MarkdownIt, yaml: string): string {
     const { svg } = renderDiagramSvg(diagram);
     // An image, not inline SVG: its ids and styles cannot reach the page, and the preview allows it.
     const src = `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`;
+    // The picture's text alternative: its name, its description if it has one, and what it is made of.
     const label = md.utils.escapeHtml(
-      diagram.name ? `Saga diagram: ${diagram.name}` : 'Saga diagram',
+      `${diagram.name ? `Saga diagram: ${diagram.name}` : 'Saga diagram'}. ${diagramAlternative(diagram)}`,
     );
     // The picture has a light palette and no background: it sits on white, also in a dark theme.
     return `<figure class="ariadne-saga" style="margin:1em 0;padding:12px;background:#fff;border-radius:6px;overflow:auto"><img src="${src}" alt="${label}" style="max-width:100%;height:auto"></figure>\n`;

@@ -147,7 +147,7 @@ describe('diagramToMermaid', () => {
       }),
     ).not.toContain('nope');
     expect(diagramToMermaid({ direction: 'top-bottom', nodes: [], edges: [] })).toBe(
-      'stateDiagram-v2\n  direction TB\n',
+      'stateDiagram-v2\n  accTitle: Saga diagram\n  accDescr: 0 states and 0 transitions.\n  direction TB\n',
     );
   });
 });
@@ -162,6 +162,28 @@ describe('diagramToMermaid title', () => {
   it('starts with title front matter for a named diagram', () => {
     const text = diagramToMermaid({ ...orderSaga, name: 'Order "Saga"' });
     expect(text.startsWith('---\ntitle: "Order \\"Saga\\""\n---\nstateDiagram-v2\n')).toBe(true);
+  });
+
+  it("has accTitle and accDescr, Mermaid's accessibility syntax, right after the diagram type", () => {
+    const text = diagramToMermaid({ ...orderSaga, name: 'Order Saga' });
+    expect(text).toMatch(
+      /stateDiagram-v2\n {2}accTitle: Order Saga\n {2}accDescr: \d+ states and \d+ transitions, from Initial to /,
+    );
+  });
+
+  it('puts the description in accDescr, on one line, and cannot start a comment', () => {
+    const text = diagramToMermaid({
+      ...orderSaga,
+      name: 'Order',
+      description: 'Takes an order\n  to the door. 100%% sure.',
+    });
+    const line = text.split('\n').find((l) => l.startsWith('  accDescr: '))!;
+    expect(line).toContain('accDescr: Takes an order to the door. 100% % sure. ');
+    expect(text.split('\n').filter((l) => l.includes('%%'))).toEqual([]);
+  });
+
+  it('calls an unnamed diagram "Saga diagram"', () => {
+    expect(diagramToMermaid(orderSaga)).toContain('\n  accTitle: Saga diagram\n');
   });
 
   it('has no front matter without a name', () => {
