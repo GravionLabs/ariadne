@@ -41,6 +41,9 @@ await copyFile(
   'dist/web-tree-sitter.wasm',
 );
 
+// The JSON Schema of `*.saga.yaml`, contributed as `yamlValidation` (Red Hat YAML extension).
+await copyFile('../../docs/specs/saga.schema.json', 'dist/saga.schema.json');
+
 // PNG export: the rasteriser (WebAssembly) and the font it draws with, read next to the bundle.
 await copyFile(require.resolve('@resvg/resvg-wasm/index_bg.wasm'), 'dist/resvg.wasm');
 const fonts = dirname(require.resolve('dejavu-fonts-ttf/package.json'));

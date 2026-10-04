@@ -53,6 +53,14 @@
       "outFiles": ["${workspaceFolder}/apps/vscode/dist/**/*.js"]
     },
     {
+      "name": "Attach to Extension Host",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "outFiles": ["${workspaceFolder}/apps/vscode/dist/**/*.js"]
+    },
+    {
       "name": "ng test (Vitest)",
       "type": "node",
       "request": "launch",

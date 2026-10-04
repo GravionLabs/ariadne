@@ -48,6 +48,13 @@
       "problemMatcher": []
     },
     {
+      "label": "pnpm: dev vscode",
+      "type": "shell",
+      "command": "pnpm --filter ariadne-vscode dev",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
       "label": "pnpm: lint",
       "type": "shell",
       "command": "pnpm lint",

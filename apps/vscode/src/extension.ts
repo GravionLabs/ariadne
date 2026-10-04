@@ -9,6 +9,7 @@ import type { ExportFormat, Rasterise } from './export-formats';
 import { DriftService } from './drift-service';
 import { generateCsharpCommand, type ChooseFiles } from './generate-command';
 import { ImportReport, importFromCsharpCommand } from './import-command';
+import { YamlProblems } from './yaml-problems';
 import { VIRTUAL_SCHEME, VirtualDocuments } from './virtual-documents';
 import { OpenEditor, SAGA_EDITOR_VIEW_TYPE, SagaEditorProvider } from './saga-editor-provider';
 
@@ -39,9 +40,12 @@ export function activate(context: vscode.ExtensionContext): AriadneApi {
   );
   const lenses = new SagaCodeLensProvider(drift);
   void drift.start();
+  const problems = new YamlProblems();
+  void problems.start();
   context.subscriptions.push(
     report,
     drift,
+    problems,
     vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, virtual),
     vscode.languages.registerCodeLensProvider({ pattern: '**/*.cs' }, lenses),
     lenses,

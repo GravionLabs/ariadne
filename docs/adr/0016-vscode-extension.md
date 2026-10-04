@@ -38,6 +38,11 @@ same git workflow, is worth more than a separate web page. There must not be a s
 - **"Go to code"** matches the diagram to the code by name (a state by its C# identifier, a transition by its two ends and event), because the ids differ; the importer's source locations give the line.
 - **Nothing is written without a look:** a different existing diagram is shown as a diff first, generated files are picked from a list, and changed ones can be compared.
 
+## YAML authoring (#194)
+
+- **A JSON Schema** (`docs/specs/saga.schema.json`) is contributed with `yamlValidation`, so the Red Hat YAML extension completes and validates `*.saga.yaml`; the same URL works in any editor with a YAML language server. It is written by hand and a test keeps it in step with the reader.
+- **Problems panel**: every `*.saga.yaml` of the workspace is checked with the reader and `validate` (the same rules as the editor), with the positions taken from the YAML source ranges. Open files are checked on change after a pause and on save, so it works with the text editor and without the diagram editor.
+
 ## Export and preview (#197)
 
 - **Exports run in the extension host** (`@ariadne/export`), from the text of the document, so they work with or without the diagram editor and for unsaved changes. The webview protocol has no export message.

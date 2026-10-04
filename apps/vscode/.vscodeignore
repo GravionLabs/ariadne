@@ -5,3 +5,5 @@ dist-test/**
 build.mjs
 tsconfig*.json
 vitest.config.ts
+scripts/**
+.vscode-test/**
