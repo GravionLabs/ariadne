@@ -74,7 +74,8 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: GravionLabs/ci/.github/workflows/docker-package.yml@main
     with:
-      image-name: ${{ github.repository }}
+      # Lowercase: a registry rejects capitals, and `github.repository` (GravionLabs/ariadne) has them.
+      image-name: gravionlabs/ariadne
       gitversion-config-file: GitVersion.yml
       cliff-config: cliff.toml
     secrets:
