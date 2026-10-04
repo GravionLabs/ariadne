@@ -9,6 +9,8 @@ Ariadne generates from that diagram, and a documentation page. Each sample is ch
 | [order-fulfilment](order-fulfilment/README.md)       | Shop     | Stock, payment and shipping; stock given back when payment is declined; a late delivery; cancelling any time  |
 | [payment-retries](payment-retries/README.md)         | Payments | A fraud check and manual review, retries after a wait up to three tries (guards), refunds, provider timeouts  |
 | [customer-onboarding](customer-onboarding/README.md) | Accounts | A reminder after a day and giving up after a week, an outside identity check, abandoned and declined sign-ups |
+| [trip-booking](trip-booking/README.md)               | Travel   | Flight, hotel and car one after the other; the bookings already made are cancelled in reverse order           |
+| [loan-application](loan-application/README.md)       | Lending  | Three checks with a time limit each, a decision with three ways on, a manual review, an offer that lapses     |
 
 ## What is in a sample folder
 

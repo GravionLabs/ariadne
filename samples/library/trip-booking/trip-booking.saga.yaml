@@ -1,0 +1,108 @@
+version: 3
+name: Trip Booking
+saga:
+  class: TripBookingStateMachine
+  namespace: Acme.Travel
+  instance: TripBookingState
+  stateProperty: CurrentState
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-booking-flight
+    type: state
+    name: BookingFlight
+    activities:
+      - command: BookFlight
+  - id: state-booking-hotel
+    type: state
+    name: BookingHotel
+    activities:
+      - command: BookHotel
+  - id: state-booking-car
+    type: state
+    name: BookingCar
+    activities:
+      - command: BookCar
+  - id: state-confirmed
+    type: state
+    name: Confirmed
+    activities:
+      - event: TripConfirmed
+      - command: IssueItinerary
+  - id: state-cancelling-hotel
+    type: state
+    name: CancellingHotel
+    activities:
+      - command: CancelHotel
+  - id: state-cancelling-flight
+    type: state
+    name: CancellingFlight
+    activities:
+      - command: CancelFlight
+  - id: state-cancelled
+    type: state
+    name: Cancelled
+    activities:
+      - event: TripCancelled
+      - command: NotifyTraveller
+  - id: end-1
+    type: end
+    name: Final
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-booking-flight
+    kind: forward
+    event: TripRequested
+  - id: edge-2
+    source: state-booking-flight
+    target: state-booking-hotel
+    kind: forward
+    event: FlightBooked
+  - id: edge-3
+    source: state-booking-flight
+    target: state-cancelled
+    kind: forward
+    event: FlightBookingFailed
+  - id: edge-4
+    source: state-booking-hotel
+    target: state-booking-car
+    kind: forward
+    event: HotelBooked
+  - id: edge-5
+    source: state-booking-hotel
+    target: state-cancelling-flight
+    kind: forward
+    event: HotelBookingFailed
+  - id: edge-6
+    source: state-booking-car
+    target: state-confirmed
+    kind: forward
+    event: CarBooked
+  - id: edge-7
+    source: state-booking-car
+    target: state-cancelling-hotel
+    kind: forward
+    event: CarBookingFailed
+  - id: edge-8
+    source: state-cancelling-hotel
+    target: state-cancelling-flight
+    kind: forward
+    event: HotelCancelled
+  - id: edge-9
+    source: state-cancelling-flight
+    target: state-cancelled
+    kind: forward
+    event: FlightCancelled
+  - id: edge-10
+    source: state-confirmed
+    target: end-1
+    kind: forward
+    event: ItineraryIssued
+  - id: edge-11
+    source: state-cancelled
+    target: end-1
+    kind: forward
+    event: TravellerNotified
