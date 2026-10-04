@@ -18,7 +18,7 @@ describe('parseHostMessage', () => {
     expect(message).toMatchObject({ settings: { autoLayout: true } });
   });
 
-  it('reads documentChanged, theme and requestExport', () => {
+  it('reads documentChanged and theme', () => {
     expect(parseHostMessage({ v: 1, type: 'documentChanged', text: 'a' })).toEqual({
       v: 1,
       type: 'documentChanged',
@@ -28,11 +28,6 @@ describe('parseHostMessage', () => {
       v: 1,
       type: 'theme',
       kind: 'high-contrast',
-    });
-    expect(parseHostMessage({ v: 1, type: 'requestExport', format: 'svg' })).toEqual({
-      v: 1,
-      type: 'requestExport',
-      format: 'svg',
     });
   });
 
@@ -46,7 +41,7 @@ describe('parseHostMessage', () => {
     { v: 1, type: 'documentChanged' },
     { v: 1, type: 'init', text: '', theme: 'sepia' },
     { v: 1, type: 'theme', kind: 'blue' },
-    { v: 1, type: 'requestExport', format: 'gif' },
+    { v: 1, type: 'requestExport', format: 'svg' },
     { v: 1, type: 'edit', text: '' },
   ])('rejects %j', (data) => {
     expect(parseHostMessage(data)).toBeNull();

@@ -1,6 +1,7 @@
 // Bundles the extension host into `dist/extension.js` (CommonJS, as VS Code loads it) and copies
 // the web app's embedded build next to it as `dist/webview`, where the webview reads it.
 import { copyFile, cp, mkdir, rm } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { build } from 'esbuild';
@@ -39,3 +40,11 @@ await copyFile(
   require.resolve('web-tree-sitter/web-tree-sitter.wasm'),
   'dist/web-tree-sitter.wasm',
 );
+
+// PNG export: the rasteriser (WebAssembly) and the font it draws with, read next to the bundle.
+await copyFile(require.resolve('@resvg/resvg-wasm/index_bg.wasm'), 'dist/resvg.wasm');
+const fonts = dirname(require.resolve('dejavu-fonts-ttf/package.json'));
+for (const font of ['DejaVuSansCondensed.ttf', 'DejaVuSansCondensed-Bold.ttf']) {
+  await copyFile(`${fonts}/ttf/${font}`, `dist/${font}`);
+}
+await copyFile(`${fonts}/LICENSE`, 'dist/DejaVu-LICENSE.txt');

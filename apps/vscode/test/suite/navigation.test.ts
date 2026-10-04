@@ -125,12 +125,12 @@ describe('Code navigation', () => {
       type: 'goToCode',
       target: { kind: 'state', id: id('Submitted') },
     });
-    const at = await until('the C# file', () => {
-      const e = vscode.window.activeTextEditor;
-      return e?.document.uri.fsPath === csharp.fsPath && e;
-    });
+    // The editor opens first and the selection follows: wait for the line.
     // `public State Submitted …` is on line 20 (index 19).
-    assert.strictEqual(at.selection.active.line, 19);
+    await until('the C# at the state', () => {
+      const e = vscode.window.activeTextEditor;
+      return e?.document.uri.fsPath === csharp.fsPath && e.selection.active.line === 19;
+    });
 
     const edge =
       /- id: (\S+)\n    source: \S+\n    target: \S+\n    kind: forward\n    event: OrderShipped/.exec(

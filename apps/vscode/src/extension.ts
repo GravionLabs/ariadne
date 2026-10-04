@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
 import { emptyDiagram, serializeDiagram } from '@ariadne/core';
 import { SagaCodeLensProvider } from './code-lens';
+import { readFileSync } from 'node:fs';
+import type MarkdownItClass from 'markdown-it';
+import { sagaPlugin } from './markdown-saga';
+import { exportCommand, exportMenu } from './export-command';
+import type { ExportFormat, Rasterise } from './export-formats';
 import { DriftService } from './drift-service';
 import { generateCsharpCommand, type ChooseFiles } from './generate-command';
 import { ImportReport, importFromCsharpCommand } from './import-command';
@@ -14,6 +19,15 @@ export interface AriadneApi {
   generateCsharp(uri: vscode.Uri, choose: ChooseFiles): Promise<string[]>;
   /** The drift service, to compare now instead of waiting for a save. */
   drift: DriftService;
+  /** The hook of VS Code's Markdown preview (`markdown.markdownItPlugins`). */
+  extendMarkdownIt(md: InstanceType<typeof MarkdownItClass>): InstanceType<typeof MarkdownItClass>;
+  /** An export with the rasteriser given (the real one needs the built assets). */
+  exportDiagram(
+    format: ExportFormat,
+    target: 'file' | 'clipboard',
+    uri: vscode.Uri,
+    rasterise?: Rasterise,
+  ): Promise<string | undefined>;
 }
 
 export function activate(context: vscode.ExtensionContext): AriadneApi {
@@ -31,6 +45,23 @@ export function activate(context: vscode.ExtensionContext): AriadneApi {
     vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, virtual),
     vscode.languages.registerCodeLensProvider({ pattern: '**/*.cs' }, lenses),
     lenses,
+    ...(
+      [
+        ['ariadne.exportMermaid', 'mermaid', 'file'],
+        ['ariadne.exportSvg', 'svg', 'file'],
+        ['ariadne.exportPng', 'png', 'file'],
+        ['ariadne.exportMarkdown', 'markdown', 'file'],
+        ['ariadne.copyMermaid', 'mermaid', 'clipboard'],
+        ['ariadne.copyMarkdown', 'markdown', 'clipboard'],
+      ] as const
+    ).map(([command, format, target]) =>
+      vscode.commands.registerCommand(command, (uri?: vscode.Uri) =>
+        exportCommand(format, target, uri instanceof vscode.Uri ? uri : undefined),
+      ),
+    ),
+    vscode.commands.registerCommand('ariadne.export', (uri?: vscode.Uri) =>
+      exportMenu(uri instanceof vscode.Uri ? uri : undefined),
+    ),
     vscode.commands.registerCommand('ariadne.generateCsharp', (uri?: vscode.Uri) =>
       generateCsharpCommand(virtual, report.channel, uri),
     ),
@@ -84,6 +115,19 @@ export function activate(context: vscode.ExtensionContext): AriadneApi {
   return {
     openEditors: () => [...provider.open],
     drift,
+    extendMarkdownIt: (md) =>
+      sagaPlugin(md, {
+        readFile: (file) => {
+          try {
+            return readFileSync(file, 'utf8');
+          } catch {
+            return undefined;
+          }
+        },
+        fallbackFolder: () => vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+      }),
+    exportDiagram: (format, target, uri, rasterise) =>
+      exportCommand(format, target, uri, rasterise),
     generateCsharp: (uri, choose) => generateCsharpCommand(virtual, report.channel, uri, choose),
   };
 }

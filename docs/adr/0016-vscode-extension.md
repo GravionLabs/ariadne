@@ -38,6 +38,12 @@ same git workflow, is worth more than a separate web page. There must not be a s
 - **"Go to code"** matches the diagram to the code by name (a state by its C# identifier, a transition by its two ends and event), because the ids differ; the importer's source locations give the line.
 - **Nothing is written without a look:** a different existing diagram is shown as a diff first, generated files are picked from a list, and changed ones can be compared.
 
+## Export and preview (#197)
+
+- **Exports run in the extension host** (`@ariadne/export`), from the text of the document, so they work with or without the diagram editor and for unsaved changes. The webview protocol has no export message.
+- **PNG is rasterised with `@resvg/resvg-wasm`** and a bundled font (DejaVu Sans Condensed): WebAssembly has no native part, so one extension runs on every platform; the CLI keeps the native `resvg-js`.
+- **The Markdown preview** gets a markdown-it plugin (`markdown.markdownItPlugins`): fenced ` ```saga ` blocks and `![](file.saga.yaml)` images become the diagram, as an image with a data URI, on white so it reads in dark themes.
+
 ## Consequences
 
 - The embedded build adds a few seconds to `pnpm build`; the Docker image does not build it.
