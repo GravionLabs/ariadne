@@ -155,6 +155,9 @@ export function resolvePath(diagram: Diagram, steps: readonly PathStep[]): Resol
   return result;
 }
 
+/** A pasted path longer than this is refused: no saga instance goes through that many transitions. */
+export const PATH_LIMITS = { maxBytes: 1_000_000, maxSteps: 10_000 } as const;
+
 export type ParsedPathSteps = { steps: PathStep[] } | { error: string };
 
 const STEP_KEYS = ['event', 'state', 'to', 'at', 'note'] as const;
@@ -165,6 +168,9 @@ const STEP_KEYS = ['event', 'state', 'to', 'at', 'note'] as const;
  */
 export function parsePathSteps(text: string): ParsedPathSteps {
   if (!text.trim()) return { steps: [] };
+  if (text.length > PATH_LIMITS.maxBytes) {
+    return { error: `The path is too long: up to ${PATH_LIMITS.maxBytes / 1_000_000} MB of text.` };
+  }
   let value: unknown;
   try {
     value = parse(text);
@@ -172,6 +178,9 @@ export function parsePathSteps(text: string): ParsedPathSteps {
     return { error: `Not valid JSON or YAML: ${(e as Error).message.split('\n')[0]}` };
   }
   if (!Array.isArray(value)) return { error: 'A path is a list of steps, one per event or state.' };
+  if (value.length > PATH_LIMITS.maxSteps) {
+    return { error: `The path has ${value.length} steps; up to ${PATH_LIMITS.maxSteps} are read.` };
+  }
   const steps: PathStep[] = [];
   for (const [i, item] of value.entries()) {
     if (typeof item === 'string') {

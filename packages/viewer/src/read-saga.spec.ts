@@ -27,6 +27,16 @@ describe('readSaga', () => {
     expect(readSaga('nodes: [')).toMatchObject({ error: { kind: 'invalid' } });
   });
 
+  it('refuses text over the size limit as an invalid file', () => {
+    const huge = `version: 3\nname: ${'x'.repeat(5_000_000)}\n`;
+    expect(readSaga(huge)).toEqual({
+      error: {
+        kind: 'invalid',
+        message: 'The file is 5 MB; Ariadne reads diagrams up to 5 MB.',
+      },
+    });
+  });
+
   it('names a newer format version', () => {
     const { error } = readSaga('version: 9') as {
       error: { kind: string; version: number; message: string };

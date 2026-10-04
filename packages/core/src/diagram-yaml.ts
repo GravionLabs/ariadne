@@ -38,6 +38,45 @@ const V1_STATE_TYPES = ['step', 'decision'];
 const EDGE_KINDS: readonly EdgeKind[] = ['forward', 'compensation'];
 const DIRECTIONS: readonly Direction[] = ['top-bottom', 'left-right'];
 
+/**
+ * What the reader accepts, so that a huge or hostile file is refused with a message instead of
+ * freezing the editor, the extension or the CLI. Far above any real saga (the largest sample has a
+ * few dozen states). See docs/specs/diagram-format.md, "Limits".
+ */
+export const DIAGRAM_LIMITS = {
+  /** The size of the file, in bytes (UTF-8). */
+  maxBytes: 5_000_000,
+  maxNodes: 5_000,
+  maxEdges: 20_000,
+  /** A file with this many aliases (`*name`) or more is refused (a "billion laughs" file). */
+  maxAliases: 100,
+} as const;
+
+/** `7.2 MB`, `5 MB`: bytes in decimal megabytes, one decimal when it is not a whole number. */
+export const formatMegabytes = (bytes: number): string =>
+  `${Number((bytes / 1_000_000).toFixed(1))} MB`;
+
+/**
+ * The UTF-8 size of `text` when it is over `limit`, else `undefined`. It encodes the text only when
+ * its length does not already say which side of the limit it is on.
+ */
+export function bytesOver(text: string, limit: number): number | undefined {
+  if (text.length * 3 <= limit) return undefined;
+  const bytes = text.length > limit ? text.length : new TextEncoder().encode(text).byteLength;
+  return bytes > limit ? bytes : undefined;
+}
+
+/**
+ * The message for a text over {@link DIAGRAM_LIMITS.maxBytes}, or `undefined` when it is small
+ * enough. Hosts that look at the text before parsing it (the Problems panel) use it as well.
+ */
+export function diagramSizeProblem(text: string): string | undefined {
+  const bytes = bytesOver(text, DIAGRAM_LIMITS.maxBytes);
+  return bytes === undefined
+    ? undefined
+    : `The file is ${formatMegabytes(bytes)}; Ariadne reads diagrams up to ${formatMegabytes(DIAGRAM_LIMITS.maxBytes)}.`;
+}
+
 /** Thrown when a file is not a valid Ariadne diagram; the message is shown to the user. */
 export class DiagramFormatError extends Error {
   override readonly name = 'DiagramFormatError';
@@ -127,10 +166,17 @@ export function parseDiagram(text: string): Diagram {
 
 /** Like {@link parseDiagram}, and reports migrations of older files so they can be shown. */
 export function parseDiagramWithNotes(text: string): ParsedDiagram {
+  const tooBig = diagramSizeProblem(text);
+  if (tooBig) throw new DiagramFormatError(tooBig);
   let file: unknown;
   try {
-    file = parse(text);
+    file = parse(text, { maxAliasCount: DIAGRAM_LIMITS.maxAliases });
   } catch (e) {
+    // The reader recurses once per level, so deep nesting ends in a stack overflow (which the
+    // `yaml` package reports as a parse error).
+    if (e instanceof RangeError || /call stack/i.test((e as Error).message)) {
+      throw new DiagramFormatError('The file is nested too deeply to be read as a diagram.');
+    }
     throw new DiagramFormatError(`Not valid YAML: ${(e as Error).message}`);
   }
   const root = asRecord(file, 'file');
@@ -146,7 +192,13 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
     throw new DiagramFormatError(`direction must be one of ${DIRECTIONS.join(', ')}`);
   }
   const version = root['version'] as number;
-  const nodes = asArray(root['nodes'] ?? [], 'nodes').map((n, i) => parseNode(n, i, version));
+  const nodeItems = asArray(root['nodes'] ?? [], 'nodes');
+  if (nodeItems.length > DIAGRAM_LIMITS.maxNodes) {
+    throw new DiagramFormatError(
+      `The file has ${nodeItems.length} nodes; Ariadne reads diagrams with up to ${DIAGRAM_LIMITS.maxNodes}.`,
+    );
+  }
+  const nodes = nodeItems.map((n, i) => parseNode(n, i, version));
   if (nodes.filter((n) => n.type === 'any').length > 1) {
     throw new DiagramFormatError('There can be only one node of type "any"');
   }
@@ -155,9 +207,13 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
     if (ids.has(id)) throw new DiagramFormatError(`Duplicate node id "${id}"`);
     ids.add(id);
   }
-  const parsedEdges = asArray(root['edges'] ?? [], 'edges').map((e, i) =>
-    parseEdge(e, i, ids, version),
-  );
+  const edgeItems = asArray(root['edges'] ?? [], 'edges');
+  if (edgeItems.length > DIAGRAM_LIMITS.maxEdges) {
+    throw new DiagramFormatError(
+      `The file has ${edgeItems.length} edges; Ariadne reads diagrams with up to ${DIAGRAM_LIMITS.maxEdges}.`,
+    );
+  }
+  const parsedEdges = edgeItems.map((e, i) => parseEdge(e, i, ids, version));
   const edges = parsedEdges.map((p) => p.edge);
   const notes = version < 3 ? moveActivitiesToStates(nodes, parsedEdges) : [];
   const name = optionalString(root['name'], 'name')?.trim() || undefined;

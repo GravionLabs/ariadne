@@ -5,6 +5,8 @@ import {
   DiagramNode,
   EventInfo,
   SagaInfo,
+  bytesOver,
+  formatMegabytes,
   nextId,
 } from '@ariadne/core';
 import {
@@ -53,6 +55,9 @@ export interface ImportResult {
   warnings: ImportWarning[];
 }
 
+/** What the importer reads: a bigger file is skipped with a warning (generated code, a mistake). */
+export const IMPORT_LIMITS = { maxFileBytes: 2_000_000 } as const;
+
 const INITIAL = 'Initial';
 const FINAL = 'Final';
 
@@ -75,6 +80,15 @@ export function importSagas(files: readonly SourceFile[], parser: CSharpParser):
   const warnings: ImportWarning[] = [];
   const classes = new Map<string, ClassPart[]>();
   for (const file of files) {
+    const bytes = bytesOver(file.content, IMPORT_LIMITS.maxFileBytes);
+    if (bytes !== undefined) {
+      warnings.push({
+        path: file.path,
+        line: 1,
+        message: `This file is ${formatMegabytes(bytes)}; Ariadne imports C# files up to ${formatMegabytes(IMPORT_LIMITS.maxFileBytes)}. It was skipped.`,
+      });
+      continue;
+    }
     let root: SyntaxNode;
     try {
       root = parser.parse(file.content);

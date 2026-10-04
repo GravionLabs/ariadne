@@ -1,7 +1,9 @@
 import { Diagram } from './diagram';
 import {
+  DIAGRAM_LIMITS,
   DiagramFormatError,
   DiagramVersionError,
+  diagramSizeProblem,
   parseDiagram,
   parseDiagramWithNotes,
   serializeDiagram,
@@ -687,4 +689,106 @@ describe('saga and event metadata', () => {
     );
     expect(parsed.events).toEqual([{ name: 'Unused', messageType: 'X' }]);
   });
+});
+
+describe('limits', () => {
+  /** A file of exactly `bytes` bytes (UTF-8): a name padded with `pad`, which is `width` bytes wide. */
+  const fileOfBytes = (bytes: number, pad = 'x', width = 1) => {
+    const head = 'version: 3\nname: ';
+    const tail = '\n';
+    const count = (bytes - head.length - tail.length) / width;
+    return `${head}${pad.repeat(count)}${tail}`;
+  };
+  const bytesOf = (text: string) => new TextEncoder().encode(text).byteLength;
+
+  it('reads a file of exactly the largest size', () => {
+    const text = fileOfBytes(DIAGRAM_LIMITS.maxBytes);
+    expect(bytesOf(text)).toBe(DIAGRAM_LIMITS.maxBytes);
+    expect(parseDiagram(text).name).toHaveLength(DIAGRAM_LIMITS.maxBytes - 18);
+  });
+
+  it('refuses a file one byte over, saying how big it is and what is read', () => {
+    const text = fileOfBytes(DIAGRAM_LIMITS.maxBytes + 1);
+    expect(() => parseDiagram(text)).toThrow(DiagramFormatError);
+    expect(() => parseDiagram(text)).toThrow(
+      'The file is 5 MB; Ariadne reads diagrams up to 5 MB.',
+    );
+  });
+
+  it('says the size with a decimal when it is not a whole number of megabytes', () => {
+    expect(() => parseDiagram(fileOfBytes(7_200_000))).toThrow(
+      'The file is 7.2 MB; Ariadne reads diagrams up to 5 MB.',
+    );
+  });
+
+  it('counts bytes, not characters: two-byte characters reach the limit sooner', () => {
+    const text = fileOfBytes(DIAGRAM_LIMITS.maxBytes + 2, 'é', 2);
+    expect(text.length).toBeLessThan(DIAGRAM_LIMITS.maxBytes);
+    expect(() => parseDiagram(text)).toThrow(/The file is 5 MB/);
+    expect(diagramSizeProblem(text)).toBeDefined();
+    expect(diagramSizeProblem(fileOfBytes(DIAGRAM_LIMITS.maxBytes, 'é', 2))).toBeUndefined();
+  });
+
+  const nodesFile = (count: number) =>
+    `version: 3\nnodes:\n${Array.from({ length: count }, (_, i) => `  - { id: n${i}, type: state, name: N }`).join('\n')}\n`;
+  const edgesFile = (count: number) =>
+    `${nodesFile(2)}edges:\n${Array.from({ length: count }, (_, i) => `  - { id: e${i}, source: n0, target: n1 }`).join('\n')}\n`;
+
+  it('reads the most nodes allowed, and refuses one more', () => {
+    expect(parseDiagram(nodesFile(DIAGRAM_LIMITS.maxNodes)).nodes).toHaveLength(
+      DIAGRAM_LIMITS.maxNodes,
+    );
+    expect(() => parseDiagram(nodesFile(DIAGRAM_LIMITS.maxNodes + 1))).toThrow(
+      'The file has 5001 nodes; Ariadne reads diagrams with up to 5000.',
+    );
+  });
+
+  it('reads the most edges allowed, and refuses one more', () => {
+    expect(parseDiagram(edgesFile(DIAGRAM_LIMITS.maxEdges)).edges).toHaveLength(
+      DIAGRAM_LIMITS.maxEdges,
+    );
+    expect(() => parseDiagram(edgesFile(DIAGRAM_LIMITS.maxEdges + 1))).toThrow(
+      'The file has 20001 edges; Ariadne reads diagrams with up to 20000.',
+    );
+  });
+
+  const aliasesFile = (count: number) =>
+    `version: 3\nname: &n Saga\nnodes:\n${Array.from({ length: count }, (_, i) => `  - { id: n${i}, type: state, name: *n }`).join('\n')}\n`;
+
+  it('reads a file with fewer aliases than the limit, and refuses one with that many', () => {
+    expect(parseDiagram(aliasesFile(DIAGRAM_LIMITS.maxAliases - 1)).nodes).toHaveLength(
+      DIAGRAM_LIMITS.maxAliases - 1,
+    );
+    expect(() => parseDiagram(aliasesFile(DIAGRAM_LIMITS.maxAliases))).toThrow(DiagramFormatError);
+    expect(() => parseDiagram(aliasesFile(DIAGRAM_LIMITS.maxAliases))).toThrow(/alias count/i);
+  });
+
+  it('refuses a "billion laughs" file quickly', () => {
+    const levels = 'abcdefghi';
+    const lines = [...levels].map((name, i) =>
+      i === 0
+        ? `${name}: &${name} [x, x, x, x, x, x, x, x, x]`
+        : `${name}: &${name} [${Array(9)
+            .fill(`*${levels[i - 1]}`)
+            .join(', ')}]`,
+    );
+    const started = Date.now();
+    expect(() => parseDiagram(`version: 3\n${lines.join('\n')}\nnodes: *i\n`)).toThrow(
+      DiagramFormatError,
+    );
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it.each([
+    ['a flow list', `nodes: ${'['.repeat(10_000)}${']'.repeat(10_000)}`],
+    ['a block list', `nodes:\n${'- '.repeat(10_000)}x`],
+    ['a flow mapping', `nodes: ${'{a: '.repeat(10_000)}x${'}'.repeat(10_000)}`],
+  ])(
+    'refuses 10 000 levels of nesting (%s) with a message, not a stack overflow',
+    (_what, nodes) => {
+      const read = () => parseDiagram(`version: 3\n${nodes}\n`);
+      expect(read).toThrow(DiagramFormatError);
+      expect(read).toThrow('The file is nested too deeply to be read as a diagram.');
+    },
+  );
 });

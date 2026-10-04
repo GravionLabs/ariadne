@@ -1,3 +1,4 @@
+import { DIAGRAM_LIMITS } from '@ariadne/core';
 import { checkDiagramText } from './yaml-diagnostics';
 
 const LINES = (...lines: string[]) => lines.join('\n') + '\n';
@@ -145,5 +146,33 @@ describe('checkDiagramText', () => {
       /moved from transitions/.test(p.message),
     );
     expect(migrated).toMatchObject({ severity: 'info', range: { line: 0 } });
+  });
+
+  describe('limits', () => {
+    const oversized = `version: 3\nname: ${'x'.repeat(DIAGRAM_LIMITS.maxBytes)}\n`;
+
+    it('reports one problem on line 1 for a file over the size limit, and returns quickly', () => {
+      const started = Date.now();
+      expect(checkDiagramText(oversized)).toEqual([
+        {
+          severity: 'error',
+          message: 'The file is 5 MB; Ariadne reads diagrams up to 5 MB.',
+          range: { line: 0, character: 0, endLine: 0, endCharacter: 'version: 3'.length },
+        },
+      ]);
+      expect(Date.now() - started).toBeLessThan(1000);
+    });
+
+    it('reports deep nesting as one problem, not an exception', () => {
+      const nested = `version: 3\nnodes: ${'['.repeat(10_000)}${']'.repeat(10_000)}\n`;
+      const problems = checkDiagramText(nested);
+      expect(problems).toEqual([
+        {
+          severity: 'error',
+          message: 'The file is nested too deeply to be read as a diagram.',
+          range: { line: 0, character: 0, endLine: 0, endCharacter: 'version: 3'.length },
+        },
+      ]);
+    });
   });
 });

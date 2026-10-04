@@ -188,6 +188,25 @@ The writer (`src/app/model/diagram-yaml.ts`) guarantees stable output:
 - optional fields that are not set (or empty) are omitted;
 - lines are never wrapped.
 
+## Limits
+
+So that a huge or hostile file is refused with a message instead of freezing the editor, the VS Code
+extension or the CLI, the reader accepts:
+
+| What                                   | Limit                  | Message                                                                  |
+| -------------------------------------- | ---------------------- | ------------------------------------------------------------------------ |
+| Size of the file (UTF-8)               | 5 MB (5 000 000 bytes) | `The file is 7.2 MB; Ariadne reads diagrams up to 5 MB.`                 |
+| Nodes                                  | 5 000                  | `The file has 5001 nodes; Ariadne reads diagrams with up to 5000.`       |
+| Transitions                            | 20 000                 | `The file has 20001 edges; Ariadne reads diagrams with up to 20000.`     |
+| Aliases (`*name`)                      | fewer than 100         | `Not valid YAML: Excessive alias count indicates a resource exhaustion…` |
+| Nesting (lists and mappings in a list) | what the parser holds  | `The file is nested too deeply to be read as a diagram.`                 |
+
+The size is checked before the text is parsed. A pasted path (walkthrough) is limited to 10 000 steps
+and 1 MB of text. The C# importer skips a file over 2 MB with a warning on that file and reads the
+others. The limits are constants in code (`DIAGRAM_LIMITS` in `diagram-yaml.ts`, `PATH_LIMITS` in
+`path.ts`, `IMPORT_LIMITS` in `import.ts`); they are far above real sagas (the largest sample has a
+few dozen states).
+
 ## Errors
 
 Invalid files are rejected as a whole, and the current diagram is left unchanged. The error message

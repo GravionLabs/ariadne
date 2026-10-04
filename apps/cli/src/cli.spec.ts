@@ -116,6 +116,15 @@ edges:
     );
   });
 
+  it('refuses a file over the size limit with the message, and fails', async () => {
+    const huge = `version: 3\nname: ${'x'.repeat(5_000_000)}\n`;
+    const t = setup({ 'huge.saga.yaml': huge });
+    expect(await t.run('lint', 'huge.saga.yaml')).toBe(1);
+    expect(t.stdout()).toContain(
+      'huge.saga.yaml: error: not a valid saga diagram: The file is 5 MB; Ariadne reads diagrams up to 5 MB.',
+    );
+  });
+
   it('fails on warnings only above --max-warnings', async () => {
     const warned = bad.replace('  - { id: lost, type: state, name: Orphan }\n', '');
     const t = setup({ 'warned.saga.yaml': warned });
