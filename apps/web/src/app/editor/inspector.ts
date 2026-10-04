@@ -465,16 +465,28 @@ export class Inspector {
 
   /** States `edge` could lead to: everything that can be entered; taken ones are marked. */
   protected targetsOf(edge: DiagramEdge): { id: string; name: string; taken: boolean }[] {
-    const edges = this.store.edges();
+    // A target is taken when another transition is the same but for its target (`sameTransition`):
+    // found with one pass over the transitions, not one pass for each state.
+    const taken = new Set(
+      this.store
+        .edges()
+        .filter((e) => e.id !== edge.id && sameTransition(e, { ...edge, target: e.target }))
+        .map((e) => e.target),
+    );
     return this.store
       .nodes()
       .filter((n) => hasInput(n.type))
-      .map((n) => ({
-        id: n.id,
-        name: n.name,
-        taken: edges.some((e) => e.id !== edge.id && sameTransition(e, { ...edge, target: n.id })),
-      }));
+      .map((n) => ({ id: n.id, name: n.name, taken: taken.has(n.id) }));
   }
+
+  /**
+   * The possible targets of each transition leaving the selected state, by transition id. Made once
+   * per change, not by a method call in the template: that made a new list of every state of the
+   * saga for every transition on every change detection.
+   */
+  protected readonly rowTargets = computed(
+    () => new Map(this.outgoing().map((e) => [e.id, this.targetsOf(e)])),
+  );
 
   /** The selected transition's possible targets. */
   protected readonly targets = computed(() => {

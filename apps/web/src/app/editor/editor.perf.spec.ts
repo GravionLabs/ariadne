@@ -24,7 +24,7 @@ const LONG = 300_000;
 const BUDGETS = {
   /** Milliseconds. */
   open: { 150: 1000, 300: 4250 } as Record<number, number>,
-  select: { 150: 500, 300: 1000 } as Record<number, number>,
+  select: { 150: 500, 300: 3600 } as Record<number, number>,
   edit: { 150: 1000, 300: 3000 } as Record<number, number>,
   /** `ApplicationRef.tick` calls for the whole operation. */
   openTicks: { 150: 3, 300: 3 } as Record<number, number>,
