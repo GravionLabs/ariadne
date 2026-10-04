@@ -96,7 +96,15 @@
         },
         "test": {
           "builder": "@angular/build:unit-test",
+          "options": {
+            "exclude": ["src/**/*.perf.spec.ts"]
+          },
           "configurations": {
+            "perf": {
+              "include": ["src/**/*.perf.spec.ts"],
+              "exclude": [],
+              "reporters": ["verbose"]
+            },
             "ci": {
               "reporters": ["default", ["junit", { "outputFile": "../../test-results/junit.xml" }]]
             }

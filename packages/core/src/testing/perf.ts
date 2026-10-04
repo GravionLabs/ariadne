@@ -44,21 +44,28 @@ export async function measureAsync(
 const format = (ms: number): string => (ms < 10 ? ms.toFixed(1) : Math.round(ms).toString());
 
 /**
- * Fails when `medianMs` is over `budgetMs`; above {@link WARN_AT} of it the test passes but a GitHub
+ * Fails when `measured` is over `budget`; above {@link WARN_AT} of it the test passes but a GitHub
  * annotation tells that the budget is close. Every call prints one `perf:` line, which is where the
  * numbers for `docs/specs/performance-budgets.md` come from.
  */
-export function expectWithinBudget(name: string, medianMs: number, budgetMs: number): void {
-  const share = medianMs / budgetMs;
-  console.log(`perf: ${name}: ${format(medianMs)} ms (budget ${budgetMs} ms)`);
+export function expectWithinBudget(
+  name: string,
+  measured: number,
+  budget: number,
+  /** What is counted: milliseconds, or e.g. `ticks` for a budget that is a count. */
+  unit = 'ms',
+): void {
+  const share = measured / budget;
+  const shown = format(measured);
+  console.log(`perf: ${name}: ${shown} ${unit} (budget ${budget} ${unit})`);
   if (share > 1) {
     throw new Error(
-      `${name} took ${format(medianMs)} ms, over its budget of ${budgetMs} ms (${Math.round(share * 100)}%)`,
+      `${name} took ${shown} ${unit}, over its budget of ${budget} ${unit} (${Math.round(share * 100)}%)`,
     );
   }
   if (share > WARN_AT) {
     console.log(
-      `::warning title=Performance::${name} took ${format(medianMs)} ms, ${Math.round(share * 100)}% of its ${budgetMs} ms budget`,
+      `::warning title=Performance::${name} took ${shown} ${unit}, ${Math.round(share * 100)}% of its ${budget} ${unit} budget`,
     );
   }
 }

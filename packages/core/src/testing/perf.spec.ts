@@ -70,6 +70,19 @@ describe('expectWithinBudget', () => {
     expect(() => expectWithinBudget('b', 100, 100)).not.toThrow();
   });
 
+  it('counts in another unit when told to', () => {
+    expectWithinBudget('ticks (open)', 3, 5, 'ticks');
+    expect(log.mock.calls.map(([line]) => line)).toEqual(
+      [
+        'perf: ticks (open): 3.0 ticks (budget 5 ticks)',
+        '::warning title=Performance::ticks (open) took 3.0 ticks, 60% of its 5 ticks budget',
+      ].slice(0, 1),
+    );
+    expect(() => expectWithinBudget('ticks (open)', 6, 5, 'ticks')).toThrow(
+      'ticks (open) took 6.0 ticks, over its budget of 5 ticks (120%)',
+    );
+  });
+
   it('fails over the budget, saying by how much', () => {
     expect(() => expectWithinBudget('svg (300 states)', 1500, 1000)).toThrow(
       'svg (300 states) took 1500 ms, over its budget of 1000 ms (150%)',
