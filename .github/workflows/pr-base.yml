@@ -1,0 +1,24 @@
+name: PR base
+
+# A PR into another feature branch is lost when that branch is squash-merged first: its commits
+# never reach main. Retarget it to main (or merge it before its parent).
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+
+permissions: {}
+
+jobs:
+  base-is-main:
+    name: Base is main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require main as the base branch
+        env:
+          BASE: ${{ github.base_ref }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ "$BASE" != "$DEFAULT" ]; then
+            echo "::error::This PR targets '$BASE', not '$DEFAULT'. If '$BASE' is squash-merged first, this work never reaches '$DEFAULT'. Retarget the PR to '$DEFAULT'."
+            exit 1
+          fi
