@@ -40,7 +40,7 @@ import type {
   template: '',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AriadneSagaComponent {
+export class AriadneSaga {
   private readonly element = inject<ElementRef<AriadneSagaElement>>(ElementRef).nativeElement;
   private readonly http = inject(HttpClient);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));

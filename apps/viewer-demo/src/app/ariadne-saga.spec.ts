@@ -12,7 +12,7 @@ import type {
   SagaSelectDetail,
   ViewerFeature,
 } from '@ariadne/viewer';
-import { AriadneSagaComponent, provideAriadneViewer } from '@ariadne/viewer/angular';
+import { AriadneSaga, provideAriadneViewer } from '@ariadne/viewer/angular';
 
 const diagram: Diagram = {
   direction: 'top-bottom',
@@ -50,7 +50,7 @@ const yaml = serializeDiagram(diagram);
 
 @Component({
   selector: 'app-test-host',
-  imports: [AriadneSagaComponent],
+  imports: [AriadneSaga],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ariadne-saga
@@ -134,7 +134,7 @@ describe('provideAriadneViewer', () => {
   });
 });
 
-describe('AriadneSagaComponent', () => {
+describe('AriadneSaga', () => {
   it('is the custom element itself, so there is no wrapper in the DOM', async () => {
     const { el } = await create();
     expect(el.tagName).toBe('ARIADNE-SAGA');

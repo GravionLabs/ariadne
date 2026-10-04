@@ -15,7 +15,7 @@ saga.path = [{ event: 'OrderSubmitted' }, { event: 'StockReserved' }];
 ```
 
 Your app hears about what the user picks and about the path (`select`, `walkthrough`, `pathresolved`), and can pick
-out states from outside, for example the one a running instance is in. Angular apps use `AriadneSagaComponent`, which
+out states from outside, for example the one a running instance is in. Angular apps use `AriadneSaga`, which
 loads the file with their own `HttpClient`.
 
 Everything is in the package's [README](../../packages/viewer/README.md): install, the element and the Angular

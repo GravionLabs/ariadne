@@ -146,10 +146,10 @@ export const appConfig: ApplicationConfig = {
 ```
 
 ```ts
-import { AriadneSagaComponent } from '@ariadne/viewer/angular';
+import { AriadneSaga } from '@ariadne/viewer/angular';
 
 @Component({
-  imports: [AriadneSagaComponent],
+  imports: [AriadneSaga],
   template: `
     <ariadne-saga
       url="/api/sagas/order.saga.yaml"

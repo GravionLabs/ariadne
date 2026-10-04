@@ -8,5 +8,5 @@
  * <ariadne-saga url="/api/sagas/order.saga.yaml" [features]="['walkthrough']" />
  * ```
  */
-export { AriadneSagaComponent } from './saga.component';
+export { AriadneSaga } from './ariadne-saga';
 export { provideAriadneViewer } from './provide-viewer';

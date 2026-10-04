@@ -65,7 +65,7 @@ const wrapper = await import('@ariadne/viewer/angular').then(
   (m) => m,
   (e) => { throw new Error('@ariadne/viewer/angular does not load: ' + e.message); },
 );
-assert.ok(wrapper.AriadneSagaComponent && wrapper.provideAriadneViewer);
+assert.ok(wrapper.AriadneSaga && wrapper.provideAriadneViewer);
 
 // 2. The wrapper is compiled (partial Ivy), not Angular source that needs a JIT compiler to read,
 //    and it uses the element through the package's own entry (not a copy of it).
@@ -98,12 +98,12 @@ console.log('package ok');
   writeFileSync(
     join(project, 'types.ts'),
     `import { defineAriadneSaga, type SagaSelectDetail, type PathStep, type ResolvedPath } from '@ariadne/viewer';
-import { AriadneSagaComponent, provideAriadneViewer } from '@ariadne/viewer/angular';
+import { AriadneSaga, provideAriadneViewer } from '@ariadne/viewer/angular';
 
 const step: PathStep = { event: 'OrderSubmitted', at: 'now' };
 declare const detail: SagaSelectDetail;
 declare const resolved: ResolvedPath;
-export const used = [defineAriadneSaga, AriadneSagaComponent, provideAriadneViewer, step, detail.selection?.kind, resolved.problems.length];
+export const used = [defineAriadneSaga, AriadneSaga, provideAriadneViewer, step, detail.selection?.kind, resolved.problems.length];
 `,
   );
   writeFileSync(

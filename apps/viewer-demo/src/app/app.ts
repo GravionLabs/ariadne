@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import type { PathStep, ResolvedPath } from '@ariadne/core';
 import type { SagaSelectDetail } from '@ariadne/viewer';
-import { AriadneSagaComponent } from '@ariadne/viewer/angular';
+import { AriadneSaga } from '@ariadne/viewer/angular';
 
 /** The instance's history, as an app would have it from its own API. */
 const HISTORY: PathStep[] = [
@@ -11,7 +11,7 @@ const HISTORY: PathStep[] = [
 
 @Component({
   selector: 'app-root',
-  imports: [AriadneSagaComponent],
+  imports: [AriadneSaga],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1>&lt;ariadne-saga&gt; in Angular</h1>
