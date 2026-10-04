@@ -54,7 +54,8 @@ A package that runs a script when it is installed runs code on every developer m
   would not work, or one that should not run.
 - **Reviewing a package that wants to build:** read the script (what does it download or compile, from where?); check
   whether a prebuilt binary or WebAssembly makes it unnecessary (then `false`); if it is needed, `true`, with the reason.
-  A Renovate pull request that fails on this needs a person, not a rerun.
+  Replace the `set this to true or false` line pnpm leaves in `allowBuilds` after a failed install with the decision
+  and the reason. A Renovate pull request that fails on this needs a person, not a rerun.
 
 ### The configuration is checked
 
