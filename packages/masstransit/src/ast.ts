@@ -33,14 +33,19 @@ export function argumentsOf(list: SyntaxNode | null): SyntaxNode[] {
     .filter((n): n is SyntaxNode => !!n);
 }
 
+/** The name an identifier stands for: `class` for the verbatim identifier `@class`. */
+export const identifierName = (text: string): string => text.replace(/^@/, '');
+
 /** The last identifier of a name: `Order` for `Order`, `a.Order`, `Order<T>`. */
 export function lastName(node: SyntaxNode | null): string | null {
   if (!node) return null;
   switch (node.type) {
     case 'identifier':
-      return node.text;
-    case 'generic_name':
-      return node.namedChildren.find((c) => c.type === 'identifier')?.text ?? null;
+      return identifierName(node.text);
+    case 'generic_name': {
+      const name = node.namedChildren.find((c) => c.type === 'identifier');
+      return name ? identifierName(name.text) : null;
+    }
     case 'member_access_expression':
       return lastName(node.childForFieldName('name'));
     case 'qualified_name':
@@ -106,4 +111,15 @@ export function* descendants(node: SyntaxNode): Generator<SyntaxNode> {
     yield child;
     yield* descendants(child);
   }
+}
+
+/** The first syntax error in source order: a node tree-sitter could not read, or one it had to invent. */
+export function firstSyntaxError(node: SyntaxNode): SyntaxNode | null {
+  if (node.isError || node.isMissing) return node;
+  if (!node.hasError) return null;
+  for (const child of node.children) {
+    const found = firstSyntaxError(child);
+    if (found) return found;
+  }
+  return null;
 }
