@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Diagram, parseDiagram } from '@ariadne/core';
+import { largeSaga } from '@ariadne/core/testing';
 import { describe, expect, it } from 'vitest';
 import { generateSaga, identifier } from './generate';
 
@@ -145,5 +146,16 @@ describe('generateSaga', () => {
       'Validate.Completed is the answer of a request, which is not generated yet.',
       'The requests of state Checking are not generated yet.',
     ]);
+  });
+});
+
+describe('generateSaga on a large saga', () => {
+  it('writes C# for 50 generated states without throwing', () => {
+    const { files, warnings } = generateSaga(largeSaga(50));
+    expect(files.length).toBeGreaterThan(0);
+    const stateMachine = files.map((f) => f.content).join('\n');
+    expect(stateMachine).toContain('State50');
+    expect(stateMachine).toContain('MassTransitStateMachine<');
+    expect(warnings).toBeDefined();
   });
 });
