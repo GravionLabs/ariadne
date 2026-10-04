@@ -165,6 +165,13 @@
   }
 }
 
+// VS Code's focus colour is a fairly dark blue on a dark canvas (#0078d4 in Dark Modern): a little
+// white makes the ring around the focused diagram easier to see. Light and high-contrast themes
+// keep the colour of the theme.
+:root[data-host='vscode'][data-theme='dark'] {
+  --c-focus: color-mix(in srgb, var(--vscode-focusBorder) 75%, white);
+}
+
 html,
 body {
   margin: 0;
