@@ -65,12 +65,40 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter ariadne-vscode test:integration:ci
 
+  # The extension as a .vsix, with the version of the release: built, and installed into a clean
+  # VS Code to check that what was packed is enough to run. On main it is attached to the release.
+  vsix:
+    name: VS Code extension package
+    runs-on: ubuntu-latest
+    outputs:
+      tag: v${{ steps.version.outputs.semver }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: version
+        uses: GravionLabs/ci/versioning/determine-version@main
+        with:
+          gitversion-config-file: GitVersion.yml
+      - uses: GravionLabs/ci/node/setup@main
+        with:
+          package-manager: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The marketplace takes major.minor.patch only; a pre-release suffix of a branch build is dropped.
+      - run: pnpm --filter ariadne-vscode package ${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}
+      - run: pnpm --filter ariadne-vscode test:vsix:ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: apps/vscode/vsix/*.vsix
+          if-no-files-found: error
+
   # Every merge to main that passes the checks is a release (GravionLabs/ci docker-package):
   # GitVersion gives the version, the image is published to GHCR with the tags latest, 1, 1.0 and
   # 1.0.0, and a GitHub release v1.0.0 is created with notes from the Conventional Commits.
   release:
     name: Release
-    needs: [ci, format, generated-csharp, vscode-extension]
+    needs: [ci, format, generated-csharp, vscode-extension, vsix]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: GravionLabs/ci/.github/workflows/docker-package.yml@main
     with:
@@ -84,3 +112,21 @@ jobs:
     permissions:
       contents: write
       packages: write
+
+  # The .vsix goes onto the release the job above created, so it can be downloaded and installed
+  # without a marketplace (code --install-extension ariadne-vscode-<version>.vsix).
+  vsix-release:
+    name: Attach the extension to the release
+    needs: [release, vsix]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vsix
+          path: vsix
+      - run: gh release upload "${{ needs.vsix.outputs.tag }}" vsix/*.vsix --clobber --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

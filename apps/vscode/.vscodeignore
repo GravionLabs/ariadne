@@ -1,9 +1,15 @@
+# What goes into the .vsix: package.json, README, icon and `dist` (the bundle, the webview and the
+# WebAssembly and font files it reads). Everything else stays out.
 src/**
 test/**
 dist-test/**
+scripts/**
+vsix/**
+.vscode-test/**
+node_modules/**
 **/*.map
 build.mjs
 tsconfig*.json
 vitest.config.ts
-scripts/**
-.vscode-test/**
+DEVELOPING.md
+dist/webview/3rdpartylicenses.txt

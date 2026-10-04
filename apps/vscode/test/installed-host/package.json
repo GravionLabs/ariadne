@@ -1,0 +1,10 @@
+{
+  "name": "installed-host",
+  "displayName": "Host for the tests of the installed package",
+  "version": "0.0.0",
+  "private": true,
+  "publisher": "gravionlabs-tests",
+  "engines": {
+    "vscode": "^1.96.0"
+  }
+}

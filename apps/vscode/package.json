@@ -5,14 +5,38 @@
   "private": true,
   "description": "Edit MassTransit saga diagrams (*.saga.yaml) next to the code.",
   "publisher": "gravionlabs",
-  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GravionLabs/ariadne.git",
+    "directory": "apps/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/GravionLabs/ariadne/issues"
+  },
+  "homepage": "https://github.com/GravionLabs/ariadne/tree/main/apps/vscode#readme",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#6366f1",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.96.0",
     "node": ">=22"
   },
   "categories": [
     "Visualization",
+    "Programming Languages",
     "Other"
+  ],
+  "keywords": [
+    "saga",
+    "state machine",
+    "masstransit",
+    "diagram",
+    "c#",
+    "yaml",
+    "mermaid",
+    "documentation"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -273,7 +297,12 @@
     "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-vscode.xml",
     "test:integration": "pnpm build && node -e \"require('node:fs').rmSync('dist-test',{recursive:true,force:true})\" && tsc -p tsconfig.test.json && node dist-test/run-tests.js",
     "test:integration:ci": "xvfb-run -a pnpm test:integration",
-    "dev": "pnpm build && node scripts/dev.mjs"
+    "dev": "pnpm build && node scripts/dev.mjs",
+    "package": "node scripts/package.mjs",
+    "test:vsix": "node -e \"require('node:fs').rmSync('dist-test',{recursive:true,force:true})\" && tsc -p tsconfig.test.json && node scripts/test-vsix.mjs",
+    "test:vsix:ci": "xvfb-run -a pnpm test:vsix",
+    "icon": "node scripts/icon.mjs",
+    "package:test": "pnpm package && pnpm test:vsix"
   },
   "dependencies": {
     "@ariadne/core": "workspace:*",
@@ -291,6 +320,7 @@
     "@types/node": "^24.19.1",
     "@types/vscode": "^1.96.0",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^4.0.0",
     "dejavu-fonts-ttf": "^2.37.3",
     "esbuild": "^0.28.2",
     "markdown-it": "^15.0.2",
