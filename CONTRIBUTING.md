@@ -92,6 +92,9 @@ come from `GravionLabs/.github`. Start from an issue; if there is none, open one
 - One logical change per commit, with green tests.
 - Pull requests are squash-merged and the PR title is kept, which becomes the release note
   ([ADR 0015](docs/adr/0015-versioning-and-releases.md)). Put `Closes #<issue>` in the PR body.
+- Every PR targets `main`; do not stack PRs on other feature branches. A PR merged into a branch
+  that is then squash-merged is lost (this happened to #332 and #336). Wait for the parent to merge,
+  then open the next PR from `main`. The `PR base` check fails otherwise.
 
 ## ADRs
 
