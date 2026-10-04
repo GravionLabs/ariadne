@@ -5,6 +5,7 @@
   "private": true,
   "description": "Edit MassTransit saga diagrams (*.saga.yaml) next to the code.",
   "publisher": "gravionlabs",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/GravionLabs/ariadne.git",

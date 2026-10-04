@@ -6,7 +6,7 @@
 // package.json. The release pipeline gives the version of the release (GitVersion), so the file the
 // release carries has the version of its tag. package.json itself is not changed.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createVSIX } from '@vscode/vsce';
@@ -25,6 +25,8 @@ execFileSync('pnpm', ['build'], {
 });
 
 mkdirSync(resolve(root, 'vsix'), { recursive: true });
+// The license of the repository goes into the package (a copy that is not committed).
+copyFileSync(resolve(root, '../../LICENSE'), resolve(root, 'LICENSE'));
 const version =
   requested ?? (await import('../package.json', { with: { type: 'json' } })).default.version;
 const packagePath = resolve(root, `vsix/ariadne-vscode-${version}.vsix`);
@@ -36,7 +38,5 @@ await createVSIX({
   dependencies: false,
   updatePackageJson: false,
   gitTagVersion: false,
-  // The repository has no license file yet; the manifest does not claim one.
-  skipLicense: true,
 });
 console.log(packagePath);

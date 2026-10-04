@@ -60,3 +60,5 @@ All commands are in the Command Palette under **Ariadne**.
 - Everything runs on your machine; the C# is read with a parser that ships inside the extension.
 
 Source, issues and the file format: <https://github.com/GravionLabs/ariadne>.
+
+Licensed under the [MIT License](https://github.com/GravionLabs/ariadne/blob/main/LICENSE).
