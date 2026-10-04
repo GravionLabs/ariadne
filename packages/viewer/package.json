@@ -55,6 +55,7 @@
   "scripts": {
     "build": "node build.mjs",
     "test": "vitest run",
+    "perf": "vitest run --config vitest.perf.config.ts",
     "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-viewer.xml",
     "package": "node scripts/package.mjs",
     "test:package": "node scripts/test-package.mjs"

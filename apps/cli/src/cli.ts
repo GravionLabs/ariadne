@@ -259,7 +259,7 @@ async function exportCommand(args: readonly string[], io: Io): Promise<number> {
 }
 
 /** The image at 2×, like the PNG export in the editor. */
-async function toPng(svg: string): Promise<Uint8Array> {
+export async function toPng(svg: string): Promise<Uint8Array> {
   const { Resvg } = await import('@resvg/resvg-js');
   return new Resvg(svg, {
     fitTo: { mode: 'zoom', value: 2 },

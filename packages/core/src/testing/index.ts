@@ -3,3 +3,4 @@
  * `@ariadne/core` (import from `@ariadne/core/testing`).
  */
 export * from './large-saga';
+export * from './perf';
