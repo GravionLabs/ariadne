@@ -45,3 +45,5 @@ __screenshots__/
 Thumbs.db
 dist-test
 .vscode-test
+vsix
+apps/vscode/LICENSE

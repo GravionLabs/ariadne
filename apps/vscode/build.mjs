@@ -26,6 +26,8 @@ await rm('dist/webview', { recursive: true, force: true });
 if (existsSync(embedded)) {
   await mkdir('dist/webview', { recursive: true });
   await cp(embedded, 'dist/webview', { recursive: true });
+  // The C# parser of the web app is not used here: the extension host reads C# (dist/*.wasm).
+  await rm('dist/webview/wasm', { recursive: true, force: true });
 } else {
   console.warn(`No embedded editor at ${embedded}; the webview shows a placeholder.`);
 }

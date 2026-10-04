@@ -2,7 +2,7 @@
 
 Diagrams for [MassTransit saga state machines](https://masstransit.massient.com/guides/saga-state-machines). Build a saga as a picture, keep it in git as a small YAML file, and read it side by side with the code.
 
-Ariadne is a web app (Angular + [Foblex f-flow](https://github.com/Foblex/f-flow)). Diagrams are plain local files, so they diff and review like code. It is **documentation only**: diagrams are never executed.
+Ariadne is a web app (Angular + [Foblex f-flow](https://github.com/Foblex/f-flow)) and a [VS Code extension](#vs-code-extension) that opens the same diagrams next to the code. Diagrams are plain local files, so they diff and review like code. It is **documentation only**: diagrams are never executed.
 
 ![The order saga from docs/examples/order.saga.yaml](docs/images/order-saga.jpg)
 
@@ -54,9 +54,26 @@ pnpm format:check    # Prettier (pnpm format fixes)
 pnpm build           # production build in apps/web/dist/
 ```
 
+## VS Code extension
+
+The extension opens `*.saga.yaml` files as diagrams in VS Code, with the same editor as the web app. The file stays a
+normal text document, so save, undo, git diff and "Open with Text Editor" work as always.
+
+- **Import** a state machine from C# (a CodeLens above the class), **generate** C# from a diagram, and see where a
+  diagram and its code **drift** apart in the Problems panel, with quick fixes. **Go to code** jumps from a state or
+  transition to its line in the C#.
+- **Export** as SVG, PNG, Mermaid or Markdown, and draw a saga in the Markdown preview with a fenced ` ```saga ` block.
+- **Edit the YAML** with a JSON Schema (completion and validation with the Red Hat YAML extension) and problems with
+  line positions.
+
+Every release carries the extension as `ariadne-vscode-<version>.vsix`: download it from the
+[latest release](https://github.com/GravionLabs/ariadne/releases/latest) and run
+`code --install-extension ariadne-vscode-<version>.vsix`. See [Ariadne in VS Code](docs/guide/vscode.md) and the
+[extension's README](apps/vscode/README.md). To try it from source: `pnpm --filter ariadne-vscode dev`.
+
 ## Self-hosting
 
-`docker run -p 8080:8080 ghcr.io/gravionlabs/ariadne:latest`, see [docs/self-hosting.md](docs/self-hosting.md). The [user guide](docs/guide/README.md) explains the editor, the C# import and generation, and the exports.
+`docker run -p 8080:8080 ghcr.io/gravionlabs/ariadne:latest`, see [docs/self-hosting.md](docs/self-hosting.md). The [user guide](docs/guide/README.md) explains the editor, the C# import and generation, the exports and the VS Code extension.
 
 ## Command line
 
@@ -72,7 +89,7 @@ node apps/cli/dist/ariadne.mjs import src/Orders/*.cs -o docs            # C# ->
 node apps/cli/dist/ariadne.mjs diff docs/order.saga.yaml src/Orders/*.cs   # exit 1 when they differ
 ```
 
-`lint` reports the same findings as the editor's Problems list. Importing from and generating C# will be added when those exist.
+`lint` reports the same findings as the editor's Problems list.
 
 ## Diagram files
 
@@ -106,6 +123,7 @@ The full format, with every field and the migration rules, is in [docs/specs/dia
 apps/
   server/     Node server (Hono) that serves the built app, for the container
   cli/        the ariadne command: lint, export, generate, import, diff
+  vscode/     the VS Code extension (extension host; the editor runs in a webview)
   web/        the Angular editor
     src/app/
       model/      the diagram store with undo/redo (NgRx SignalStore)
@@ -116,24 +134,25 @@ packages/
   core/       @ariadne/core: model, YAML format, validation, layout, catalog, walkthrough (no framework)
   export/     @ariadne/export: SVG, Mermaid and Markdown exports (no browser needed)
   masstransit/ @ariadne/masstransit: import saga state machines from C# (tree-sitter), generate C#, diff
+  editor-protocol/ @ariadne/editor-protocol: the messages between the extension and the editor in its webview
 samples/
   sagas/      C# sagas with the diagrams the importer must produce
 docs/
   adr/        architecture decision records
-  specs/      the diagram file format
+  specs/      the diagram file format and its JSON Schema, the webview protocol
   examples/   sample diagrams
 ```
 
 The repository is a pnpm workspace (`apps/*`, `packages/*`); the root scripts run across all of it.
 
-Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [importing C# with tree-sitter](docs/adr/0007-csharp-import.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md), [generating C# and checking it against the diagram](docs/adr/0013-csharp-generation.md), [the server and the container](docs/adr/0014-server-and-container.md), [versioning and releases](docs/adr/0015-versioning-and-releases.md).
+Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [importing C# with tree-sitter](docs/adr/0007-csharp-import.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md), [generating C# and checking it against the diagram](docs/adr/0013-csharp-generation.md), [the server and the container](docs/adr/0014-server-and-container.md), [versioning and releases](docs/adr/0015-versioning-and-releases.md), [the VS Code extension](docs/adr/0016-vscode-extension.md).
 
 ## Roadmap
 
 Work is tracked on the [project board](https://github.com/users/GravionLabs/projects/11) as Epic → Feature → PBI → Task, with GitHub sub-issues.
 
 - **[v1.0 Web](https://github.com/GravionLabs/ariadne/milestone/2)**: a self-hosted web app. Import a saga from C# and generate C# from a diagram (all in TypeScript), exports (Mermaid, SVG, PNG, Markdown), validation, a dark theme, a TypeScript monorepo with a CLI, and a container for self-hosting.
-- **[v1.1 VS Code](https://github.com/GravionLabs/ariadne/milestone/1)**: a VS Code extension that opens diagrams next to the code and shows when diagram and code drift apart.
+- **[v1.1 VS Code](https://github.com/GravionLabs/ariadne/milestone/1)**: the VS Code extension: diagrams next to the code, import and generate C#, drift in the Problems panel, exports and a Markdown preview. Installed from the `.vsix` on the release; publishing to the Marketplace and Open VSX is planned.
 - A Tauri desktop shell is possible, as native features sit behind interfaces, but it is on hold.
 
 ## Contributing
@@ -142,3 +161,7 @@ Work is tracked on the [project board](https://github.com/users/GravionLabs/proj
 - Native features (file access) go behind an interface, so the web build works without a desktop shell.
 - Architectural changes get an ADR in `docs/adr/`.
 - Issues follow Epic → Feature → PBI → Task (Bug → Task) with native sub-issues, not checklists. Branches are named `feature/<issue>-<slug>`, and commits and PRs reference the issue.
+
+## License
+
+[MIT](LICENSE).

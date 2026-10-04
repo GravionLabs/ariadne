@@ -32,6 +32,21 @@ The generated code is a starting point:
 
 Save generated files where you want them; Ariadne never overwrites a project.
 
+## In VS Code
+
+The [extension](vscode.md) does the same next to the code:
+
+- **Import:** a CodeLens above a `MassTransitStateMachine<T>` class says **Import as saga diagram** (also
+  **Ariadne: Import Saga from C#…**). It writes `<Class>.saga.yaml`, records the C# file in the diagram's
+  `saga.source`, and opens it. If the diagram already exists and differs, you see a diff first.
+- **Generate:** **Ariadne: Generate C#** (a button in the diagram editor's title bar) lists the files; pick the ones
+  to write and compare changed ones first. The folder and namespace come from the diagram's saga details or the
+  `ariadne.generate.*` settings.
+- **Drift:** when a diagram names its C# file, saving either one compares them. Differences show in the Problems panel
+  on both files, with the quick fixes **Update diagram from code** and **Open diff**. `ariadne.drift.enabled` turns it off.
+- **Go to code:** in the inspector, the button on a state or transition opens the C# at that place. The CodeLens above
+  a class that has a diagram reads **Open saga diagram**.
+
 ## Command line
 
 ```sh
