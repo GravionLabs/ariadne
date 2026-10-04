@@ -32,6 +32,11 @@ direction.
 browsers it downloads a copy. The file is plain YAML, made for code review: keys are always in the same order, so
 a change shows up as a small diff. Put it in your repository next to the saga's code.
 
+If the browser crashes or the tab is closed before you save, the editor keeps your unsaved changes in the browser
+(a second after your last edit) and offers them back the next time you open it: **Restore** opens them as an unsaved
+diagram, **Discard** throws them away. The draft is removed as soon as you save or discard your changes. It is not
+used in VS Code, which keeps unsaved documents itself.
+
 The **Source** button shows the YAML next to the diagram. You can edit either side; a mistake in the text is shown
 with its line and column and the diagram keeps its last valid state.
 

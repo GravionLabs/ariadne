@@ -1,9 +1,11 @@
 import {
   ApplicationConfig,
+  ErrorHandler,
   inject,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
+import { AppErrorHandler } from './error-handler';
 import { EmbeddedSync } from './host/embedded-sync';
 import { EditorHost } from './host/editor-host';
 import { VsCodeEditorHost } from './host/vscode-editor-host';
@@ -14,6 +16,7 @@ import { NoFileStorage } from './storage/no-file-storage';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    { provide: ErrorHandler, useClass: AppErrorHandler },
     // Listen before the first message can arrive, then say `ready`.
     provideAppInitializer(() => inject(EmbeddedSync).start()),
     // A factory, not `useClass`: a subclass would inherit the default provider of EditorHost.

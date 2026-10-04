@@ -93,6 +93,14 @@ export const DiagramDocument = signalStore(
         replace(diagram, null, true);
       },
 
+      /**
+       * A diagram recovered from a draft: open under its old name but not tied to a file, so it is
+       * unsaved and saving asks where to put it.
+       */
+      openDraft(diagram: Diagram, name: string): void {
+        replace(diagram, { name }, true);
+      },
+
       newDiagram(details: { name?: string; description?: string } = {}): void {
         replace(updateDetails(emptyDiagram(), details), null);
       },

@@ -1,0 +1,20 @@
+@if (errors.current(); as error) {
+  <div class="banner" role="alert">
+    <div class="text">
+      <strong>Something went wrong. Your diagram is still here.</strong>
+      <span class="detail" [title]="error.message">{{ error.message }}</span>
+      @if (feedback(); as note) {
+        <span class="feedback" role="status">{{ note }}</span>
+      }
+    </div>
+    <div class="actions">
+      <button type="button" (click)="copyDiagram()">Copy diagram</button>
+      @if (!embedded) {
+        <button type="button" (click)="downloadCopy()">Download a copy</button>
+      }
+      <button type="button" class="dismiss" aria-label="Dismiss error" (click)="dismiss()">
+        <app-icon name="close" />
+      </button>
+    </div>
+  </div>
+}

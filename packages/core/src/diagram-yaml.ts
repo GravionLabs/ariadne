@@ -177,7 +177,8 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
     if (e instanceof RangeError || /call stack/i.test((e as Error).message)) {
       throw new DiagramFormatError('The file is nested too deeply to be read as a diagram.');
     }
-    throw new DiagramFormatError(`Not valid YAML: ${(e as Error).message}`);
+    // The first line has the reason and the position; the rest is a code frame.
+    throw new DiagramFormatError(`Not valid YAML: ${(e as Error).message.split('\n')[0]}`);
   }
   const root = asRecord(file, 'file');
   if (!READABLE_VERSIONS.includes(root['version'] as number)) {

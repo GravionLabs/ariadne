@@ -15,6 +15,7 @@ function setup(files: Record<string, string> = {}) {
   const err: string[] = [];
   const io: Io = {
     async readText(path) {
+      if (path.endsWith('/')) throw new Error('EISDIR: illegal operation on a directory, read');
       const data = disk.get(path);
       if (data === undefined) throw new Error('no such file');
       return typeof data === 'string' ? data : new TextDecoder().decode(data);
@@ -333,5 +334,65 @@ describe('ariadne diff', () => {
     expect(await t.run('diff', 'd.saga.yaml', 'All.cs')).toBe(2);
     expect(t.stderr()).toContain('Pass --class');
     expect(await t.run('diff', 'd.saga.yaml', 'All.cs', '--class', 'Nope')).toBe(1);
+  });
+});
+
+describe('ariadne, files it cannot use', () => {
+  const oneLine = (text: string) => {
+    expect(text.trimEnd().split('\n')).toHaveLength(1);
+    expect(text).not.toMatch(/\n\s+at /);
+  };
+
+  it('a directory given as the file: one line, no stack, exit 2', async () => {
+    const t = setup();
+    expect(await t.run('lint', 'some/dir/')).toBe(2);
+    expect(t.stderr()).toBe(
+      'ariadne: cannot read some/dir/: EISDIR: illegal operation on a directory, read\n',
+    );
+    oneLine(t.stderr());
+    expect(t.stdout()).toBe('');
+  });
+
+  it('a missing file: one line, no stack, exit 2', async () => {
+    const t = setup();
+    expect(await t.run('lint', 'missing.saga.yaml')).toBe(2);
+    expect(t.stderr()).toBe('ariadne: cannot read missing.saga.yaml: no such file\n');
+    oneLine(t.stderr());
+  });
+
+  it('a binary file: reported as not a diagram, on one line, exit 1', async () => {
+    const bytes = new Uint8Array(Array.from({ length: 300 }, (_, i) => (i * 37) % 256));
+    const t = setup();
+    t.disk.set('blob.saga.yaml', bytes);
+    expect(await t.run('lint', 'blob.saga.yaml')).toBe(1);
+    const [first] = t.stdout().split('\n');
+    expect(first).toMatch(/^blob\.saga\.yaml: error: not a valid saga diagram: .+/);
+    expect(await t.run('generate', 'blob.saga.yaml')).toBe(1);
+    expect(t.stderr()).toMatch(/^blob\.saga\.yaml: not a valid saga diagram: [^\n]+\n$/);
+  });
+
+  it('YAML with a syntax error: the reason and the position on one line', async () => {
+    const t = setup({ 'bad.saga.yaml': 'version: 3\nnodes: [\n  - a: b\nedges: {\n' });
+    expect(await t.run('lint', 'bad.saga.yaml')).toBe(1);
+    const lines = t.stdout().trimEnd().split('\n');
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toContain('Not valid YAML: Block collections are not allowed');
+    expect(lines[0]).toContain('at line 3, column 3');
+  });
+
+  it('-o into a folder it cannot write: one line, no stack, exit 2', async () => {
+    const t = setup({ 'OrderStateMachine.cs': orderCode });
+    expect(await t.run('import', 'OrderStateMachine.cs', '-o', '/readonly/out')).toBe(2);
+    expect(t.stderr()).toContain(
+      'ariadne: cannot write /readonly/out/OrderStateMachine.saga.yaml: read-only',
+    );
+    oneLine(
+      t
+        .stderr()
+        .split('\n')
+        .filter((l) => l.startsWith('ariadne:'))
+        .join('\n'),
+    );
+    expect(t.stderr()).not.toContain('Usage:');
   });
 });

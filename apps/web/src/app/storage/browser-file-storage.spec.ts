@@ -276,3 +276,123 @@ describe('BrowserFileStorage', () => {
     });
   });
 });
+
+describe('BrowserFileStorage, saving safely', () => {
+  const win = window as unknown as PickerWindow;
+  let storage: BrowserFileStorage;
+
+  /** A file that was last changed at `modified`, and what is written to it. */
+  function fileOnDisk(name: string, modified: number, failWith?: Error) {
+    const state = { modified, text: 'old', written: [] as string[] };
+    const writable = {
+      write: vi.fn(async (data: string) => {
+        if (failWith) throw failWith;
+        state.written.push(data);
+      }),
+      close: vi.fn(async () => {
+        state.text = state.written.join('');
+        state.modified += 1000;
+      }),
+      abort: vi.fn(async () => {
+        state.written.length = 0;
+      }),
+    };
+    const handle = {
+      name,
+      getFile: async () => new File([state.text], name, { lastModified: state.modified }),
+      // Every write starts from an empty swap file.
+      createWritable: async () => {
+        state.written.length = 0;
+        return writable;
+      },
+    };
+    return { state, writable, handle };
+  }
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [BrowserFileStorage] });
+    storage = TestBed.inject(BrowserFileStorage);
+    win.showSaveFilePicker = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete win.showOpenFilePicker;
+    delete win.showSaveFilePicker;
+  });
+
+  const openFile = async (disk: ReturnType<typeof fileOnDisk>) => {
+    win.showOpenFilePicker = vi.fn(async () => [disk.handle]);
+    return (await storage.open())!;
+  };
+
+  it('aborts the write when it fails, so the old file stays as it was, and says why', async () => {
+    const disk = fileOnDisk('a.saga.yaml', 1000, new Error('disk full'));
+    const { ref } = await openFile(disk);
+    await expect(storage.save('new', ref)).rejects.toThrow('disk full');
+    expect(disk.writable.abort).toHaveBeenCalledTimes(1);
+    expect(disk.writable.close).not.toHaveBeenCalled();
+    expect(disk.state.text).toBe('old');
+  });
+
+  it('still reports the write error when aborting fails too', async () => {
+    const disk = fileOnDisk('a.saga.yaml', 1000, new Error('disk full'));
+    disk.writable.abort.mockRejectedValue(new Error('cannot abort'));
+    const { ref } = await openFile(disk);
+    await expect(storage.save('new', ref)).rejects.toThrow('disk full');
+  });
+
+  it('saves in place when the file is as it was opened, and notes the new time', async () => {
+    const confirm = vi.spyOn(window, 'confirm');
+    const disk = fileOnDisk('a.saga.yaml', 1000);
+    const { ref } = await openFile(disk);
+
+    const saved = await storage.save('new', ref);
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(disk.state.text).toBe('new');
+    // The next save compares with the time of this one, not of the first open.
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    expect(await storage.save('newer', saved!)).not.toBeNull();
+    expect(disk.state.text).toBe('newer');
+  });
+
+  describe('when the file changed on disk since it was opened', () => {
+    it('writes over it when the user says so', async () => {
+      const disk = fileOnDisk('a.saga.yaml', 1000);
+      const { ref } = await openFile(disk);
+      disk.state.modified = 5000;
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+      expect(await storage.save('mine', ref)).not.toBeNull();
+
+      expect(confirm).toHaveBeenCalledWith(
+        'a.saga.yaml changed on disk since you opened it. Overwrite it?',
+      );
+      expect(disk.state.text).toBe('mine');
+    });
+
+    it('leaves the file alone, and the edits unsaved, when the user says no', async () => {
+      const disk = fileOnDisk('a.saga.yaml', 1000);
+      const { ref } = await openFile(disk);
+      disk.state.modified = 5000;
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      expect(await storage.save('mine', ref)).toBeNull();
+
+      expect(disk.writable.write).not.toHaveBeenCalled();
+      expect(disk.state.text).toBe('old');
+    });
+  });
+
+  it('does not ask when the file cannot be read any more (it was deleted)', async () => {
+    const disk = fileOnDisk('a.saga.yaml', 1000);
+    const { ref } = await openFile(disk);
+    disk.handle.getFile = async () => {
+      throw new DOMException('gone', 'NotFoundError');
+    };
+    const confirm = vi.spyOn(window, 'confirm');
+    await storage.save('mine', ref);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+});

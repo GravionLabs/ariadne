@@ -1,0 +1,75 @@
+:host {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 720px;
+  padding: 10px 10px 10px 16px;
+  color: var(--c-text);
+  background: color-mix(in srgb, var(--c-danger) 10%, var(--c-surface-1));
+  border: 1px solid color-mix(in srgb, var(--c-danger) 40%, var(--c-border));
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  pointer-events: auto;
+}
+
+.text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.detail,
+.feedback {
+  overflow: hidden;
+  color: var(--c-text-subtle);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+
+  button {
+    padding: 6px 10px;
+    color: var(--c-text);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--c-surface-3);
+    }
+  }
+
+  .dismiss {
+    display: grid;
+    padding: 4px;
+    place-items: center;
+    background: transparent;
+    border-color: transparent;
+
+    app-icon {
+      width: 16px;
+      height: 16px;
+    }
+  }
+}

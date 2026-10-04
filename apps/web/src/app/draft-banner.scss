@@ -1,0 +1,60 @@
+:host {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  left: 16px;
+  z-index: 900;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 720px;
+  padding: 8px 8px 8px 16px;
+  color: var(--c-text);
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  pointer-events: auto;
+}
+
+.text {
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+
+  button {
+    padding: 6px 12px;
+    color: var(--c-text);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--c-surface-3);
+    }
+  }
+
+  .primary {
+    color: var(--c-on-primary);
+    background: var(--c-primary);
+    border-color: var(--c-primary);
+
+    &:hover {
+      background: var(--c-primary-hover);
+    }
+  }
+}
