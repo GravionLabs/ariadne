@@ -3,40 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-
-// The extension's exports; see `AriadneApi` in src/extension.ts.
-interface OpenEditor {
-  uri: vscode.Uri;
-  session: { receive(data: unknown): void; idle(): PromiseLike<unknown> };
-  posted: { type: string; text?: string; kind?: string }[];
-}
-interface Api {
-  openEditors(): OpenEditor[];
-}
-
-const sample = (name: string) => `version: 3
-name: ${name}
-direction: top-bottom
-nodes:
-  - id: start-1
-    type: start
-    name: Initial
-edges: []
-`;
-
-async function api(): Promise<Api> {
-  const extension = vscode.extensions.getExtension<Api>('gravionlabs.ariadne-vscode')!;
-  return extension.activate();
-}
-
-async function until<T>(what: string, probe: () => T | undefined | false): Promise<T> {
-  for (let i = 0; i < 200; i++) {
-    const found = probe();
-    if (found) return found;
-    await new Promise((resolve) => setTimeout(resolve, 25));
-  }
-  throw new Error(`Timed out waiting for ${what}`);
-}
+import { api, sample, until, type OpenEditor } from './helpers';
 
 describe('Document sync', () => {
   let dir: string;
@@ -104,31 +71,26 @@ describe('Document sync', () => {
     assert.strictEqual(changed.text, sample('Typed'));
   });
 
-  it('tells the webview about an undo in VS Code', async function () {
+  it('tells the webview about an undo in VS Code', async () => {
     const editor = await openAndFind();
     editor.session.receive({ v: 1, type: 'edit', text: sample('Renamed') });
     await editor.session.idle();
+    editor.posted.length = 0;
 
-    // The same document in a text editor beside it: undo there is the document's undo.
+    // Undo is checked at the API level: a `WorkspaceEdit` that restores the previous text is the
+    // change an undo makes to the document. The keyboard path (`undo` goes to whatever has the
+    // focus, and a window without a window manager under xvfb does not reliably give it to the
+    // editor) says nothing more about the extension and made this test race the UI.
     const document = await vscode.workspace.openTextDocument(file);
-    await vscode.window.showTextDocument(document, {
-      viewColumn: vscode.ViewColumn.Beside,
-      preview: false,
-    });
-    // `undo` goes to the element that has the focus, and a window without a window manager (xvfb)
-    // does not always give it to the editor: ask again, and skip if VS Code never undoes.
-    // A change from anywhere else reaches the webview the same way (see the test above).
-    const undoneText = (m: { type: string; text?: string }) =>
-      m.type === 'documentChanged' && m.text === sample('Order');
-    let undone = editor.posted.find(undoneText);
-    for (let i = 0; !undone && i < 30; i++) {
-      await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
-      await vscode.commands.executeCommand('undo');
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      undone = editor.posted.find(undoneText);
-    }
-    if (!undone && document.getText() === sample('Renamed')) this.skip();
-    assert.ok(undone, 'the document was undone, so the webview must hear about it');
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(file, new vscode.Range(0, 0, document.lineCount, 0), sample('Order'));
+    await vscode.workspace.applyEdit(edit);
+
+    assert.strictEqual(document.getText(), sample('Order'));
+    const undone = await until('documentChanged with the old text', () =>
+      editor.posted.find((m) => m.type === 'documentChanged' && m.text === sample('Order')),
+    );
+    assert.strictEqual(undone.text, sample('Order'));
   });
 
   it('tells the webview about a revert', async () => {

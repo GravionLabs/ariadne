@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { api, until, type Api } from './helpers';
 
 const GOOD = `version: 3
 name: Order Saga
@@ -26,21 +27,13 @@ edges:
 const problems = (uri: vscode.Uri) =>
   vscode.languages.getDiagnostics(uri).filter((d) => d.source === 'Ariadne');
 
-async function until<T>(what: string, probe: () => T | undefined | false): Promise<T> {
-  for (let i = 0; i < 200; i++) {
-    const found = probe();
-    if (found) return found;
-    await new Promise((resolve) => setTimeout(resolve, 25));
-  }
-  throw new Error(`Timed out waiting for ${what}`);
-}
-
 describe('Problems of *.saga.yaml', () => {
+  let extension: Api;
   let dir: string;
   let file: vscode.Uri;
 
   beforeEach(async () => {
-    await vscode.extensions.getExtension('gravionlabs.ariadne-vscode')!.activate();
+    extension = await api();
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ariadne-problems-'));
     file = vscode.Uri.file(path.join(dir, 'order.saga.yaml'));
     fs.writeFileSync(file.fsPath, GOOD);
@@ -53,7 +46,7 @@ describe('Problems of *.saga.yaml', () => {
 
   it('reports nothing for a good diagram', async () => {
     await vscode.workspace.openTextDocument(file);
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await extension.problems.idle();
     assert.deepStrictEqual(problems(file), []);
   });
 

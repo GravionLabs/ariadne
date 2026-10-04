@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { api, until, type Api } from './helpers';
 
 const SOURCE = `using MassTransit;
 
@@ -35,15 +36,6 @@ public record OrderShipped(Guid CorrelationId);
 const drift = (uri: vscode.Uri) =>
   vscode.languages.getDiagnostics(uri).filter((d) => d.source === 'Ariadne drift');
 
-async function until<T>(what: string, probe: () => T | undefined | false): Promise<T> {
-  for (let i = 0; i < 200; i++) {
-    const found = probe();
-    if (found) return found;
-    await new Promise((resolve) => setTimeout(resolve, 25));
-  }
-  throw new Error(`Timed out waiting for ${what}`);
-}
-
 /** Replaces the text of a file in the editor and saves it, like a user would. */
 async function rewrite(uri: vscode.Uri, text: string): Promise<void> {
   const document = await vscode.workspace.openTextDocument(uri);
@@ -54,12 +46,13 @@ async function rewrite(uri: vscode.Uri, text: string): Promise<void> {
 }
 
 describe('Drift diagnostics', () => {
+  let extension: Api;
   let dir: string;
   let csharp: vscode.Uri;
   let diagram: vscode.Uri;
 
   beforeEach(async () => {
-    await vscode.extensions.getExtension('gravionlabs.ariadne-vscode')!.activate();
+    extension = await api();
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ariadne-drift-'));
     csharp = vscode.Uri.file(path.join(dir, 'OrderStateMachine.cs'));
     fs.writeFileSync(csharp.fsPath, SOURCE);
@@ -97,7 +90,7 @@ describe('Drift diagnostics', () => {
   it('reports nothing for a diagram and code that agree', async () => {
     await rewrite(csharp, SOURCE);
     await rewrite(diagram, fs.readFileSync(diagram.fsPath, 'utf8'));
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await extension.drift.idle();
     assert.deepStrictEqual(drift(diagram), []);
     assert.deepStrictEqual(drift(csharp), []);
   });
@@ -164,7 +157,7 @@ describe('Drift diagnostics', () => {
       .getConfiguration('ariadne.drift')
       .update('enabled', false, vscode.ConfigurationTarget.Global);
     await rewrite(csharp, drifted);
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await extension.drift.idle();
     assert.deepStrictEqual(drift(diagram), []);
     assert.deepStrictEqual(drift(csharp), []);
   });

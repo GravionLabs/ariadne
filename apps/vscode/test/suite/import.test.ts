@@ -90,8 +90,10 @@ describe('Import from C#', () => {
       csharp,
       'OrderStateMachine',
     );
+    // An old modification time makes a rewrite visible without waiting for the clock to move.
+    const past = new Date(Date.now() - 60_000);
+    fs.utimesSync(first.fsPath, past, past);
     const before = fs.statSync(first.fsPath).mtimeMs;
-    await new Promise((resolve) => setTimeout(resolve, 20));
     await vscode.commands.executeCommand('ariadne.importFromCsharp', csharp, 'OrderStateMachine');
     assert.strictEqual(fs.statSync(first.fsPath).mtimeMs, before);
   });

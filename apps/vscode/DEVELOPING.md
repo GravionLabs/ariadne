@@ -22,3 +22,24 @@ contributors. See
 Every release of Ariadne on GitHub carries the extension as `ariadne-vscode-<version>.vsix`.
 Download it and run `code --install-extension ariadne-vscode-<version>.vsix`, or use Extensions →
 "…" → **Install from VSIX…**. There are no automatic updates: install the next file over the old one.
+
+## Flaky tests
+
+The integration tests drive a real VS Code window, so a step can race the UI. Mocha retries a
+failed test once (`ARIADNE_TEST_RETRIES`, default 1), and every test that passed only after a retry
+is reported:
+
+- a `FLAKY: "<test>" needed 1 retry` line in the console;
+- under GitHub Actions, a `Flaky VS Code test` warning on the run;
+- `test-results/vscode-retries.json` at the root of the repository (`[ { "title", "retries" } ]`),
+  uploaded by the **VS Code extension** job as the `vscode-retries` artifact.
+
+Treat the warning as a bug in the test (or the extension): wait for a condition instead of time
+(see `test/suite/helpers.ts`) and file what you find under #283. The workflow **VS Code
+flakiness** runs the suite five times a week without retries to find them early.
+
+To see whether a test is flaky, switch the retries off and run only that test, as often as needed:
+
+```sh
+ARIADNE_TEST_RETRIES=0 ARIADNE_TEST_GREP="Document sync" pnpm --filter ariadne-vscode test:integration:ci
+```

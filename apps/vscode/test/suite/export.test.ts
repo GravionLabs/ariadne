@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { until } from './helpers';
 
 const DIAGRAM = `version: 3
 name: Order Saga
@@ -79,9 +80,12 @@ describe('Export', () => {
 
   it('copies Mermaid and Markdown to the clipboard, and writes no file', async () => {
     assert.strictEqual(await run('ariadne.copyMermaid'), undefined);
-    assert.match(await vscode.env.clipboard.readText(), /stateDiagram-v2/);
+    // The clipboard is written asynchronously under X11: read it until the new text is there.
+    const clipboardMatches = (pattern: RegExp) => async () =>
+      pattern.test(await vscode.env.clipboard.readText());
+    await until('the Mermaid on the clipboard', clipboardMatches(/stateDiagram-v2/));
     assert.strictEqual(await run('ariadne.copyMarkdown'), undefined);
-    assert.match(await vscode.env.clipboard.readText(), /^# Order Saga/);
+    await until('the Markdown on the clipboard', clipboardMatches(/^# Order Saga/));
     assert.deepStrictEqual(fs.readdirSync(dir), ['order.saga.yaml']);
   });
 
