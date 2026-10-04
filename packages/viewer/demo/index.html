@@ -30,6 +30,16 @@
     <pre>&lt;ariadne-saga src="order.saga.yaml"&gt;&lt;/ariadne-saga&gt;</pre>
     <ariadne-saga src="order.saga.yaml"></ariadne-saga>
 
+    <h2>Walkthrough, messages and problems</h2>
+    <pre>
+&lt;ariadne-saga src="order.saga.yaml" features="walkthrough messages problems"&gt;&lt;/ariadne-saga&gt;</pre>
+    <ariadne-saga
+      id="extras"
+      src="order.saga.yaml"
+      features="walkthrough messages problems"
+    ></ariadne-saga>
+    <p id="log">Pick a state or transition, or walk the saga: the host app hears about it.</p>
+
     <h2>Dark, left to right, themed with CSS custom properties</h2>
     <ariadne-saga
       class="branded"
@@ -56,6 +66,21 @@ nodes:
 edges:
   - { id: e1, source: start-1, target: on, kind: forward, event: Flipped }
 `;
+      const extras = document.getElementById('extras');
+      const log = (text) => (document.getElementById('log').textContent = text);
+      extras.addEventListener('select', (e) =>
+        log(
+          'select: ' +
+            JSON.stringify(
+              e.detail.selection && { kind: e.detail.selection.kind, id: e.detail.selection.id },
+            ),
+        ),
+      );
+      extras.addEventListener('walkthrough', (e) =>
+        log('walkthrough: ' + e.detail.steps.length + ' steps'),
+      );
+      // A running instance is in this state: emphasise it from outside.
+      extras.addEventListener('load', () => (extras.emphasis = { nodes: ['ReservingStock'] }));
       for (const viewer of document.querySelectorAll('ariadne-saga')) {
         viewer.addEventListener('error', (e) =>
           console.warn('ariadne-saga error:', e.detail.message),
