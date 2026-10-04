@@ -1,0 +1,153 @@
+version: 3
+name: Payment Retries
+saga:
+  class: PaymentRetriesStateMachine
+  namespace: Acme.Payments
+  instance: PaymentRetriesState
+  stateProperty: CurrentState
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-checking-fraud
+    type: state
+    name: CheckingFraud
+    activities:
+      - command: CheckForFraud
+    ignores:
+      - PaymentRequested
+  - id: state-in-review
+    type: state
+    name: InReview
+  - id: state-authorising
+    type: state
+    name: Authorising
+    activities:
+      - command: Authorise
+    ignores:
+      - PaymentRequested
+  - id: state-waiting-to-retry
+    type: state
+    name: WaitingToRetry
+    activities:
+      - command: ScheduleRetry
+  - id: state-capturing
+    type: state
+    name: Capturing
+    activities:
+      - command: Capture
+  - id: state-captured
+    type: state
+    name: Captured
+    activities:
+      - event: PaymentCaptured
+  - id: state-refunding
+    type: state
+    name: Refunding
+    activities:
+      - command: IssueRefund
+  - id: state-failed
+    type: state
+    name: Failed
+    activities:
+      - event: PaymentFailed
+      - command: NotifyMerchant
+  - id: end-1
+    type: end
+    name: Final
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-checking-fraud
+    kind: forward
+    event: PaymentRequested
+  - id: edge-2
+    source: state-checking-fraud
+    target: state-authorising
+    kind: forward
+    event: FraudCheckPassed
+  - id: edge-3
+    source: state-checking-fraud
+    target: state-in-review
+    kind: forward
+    event: FraudCheckHeld
+  - id: edge-4
+    source: state-in-review
+    target: state-authorising
+    kind: forward
+    event: ReviewApproved
+  - id: edge-5
+    source: state-in-review
+    target: state-failed
+    kind: forward
+    event: ReviewRejected
+  - id: edge-6
+    source: state-authorising
+    target: state-capturing
+    kind: forward
+    event: AuthorisationApproved
+  - id: edge-7
+    source: state-authorising
+    target: state-failed
+    kind: forward
+    event: AuthorisationDeclined
+  - id: edge-8
+    source: state-authorising
+    target: state-waiting-to-retry
+    kind: forward
+    event: AuthorisationFailed
+    guard: context.Message.Attempt < MaxTries
+  - id: edge-9
+    source: state-authorising
+    target: state-failed
+    kind: forward
+    event: AuthorisationFailed
+    guard: context.Message.Attempt >= MaxTries
+  - id: edge-10
+    source: state-authorising
+    target: state-waiting-to-retry
+    kind: forward
+    event: ProviderTimedOut
+    guard: context.Message.Attempt < MaxTries
+  - id: edge-11
+    source: state-authorising
+    target: state-failed
+    kind: forward
+    event: ProviderTimedOut
+    guard: context.Message.Attempt >= MaxTries
+  - id: edge-12
+    source: state-waiting-to-retry
+    target: state-authorising
+    kind: forward
+    event: RetryDue
+  - id: edge-13
+    source: state-capturing
+    target: state-captured
+    kind: forward
+    event: CaptureCompleted
+  - id: edge-14
+    source: state-capturing
+    target: state-failed
+    kind: forward
+    event: CaptureFailed
+  - id: edge-15
+    source: state-captured
+    target: state-refunding
+    kind: forward
+    event: RefundRequested
+  - id: edge-16
+    source: state-captured
+    target: end-1
+    kind: forward
+    event: SettlementClosed
+  - id: edge-17
+    source: state-refunding
+    target: end-1
+    kind: forward
+    event: RefundCompleted
+  - id: edge-18
+    source: state-failed
+    target: end-1
+    kind: forward
+    event: MerchantNotified

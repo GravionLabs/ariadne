@@ -7,6 +7,8 @@ Ariadne generates from that diagram, and a documentation page. Each sample is ch
 | Sample                                               | Domain   | What it shows                                                                                                 |
 | ---------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
 | [order-fulfilment](order-fulfilment/README.md)       | Shop     | Stock, payment and shipping; stock given back when payment is declined; a late delivery; cancelling any time  |
+| [payment-retries](payment-retries/README.md)         | Payments | A fraud check and manual review, retries after a wait up to three tries (guards), refunds, provider timeouts  |
+| [customer-onboarding](customer-onboarding/README.md) | Accounts | A reminder after a day and giving up after a week, an outside identity check, abandoned and declined sign-ups |
 
 ## What is in a sample folder
 
