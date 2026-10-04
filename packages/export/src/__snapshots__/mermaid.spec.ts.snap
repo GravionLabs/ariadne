@@ -2,6 +2,8 @@
 
 exports[`diagramToMermaid > renders the order saga 1`] = `
 "stateDiagram-v2
+  accTitle: Saga diagram
+  accDescr: 6 states and 6 transitions, from Initial to Cancelled.
   direction TB
   state "Awaiting order" as Awaiting_order
   state "Reserving stock" as Reserving_stock

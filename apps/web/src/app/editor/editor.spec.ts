@@ -20,6 +20,7 @@ import { Editor } from './editor';
 import { EditorHost } from '../host/editor-host';
 import './native-dialog.testing';
 import { parseDiagram, serializeDiagram } from '@ariadne/core';
+import { axeFindings } from '../testing/axe';
 import orderYaml from '../../../../../docs/examples/order.saga.yaml';
 import travelYaml from '../../../../../docs/examples/travel-booking.saga.yaml';
 
@@ -1992,17 +1993,6 @@ describe('Editor', () => {
 
   describe('accessibility', () => {
     afterEach(() => vi.unstubAllGlobals());
-
-    /** Serious or critical axe findings; jsdom has no layout, so the colour contrast rule is off. */
-    async function axeFindings(root: HTMLElement): Promise<string[]> {
-      const { default: axe } = await import('axe-core');
-      const { violations } = await axe.run(root, {
-        rules: { 'color-contrast': { enabled: false } },
-      });
-      return violations
-        .filter((v) => v.impact === 'serious' || v.impact === 'critical')
-        .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
-    }
 
     it('has no serious axe findings, also with a selection and the source panel open', async () => {
       const { el, store, settle, select } = await setup();

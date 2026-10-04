@@ -34,7 +34,8 @@ describe('Markdown preview', () => {
       'Before\n\n```saga\n' + DIAGRAM + '```\n\nAfter\n',
     );
     assert.match(html, /class="ariadne-saga"/);
-    assert.match(html, /alt="Saga diagram: Order Saga"/);
+    // The name, then what the picture is made of (its text alternative).
+    assert.match(html, /alt="Saga diagram: Order Saga\. \d+ states? and \d+ transitions?[^"]*"/);
     assert.match(html, /src="data:image\/svg\+xml;base64,/);
     assert.match(html, />Before<\/p>/);
     assert.match(html, />After<\/p>/);

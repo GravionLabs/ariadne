@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fit, renderDiagramSvg } from './svg';
+import { fit, renderDiagramSvg, COLORS } from './svg';
 import { Diagram } from '@ariadne/core';
+import { contrastFailures, type ContrastPair } from '@ariadne/core/testing';
 
 /** The order saga: external trigger, activities, a decision, a compensation and a final state. */
 const orderSaga: Diagram = {
@@ -70,7 +71,7 @@ describe('renderDiagramSvg', () => {
   it('writes plain colours: no CSS variables and no color-mix', () => {
     const { svg } = renderDiagramSvg(orderSaga);
     expect(svg).not.toMatch(/var\(|color-mix/);
-    expect(svg).toContain('#f97316'); // palette colour of "Charging payment"
+    expect(svg).toContain('#f76906'); // palette colour of "Charging payment"
   });
 
   it('shows a state that several transitions leave as a decision', () => {
@@ -153,8 +154,8 @@ describe('renderDiagramSvg options', () => {
     const plain = renderDiagramSvg(orderSaga).svg;
     const themed = renderDiagramSvg(orderSaga, { cssVariables: true }).svg;
     expect(themed).toContain('var(--ariadne-surface, #ffffff)');
-    expect(themed).toContain('var(--ariadne-text-subtle, #6b7086)');
-    expect(themed).toContain('var(--ariadne-palette-orange, #f97316)');
+    expect(themed).toContain('var(--ariadne-text-subtle, #676c81)');
+    expect(themed).toContain('var(--ariadne-palette-orange, #f76906)');
     expect(themed).toContain(
       'color-mix(in srgb, var(--ariadne-external, #0d9488) 75%, var(--ariadne-text, #1a1c23))',
     );
@@ -186,23 +187,43 @@ describe('fit', () => {
   });
 });
 
-describe('renderDiagramSvg title', () => {
-  it('adds the name and description as <title> and <desc>, escaped', () => {
+describe('renderDiagramSvg text alternative', () => {
+  it('labels the picture with a title and a description, by id', () => {
+    const { svg } = renderDiagramSvg({ ...orderSaga, name: 'Order Saga' });
+    expect(svg).toMatch(/<svg [^>]*role="img" aria-labelledby="title desc"/);
+    expect(svg).toContain('<title id="title">Order Saga</title>');
+    expect(svg).toMatch(
+      /<desc id="desc">\d+ states and \d+ transitions, from Initial to Completed( or [^<]+)?\.<\/desc>/,
+    );
+  });
+
+  it('puts the description before the summary, and escapes both', () => {
     const { svg } = renderDiagramSvg({
       ...orderSaga,
       name: 'Order & Co',
       description: 'Takes <orders>',
     });
-    expect(svg).toContain('<title>Order &amp; Co</title>');
-    expect(svg).toContain('<desc>Takes &lt;orders&gt;</desc>');
+    expect(svg).toContain('<title id="title">Order &amp; Co</title>');
+    expect(svg).toContain('<desc id="desc">Takes &lt;orders&gt; ');
   });
 
-  it('has neither without a name', () => {
+  it('always has a title and a description, also without a name', () => {
     const { svg } = renderDiagramSvg(orderSaga);
-    expect(svg).not.toContain('<title>');
-    expect(svg).not.toContain('<desc>');
+    expect(svg).toContain('<title id="title">Saga diagram</title>');
+    expect(svg).toMatch(/<desc id="desc">\d+ states and \d+ transitions/);
   });
 
+  it('uses the id prefix, so that several pictures on a page do not share ids', () => {
+    const { svg } = renderDiagramSvg(orderSaga, { idPrefix: 'order-' });
+    expect(svg).toContain('aria-labelledby="order-title order-desc"');
+    expect(svg).toContain('<title id="order-title">');
+    expect(svg).toContain('<desc id="order-desc">');
+    const ids = [...svg.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe('renderDiagramSvg', () => {
   it('shows a guard after the event in the label', () => {
     const edges = orderSaga.edges.map((e) =>
       e.event === 'PaymentFailed' ? { ...e, guard: 'attempts >= 3' } : e,
@@ -375,5 +396,42 @@ describe('the symbols of the SVG', () => {
     const source = readFileSync(join(import.meta.dirname, 'svg.ts'), 'utf8');
     const used = [...new Set([...source].filter((c) => c.codePointAt(0)! > 0x2000))];
     expect(used.sort()).toEqual([...inFont].sort());
+  });
+});
+
+describe('the colours of the SVG (WCAG 2.2 AA)', () => {
+  // Plain hex, because an exported file has no CSS variables: the light theme of the editor. The
+  // pairs are those of the editor's themes: text 4.5:1 (1.4.3), the line and the accents 3:1 (1.4.11).
+  const { palette, ...plain } = COLORS;
+  const tokens: Record<string, string> = {
+    ...plain,
+    ...Object.fromEntries(
+      Object.entries(palette).map(([name, value]) => [`palette.${name}`, value]),
+    ),
+  };
+  const accents = Object.keys(tokens).filter(
+    (name) => !['surface', 'border', 'line', 'text', 'textSubtle'].includes(name),
+  );
+  const pairs: ContrastPair[] = [
+    ['text', 'surface', 4.5],
+    ['textSubtle', 'surface', 4.5],
+    ['line', 'surface', 3],
+    ...accents.map((name): ContrastPair => [name, 'surface', 3]),
+  ];
+
+  /** Pairs that are allowed to fail: none. A pair that fails is fixed, not listed. */
+  const KNOWN_FAILURES: string[] = [];
+
+  it('has the pairs that are not enough, and no others', () => {
+    expect(contrastFailures('svg', tokens, pairs).sort()).toEqual([...KNOWN_FAILURES].sort());
+  });
+
+  it('checks every colour of the palette', () => {
+    // A new colour has to be put in a pair, or listed as not needing one here.
+    expect(
+      Object.keys(tokens)
+        .filter((n) => n !== 'border')
+        .sort(),
+    ).toEqual(['surface', 'line', 'text', 'textSubtle', ...accents].sort());
   });
 });

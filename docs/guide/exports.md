@@ -30,3 +30,17 @@ ariadne lint docs/*.saga.yaml --max-warnings 0               # exit code 1 on er
 ```
 
 An image export shows the diagram as it is drawn; the title and description come from the saga's details.
+
+## Text alternatives
+
+A picture is no use to someone who cannot see it, so the exports say what is in it (WCAG 1.1.1):
+
+- **SVG** has a `<title>` (the saga's name, or "Saga diagram") and a `<desc>` (the saga's description, then a
+  sentence such as _5 states and 7 transitions, from Initial to Completed or Cancelled._), and is marked
+  `role="img"`, so a screen reader reads them when the SVG is on a page.
+- **Mermaid** text has `accTitle` and `accDescr` with the same words; GitHub draws them into the title and
+  description of the diagram it renders. The **Markdown page** has them in its diagram, and its tables have header
+  rows.
+- The **Markdown preview in VS Code** gives the image the same words as its `alt` text.
+- **PNG** has no text alternative of its own: a file of pixels cannot carry one. Where the picture goes into a
+  document, give it an `alt` text there, or use the SVG or the Markdown page instead.

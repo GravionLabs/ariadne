@@ -20,6 +20,12 @@
   box-shadow: var(--shadow-lg);
   font-family: system-ui, sans-serif;
 
+  // A menu holds menu items and groups of them, not loose headings (ARIA).
+  .group {
+    display: grid;
+    gap: 2px;
+  }
+
   header {
     padding: 6px 8px 4px;
     color: var(--c-text-subtle);

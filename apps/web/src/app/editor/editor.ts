@@ -2,6 +2,8 @@ import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -68,6 +70,10 @@ import {
 
 const FIT_PADDING = { x: 80, y: 80 };
 
+/** What floats over the canvas: the panel on the left, the inspector and the minimap. */
+const OBSCURING =
+  'app-catalog-panel, app-walkthrough-panel, app-path-panel, app-inspector, f-minimap';
+
 @Component({
   imports: [
     NgTemplateOutlet,
@@ -129,6 +135,8 @@ export class Editor {
   protected readonly outputId = outputId;
   protected readonly slotInputId = (slotId: string) => `${slotId}:in`;
 
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly flow = viewChild(FFlowComponent);
   private readonly canvas = viewChild(FCanvasComponent);
   private readonly zoom = viewChild(FZoomDirective);
@@ -364,6 +372,48 @@ export class Editor {
 
   protected onSelection(event: FSelectionChangeEvent): void {
     this.ui.setSelection(event.nodeIds, event.connectionIds);
+    // After the next render: the inspector that a selection opens is not on the page yet.
+    const id = this.revealTarget(event);
+    if (id) afterNextRender(() => this.revealIfObscured(id), { injector: this.injector });
+  }
+
+  /** The node to keep in view for a selection of exactly one state or one transition. */
+  private revealTarget(event: FSelectionChangeEvent): string | null {
+    if (event.nodeIds.length === 1 && event.connectionIds.length === 0) return event.nodeIds[0];
+    const edgeId = event.nodeIds.length === 0 ? event.connectionIds[0] : undefined;
+    const edge = event.connectionIds.length === 1 && edgeId ? this.edgesById().get(edgeId) : null;
+    if (!edge) return null;
+    // A laid-out transition has a label node to look at; otherwise its source state.
+    return this.layout.labels().some((l) => l.edgeId === edge.id) ? labelId(edge.id) : edge.source;
+  }
+
+  /**
+   * The keyboard moves the selection with the focus (f-flow selects what it focuses), and the
+   * canvas does not follow: a state could be behind the inspector, the panel on the left or the
+   * minimap, or outside the canvas. Then it is centred (WCAG 2.2, 2.4.11 focus not obscured, and
+   * the keyboard's way to pan, 2.5.7).
+   */
+  private revealIfObscured(id: string): void {
+    const flow = this.flow()?.hostElement as HTMLElement | undefined;
+    const card = flow?.querySelector<HTMLElement>(`[data-f-node-id="${id.replace(/"/g, '\\"')}"]`);
+    if (!flow || !card) return;
+    const rect = card.getBoundingClientRect();
+    // Not laid out (nothing to judge by).
+    if (rect.width === 0 && rect.height === 0) return;
+    const view = flow.getBoundingClientRect();
+    const inside =
+      rect.left >= view.left &&
+      rect.right <= view.right &&
+      rect.top >= view.top &&
+      rect.bottom <= view.bottom;
+    const covered = [...this.host.nativeElement.querySelectorAll<HTMLElement>(OBSCURING)]
+      .map((e) => e.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0)
+      .some(
+        (r) =>
+          rect.left < r.right && rect.right > r.left && rect.top < r.bottom && rect.bottom > r.top,
+      );
+    if (!inside || covered) this.canvas()?.centerGroupOrNode(id, !prefersReducedMotion());
   }
 
   protected onKeydown(event: KeyboardEvent): void {

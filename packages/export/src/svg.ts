@@ -1,3 +1,4 @@
+import { diagramAlternative, diagramTitle } from './describe';
 import {
   ACTIVITY_VERBS,
   backEdgeIds,
@@ -27,13 +28,13 @@ import {
  * Light theme tokens from styles.scss, written out: an exported file has no CSS variables to
  * resolve, so it must carry plain colours to look the same in a browser, on GitHub or in Inkscape.
  */
-const COLORS = {
+export const COLORS = {
   surface: '#ffffff',
   border: '#e2e5eb',
-  line: '#b0b5c3',
+  line: '#868ea3',
   text: '#1a1c23',
-  textSubtle: '#6b7086',
-  start: '#22c55e',
+  textSubtle: '#676c81',
+  start: '#1dab52',
   step: '#3b82f6',
   decision: '#8b5cf6',
   any: '#64748b',
@@ -43,16 +44,16 @@ const COLORS = {
   join: '#4f46e5',
   fault: '#dc2626',
   end: '#f43f5e',
-  compensation: '#f59e0b',
+  compensation: '#ce8408',
   command: '#2563eb',
   event: '#9333ea',
   external: '#0d9488',
   palette: {
     red: '#ef4444',
-    orange: '#f97316',
-    amber: '#eab308',
-    green: '#22c55e',
-    teal: '#14b8a6',
+    orange: '#f76906',
+    amber: '#ba8e06',
+    green: '#1dab52',
+    teal: '#12a796',
     blue: '#3b82f6',
     purple: '#8b5cf6',
     pink: '#ec4899',
@@ -254,9 +255,10 @@ function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
   });
 
   const svg = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${n(minX)} ${n(minY)} ${width} ${height}" font-family="${esc(FONT)}">`,
-    ...(diagram.name?.trim() ? [`<title>${esc(diagram.name.trim())}</title>`] : []),
-    ...(diagram.description?.trim() ? [`<desc>${esc(diagram.description.trim())}</desc>`] : []),
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${n(minX)} ${n(minY)} ${width} ${height}" font-family="${esc(FONT)}" role="img" aria-labelledby="${prefix}title ${prefix}desc">`,
+    // The text alternative (WCAG 1.1.1): a title and a description, always, also for a screen reader.
+    `<title id="${prefix}title">${esc(diagramTitle(diagram))}</title>`,
+    `<desc id="${prefix}desc">${esc(diagramAlternative(diagram))}</desc>`,
     '<defs>',
     marker(prefix, 'forward', paint.line),
     marker(prefix, 'compensation', paint.compensation),

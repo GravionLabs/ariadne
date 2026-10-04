@@ -26,26 +26,32 @@
   (overlayKeydown)="onOverlayKeydown($event)"
 >
   <section class="menu" role="menu" aria-label="Export">
-    <header>Image</header>
-    @for (entry of images; track entry.label) {
-      <button type="button" role="menuitem" class="item" (click)="pick(entry)">
-        <strong>{{ entry.label }}</strong
-        ><small>{{ entry.hint }}</small>
-      </button>
-    }
-    <header>Mermaid</header>
-    @for (entry of mermaid; track entry.label) {
-      <button type="button" role="menuitem" class="item" (click)="pick(entry)">
-        <strong>{{ entry.label }}</strong
-        ><small>{{ entry.hint }}</small>
-      </button>
-    }
-    <header>Documentation</header>
-    @for (entry of documentation; track entry.label) {
-      <button type="button" role="menuitem" class="item" (click)="pick(entry)">
-        <strong>{{ entry.label }}</strong
-        ><small>{{ entry.hint }}</small>
-      </button>
-    }
+    <div role="group" class="group" aria-label="Image">
+      <header aria-hidden="true">Image</header>
+      @for (entry of images; track entry.label) {
+        <button type="button" role="menuitem" class="item" (click)="pick(entry)">
+          <strong>{{ entry.label }}</strong
+          ><small>{{ entry.hint }}</small>
+        </button>
+      }
+    </div>
+    <div role="group" class="group" aria-label="Mermaid">
+      <header aria-hidden="true">Mermaid</header>
+      @for (entry of mermaid; track entry.label) {
+        <button type="button" role="menuitem" class="item" (click)="pick(entry)">
+          <strong>{{ entry.label }}</strong
+          ><small>{{ entry.hint }}</small>
+        </button>
+      }
+    </div>
+    <div role="group" class="group" aria-label="Documentation">
+      <header aria-hidden="true">Documentation</header>
+      @for (entry of documentation; track entry.label) {
+        <button type="button" role="menuitem" class="item" (click)="pick(entry)">
+          <strong>{{ entry.label }}</strong
+          ><small>{{ entry.hint }}</small>
+        </button>
+      }
+    </div>
   </section>
 </ng-template>

@@ -10,6 +10,7 @@
  * - `layout`: where everything goes (dagre), sizes, routes of loops and parallel transitions.
  */
 export * from './catalog';
+export * from './color';
 export * from './diagram';
 export * from './diagram-edits';
 export * as edits from './diagram-edits';

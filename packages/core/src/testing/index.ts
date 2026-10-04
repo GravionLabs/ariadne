@@ -4,3 +4,4 @@
  */
 export * from './large-saga';
 export * from './perf';
+export * from './contrast';

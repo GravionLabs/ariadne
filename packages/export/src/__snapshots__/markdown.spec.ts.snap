@@ -9,6 +9,8 @@ Takes an order to shipping.
 
 \`\`\`mermaid
 stateDiagram-v2
+  accTitle: Saga diagram
+  accDescr: 6 states and 6 transitions, from Initial to Completed or Cancelled.
   direction TB
   state "Awaiting order" as Awaiting_order
   state "Reserving stock" as Reserving_stock

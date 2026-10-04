@@ -400,6 +400,9 @@ importers:
       '@ariadne/export':
         specifier: workspace:*
         version: link:../export
+      axe-core:
+        specifier: ^4.13.0
+        version: 4.13.0
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2

@@ -3,7 +3,7 @@
  * values are the fallbacks in the SVG, so only dark needs declaring. A host themes one element with
  * `ariadne-saga { --ariadne-surface: ...; }` or the whole page from an ancestor (light theme).
  */
-const DARK = `
+export const DARK = `
   color-scheme: dark;
   --ariadne-bg: #14161c;
   --ariadne-surface: #1c1f27;
@@ -69,7 +69,7 @@ export const STYLES = `
 .header { padding: 10px 14px 0; }
 .header[hidden] { display: none; }
 .name { margin: 0; font-size: 15px; font-weight: 600; }
-.description { margin: 2px 0 0; font-size: 13px; color: var(--ariadne-text-subtle, #6b7086); }
+.description { margin: 2px 0 0; font-size: 13px; color: var(--ariadne-text-subtle, #676c81); }
 
 .viewport {
   position: relative;
@@ -108,7 +108,7 @@ export const STYLES = `
   border-radius: 6px;
   cursor: pointer;
 }
-.toolbar button:hover { border-color: var(--ariadne-line, #b0b5c3); }
+.toolbar button:hover { border-color: var(--ariadne-line, #868ea3); }
 .toolbar button:focus-visible { outline: 2px solid var(--ariadne-focus); outline-offset: 1px; }
 
 .status {
@@ -120,7 +120,7 @@ export const STYLES = `
   padding: 16px;
   text-align: center;
   font-size: 14px;
-  color: var(--ariadne-text-subtle, #6b7086);
+  color: var(--ariadne-text-subtle, #676c81);
   pointer-events: none;
 }
 .status:empty { display: none; }
@@ -177,9 +177,9 @@ export const STYLES = `
   border: 1px solid var(--ariadne-border, #e2e5eb);
   border-radius: 8px;
 }
-.panel h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ariadne-text-subtle, #6b7086); }
+.panel h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ariadne-text-subtle, #676c81); }
 .panel ul, .panel ol { margin: 0; padding: 0; list-style: none; }
-.panel ol { margin-top: 10px; padding-left: 18px; list-style: decimal; color: var(--ariadne-text-subtle, #6b7086); }
+.panel ol { margin-top: 10px; padding-left: 18px; list-style: decimal; color: var(--ariadne-text-subtle, #676c81); }
 .panel li + li { margin-top: 4px; }
 .panel li > button {
   display: flex;
@@ -194,14 +194,14 @@ export const STYLES = `
   border-radius: 6px;
   cursor: pointer;
 }
-.panel li > button:hover:not(:disabled) { border-color: var(--ariadne-line, #b0b5c3); }
+.panel li > button:hover:not(:disabled) { border-color: var(--ariadne-line, #868ea3); }
 .panel li > button:disabled { cursor: default; opacity: 0.7; }
 .panel button[aria-pressed='true'] { border-color: var(--ariadne-focus); box-shadow: 0 0 0 1px var(--ariadne-focus); }
 .panel .actions { display: flex; gap: 6px; margin-top: 10px; }
 .panel .actions button { padding: 3px 10px; background: none; border: 1px solid var(--ariadne-border, #e2e5eb); border-radius: 6px; cursor: pointer; }
 .panel .actions button:disabled { opacity: 0.5; cursor: default; }
 .panel .current { margin-bottom: 8px; }
-.panel .doing, .panel .hint, .panel .message-detail { color: var(--ariadne-text-subtle, #6b7086); font-size: 12px; }
+.panel .doing, .panel .hint, .panel .message-detail { color: var(--ariadne-text-subtle, #676c81); font-size: 12px; }
 .panel .message-name, .panel .problem-message { font-weight: 500; }
 .panel .severity { font-size: 11px; font-weight: 700; text-transform: uppercase; }
 .panel [data-severity='error'] .severity { color: var(--ariadne-fault, #dc2626); }
@@ -238,5 +238,5 @@ export const STYLES = `
 }
 .path-info[hidden] { display: none; }
 .path-info ul { margin: 4px 0 0; padding-left: 16px; color: var(--ariadne-fault, #dc2626); }
-.path-info .summary { color: var(--ariadne-text-subtle, #6b7086); }
+.path-info .summary { color: var(--ariadne-text-subtle, #676c81); }
 `;

@@ -73,6 +73,20 @@ describe('diagramToMarkdown', () => {
     expect(md).toContain('```mermaid\nstateDiagram-v2\n');
   });
 
+  it('gives the Mermaid diagram a text alternative, and every table a header row', () => {
+    const md = diagramToMarkdown(orderSaga, { title: 'Order' });
+    expect(md).toMatch(
+      /```mermaid\nstateDiagram-v2\n {2}accTitle: Saga diagram\n {2}accDescr: \d+ states/,
+    );
+    // A table without a header row has no column names for a screen reader: each is followed by `| --- |`.
+    const lines = md.split('\n');
+    const separators = lines.filter((l) => /^\|( *:?-+:? *\|)+$/.test(l));
+    expect(separators.length).toBeGreaterThanOrEqual(4);
+    for (const [i, line] of lines.entries()) {
+      if (/^\|( *:?-+:? *\|)+$/.test(line)) expect(lines[i - 1]).toMatch(/^\| .*\|$/);
+    }
+  });
+
   it('defaults the title and skips an empty description', () => {
     expect(diagramToMarkdown(orderSaga)).toMatch(/^# Saga\n\n## Diagram/);
     expect(diagramToMarkdown(orderSaga, { title: ' ', description: '  ' })).toMatch(

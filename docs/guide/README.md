@@ -11,6 +11,7 @@ diagram and C#. It documents a saga; it never runs one.
 5. [Keyboard shortcuts](shortcuts.md).
 6. [Ariadne in VS Code](vscode.md): install the extension from a release and work next to the code.
 7. [Show a saga in your own app](viewer.md): the `<ariadne-saga>` viewer for web and Angular apps.
+8. [Accessibility](accessibility.md): what is checked, what is not, and what is known not to work.
 
 Operators: [self-hosting](../self-hosting.md). The file format: [diagram-format.md](../specs/diagram-format.md).
 
