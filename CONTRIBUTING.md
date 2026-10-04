@@ -14,6 +14,9 @@ corepack enable
 pnpm install
 ```
 
+Or open the repository in the [dev container](.devcontainer/README.md) (VS Code or GitHub
+Codespaces), which has all of this, the .NET SDK and xvfb, like CI.
+
 **pnpm only. Never npm or yarn.** There is one lockfile (`pnpm-lock.yaml`), and the install scripts
 of dependencies are allowed one by one in `allowBuilds` in `pnpm-workspace.yaml`; another package
 manager would ignore both.

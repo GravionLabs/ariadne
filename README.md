@@ -45,6 +45,8 @@ pnpm start        # dev server on http://localhost:4200
 
 Then open `docs/examples/order.saga.yaml` with **Open…** to see the diagram above.
 
+No Node or pnpm on the machine? Open the repository in the [dev container](.devcontainer/README.md): **Dev Containers: Reopen in Container** in VS Code, or **Code → Codespaces** on GitHub.
+
 Other commands:
 
 ```sh
