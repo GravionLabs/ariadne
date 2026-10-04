@@ -2,10 +2,20 @@ packages:
   - 'packages/*'
   - 'apps/*'
 
+# A dependency with an install script must be decided here, as `true` (it may run) or `false` (it may
+# not), with a reason. pnpm 11 already refuses an undecided one (`pnpm install` fails with
+# ERR_PNPM_IGNORED_BUILDS); it is set explicitly so a change of the default cannot loosen it.
+# See CONTRIBUTING.md and docs/adr/0019-dependency-updates-and-supply-chain.md.
+strictDepBuilds: true
+
 allowBuilds:
+  # File watching of the Angular builds (`ng serve`, `ng build --watch`); the script selects the prebuilt binary.
   '@parcel/watcher': true
+  # The platform binary of esbuild, which bundles the extension, the server, the CLI and the viewer, and runs in Angular's build.
   esbuild: true
+  # The native key-value store of Angular's build cache; the script selects the prebuilt binary.
   lmdb: true
+  # Optional native speed-up of msgpackr (used by lmdb); the script selects the prebuilt binary.
   msgpackr-extract: true
   # Only the prebuilt grammar (WASM) of tree-sitter-c-sharp is used; its native build is not needed.
   tree-sitter-c-sharp: false

@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-04
-- Issues: #285, #310
+- Issues: #285, #310, #311
 - Builds on: [ADR 0006](0006-typescript-monorepo.md), [ADR 0015](0015-versioning-and-releases.md)
 
 ## Context
@@ -38,6 +38,23 @@ A group is a set of packages that must move together; one pull request is easier
 | build and test tooling   | `vitest`, `esbuild`, `rollup`, `rollup-plugin-dts`, `eslint`, `typescript-eslint`, `prettier`, `jsdom`, `axe-core`, `fast-check` | Tools that change output or reports, not behaviour.                                                                                           |
 | types                    | `@types/*` except `@types/vscode`                                                                                                | Rarely matter, often come in numbers.                                                                                                         |
 | github-actions           | every action                                                                                                                     | `GravionLabs/ci/*@main` is excluded: the organisation's shared workflows are followed on `main` on purpose.                                   |
+
+### Install scripts are reviewed (#311)
+
+A package that runs a script when it is installed runs code on every developer machine and CI runner. In
+`pnpm-workspace.yaml`:
+
+- `allowBuilds` lists every package with an install script as `true` (may run) or `false` (may not), with a one-line
+  reason. Today the ones that run are the prebuilt-binary selectors of the Angular build (`@parcel/watcher`, `esbuild`,
+  `lmdb`, `msgpackr-extract`); the two that do not are packages whose native part Ariadne does not use
+  (`tree-sitter-c-sharp`, `@vscode/vsce-sign`).
+- **`strictDepBuilds: true`** makes `pnpm install` fail (`ERR_PNPM_IGNORED_BUILDS`) when a package with a script is in
+  neither list, in CI too (`--frozen-lockfile`). pnpm 11 does this by default; the setting is explicit so a change of
+  the default cannot loosen it. The alternative, skipping unknown scripts with a warning, hides a new package that
+  would not work, or one that should not run.
+- **Reviewing a package that wants to build:** read the script (what does it download or compile, from where?); check
+  whether a prebuilt binary or WebAssembly makes it unnecessary (then `false`); if it is needed, `true`, with the reason.
+  A Renovate pull request that fails on this needs a person, not a rerun.
 
 ### The configuration is checked
 
