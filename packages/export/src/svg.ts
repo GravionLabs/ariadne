@@ -59,6 +59,30 @@ const COLORS = {
   },
 } as const;
 
+type Palette = typeof COLORS;
+
+/** `surfaceDim` -> `--ariadne-surface-dim`. */
+const cssName = (path: string) =>
+  `--ariadne-${path.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
+
+/** The colours as `var(--ariadne-*, <today's value>)`, so a host can theme the SVG. */
+function themable(colors: Palette): Palette {
+  const wrap = (value: unknown, path: string): unknown =>
+    typeof value === 'string'
+      ? `var(${cssName(path)}, ${value})`
+      : Object.fromEntries(
+          Object.entries(value as object).map(([k, v]) => [k, wrap(v, path ? `${path}-${k}` : k)]),
+        );
+  return wrap(colors, '') as Palette;
+}
+const THEMABLE = themable(COLORS);
+
+/**
+ * The colours of the render in progress: plain hex, or CSS custom properties with the hex as
+ * fallback. Rendering is synchronous, so `renderDiagramSvg` sets it for the duration of one call.
+ */
+let paint: Palette = COLORS;
+
 const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
 const MARGIN = 24;
 /** Straight run out of / into a node before a transition turns, as on the canvas. */
@@ -77,12 +101,34 @@ export interface SvgExport {
   height: number;
 }
 
+export interface SvgOptions {
+  /** Prefixed to every `id` in the SVG (arrow markers), so several SVGs inline on one page do not clash. */
+  idPrefix?: string;
+  /** Colours as `var(--ariadne-*, <hex>)`, so a host can theme the SVG; plain hex colours without. */
+  cssVariables?: boolean;
+  /** Wraps each state and transition in a group with `data-node-id` / `data-edge-id` and `data-kind`. */
+  addressable?: boolean;
+}
+
 /**
  * Renders the diagram as a standalone SVG from the layout data (not from the DOM): states,
  * transitions with arrowheads and labels, compensation transitions dashed. Editor-only elements
  * ("+" slots, selection) are left out. Output is deterministic, so it diffs and snapshots well.
  */
-export function renderDiagramSvg(diagram: Diagram): SvgExport {
+export function renderDiagramSvg(diagram: Diagram, options: SvgOptions = {}): SvgExport {
+  paint = options.cssVariables ? THEMABLE : COLORS;
+  try {
+    return renderSvg(diagram, options);
+  } finally {
+    paint = COLORS;
+  }
+}
+
+function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
+  const prefix = options.idPrefix ?? '';
+  /** A state's or transition's group, when the SVG is addressable. */
+  const addressed = (attr: string, id: string, kind: string, inner: string) =>
+    options.addressable ? `<g ${attr}="${esc(id)}" data-kind="${esc(kind)}">${inner}</g>` : inner;
   const { positions, labels, routes } = layoutDiagram(diagram);
   const lr = diagram.direction === 'left-right';
   const decisions = decisionIds(diagram);
@@ -164,7 +210,7 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
     // A timeout firing is dashed amber too, but dotted, so it differs from a compensation.
     const timeout = edge.kind === 'forward' && kindOf(edge) === 'timeout';
     const stroke =
-      edge.kind === 'compensation' ? COLORS.compensation : timeout ? COLORS.timeout : COLORS.line;
+      edge.kind === 'compensation' ? paint.compensation : timeout ? paint.timeout : paint.line;
     const dash =
       edge.kind === 'compensation'
         ? ' stroke-dasharray="6 4"'
@@ -172,12 +218,17 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
           ? ' stroke-dasharray="2 5" stroke-linecap="round"'
           : '';
     edgeSvg.push(
-      `<path d="${roundedPath(points)}" fill="none" stroke="${stroke}" stroke-width="2"${dash} marker-end="url(#arrow-${edge.kind})"/>`,
+      addressed(
+        'data-edge-id',
+        edge.id,
+        edge.kind,
+        `<path d="${roundedPath(points)}" fill="none" stroke="${stroke}" stroke-width="2"${dash} marker-end="url(#${prefix}arrow-${edge.kind})"/>`,
+      ),
     );
     if (labelRows(edge) > 0) {
       const label = transitionLabel(edge, labelCentre, lr, diagram);
       grow(label.x, label.y, label.width, label.height);
-      labelSvg.push(label.svg);
+      labelSvg.push(addressed('data-edge-id', edge.id, edge.kind, label.svg));
     }
   }
 
@@ -188,7 +239,12 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
 
   const nodeSvg = diagram.nodes.map((n) => {
     const { x, y, width: w, height: h } = rect(n.id);
-    return stateSvg(n, x, y, { width: w, height: h }, decisions.has(n.id), joins.get(n.id) ?? []);
+    return addressed(
+      'data-node-id',
+      n.id,
+      n.type,
+      stateSvg(n, x, y, { width: w, height: h }, decisions.has(n.id), joins.get(n.id) ?? []),
+    );
   });
 
   const svg = [
@@ -196,8 +252,8 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
     ...(diagram.name?.trim() ? [`<title>${esc(diagram.name.trim())}</title>`] : []),
     ...(diagram.description?.trim() ? [`<desc>${esc(diagram.description.trim())}</desc>`] : []),
     '<defs>',
-    marker('forward', COLORS.line),
-    marker('compensation', COLORS.compensation),
+    marker(prefix, 'forward', paint.line),
+    marker(prefix, 'compensation', paint.compensation),
     '</defs>',
     ...edgeSvg,
     ...labelSvg,
@@ -207,8 +263,8 @@ export function renderDiagramSvg(diagram: Diagram): SvgExport {
   return { svg, width, height };
 }
 
-function marker(kind: string, color: string): string {
-  return `<marker id="arrow-${kind}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 L9 5 L1 9 z" fill="${color}"/></marker>`;
+function marker(prefix: string, kind: string, color: string): string {
+  return `<marker id="${prefix}arrow-${kind}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 L9 5 L1 9 z" fill="${color}"/></marker>`;
 }
 
 /** A polyline with rounded corners; the last segment stays straight so the arrowhead is true. */
@@ -255,27 +311,27 @@ function transitionLabel(
   const x = centre.x - (lr ? (card.width + INSERT_OVERHANG) / 2 : card.width / 2);
   const y = centre.y - (lr ? card.height / 2 : (card.height + INSERT_OVERHANG) / 2);
   const parts = [
-    `<rect x="${n(x)}" y="${n(y)}" width="${card.width}" height="${card.height}" rx="8" fill="${COLORS.surface}" stroke="${COLORS.border}"/>`,
+    `<rect x="${n(x)}" y="${n(y)}" width="${card.width}" height="${card.height}" rx="8" fill="${paint.surface}" stroke="${paint.border}"/>`,
   ];
   const textWidth = card.width - 2 * 10 - 19;
   let rowY = y + LABEL_PADDING + LABEL_ROW / 2;
   if (edge.event) {
-    const color = kind === 'internal' || !kind ? COLORS.event : COLORS[kind];
+    const color = kind === 'internal' || !kind ? paint.event : paint[kind];
     const glyph = { timeout: '⏱', reply: '↩', fault: '⚠', composite: '▬' }[kind as string] ?? '⚡';
     parts.push(
       text(glyph, x + 10, rowY, { size: 11, fill: color }),
       text(fit(eventLabel(edge), textWidth, 11), x + 29, rowY, {
         size: 11,
-        fill: mix(color, COLORS.text, 0.75),
+        fill: mix(color, paint.text, 0.75),
       }),
     );
     rowY += LABEL_ROW;
     if (edge.eventSource) {
       parts.push(
-        text('↗', x + 10, rowY, { size: 11, fill: COLORS.external }),
+        text('↗', x + 10, rowY, { size: 11, fill: paint.external }),
         text(fit(`from ${edge.eventSource}`, textWidth, 11), x + 29, rowY, {
           size: 11,
-          fill: COLORS.textSubtle,
+          fill: paint.textSubtle,
         }),
       );
     }
@@ -301,16 +357,16 @@ function stateSvg(
     // The "any" node is drawn dashed: it is not a state the saga is in.
     const dash = node.type === 'any' ? ' stroke-dasharray="5 4"' : '';
     parts.push(
-      `<rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="${size.height}" rx="${r}" fill="${COLORS.surface}" stroke="${end ? color : node.type === 'any' ? COLORS.any : COLORS.border}" stroke-width="${end ? 2 : 1}"${dash}/>`,
+      `<rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="${size.height}" rx="${r}" fill="${paint.surface}" stroke="${end ? color : node.type === 'any' ? paint.any : paint.border}" stroke-width="${end ? 2 : 1}"${dash}/>`,
     );
     if (end) {
       parts.push(
-        `<rect x="${n(x + 4)}" y="${n(y + 4)}" width="${size.width - 8}" height="${size.height - 8}" rx="${r - 4}" fill="none" stroke="${mix(color, COLORS.surface, 0.55)}"/>`,
+        `<rect x="${n(x + 4)}" y="${n(y + 4)}" width="${size.width - 8}" height="${size.height - 8}" rx="${r - 4}" fill="none" stroke="${mix(color, paint.surface, 0.55)}"/>`,
       );
     }
   } else {
     parts.push(
-      `<rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="${size.height}" rx="8" fill="${COLORS.surface}" stroke="${COLORS.border}"/>`,
+      `<rect x="${n(x)}" y="${n(y)}" width="${size.width}" height="${size.height}" rx="8" fill="${paint.surface}" stroke="${paint.border}"/>`,
       // Accent bar along the top edge, clipped to the card's rounded corners.
       `<path d="M${n(x)} ${n(y + 8)}Q${n(x)} ${n(y)} ${n(x + 8)} ${n(y)}H${n(x + size.width - 8)}Q${n(x + size.width)} ${n(y)} ${n(x + size.width)} ${n(y + 8)}V${n(y + 3)}H${n(x)}z" fill="${color}"/>`,
     );
@@ -322,7 +378,7 @@ function stateSvg(
       compact
         ? `cx="${n(badgeX + 15)}" cy="${n(badgeY + 15)}" r="15"`
         : `x="${n(badgeX)}" y="${n(badgeY)}" width="30" height="30" rx="7"`
-    } fill="${mix(color, COLORS.surface, 0.12)}"/>`,
+    } fill="${mix(color, paint.surface, 0.12)}"/>`,
     badgeGlyph(node, decision, badgeX + 15, badgeY + 15, color),
   );
   const textX = badgeX + 40;
@@ -333,7 +389,7 @@ function stateSvg(
       text(fit(node.name, textWidth, 13, true), textX, y + size.height / 2, {
         size: 13,
         weight: 600,
-        fill: COLORS.text,
+        fill: paint.text,
       }),
     );
   } else {
@@ -342,27 +398,27 @@ function stateSvg(
       text(fit(node.name, textWidth, 13, true), textX, badgeY + 22, {
         size: 13,
         weight: 600,
-        fill: COLORS.text,
+        fill: paint.text,
       }),
     );
   }
   let chipY = y + 50;
   const chip = (fill: string, body: string) => {
     parts.push(
-      `<rect x="${n(x + 12)}" y="${n(chipY)}" width="${size.width - 24}" height="20" rx="5" fill="${mix(fill, COLORS.surface, 0.09)}"/>`,
+      `<rect x="${n(x + 12)}" y="${n(chipY)}" width="${size.width - 24}" height="20" rx="5" fill="${mix(fill, paint.surface, 0.09)}"/>`,
       body,
     );
     chipY += 24;
   };
   const chipWidth = size.width - 24 - 16 - 19;
   for (const a of node.activities ?? []) {
-    const color = a.kind === 'command' ? COLORS.command : COLORS.event;
+    const color = a.kind === 'command' ? paint.command : paint.event;
     const verb = ACTIVITY_VERBS[a.kind];
     const name = fit(a.name, chipWidth - (verb.length + 1) * 11 * CHAR_EM, 11);
     chip(
       color,
       text(a.kind === 'command' ? '✉' : '⚑', x + 20, chipY + 10, { size: 11, fill: color }) +
-        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(color, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">${verb}</tspan> ${esc(name)}</text>`,
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(color, paint.text, 0.8)}"><tspan fill="${paint.textSubtle}">${verb}</tspan> ${esc(name)}</text>`,
     );
   }
   for (const r of node.requests ?? []) {
@@ -372,9 +428,9 @@ function stateSvg(
       11,
     );
     chip(
-      COLORS.command,
-      text('✉', x + 20, chipY + 10, { size: 11, fill: COLORS.command }) +
-        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(COLORS.command, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">Request</tspan> ${esc(label)}</text>`,
+      paint.command,
+      text('✉', x + 20, chipY + 10, { size: 11, fill: paint.command }) +
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(paint.command, paint.text, 0.8)}"><tspan fill="${paint.textSubtle}">Request</tspan> ${esc(label)}</text>`,
     );
   }
   for (const t of node.timers ?? []) {
@@ -385,26 +441,26 @@ function stateSvg(
       11,
     );
     chip(
-      COLORS.timeout,
-      text('⏱', x + 20, chipY + 10, { size: 11, fill: COLORS.timeout }) +
-        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(COLORS.timeout, COLORS.text, 0.8)}"><tspan fill="${COLORS.textSubtle}">${verb}</tspan> ${esc(label)}</text>`,
+      paint.timeout,
+      text('⏱', x + 20, chipY + 10, { size: 11, fill: paint.timeout }) +
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(paint.timeout, paint.text, 0.8)}"><tspan fill="${paint.textSubtle}">${verb}</tspan> ${esc(label)}</text>`,
     );
   }
   for (const event of node.ignores ?? []) {
     chip(
-      COLORS.textSubtle,
-      text('⊘', x + 20, chipY + 10, { size: 11, fill: COLORS.textSubtle }) +
-        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" text-decoration="line-through" fill="${COLORS.textSubtle}">${esc(fit(event, chipWidth, 11))}</text>`,
+      paint.textSubtle,
+      text('⊘', x + 20, chipY + 10, { size: 11, fill: paint.textSubtle }) +
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" text-decoration="line-through" fill="${paint.textSubtle}">${esc(fit(event, chipWidth, 11))}</text>`,
     );
   }
   if (node.compensation) {
     chip(
-      COLORS.compensation,
-      text('↺', x + 20, chipY + 10, { size: 11, fill: COLORS.compensation }) +
+      paint.compensation,
+      text('↺', x + 20, chipY + 10, { size: 11, fill: paint.compensation }) +
         text(fit(node.compensation.name, chipWidth, 11), x + 39, chipY + 10, {
           size: 11,
           weight: 500,
-          fill: mix(COLORS.compensation, COLORS.text, 0.8),
+          fill: mix(paint.compensation, paint.text, 0.8),
         }),
     );
   }
@@ -427,8 +483,8 @@ function barSvg(
     fit(node.name, width, 13, true),
     cx,
     y + 24,
-    { size: 13, weight: 600, fill: COLORS.text, anchor: 'middle' },
-  )}${text(fit(combines, width, 11), cx, y + 40, { size: 11, fill: COLORS.textSubtle, anchor: 'middle' })}</g>`;
+    { size: 13, weight: 600, fill: paint.text, anchor: 'middle' },
+  )}${text(fit(combines, width, 11), cx, y + 40, { size: 11, fill: paint.textSubtle, anchor: 'middle' })}</g>`;
 }
 
 /** A small shape standing in for the node type's icon. */
@@ -453,14 +509,14 @@ function badgeGlyph(
 function accent(node: DiagramNode, decision: boolean): string {
   const custom = node.color as NodeColor | undefined;
   if (custom)
-    return custom.startsWith('#') ? custom : COLORS.palette[custom as keyof typeof COLORS.palette];
-  if (decision) return COLORS.decision;
+    return custom.startsWith('#') ? custom : paint.palette[custom as keyof typeof paint.palette];
+  if (decision) return paint.decision;
   return {
-    start: COLORS.start,
-    end: COLORS.end,
-    state: COLORS.step,
-    any: COLORS.any,
-    join: COLORS.join,
+    start: paint.start,
+    end: paint.end,
+    state: paint.step,
+    any: paint.any,
+    join: paint.join,
   }[node.type];
 }
 
@@ -491,6 +547,9 @@ export function fit(value: string, width: number, size: number, bold = false): s
 
 /** `a` over `b` at `amount`, as an opaque hex colour (SVG viewers differ on `color-mix`). */
 function mix(a: string, b: string, amount: number): string {
+  // Custom properties are only known to the browser, so it mixes them: `color-mix`.
+  if (!a.startsWith('#') || !b.startsWith('#'))
+    return `color-mix(in srgb, ${a} ${Math.round(amount * 100)}%, ${b})`;
   const [ra, ga, ba] = rgb(a);
   const [rb, gb, bb] = rgb(b);
   const channel = (p: number, q: number) =>
