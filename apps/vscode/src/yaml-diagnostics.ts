@@ -4,6 +4,7 @@ import {
   validate,
   type Diagram,
   type Finding,
+  diagramSizeProblem,
 } from '@ariadne/core';
 import { LineCounter, isMap, isScalar, isSeq, parseDocument, type Document, type Node } from 'yaml';
 
@@ -30,6 +31,19 @@ export interface Problem {
  * reader rejects (`parseDiagram`), and the findings of `validate`. Pure; the same rules as the editor.
  */
 export function checkDiagramText(text: string): Problem[] {
+  // Before the YAML is parsed at all: a huge file would block the extension host.
+  const tooBig = diagramSizeProblem(text);
+  if (tooBig) {
+    const firstLine = text.indexOf('\n');
+    const end = firstLine < 0 ? text.length : firstLine;
+    return [
+      {
+        severity: 'error',
+        message: tooBig,
+        range: { line: 0, character: 0, endLine: 0, endCharacter: end },
+      },
+    ];
+  }
   const lines = new LineCounter();
   const doc = parseDocument(text, { lineCounter: lines, prettyErrors: false });
   const at = (start: number, end: number): ProblemRange => {
@@ -49,6 +63,16 @@ export function checkDiagramText(text: string): Problem[] {
   const rangeOf = (node: Node | null | undefined): ProblemRange =>
     node?.range ? at(node.range[0], node.range[1]) : whole();
 
+  if (doc.errors.some((e) => /call stack/i.test(e.message))) {
+    // Deep nesting overflows the parser's stack; it reports that once per level it gave up on.
+    return [
+      {
+        severity: 'error',
+        message: 'The file is nested too deeply to be read as a diagram.',
+        range: whole(),
+      },
+    ];
+  }
   if (doc.errors.length > 0) {
     return doc.errors.map((e) => ({
       severity: 'error',

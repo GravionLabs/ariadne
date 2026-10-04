@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Diagram } from './diagram';
-import { parsePathSteps, resolvePath } from './path';
+import { PATH_LIMITS, parsePathSteps, resolvePath } from './path';
 
 /**
  * Initial -OrderSubmitted-> Reserving -StockReserved-> Charging -PaymentCharged-> Completed;
@@ -263,5 +263,26 @@ describe('parsePathSteps', () => {
     ['- { event: [A] }', /Step 1: `event` must be text/],
   ])('reports %j for people', (text, message) => {
     expect(parsePathSteps(text)).toEqual({ error: expect.stringMatching(message) });
+  });
+});
+
+describe('parsePathSteps limits', () => {
+  it('reads the most steps allowed, and refuses one more', () => {
+    const steps = (n: number) => JSON.stringify(Array.from({ length: n }, () => 'Go'));
+    const ok = parsePathSteps(steps(PATH_LIMITS.maxSteps));
+    expect('steps' in ok && ok.steps).toHaveLength(PATH_LIMITS.maxSteps);
+    expect(parsePathSteps(steps(PATH_LIMITS.maxSteps + 1))).toEqual({
+      error: 'The path has 10001 steps; up to 10000 are read.',
+    });
+  });
+
+  it('refuses text over 1 MB without parsing it', () => {
+    const text = `- ${'x'.repeat(PATH_LIMITS.maxBytes)}`;
+    expect(parsePathSteps(text)).toEqual({ error: 'The path is too long: up to 1 MB of text.' });
+  });
+
+  it('answers deep nesting with an error, not an exception', () => {
+    const result = parsePathSteps('['.repeat(10_000) + ']'.repeat(10_000));
+    expect('error' in result).toBe(true);
   });
 });

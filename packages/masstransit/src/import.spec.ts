@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Diagram, parseDiagram, serializeDiagram, validate } from '@ariadne/core';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { ImportResult, SourceFile, importSagas } from './import';
+import { IMPORT_LIMITS, ImportResult, SourceFile, importSagas } from './import';
 import { createNodeParser } from './node';
 import { CSharpParser } from './parser';
 
@@ -421,5 +421,34 @@ describe('createCSharpParser', () => {
     expect(serializeDiagram(only(importSagas(files, fromBytes)))).toBe(
       serializeDiagram(only(importSagas(files, parser))),
     );
+  });
+});
+
+describe('importSagas limits', () => {
+  const content = (bytes: number) => `// ${'x'.repeat(bytes - 4)}\n`;
+
+  it('reads a file of exactly the largest size', () => {
+    const file = { path: 'Big.cs', content: content(IMPORT_LIMITS.maxFileBytes) };
+    expect(new TextEncoder().encode(file.content).byteLength).toBe(IMPORT_LIMITS.maxFileBytes);
+    expect(importSagas([file], parser)).toEqual({ sagas: [], warnings: [] });
+  });
+
+  it('skips a file one byte over with a warning on that file, and reads the others', () => {
+    const big = { path: 'Big.cs', content: content(IMPORT_LIMITS.maxFileBytes + 1) };
+    const result = importSagas([big, ...sample('order')], parser);
+    expect(result.warnings.filter((w) => w.path === 'Big.cs')).toEqual([
+      {
+        path: 'Big.cs',
+        line: 1,
+        message: 'This file is 2 MB; Ariadne imports C# files up to 2 MB. It was skipped.',
+      },
+    ]);
+    expect(result.sagas).toHaveLength(1);
+  });
+
+  it('counts bytes, not characters', () => {
+    const wide = { path: 'Wide.cs', content: `// ${'é'.repeat(IMPORT_LIMITS.maxFileBytes / 2)}\n` };
+    expect(wide.content.length).toBeLessThan(IMPORT_LIMITS.maxFileBytes);
+    expect(importSagas([wide], parser).warnings.map((w) => w.path)).toEqual(['Wide.cs']);
   });
 });

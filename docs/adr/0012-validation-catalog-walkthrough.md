@@ -61,3 +61,14 @@ saga event by event in a review.
 - The initial bundle grows by about 36 kB (948 to 985 kB). Lazy-loading the two panels saves only about
   1 kB (they are small), so the budget moves instead: warning 1 MB, error 1.2 MB. The next sizeable
   addition should split code out of the first download (the inspector is the biggest candidate).
+
+## Addendum: input limits (#302, 2026-10-04)
+
+The reader and the importer refuse input that is far beyond any real saga, with a message, instead of
+freezing a host: a diagram file over 5 MB, more than 5 000 nodes or 20 000 transitions, 100 or more
+aliases (the `yaml` package's guard against "billion laughs" files, now set explicitly), and nesting
+deep enough to overflow the parser's stack; a pasted path over 10 000 steps or 1 MB; a C# file over
+2 MB (skipped with a warning, the other files are still read). The numbers are generous on purpose:
+raising them is a one-line change, and hitting one means the file is not documentation. They are
+listed in [the format specification](../specs/diagram-format.md#limits). Streaming parsers are out of
+scope.

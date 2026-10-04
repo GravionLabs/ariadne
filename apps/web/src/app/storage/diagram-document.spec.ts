@@ -139,6 +139,18 @@ describe('DiagramDocument', () => {
     expect(doc.name()).toBe('untitled.saga.yaml');
   });
 
+  it('refuses a file over the size limit with the message, and keeps the current diagram', async () => {
+    store.addNode('state');
+    storage.opened = {
+      ref: { name: 'huge.saga.yaml' },
+      content: `version: 3\nname: ${'x'.repeat(5_000_000)}\n`,
+    };
+    expect(await doc.open()).toBe(false);
+    expect(doc.error()).toBe('The file is 5 MB; Ariadne reads diagrams up to 5 MB.');
+    expect(store.nodes().map((n) => n.id)).toEqual(['start-1', 'state-1']);
+    expect(doc.name()).toBe('untitled.saga.yaml');
+  });
+
   it('starts a new diagram with just a start node', () => {
     store.addNode('state');
     doc.newDiagram();
