@@ -17,6 +17,7 @@ import booking from '../../../../../samples/sagas/booking/BookingStateMachine.cs
 import type { Mock } from 'vitest';
 import { CODE_EDITOR_FACTORY, CodeEditor, CodeEditorOptions } from './code-editor';
 import { Editor } from './editor';
+import { EditorHost } from '../host/editor-host';
 import './native-dialog.testing';
 import { parseDiagram, serializeDiagram } from '@ariadne/core';
 import orderYaml from '../../../../../docs/examples/order.saga.yaml';
@@ -42,7 +43,9 @@ interface FakeEditor extends CodeEditor {
 describe('Editor', () => {
   beforeEach(() => localStorage.clear());
 
-  async function setup(options: { importer?: () => Promise<CSharpImporter> } = {}) {
+  async function setup(
+    options: { importer?: () => Promise<CSharpImporter>; embedded?: boolean } = {},
+  ) {
     const editors: FakeEditor[] = [];
     const editorFactory = vi.fn(async (_parent: HTMLElement, options: CodeEditorOptions) => {
       const editor: FakeEditor = {
@@ -72,6 +75,14 @@ describe('Editor', () => {
         { provide: FileStorage, useValue: storage },
         { provide: CODE_EDITOR_FACTORY, useValue: editorFactory },
         { provide: CSHARP_IMPORTER, useValue: options.importer ?? realImporter },
+        ...(options.embedded
+          ? [
+              {
+                provide: EditorHost,
+                useValue: { embedded: true, post: () => {}, listen: () => () => {} },
+              },
+            ]
+          : []),
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(Editor);
@@ -683,6 +694,25 @@ describe('Editor', () => {
     await settle();
     expect(button().getAttribute('aria-label')).toBe('Problems: No problems');
     expect(el.querySelector('app-node-card[data-finding]')).toBeNull();
+  });
+
+  describe('inside VS Code (embedded)', () => {
+    it('has no Problems menu in the toolbox: VS Code shows the findings in its Problems view', async () => {
+      const { el, store, settle } = await setup({ embedded: true });
+      store.addNode('state');
+      await settle();
+      expect(el.querySelector('app-problems-menu')).toBeNull();
+      // The findings are still computed, and still mark the elements on the canvas.
+      expect(el.querySelector('app-node-card[data-finding="error"]')).not.toBeNull();
+      // No divider is left behind next to the missing menu.
+      const toolbox = el.querySelector('.toolbox')!;
+      expect(toolbox.querySelector('.divider + .divider')).toBeNull();
+    });
+
+    it('keeps the Problems menu in the standalone app', async () => {
+      const { el } = await setup();
+      expect(el.querySelector('.toolbox app-problems-menu')).not.toBeNull();
+    });
   });
 
   it('marks a transition with a problem and opens it from the list', async () => {

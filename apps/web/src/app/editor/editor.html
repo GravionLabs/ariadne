@@ -400,8 +400,11 @@
         </button>
       </div>
       <div class="divider"></div>
-      <app-problems-menu (picked)="focusFinding($event)" />
-      <div class="divider"></div>
+      @if (!embedded) {
+        <!-- VS Code lists the same findings in its Problems view. -->
+        <app-problems-menu (picked)="focusFinding($event)" />
+        <div class="divider"></div>
+      }
       <button
         type="button"
         class="icon-button"
