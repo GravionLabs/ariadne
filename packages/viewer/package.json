@@ -68,6 +68,7 @@
     "@angular/core": "^22.2.0",
     "@ariadne/core": "workspace:*",
     "@ariadne/export": "workspace:*",
+    "axe-core": "^4.13.0",
     "esbuild": "^0.28.2",
     "jsdom": "^30.0.0",
     "rollup": "^4.64.0",
