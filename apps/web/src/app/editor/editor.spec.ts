@@ -696,6 +696,70 @@ describe('Editor', () => {
     expect(el.querySelector('app-node-card[data-finding]')).toBeNull();
   });
 
+  describe('view mode', () => {
+    const toggle = (el: HTMLElement) =>
+      el.querySelector<HTMLButtonElement>('.toolbox [aria-label="View mode: hide the + buttons"]')!;
+
+    it('hides the "+" slots, their dotted lines and the "+" on transitions, and shows them again', async () => {
+      const { el, store, settle } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      expect(slotButton(el)).not.toBeNull();
+      expect(el.querySelector('.slot-connection')).not.toBeNull();
+      expect(el.querySelector('app-transition-label .insert')).not.toBeNull();
+      expect(toggle(el).getAttribute('aria-pressed')).toBe('false');
+
+      toggle(el).click();
+      await settle();
+      expect(toggle(el).getAttribute('aria-pressed')).toBe('true');
+      expect(slotButton(el)).toBeNull();
+      expect(el.querySelector('.slot-connection')).toBeNull();
+      expect(el.querySelector('app-transition-label .insert')).toBeNull();
+      // The diagram itself is untouched.
+      expect(el.querySelectorAll('app-node-card').length).toBe(2);
+
+      toggle(el).click();
+      await settle();
+      expect(toggle(el).getAttribute('aria-pressed')).toBe('false');
+      expect(slotButton(el)).not.toBeNull();
+      expect(el.querySelector('app-transition-label .insert')).not.toBeNull();
+    });
+
+    it('is remembered, and still lets the diagram be edited by other means', async () => {
+      const first = await setup();
+      toggle(first.el).click();
+      await first.settle();
+      expect(localStorage.getItem('ariadne.hide-insert')).toBe('1');
+      first.fixture.destroy();
+
+      // A new editor starts in view mode.
+      TestBed.resetTestingModule();
+      const { el, store, select, settle } = await setup();
+      expect(toggle(el).getAttribute('aria-pressed')).toBe('true');
+      expect(slotButton(el)).toBeNull();
+
+      await select(['start-1']);
+      expect(el.querySelector('app-inspector')).not.toBeNull();
+      store.appendNode('start-1', 'state');
+      await settle();
+      expect(el.querySelectorAll('app-node-card').length).toBe(2);
+      expect(slotButton(el)).toBeNull();
+    });
+
+    it('is in the toolbox of VS Code too', async () => {
+      const { el, settle } = await setup({ embedded: true });
+      toggle(el).click();
+      await settle();
+      expect(toggle(el).getAttribute('aria-pressed')).toBe('true');
+      expect(slotButton(el)).toBeNull();
+    });
+
+    it('is off by default', async () => {
+      const { el } = await setup();
+      expect(toggle(el).getAttribute('aria-pressed')).toBe('false');
+    });
+  });
+
   describe('inside VS Code (embedded)', () => {
     it('has no Problems menu in the toolbox: VS Code shows the findings in its Problems view', async () => {
       const { el, store, settle } = await setup({ embedded: true });
@@ -713,7 +777,9 @@ describe('Editor', () => {
       const { el, settle } = await setup({ embedded: true });
       expect(el.querySelector('.topbar')).toBeNull();
       expect(el.textContent).not.toContain('Source');
-      const buttons = [...el.querySelectorAll<HTMLButtonElement>('.toolbox [aria-pressed]')];
+      const buttons = ['Walkthrough', 'Path', 'Messages'].map((name) =>
+        el.querySelector<HTMLButtonElement>(`.toolbox [aria-label="${name}"]`)!,
+      );
       expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
         'Walkthrough',
         'Path',
@@ -764,7 +830,7 @@ describe('Editor', () => {
         b.textContent?.trim(),
       );
       expect(labels).toEqual(expect.arrayContaining(['Walkthrough', 'Path', 'Messages', 'Source']));
-      expect(el.querySelector('.toolbox [aria-pressed]')).toBeNull();
+      expect(el.querySelector('.toolbox [aria-label="Walkthrough"]')).toBeNull();
       expect(el.querySelector('.host-notices')).toBeNull();
     });
 

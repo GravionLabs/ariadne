@@ -154,8 +154,22 @@ export class Editor {
   protected readonly joins = computed(() => joinEventsOf(this.store.diagram()));
 
   /** Transitions that close a loop: not laid out, their label rides on the line. */
-  /** The "+" slots; none while walking, since nothing can be added then. */
-  protected readonly slots = computed(() => (this.walking() ? [] : this.layout.slots()));
+  /**
+   * View mode: the "+" buttons and the dotted lines to them are hidden, to read or to take a
+   * screenshot. Everything else still edits (inspector, keyboard, dragging a connection). Remembered.
+   */
+  protected readonly insertHidden = signal(remembered('hide-insert') === '1');
+
+  protected toggleInsertHidden(): void {
+    this.insertHidden.update((hidden) => !hidden);
+    remember('hide-insert', this.insertHidden() ? '1' : '0');
+  }
+
+  /** Whether the "+" buttons are shown: not while walking (read-only), nor in view mode. */
+  protected readonly insertShown = computed(() => !this.walking() && !this.insertHidden());
+
+  /** The "+" slots. */
+  protected readonly slots = computed(() => (this.insertShown() ? this.layout.slots() : []));
 
   protected readonly loops = computed(() => backEdgeIds(this.store.diagram()));
 
