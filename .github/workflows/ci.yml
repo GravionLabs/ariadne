@@ -159,13 +159,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # @ariadne/viewer goes to npm with the version of the release. The npm account and the NPM_TOKEN
+  # @ariadne/viewer goes to npm with the version of the release, when the repository variable
+  # PUBLISH_NPM is 'true' (Settings > Secrets and variables > Actions > Variables); any other value, or
+  # none, skips the job and the package stays a build artifact. The npm account and the NPM_TOKEN
   # secret (a token that may publish the @ariadne scope) are the owner's; without the secret the job
-  # only says so and the package stays a build artifact.
+  # only says so.
   viewer-publish:
     name: Publish the viewer to npm
     needs: [release, viewer-package]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PUBLISH_NPM == 'true'
     runs-on: ubuntu-latest
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

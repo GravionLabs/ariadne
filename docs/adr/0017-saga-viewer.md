@@ -50,7 +50,8 @@ exports, and must not pull the editor (f-flow, the store, the file dialogs) into
   imported without a DOM, the Angular entry is loaded and type-checked with `node16`, and the one-file bundle draws a
   saga in jsdom.
 - **CI** packs the package on every build with the version of the release; on `main`, after the release, a job
-  publishes it to npm when the owner's `NPM_TOKEN` secret exists, and says so when it does not.
+  publishes it to npm only when the repository variable `PUBLISH_NPM` is `true` (it is `false` until the owner decides)
+  and the owner's `NPM_TOKEN` secret exists.
 
 ## The element
 
