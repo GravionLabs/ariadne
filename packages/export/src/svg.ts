@@ -27,7 +27,7 @@ import {
  * Light theme tokens from styles.scss, written out: an exported file has no CSS variables to
  * resolve, so it must carry plain colours to look the same in a browser, on GitHub or in Inkscape.
  */
-const COLORS = {
+export const COLORS = {
   surface: '#ffffff',
   border: '#e2e5eb',
   line: '#b0b5c3',

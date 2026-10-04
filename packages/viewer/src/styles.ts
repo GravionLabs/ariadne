@@ -3,7 +3,7 @@
  * values are the fallbacks in the SVG, so only dark needs declaring. A host themes one element with
  * `ariadne-saga { --ariadne-surface: ...; }` or the whole page from an ancestor (light theme).
  */
-const DARK = `
+export const DARK = `
   color-scheme: dark;
   --ariadne-bg: #14161c;
   --ariadne-surface: #1c1f27;

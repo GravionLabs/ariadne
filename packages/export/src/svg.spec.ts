@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fit, renderDiagramSvg } from './svg';
+import { fit, renderDiagramSvg, COLORS } from './svg';
 import { Diagram } from '@ariadne/core';
+import { contrastFailures, type ContrastPair } from '@ariadne/core/testing';
 
 /** The order saga: external trigger, activities, a decision, a compensation and a final state. */
 const orderSaga: Diagram = {
@@ -375,5 +376,50 @@ describe('the symbols of the SVG', () => {
     const source = readFileSync(join(import.meta.dirname, 'svg.ts'), 'utf8');
     const used = [...new Set([...source].filter((c) => c.codePointAt(0)! > 0x2000))];
     expect(used.sort()).toEqual([...inFont].sort());
+  });
+});
+
+describe('the colours of the SVG (WCAG 2.2 AA)', () => {
+  // Plain hex, because an exported file has no CSS variables: the light theme of the editor. The
+  // pairs are those of the editor's themes: text 4.5:1 (1.4.3), the line and the accents 3:1 (1.4.11).
+  const { palette, ...plain } = COLORS;
+  const tokens: Record<string, string> = {
+    ...plain,
+    ...Object.fromEntries(
+      Object.entries(palette).map(([name, value]) => [`palette.${name}`, value]),
+    ),
+  };
+  const accents = Object.keys(tokens).filter(
+    (name) => !['surface', 'border', 'line', 'text', 'textSubtle'].includes(name),
+  );
+  const pairs: ContrastPair[] = [
+    ['text', 'surface', 4.5],
+    ['textSubtle', 'surface', 4.5],
+    ['line', 'surface', 3],
+    ...accents.map((name): ContrastPair => [name, 'surface', 3]),
+  ];
+
+  /** Fixed in #297: a pair that newly fails, or one of these that now passes, fails the test. */
+  const KNOWN_FAILURES: string[] = [
+    'svg: compensation on surface (2.1)',
+    'svg: line on surface (2.0)',
+    'svg: palette.amber on surface (1.9)',
+    'svg: palette.green on surface (2.2)',
+    'svg: palette.orange on surface (2.8)',
+    'svg: palette.teal on surface (2.4)',
+    'svg: start on surface (2.2)',
+  ];
+
+  it('has the pairs that are not enough, and no others', () => {
+    expect(contrastFailures('svg', tokens, pairs).sort()).toEqual([...KNOWN_FAILURES].sort());
+  });
+
+  it('checks every colour of the palette', () => {
+    // A new colour has to be put in a pair, or listed as not needing one here.
+    expect(
+      Object.keys(tokens)
+        .filter((n) => n !== 'border')
+        .sort(),
+    ).toEqual(['surface', 'line', 'text', 'textSubtle', ...accents].sort());
   });
 });
