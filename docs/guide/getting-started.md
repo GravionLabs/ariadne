@@ -8,7 +8,7 @@
 
 ## Look at a sample
 
-Choose **New** and, under "Or start from a sample", the _Order saga_. It opens as a new diagram that is not saved
+Choose **New** and, under "Start with a tour", the _Order saga_ (under "Real-world sagas" there are bigger ones: [the sample library](../../samples/library/README.md)). It opens as a new diagram that is not saved
 anywhere yet. Click a state or a transition: the inspector on the right shows what it is. **Walkthrough** steps
 through the saga event by event, **Messages** lists its commands and events and where they are used, and **Path**
 draws the path a saga instance took: paste the events it received (a JSON or YAML list, e.g. `- OrderReceived`) and the

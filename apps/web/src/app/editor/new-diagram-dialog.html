@@ -25,14 +25,16 @@
       <button type="submit" class="menu-button primary" [disabled]="!valid()">Create</button>
     </div>
 
-    <section class="samples" aria-labelledby="samples-title">
-      <h3 id="samples-title">Or start from a sample</h3>
-      @for (sample of samples; track sample.id) {
-        <button type="button" class="sample" (click)="pickSample(sample)">
-          <span class="title">{{ sample.title }}</span>
-          <span class="about">{{ sample.description }}</span>
-        </button>
-      }
-    </section>
+    @for (group of groups(); track group.id) {
+      <section class="samples" [attr.aria-labelledby]="'samples-' + group.id">
+        <h3 [id]="'samples-' + group.id">{{ group.title }}</h3>
+        @for (sample of group.samples; track sample.id) {
+          <button type="button" class="sample" (click)="pickSample(sample)">
+            <span class="title">{{ sample.title }}</span>
+            <span class="about">{{ sample.description }}</span>
+          </button>
+        }
+      </section>
+    }
   </form>
 </dialog>

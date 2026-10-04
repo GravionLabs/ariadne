@@ -1,5 +1,5 @@
 import { Component, ElementRef, computed, signal, viewChild } from '@angular/core';
-import { SAMPLES, Sample } from '../samples';
+import { SAMPLE_GROUPS, Sample, TOUR_SAMPLES, loadLibrarySamples } from '../samples';
 
 /** What the "New diagram" popup asks for. */
 export interface NewDiagramDetails {
@@ -25,7 +25,16 @@ export class NewDiagramDialog {
 
   protected readonly name = signal('');
   protected readonly description = signal('');
-  protected readonly samples = SAMPLES;
+  /** The library, once it has been loaded (the tour is there from the start). */
+  private readonly library = signal<readonly Sample[]>([]);
+  /** The samples by group, in the order shown; a group without samples is left out. */
+  protected readonly groups = computed(() => {
+    const all = [...TOUR_SAMPLES, ...this.library()];
+    return SAMPLE_GROUPS.map((g) => ({
+      ...g,
+      samples: all.filter((s) => s.group === g.id),
+    })).filter((g) => g.samples.length > 0);
+  });
   protected readonly valid = computed(() => this.name().trim() !== '');
 
   /** Shows the popup; resolves to the details, or `undefined` if it was cancelled. */
@@ -33,6 +42,8 @@ export class NewDiagramDialog {
     this.name.set('');
     this.description.set('');
     this.result = undefined;
+    // The library is a chunk of its own: the tour shows at once, the library when it has arrived.
+    void loadLibrarySamples().then((samples) => this.library.set(samples));
     return new Promise((resolve) => {
       this.settle = resolve;
       this.dialog().nativeElement.showModal();

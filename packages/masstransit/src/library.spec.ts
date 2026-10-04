@@ -42,6 +42,24 @@ describe('the sample library', () => {
     expect(readme).toContain('update-library.mjs');
   });
 
+  it('is listed in the user guide, so that the list cannot fall behind', () => {
+    const guide = readFileSync(join(library, '../../docs/guide/README.md'), 'utf8');
+    for (const name of samples) {
+      expect(guide, `${name} is not in the table of docs/guide/README.md`).toContain(
+        `(../../samples/library/${name}/README.md)`,
+      );
+      expect(guide, `${name}: link to its generated C#`).toContain(
+        `(../../samples/library/${name}/generated)`,
+      );
+    }
+    const listed = [
+      ...guide.matchAll(/\(\.\.\/\.\.\/samples\/library\/([^/)]+)\/README\.md\)/g),
+    ].map((m) => m[1]);
+    expect(listed.sort(), 'the guide lists a sample that is not in the library').toEqual(
+      [...samples].sort(),
+    );
+  });
+
   describe.each(samples)('%s', (name) => {
     const dir = join(library, name);
     const goldenPath = join(dir, `${name}.saga.yaml`);
