@@ -71,7 +71,7 @@ describe('renderDiagramSvg', () => {
   it('writes plain colours: no CSS variables and no color-mix', () => {
     const { svg } = renderDiagramSvg(orderSaga);
     expect(svg).not.toMatch(/var\(|color-mix/);
-    expect(svg).toContain('#f97316'); // palette colour of "Charging payment"
+    expect(svg).toContain('#f76906'); // palette colour of "Charging payment"
   });
 
   it('shows a state that several transitions leave as a decision', () => {
@@ -154,8 +154,8 @@ describe('renderDiagramSvg options', () => {
     const plain = renderDiagramSvg(orderSaga).svg;
     const themed = renderDiagramSvg(orderSaga, { cssVariables: true }).svg;
     expect(themed).toContain('var(--ariadne-surface, #ffffff)');
-    expect(themed).toContain('var(--ariadne-text-subtle, #6b7086)');
-    expect(themed).toContain('var(--ariadne-palette-orange, #f97316)');
+    expect(themed).toContain('var(--ariadne-text-subtle, #676c81)');
+    expect(themed).toContain('var(--ariadne-palette-orange, #f76906)');
     expect(themed).toContain(
       'color-mix(in srgb, var(--ariadne-external, #0d9488) 75%, var(--ariadne-text, #1a1c23))',
     );
@@ -399,16 +399,8 @@ describe('the colours of the SVG (WCAG 2.2 AA)', () => {
     ...accents.map((name): ContrastPair => [name, 'surface', 3]),
   ];
 
-  /** Fixed in #297: a pair that newly fails, or one of these that now passes, fails the test. */
-  const KNOWN_FAILURES: string[] = [
-    'svg: compensation on surface (2.1)',
-    'svg: line on surface (2.0)',
-    'svg: palette.amber on surface (1.9)',
-    'svg: palette.green on surface (2.2)',
-    'svg: palette.orange on surface (2.8)',
-    'svg: palette.teal on surface (2.4)',
-    'svg: start on surface (2.2)',
-  ];
+  /** Pairs that are allowed to fail: none. A pair that fails is fixed, not listed. */
+  const KNOWN_FAILURES: string[] = [];
 
   it('has the pairs that are not enough, and no others', () => {
     expect(contrastFailures('svg', tokens, pairs).sort()).toEqual([...KNOWN_FAILURES].sort());

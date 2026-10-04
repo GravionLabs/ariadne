@@ -197,8 +197,9 @@
 
 .toggle {
   display: grid;
-  width: 22px;
-  height: 22px;
+  // 24 px at least (WCAG 2.2, 2.5.8); the heading's height comes from the badge, not from this.
+  width: 24px;
+  height: 24px;
   padding: 0;
   place-items: center;
   color: var(--c-text-subtle);

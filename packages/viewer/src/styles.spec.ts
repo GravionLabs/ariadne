@@ -40,7 +40,7 @@ describe('the dark colours of the viewer (WCAG 2.2 AA)', () => {
     ...accents.map((accent): ContrastPair => [accent, 'surface', 3]),
   ];
 
-  /** Fixed in #297: a pair that newly fails, or one of these that now passes, fails the test. */
+  /** Pairs that are allowed to fail: none. A pair that fails is fixed, not listed. */
   const KNOWN_FAILURES: string[] = [];
 
   it('reads the dark block', () => {

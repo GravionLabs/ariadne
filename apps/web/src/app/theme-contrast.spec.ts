@@ -82,22 +82,10 @@ const PAIRS: ContrastPair[] = [
 ];
 
 /**
- * The pairs that fail today, fixed in #297. A pair that newly fails, or one of these that now
- * passes, fails the test: the list only ever gets shorter.
+ * The pairs that are allowed to fail: none. A pair that fails is fixed (the token is adjusted in
+ * `styles.scss`, and in `COLORS` of the export and `DARK` of the viewer), not listed here.
  */
-const KNOWN_FAILURES: string[] = [
-  'light: --c-border-muted on --c-bg (1.8)',
-  'light: --c-border-muted on --c-surface-1 (2.0)',
-  'light: --c-compensation on --c-surface-1 (2.1)',
-  'light: --c-node-amber on --c-surface-1 (1.9)',
-  'light: --c-node-green on --c-surface-1 (2.2)',
-  'light: --c-node-orange on --c-surface-1 (2.8)',
-  'light: --c-node-teal on --c-surface-1 (2.4)',
-  'light: --c-on-primary on --c-primary (4.4)',
-  'light: --c-start on --c-surface-1 (2.2)',
-  'light: --c-text-subtle on --c-bg (4.4)',
-  'light: --c-text-subtle on --c-surface-3 (4.2)',
-];
+const KNOWN_FAILURES: string[] = [];
 
 describe('the colours of the themes (WCAG 2.2 AA)', () => {
   it('reads the three token sets of styles.scss', () => {

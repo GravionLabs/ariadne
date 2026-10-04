@@ -2,12 +2,6 @@ import { Diagram, PathStep, serializeDiagram } from '@ariadne/core';
 import { largeSaga } from '@ariadne/core/testing';
 import { AriadneSagaElement, defineAriadneSaga } from './saga-element';
 
-/**
- * Checks that fail today and are fixed in #297, by name ("<theme>: <panel>"). An entry goes when its
- * fix lands; the checks are written in full, so #297 only has to un-skip them.
- */
-const NOT_YET_FIXED = new Set<string>([]);
-
 // A saga with choices, a join, a loop, a command, a published event and a problem (an orphan).
 const saga: Diagram = { ...largeSaga(12), name: 'Order' };
 const path: PathStep[] = [{ event: 'Event0Happened' }, { event: 'Event1Happened' }];
@@ -37,8 +31,7 @@ const PANELS: [name: string, feature: string | null, label: string | null][] = [
 
 describe.each(['light', 'dark'])('<ariadne-saga> accessibility, %s theme', (theme) => {
   for (const [name, feature, label] of PANELS) {
-    const check = NOT_YET_FIXED.has(`${theme}: ${name}`) ? it.skip : it;
-    check(`has no serious axe findings: ${name}, with a path set`, async () => {
+    it(`has no serious axe findings: ${name}, with a path set`, async () => {
       const element = document.createElement('ariadne-saga') as AriadneSagaElement;
       element.setAttribute('features', 'walkthrough messages problems');
       element.setAttribute('theme', theme);

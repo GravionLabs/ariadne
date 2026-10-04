@@ -23,16 +23,6 @@ globalThis.ResizeObserver ??= class {
   disconnect(): void {}
 };
 
-/**
- * Checks that fail today and are fixed in #297, each by name. An entry is removed when its fix
- * lands; the checks themselves are written in full so that #297 only has to un-skip them.
- */
-const NOT_YET_FIXED = new Set<string>([
-  'light: the export menu',
-  'dark: the export menu',
-  'high-contrast: the export menu',
-]);
-
 const THEMES: ThemeName[] = ['light', 'dark', 'high-contrast'];
 
 /** The editor as the unit tests build it (copied, not imported: a spec is not a library). */
@@ -230,9 +220,7 @@ describe.each(THEMES)('accessibility, %s theme', (theme) => {
   beforeEach(() => localStorage.clear());
 
   for (const { name, show, shown } of VIEWS) {
-    // Skipped until #297 fixes what it finds; see NOT_YET_FIXED.
-    const check = NOT_YET_FIXED.has(`${theme}: ${name}`) ? it.skip : it;
-    check(`has no serious axe findings in ${name}`, async () => {
+    it(`has no serious axe findings in ${name}`, async () => {
       const editor = await openEditor();
       TestBed.inject(Theme).setHost(theme);
       await editor.settle();
@@ -279,28 +267,11 @@ function smallTargets(root: HTMLElement): string[] {
     });
 }
 
-/**
- * Views with a control under 24 px, fixed in #297 (the names of VIEWS). It is the "Show description"
- * toggle of a state card, 22 px, which every view of the order sample has.
- */
-const SMALL_TARGETS_NOT_YET_FIXED = new Set<string>([
-  'the order sample',
-  'a selected state',
-  'a selected transition',
-  'the source panel',
-  'the message catalog',
-  'the walkthrough after one step',
-  'the path panel with a pasted path',
-  'the problems menu',
-  'the import dialog',
-]);
-
 describe('WCAG 2.2: 2.5.8 target size', () => {
   beforeEach(() => localStorage.clear());
 
   for (const { name, show } of VIEWS) {
-    const check = SMALL_TARGETS_NOT_YET_FIXED.has(name) ? it.skip : it;
-    check(`every control is at least 24×24 px in ${name}`, async () => {
+    it(`every control is at least 24×24 px in ${name}`, async () => {
       const editor = await openEditor();
       vi.spyOn(window, 'confirm').mockReturnValue(true);
       await show(editor);
@@ -352,7 +323,7 @@ describe('WCAG 2.2: 2.4.11 focus not obscured', () => {
 
   /**
    * jsdom has no layout: the rectangles are made up. The flow fills 1200 × 800 and the inspector
-   * covers its right 300 px; a state at `x` is 260 px wide.
+   * covers its right 300 px, the panel on the left its first 300; a state at `x` is 260 px wide.
    */
   function layOut(el: HTMLElement, nodeX: number) {
     const rect = (x: number, y: number, width: number, height: number) =>
@@ -372,35 +343,74 @@ describe('WCAG 2.2: 2.4.11 focus not obscured', () => {
     ) {
       if (this.tagName === 'F-FLOW') return rect(0, 0, 1200, 800);
       if (this.tagName === 'APP-INSPECTOR') return rect(900, 0, 300, 800);
+      if (this.tagName === 'APP-CATALOG-PANEL') return rect(0, 0, 300, 800);
       if (this.tagName === 'APP-NODE-CARD') return rect(nodeX, 300, 260, 100);
+      // The label of a transition is a node of its own, on the same made-up spot.
+      if (this.getAttribute('data-f-node-id')?.startsWith('label:'))
+        return rect(nodeX, 300, 120, 50);
       return rect(0, 0, 0, 0);
     });
     return el;
   }
 
-  async function selectWithKeyboard(nodeX: number) {
+  /** Selects a state (or a transition, for `edge`), as the keyboard does, with things laid out as made up. */
+  async function selectWithKeyboard(
+    nodeX: number,
+    options: { edge?: boolean; panel?: boolean } = {},
+  ) {
     const e = await openEditor();
     await loadOrder(e);
     const canvas = e.fixture.debugElement.query(By.directive(FCanvasComponent))
       .componentInstance as FCanvasComponent;
     const center = vi.spyOn(canvas, 'centerGroupOrNode');
+    if (options.panel) await e.click(e.topButton('Messages'));
     // The inspector opens for the first selection, and takes its place on the right.
     await e.select([e.store.nodes()[0].id]);
     layOut(e.el, nodeX);
     center.mockClear();
+    if (options.edge) {
+      const edge = e.store.edges()[1];
+      await e.select([], [edge.id]);
+      return { center, id: `label:${edge.id}` };
+    }
     const id = e.store.nodes().find((n) => n.type === 'state')!.id;
     await e.select([id]);
     return { center, id };
   }
 
-  // fixed in #297: the editor does not look at where a selected state is.
-  it.skip('brings a state into view when it lies under the inspector', async () => {
+  it('brings a state into view when it lies under the inspector', async () => {
     const { center, id } = await selectWithKeyboard(950);
     expect(center).toHaveBeenCalledWith(id, expect.anything());
   });
 
+  it('brings a state into view when it lies under the panel on the left', async () => {
+    const { center, id } = await selectWithKeyboard(50, { panel: true });
+    expect(center).toHaveBeenCalledWith(id, expect.anything());
+  });
+
+  it('brings a state into view when it is outside the canvas', async () => {
+    const { center, id } = await selectWithKeyboard(1300);
+    expect(center).toHaveBeenCalledWith(id, expect.anything());
+  });
+
+  it('brings the label of a transition into view when it lies under the inspector', async () => {
+    const { center, id } = await selectWithKeyboard(950, { edge: true });
+    expect(center).toHaveBeenCalledWith(id, expect.anything());
+  });
+
   it('leaves the view alone when the state is in the clear part of the canvas', async () => {
-    const { center } = await selectWithKeyboard(300);
+    const { center } = await selectWithKeyboard(400, { panel: true });
+    expect(center).not.toHaveBeenCalled();
+  });
+
+  it('leaves the view alone for a selection of several states', async () => {
+    const e = await openEditor();
+    await loadOrder(e);
+    const canvas = e.fixture.debugElement.query(By.directive(FCanvasComponent))
+      .componentInstance as FCanvasComponent;
+    const center = vi.spyOn(canvas, 'centerGroupOrNode');
+    layOut(e.el, 950);
+    await e.select(e.store.nodes().map((n) => n.id));
     expect(center).not.toHaveBeenCalled();
   });
 });
