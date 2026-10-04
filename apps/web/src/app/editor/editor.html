@@ -267,7 +267,7 @@
                 [finding]="ui.severityOf(edge.id)"
                 [highlight]="ui.highlightOf(edge.id)"
                 [badge]="path.badges().get(edge.id)"
-                [insertable]="!walking()"
+                [insertable]="insertShown()"
                 (selectRequested)="selectEdge(edge.id)"
                 (inserted)="insert(edge.id, $event)"
               />
@@ -428,6 +428,17 @@
         <app-problems-menu (picked)="focusFinding($event)" />
         <div class="divider"></div>
       }
+      <button
+        type="button"
+        class="icon-button"
+        [class.active]="insertHidden()"
+        [attr.aria-pressed]="insertHidden()"
+        (click)="toggleInsertHidden()"
+        aria-label="View mode: hide the + buttons"
+        title="View mode: hide the + buttons and their dotted lines"
+      >
+        <app-icon name="visibility" />
+      </button>
       <button
         type="button"
         class="icon-button"

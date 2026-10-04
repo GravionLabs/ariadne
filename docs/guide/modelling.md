@@ -14,6 +14,10 @@ A diagram is a saga **state machine**, the way MassTransit writes it. States do 
 | Join                                     | `CompositeEvent`                                   |
 | Compensation                             | the undo action for the work that led to the state |
 
+**View mode:** the eye button in the toolbar hides the "+" buttons and the dotted lines that lead to them, to read a
+diagram or take a screenshot. Nothing else changes (you can still select, use the inspector and the keyboard), and the
+choice is remembered. Exports never contain the "+" buttons.
+
 ## States
 
 A state has a name, an optional description and colour, and optionally:
