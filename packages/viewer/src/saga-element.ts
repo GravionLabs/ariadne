@@ -89,6 +89,8 @@ export class AriadneSagaElement extends Base {
   /** Once the user zoomed or panned, a resize no longer re-fits the diagram. */
   #moved = false;
   #scheduled = false;
+  /** What a host that fetches the file itself told us: shown while no `src` or `source` is set. */
+  #external: { message: string; state: 'loading' | 'error' } | null = null;
   #request = 0;
   #abort?: AbortController;
   #path: readonly PathStep[] | null = null;
@@ -139,6 +141,7 @@ export class AriadneSagaElement extends Base {
   }
   set src(value: string | null) {
     this.#reflect('src', value);
+    this.#schedule();
   }
 
   get source(): string | null {
@@ -146,6 +149,7 @@ export class AriadneSagaElement extends Base {
   }
   set source(value: string | null) {
     this.#reflect('source', value);
+    this.#schedule(); // also for the same text again, e.g. after an error
   }
 
   get direction(): ViewerDirection | null {
@@ -252,6 +256,17 @@ export class AriadneSagaElement extends Base {
     this.#schedule();
   }
 
+  /** For a host that fetches the file itself: shows the loading state until `source` is set. */
+  showLoading(): void {
+    this.#hostStatus({ message: 'Loading…', state: 'loading' });
+  }
+
+  /** For a host whose own request failed: shows the error and fires `error`, like a failed `src`. */
+  showError(error: ViewerError): void {
+    this.#hostStatus({ message: error.message, state: 'error' });
+    this.#emit('error', error);
+  }
+
   zoomIn(): void {
     this.#zoom(ZOOM_STEP);
   }
@@ -264,6 +279,14 @@ export class AriadneSagaElement extends Base {
   fit(): void {
     this.#moved = false;
     this.#setView(fitView(this.#content(), this.#extent()));
+  }
+
+  #hostStatus(status: { message: string; state: 'loading' | 'error' }): void {
+    this.#request++;
+    this.#abort?.abort();
+    this.#clear();
+    this.#external = status;
+    this.#showStatus(status.message, status.state);
   }
 
   #reflect(name: string, value: string | null): void {
@@ -288,8 +311,10 @@ export class AriadneSagaElement extends Base {
     const src = this.src;
     if (!source && !src) {
       this.#clear();
+      if (this.#external) this.#showStatus(this.#external.message, this.#external.state);
       return;
     }
+    this.#external = null;
     this.#showStatus('Loading…', 'loading');
     let result: Loaded;
     if (source) {

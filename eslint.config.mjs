@@ -28,6 +28,16 @@ export default tseslint.config(
     },
   },
   {
+    // The viewer's Angular wrapper is the `<ariadne-saga>` custom element, not an app component.
+    files: ['packages/viewer/angular/**/*.ts'],
+    rules: {
+      '@angular-eslint/component-selector': [
+        'error',
+        { type: 'element', prefix: 'ariadne', style: 'kebab-case' },
+      ],
+    },
+  },
+  {
     files: ['**/*.html'],
     extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],
   },

@@ -211,6 +211,54 @@ describe('<ariadne-saga>', () => {
     );
   });
 
+  describe('a host that fetches the file itself', () => {
+    it('shows loading until the text arrives, then the saga', async () => {
+      const element = create();
+      element.showLoading();
+      await settle();
+      expect(root(element).querySelector('.status')!.textContent).toBe('Loading…');
+      expect(element.hasAttribute('aria-busy')).toBe(true);
+      const loaded = next(element, 'load');
+      element.source = yaml;
+      await loaded;
+      expect(root(element).querySelector('.status')!.textContent).toBe('');
+      expect(root(element).querySelectorAll('[data-node-id]')).toHaveLength(3);
+    });
+
+    it('shows an error and fires error, and a retry with the same text works', async () => {
+      const element = create({ source: yaml });
+      await next(element, 'load');
+      const failed = next<{ kind: string }>(element, 'error');
+      element.showError({ kind: 'network', message: '/x could not be loaded (500).' });
+      expect((await failed).detail.kind).toBe('network');
+      await settle();
+      const status = root(element).querySelector('.status')!;
+      expect(status.textContent).toBe('/x could not be loaded (500).');
+      expect(status.getAttribute('role')).toBe('alert');
+      expect(root(element).querySelector('svg')).toBeNull();
+      const loaded = next(element, 'load');
+      element.source = yaml; // the same text as before the error
+      await loaded;
+      expect(root(element).querySelector('svg')).not.toBeNull();
+      expect(status.textContent).toBe('');
+    });
+
+    it('lets an unfinished request of its own go', async () => {
+      let answer!: (r: Response) => void;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => new Promise<Response>((resolve) => (answer = resolve))),
+      );
+      const element = create({ src: '/slow' });
+      await settle();
+      element.showError({ kind: 'network', message: 'host error' });
+      answer(new Response(yaml));
+      await settle();
+      expect(root(element).querySelector('.status')!.textContent).toBe('host error');
+      expect(root(element).querySelector('svg')).toBeNull();
+    });
+  });
+
   describe('zoom and pan', () => {
     const open = async () => {
       const element = create({ source: yaml });
