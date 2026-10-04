@@ -1,0 +1,41 @@
+name: CodeQL
+
+# Code scanning of the TypeScript and of the workflows themselves. Advanced setup (not GitHub's default
+# setup), so the configuration is versioned with the code. Needs GitHub Code Security on the repository.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '30 4 * * 2' # Tuesday morning (UTC): new queries find old code
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # Interpreted languages need no build.
+          build-mode: none
+          config-file: ./.github/codeql/codeql-config.yml
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}

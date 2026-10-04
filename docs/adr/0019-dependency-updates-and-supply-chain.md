@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-04
-- Issues: #285, #310, #311
+- Issues: #285, #310, #311, #312
 - Builds on: [ADR 0006](0006-typescript-monorepo.md), [ADR 0015](0015-versioning-and-releases.md)
 
 ## Context
@@ -56,6 +56,21 @@ A package that runs a script when it is installed runs code on every developer m
   whether a prebuilt binary or WebAssembly makes it unnecessary (then `false`); if it is needed, `true`, with the reason.
   Replace the `set this to true or false` line pnpm leaves in `allowBuilds` after a failed install with the decision
   and the reason. A Renovate pull request that fails on this needs a person, not a rerun.
+
+### Code scanning (#312)
+
+- **CodeQL** (`.github/workflows/codeql.yml`) scans `javascript-typescript` and `actions` (the workflows themselves,
+  where an injection through `${{ … }}` in a `run:` step is the classic mistake) on pull requests, on `main` and weekly.
+  It runs the `security-extended` queries (`.github/codeql/codeql-config.yml`), which is more than the default suite
+  and still security only. The weekly run matters: new queries find old code.
+- **Advanced setup, not the default setup**, so the languages, the queries and the ignored paths are reviewed and
+  versioned with the code. `dist`, `node_modules`, `samples/generated` (C# that is generated and not shipped) and `docs`
+  are not scanned.
+- **No build**: JavaScript and TypeScript are analysed from source (`build-mode: none`).
+- The repository is private, so scanning needs **GitHub Code Security**; without it the upload of the results fails.
+  Secret scanning with push protection (Secret Protection) is worth enabling next to it.
+- A finding is fixed, filed as a bug under #285 when it is not small, or dismissed in the Security tab with a reason
+  when it is a false positive.
 
 ### The configuration is checked
 
