@@ -3,14 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-
-interface OpenEditor {
-  uri: vscode.Uri;
-  session: { receive(data: unknown): void };
-}
-interface Api {
-  openEditors(): OpenEditor[];
-}
+import { api as activate, until, type Api } from './helpers';
 
 const SOURCE = `using MassTransit;
 
@@ -40,15 +33,6 @@ public record OrderSubmitted(Guid CorrelationId);
 public record OrderShipped(Guid CorrelationId);
 `;
 
-async function until<T>(what: string, probe: () => T | undefined | false): Promise<T> {
-  for (let i = 0; i < 200; i++) {
-    const found = probe();
-    if (found) return found;
-    await new Promise((resolve) => setTimeout(resolve, 25));
-  }
-  throw new Error(`Timed out waiting for ${what}`);
-}
-
 const lensesOf = async (uri: vscode.Uri) => {
   await vscode.workspace.openTextDocument(uri);
   return vscode.commands.executeCommand<vscode.CodeLens[]>(
@@ -64,9 +48,7 @@ describe('Code navigation', () => {
   let api: Api;
 
   beforeEach(async () => {
-    api = (await vscode.extensions
-      .getExtension<Api>('gravionlabs.ariadne-vscode')!
-      .activate()) as Api;
+    api = await activate();
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ariadne-nav-'));
     csharp = vscode.Uri.file(path.join(dir, 'OrderStateMachine.cs'));
     fs.writeFileSync(csharp.fsPath, SOURCE);
@@ -91,13 +73,10 @@ describe('Code navigation', () => {
     );
     await vscode.workspace.openTextDocument(diagram);
     // The lenses are asked again when the links change; look until the new one is there.
-    let lens: vscode.CodeLens | undefined;
-    for (let i = 0; !lens && i < 80; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+    const lens = await until('the lens that opens the diagram', async () => {
       const first = (await lensesOf(csharp))[0];
-      if (first?.command?.title === 'Ariadne: Open saga diagram') lens = first;
-    }
-    assert.ok(lens, 'the lens opens the diagram');
+      return first?.command?.title === 'Ariadne: Open saga diagram' && first;
+    });
     assert.strictEqual(lens.command?.command, 'ariadne.openDiagram');
     assert.strictEqual((lens.command?.arguments?.[0] as vscode.Uri).fsPath, diagram.fsPath);
 

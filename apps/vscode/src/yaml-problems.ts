@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as vscode from 'vscode';
+import { PendingWork } from './pending-work';
 import { checkDiagramText, type Problem } from './yaml-diagnostics';
 
 const SOURCE = 'Ariadne';
@@ -22,7 +23,8 @@ const isDiagram = (uri: vscode.Uri): boolean =>
 export class YamlProblems implements vscode.Disposable {
   private readonly diagnostics = vscode.languages.createDiagnosticCollection('ariadne-yaml');
   private readonly subscriptions: vscode.Disposable[] = [];
-  private readonly timers = new Map<string, NodeJS.Timeout>();
+  private readonly timers = new Map<string, { timer: NodeJS.Timeout; end: () => void }>();
+  private readonly pending = new PendingWork();
 
   constructor() {
     const watcher = vscode.workspace.createFileSystemWatcher('**/*.saga.yaml');
@@ -46,28 +48,42 @@ export class YamlProblems implements vscode.Disposable {
   }
 
   /** Checks the diagrams of the workspace and the ones already open. */
-  async start(): Promise<void> {
+  start(): Promise<void> {
+    return this.pending.track(this.checkWorkspace());
+  }
+
+  /** Resolves once no check is pending: the pause of a change, or a check under way. */
+  idle(): Promise<void> {
+    return this.pending.idle();
+  }
+
+  dispose(): void {
+    for (const { timer, end } of this.timers.values()) {
+      clearTimeout(timer);
+      end();
+    }
+    this.timers.clear();
+    this.subscriptions.forEach((s) => s.dispose());
+  }
+
+  private async checkWorkspace(): Promise<void> {
     for (const doc of vscode.workspace.textDocuments) this.checkDocument(doc);
     const files = await vscode.workspace.findFiles('**/*.saga.yaml', '**/node_modules/**');
     for (const uri of files) this.checkFile(uri);
   }
 
-  dispose(): void {
-    for (const timer of this.timers.values()) clearTimeout(timer);
-    this.subscriptions.forEach((s) => s.dispose());
-  }
-
   private later(doc: vscode.TextDocument): void {
     if (!isDiagram(doc.uri)) return;
     const key = doc.uri.toString();
-    clearTimeout(this.timers.get(key));
-    this.timers.set(
-      key,
-      setTimeout(() => {
-        this.timers.delete(key);
-        this.checkDocument(doc);
-      }, DEBOUNCE_MS),
-    );
+    const before = this.timers.get(key);
+    clearTimeout(before?.timer);
+    const end = before?.end ?? this.pending.begin();
+    const timer = setTimeout(() => {
+      this.timers.delete(key);
+      this.checkDocument(doc);
+      end();
+    }, DEBOUNCE_MS);
+    this.timers.set(key, { timer, end });
   }
 
   private checkDocument(doc: vscode.TextDocument): void {
@@ -79,9 +95,11 @@ export class YamlProblems implements vscode.Disposable {
     // Open documents are up to date through the events; the disk may be behind.
     const open = vscode.workspace.textDocuments.find((d) => d.uri.toString() === uri.toString());
     if (open) return this.checkDocument(open);
+    const end = this.pending.begin();
     fs.readFile(uri.fsPath, 'utf8', (error, text) => {
       if (error) this.diagnostics.delete(uri);
       else this.publish(uri, text);
+      end();
     });
   }
 

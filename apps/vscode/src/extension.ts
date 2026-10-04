@@ -20,6 +20,8 @@ export interface AriadneApi {
   generateCsharp(uri: vscode.Uri, choose: ChooseFiles): Promise<string[]>;
   /** The drift service, to compare now instead of waiting for a save. */
   drift: DriftService;
+  /** The Problems panel for `*.saga.yaml`, to wait until its checks are done. */
+  problems: YamlProblems;
   /** The hook of VS Code's Markdown preview (`markdown.markdownItPlugins`). */
   extendMarkdownIt(md: InstanceType<typeof MarkdownItClass>): InstanceType<typeof MarkdownItClass>;
   /** An export with the rasteriser given (the real one needs the built assets). */
@@ -119,6 +121,7 @@ export function activate(context: vscode.ExtensionContext): AriadneApi {
   return {
     openEditors: () => [...provider.open],
     drift,
+    problems,
     extendMarkdownIt: (md) =>
       sagaPlugin(md, {
         readFile: (file) => {

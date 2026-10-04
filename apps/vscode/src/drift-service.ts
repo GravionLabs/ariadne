@@ -5,6 +5,7 @@ import { parseDiagram } from '@ariadne/core';
 import { csharpParser } from './csharp';
 import type { CodeTarget } from '@ariadne/editor-protocol';
 import { compareWithCode, diagramFromCode, findPlace, sagaLine } from './drift';
+import { PendingWork } from './pending-work';
 import { resolveSource } from './paths';
 import { findStateMachines } from './state-machines';
 import type { VirtualDocuments } from './virtual-documents';
@@ -33,6 +34,7 @@ export class DriftService implements vscode.CodeActionProvider, vscode.Disposabl
   private readonly pairs = new Map<string, Pair>();
   private readonly diagnostics = vscode.languages.createDiagnosticCollection('ariadne-drift');
   private readonly subscriptions: vscode.Disposable[] = [];
+  private readonly pending = new PendingWork();
   private readonly changed = new vscode.EventEmitter<void>();
   /** Fires when the links between diagrams and C# files changed (for the CodeLens). */
   readonly onDidChangeLinks = this.changed.event;
@@ -70,7 +72,16 @@ export class DriftService implements vscode.CodeActionProvider, vscode.Disposabl
   }
 
   /** Finds the diagrams of the workspace. */
-  async start(): Promise<void> {
+  start(): Promise<void> {
+    return this.pending.track(this.findDiagrams());
+  }
+
+  /** Resolves once nothing is pending: indexing, and the comparisons that follow a save. */
+  idle(): Promise<void> {
+    return this.pending.idle();
+  }
+
+  private async findDiagrams(): Promise<void> {
     const files = await vscode.workspace.findFiles('**/*.saga.yaml', '**/node_modules/**');
     await Promise.all(files.map((f) => this.indexFile(f.fsPath)));
   }
@@ -94,7 +105,11 @@ export class DriftService implements vscode.CodeActionProvider, vscode.Disposabl
   }
 
   /** Compares a diagram with its code now. */
-  async check(diagram: string): Promise<void> {
+  check(diagram: string): Promise<void> {
+    return this.pending.track(this.compare(diagram));
+  }
+
+  private async compare(diagram: string): Promise<void> {
     const csharp = this.links.get(diagram);
     if (!csharp || !this.enabled(vscode.Uri.file(diagram))) {
       this.pairs.delete(diagram);
@@ -270,7 +285,11 @@ export class DriftService implements vscode.CodeActionProvider, vscode.Disposabl
     return vscode.workspace.getConfiguration('ariadne.drift', scope).get('enabled', true);
   }
 
-  private async saved(doc: vscode.TextDocument): Promise<void> {
+  private saved(doc: vscode.TextDocument): Promise<void> {
+    return this.pending.track(this.compareSaved(doc));
+  }
+
+  private async compareSaved(doc: vscode.TextDocument): Promise<void> {
     if (!this.enabled(doc.uri)) return;
     const file = doc.uri.fsPath;
     if (isDiagram(file)) {
@@ -285,7 +304,11 @@ export class DriftService implements vscode.CodeActionProvider, vscode.Disposabl
     await Promise.all([...this.links.keys()].map((d) => this.check(d)));
   }
 
-  private async indexFile(file: string): Promise<void> {
+  private indexFile(file: string): Promise<void> {
+    return this.pending.track(this.readAndIndex(file));
+  }
+
+  private async readAndIndex(file: string): Promise<void> {
     const text = await this.text(file);
     if (text === undefined) this.forget(file);
     else this.index(file, text);
