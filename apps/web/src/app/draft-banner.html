@@ -1,0 +1,12 @@
+@if (drafts.found(); as draft) {
+  <div class="banner" role="status">
+    <span class="text">
+      Unsaved changes to <strong>{{ draft.name }}</strong> from
+      {{ draft.savedAt | date: 'medium' }} were found.
+    </span>
+    <div class="actions">
+      <button type="button" class="primary" (click)="drafts.restore()">Restore</button>
+      <button type="button" (click)="drafts.discard()">Discard</button>
+    </div>
+  </div>
+}
