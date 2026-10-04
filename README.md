@@ -159,6 +159,8 @@ Work is tracked on the [project board](https://github.com/users/GravionLabs/proj
 
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the scripts, the tests and how work is tracked. In short:
+
 - pnpm only. Never npm or yarn.
 - Native features (file access) go behind an interface, so the web build works without a desktop shell.
 - Architectural changes get an ADR in `docs/adr/`.
