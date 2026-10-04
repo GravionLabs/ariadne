@@ -12,6 +12,8 @@ import {
   callLine,
   callOf,
   descendants,
+  firstSyntaxError,
+  identifierName,
   lambdaBody,
   lastName,
   line,
@@ -80,6 +82,14 @@ export function importSagas(files: readonly SourceFile[], parser: CSharpParser):
       warnings.push({ path: file.path, line: 1, message: (e as Error).message });
       continue;
     }
+    const broken = root.hasError ? firstSyntaxError(root) : null;
+    if (broken) {
+      warnings.push({
+        path: file.path,
+        line: line(broken),
+        message: 'This is not valid C# here, so what follows may be missing from the diagram.',
+      });
+    }
     collectClasses(root.namedChildren, file.path, undefined, classes);
   }
 
@@ -105,7 +115,7 @@ function collectClasses(
 ): void {
   for (const [index, child] of children.entries()) {
     if (child.type === 'class_declaration') {
-      const name = child.childForFieldName('name')?.text;
+      const name = nameOf(child.childForFieldName('name'));
       if (name) into.set(name, [...(into.get(name) ?? []), { path, node: child, namespace }]);
       // Nested classes are not state machines of their own here.
     } else if (child.type === 'namespace_declaration') {
@@ -120,6 +130,10 @@ function collectClasses(
     }
   }
 }
+
+/** The name an identifier node stands for (without the `@` of a verbatim identifier). */
+const nameOf = (node: SyntaxNode | null | undefined): string | undefined =>
+  node ? identifierName(node.text) : undefined;
 
 const joinNamespace = (outer: string | undefined, inner: string | undefined) =>
   [outer, inner].filter(Boolean).join('.') || undefined;
@@ -142,10 +156,11 @@ function sagaInstanceType(parts: readonly ClassPart[]): string | undefined {
   return undefined;
 }
 
-/** A class with a constructor full of `Initially`/`During` that derives from an unknown generic base. */
+/** A class with a constructor full of `Initially`/`During` that derives from an unknown base. */
 function warnForUnknownBase(name: string, parts: readonly ClassPart[], warnings: ImportWarning[]) {
   for (const part of parts) {
-    const base = baseTypes(part).find((b) => b.type === 'generic_name');
+    // A generic base, or a plain name (a `using` alias, or a base class in another file).
+    const base = baseTypes(part).find((b) => b.type === 'generic_name' || b.type === 'identifier');
     if (!base) continue;
     const usesDsl = [...descendants(part.node)].some((n) => {
       const call = callOf(n);
@@ -216,7 +231,7 @@ class SagaReader {
         if (member.type === 'property_declaration' || member.type === 'field_declaration') {
           this.readMember(member, part);
         } else if (member.type === 'method_declaration') {
-          const name = member.childForFieldName('name')?.text;
+          const name = nameOf(member.childForFieldName('name'));
           if (name && !this.methods.has(name)) this.methods.set(name, member);
         } else if (member.type === 'constructor_declaration') {
           constructors.push({ part, node: member });
@@ -233,13 +248,13 @@ class SagaReader {
     const type = member.childForFieldName('type');
     const names: string[] = [];
     if (member.type === 'property_declaration') {
-      const name = member.childForFieldName('name')?.text;
+      const name = nameOf(member.childForFieldName('name'));
       if (name) names.push(name);
     } else {
       const declaration = member.namedChildren.find((c) => c.type === 'variable_declaration');
       for (const d of declaration?.namedChildren.filter((c) => c.type === 'variable_declarator') ??
         []) {
-        const name = d.namedChildren.find((c) => c.type === 'identifier')?.text;
+        const name = nameOf(d.namedChildren.find((c) => c.type === 'identifier'));
         if (name) names.push(name);
       }
     }
@@ -501,7 +516,7 @@ class SagaReader {
     const params =
       method
         .childForFieldName('parameters')
-        ?.namedChildren.map((p) => p.childForFieldName('name')?.text) ?? [];
+        ?.namedChildren.map((p) => nameOf(p.childForFieldName('name'))) ?? [];
     const body = this.flattenWith(
       returned,
       new Map(params.slice(0, 1).map((p) => [p ?? '', call.args[0] ?? null])),
@@ -518,7 +533,7 @@ class SagaReader {
   ): Chain | null {
     const call = callOf(node);
     if (!call) {
-      const name = node.type === 'identifier' ? node.text : null;
+      const name = node.type === 'identifier' ? identifierName(node.text) : null;
       const arg = name ? bound.get(name) : undefined;
       return arg ? this.flatten(arg, depth) : null;
     }
