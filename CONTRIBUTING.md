@@ -51,8 +51,8 @@ One package: `pnpm --filter <name> <script>`, e.g. `pnpm --filter @ariadne/core 
 
 - **Web:** `pnpm start`, then open `docs/examples/order.saga.yaml` with **Open…**.
 - **Server and container:** `pnpm --filter @ariadne/web build` and `pnpm --filter @ariadne/server build`,
-  then `ARIADNE_ROOT=apps/web/dist/ariadne/browser pnpm --filter @ariadne/server start` from the root
-  (port 8080; `ARIADNE_ROOT` is the folder of the built app).
+  then `ARIADNE_ROOT=$PWD/apps/web/dist/ariadne/browser node apps/server/dist/server.mjs` from the
+  root (port 8080; `ARIADNE_ROOT` is the folder of the built app).
   `docker compose up` runs the published image; see [docs/self-hosting.md](docs/self-hosting.md)
   and [ADR 0014](docs/adr/0014-server-and-container.md).
 - **CLI:** `pnpm --filter @ariadne/cli build`, then `node apps/cli/dist/ariadne.mjs --help`.
