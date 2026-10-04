@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import { emptyDiagram, serializeDiagram } from '@ariadne/core';
 import { SagaCodeLensProvider } from './code-lens';
+import { readFileSync } from 'node:fs';
+import type MarkdownItClass from 'markdown-it';
+import { sagaPlugin } from './markdown-saga';
 import { exportCommand, exportMenu } from './export-command';
 import type { ExportFormat, Rasterise } from './export-formats';
 import { DriftService } from './drift-service';
@@ -16,6 +19,8 @@ export interface AriadneApi {
   generateCsharp(uri: vscode.Uri, choose: ChooseFiles): Promise<string[]>;
   /** The drift service, to compare now instead of waiting for a save. */
   drift: DriftService;
+  /** The hook of VS Code's Markdown preview (`markdown.markdownItPlugins`). */
+  extendMarkdownIt(md: InstanceType<typeof MarkdownItClass>): InstanceType<typeof MarkdownItClass>;
   /** An export with the rasteriser given (the real one needs the built assets). */
   exportDiagram(
     format: ExportFormat,
@@ -110,6 +115,17 @@ export function activate(context: vscode.ExtensionContext): AriadneApi {
   return {
     openEditors: () => [...provider.open],
     drift,
+    extendMarkdownIt: (md) =>
+      sagaPlugin(md, {
+        readFile: (file) => {
+          try {
+            return readFileSync(file, 'utf8');
+          } catch {
+            return undefined;
+          }
+        },
+        fallbackFolder: () => vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+      }),
     exportDiagram: (format, target, uri, rasterise) =>
       exportCommand(format, target, uri, rasterise),
     generateCsharp: (uri, choose) => generateCsharpCommand(virtual, report.channel, uri, choose),
