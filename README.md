@@ -26,6 +26,7 @@ States do things; transitions react to events. A command is sent to exactly one 
 ## What you can do
 
 - **Build** a saga by clicking "+": after a state, or on a transition to insert a state into it. Dragging from a state's connector onto another state adds a transition. Nothing is placed by hand: the layout is automatic (top to bottom or left to right) and always tidy.
+- **Look without the "+" buttons.** The eye button in the toolbar switches the view mode: the "+" buttons and the dotted lines to them are hidden, for reading or a screenshot. Everything else still edits; the choice is remembered.
 - **Edit** the selection in the inspector: name, description, color, activities, compensation, retry and timeout for states; event, event source and kind for transitions.
 - **Edit the source** next to the diagram: the **Source** button in the toolbar opens the YAML in a split view. Typing updates the diagram a moment later, editing the diagram updates the text, and a problem in the text is shown with its line and column while the diagram keeps its last valid state. Drag the divider to resize the panel.
 - **Undo and redo** every edit (`Ctrl+Z`, `Ctrl+Shift+Z`).

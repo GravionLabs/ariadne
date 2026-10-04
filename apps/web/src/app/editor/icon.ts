@@ -66,6 +66,9 @@ const PATHS = {
     'M21 3.01H3c-1.1 0-2 .9-2 2V9h2V4.99h18v14.03H3V15H1v4.01c0 1.1.9 1.98 2 1.98h18c1.1 0 2-.88 2-1.98v-14c0-1.11-.9-2-2-2zM11 16l4-4-4-4v3H1v2h10v3z',
   /** The event that triggers a transition. */
   trigger: 'M7 2v11h3v9l7-12h-4l4-8z',
+  /** Material "visibility": the view mode. */
+  visibility:
+    'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z',
   /** Material "play_arrow": the walkthrough. */
   play: 'M8 5v14l11-7z',
   /** Material "timeline": the path a saga instance took. */
