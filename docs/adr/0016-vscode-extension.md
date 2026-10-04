@@ -43,6 +43,12 @@ same git workflow, is worth more than a separate web page. There must not be a s
 - **A JSON Schema** (`docs/specs/saga.schema.json`) is contributed with `yamlValidation`, so the Red Hat YAML extension completes and validates `*.saga.yaml`; the same URL works in any editor with a YAML language server. It is written by hand and a test keeps it in step with the reader.
 - **Problems panel**: every `*.saga.yaml` of the workspace is checked with the reader and `validate` (the same rules as the editor), with the positions taken from the YAML source ranges. Open files are checked on change after a pause and on save, so it works with the text editor and without the diagram editor.
 
+## Export and preview (#197)
+
+- **Exports run in the extension host** (`@ariadne/export`), from the text of the document, so they work with or without the diagram editor and for unsaved changes. The webview protocol has no export message.
+- **PNG is rasterised with `@resvg/resvg-wasm`** and a bundled font (DejaVu Sans Condensed): WebAssembly has no native part, so one extension runs on every platform; the CLI keeps the native `resvg-js`.
+- **The Markdown preview** gets a markdown-it plugin (`markdown.markdownItPlugins`): fenced ` ```saga ` blocks and `![](file.saga.yaml)` images become the diagram, as an image with a data URI, on white so it reads in dark themes.
+
 ## Consequences
 
 - The embedded build adds a few seconds to `pnpm build`; the Docker image does not build it.

@@ -72,6 +72,42 @@
         "command": "ariadne.openDriftDiff",
         "title": "Compare Diagram with Code",
         "category": "Ariadne"
+      },
+      {
+        "command": "ariadne.export",
+        "title": "Export Diagram…",
+        "category": "Ariadne",
+        "icon": "$(export)"
+      },
+      {
+        "command": "ariadne.exportMermaid",
+        "title": "Export as Mermaid",
+        "category": "Ariadne"
+      },
+      {
+        "command": "ariadne.exportSvg",
+        "title": "Export as SVG",
+        "category": "Ariadne"
+      },
+      {
+        "command": "ariadne.exportPng",
+        "title": "Export as PNG",
+        "category": "Ariadne"
+      },
+      {
+        "command": "ariadne.exportMarkdown",
+        "title": "Export as Markdown",
+        "category": "Ariadne"
+      },
+      {
+        "command": "ariadne.copyMermaid",
+        "title": "Copy as Mermaid",
+        "category": "Ariadne"
+      },
+      {
+        "command": "ariadne.copyMarkdown",
+        "title": "Copy as Markdown",
+        "category": "Ariadne"
       }
     ],
     "menus": {
@@ -95,6 +131,34 @@
         {
           "command": "ariadne.openDriftDiff",
           "when": "false"
+        },
+        {
+          "command": "ariadne.export",
+          "when": "activeCustomEditorId == ariadne.sagaEditor || resourceFilename =~ /\\.saga\\.yaml$/"
+        },
+        {
+          "command": "ariadne.exportMermaid",
+          "when": "activeCustomEditorId == ariadne.sagaEditor || resourceFilename =~ /\\.saga\\.yaml$/"
+        },
+        {
+          "command": "ariadne.exportSvg",
+          "when": "activeCustomEditorId == ariadne.sagaEditor || resourceFilename =~ /\\.saga\\.yaml$/"
+        },
+        {
+          "command": "ariadne.exportPng",
+          "when": "activeCustomEditorId == ariadne.sagaEditor || resourceFilename =~ /\\.saga\\.yaml$/"
+        },
+        {
+          "command": "ariadne.exportMarkdown",
+          "when": "activeCustomEditorId == ariadne.sagaEditor || resourceFilename =~ /\\.saga\\.yaml$/"
+        },
+        {
+          "command": "ariadne.copyMermaid",
+          "when": "activeCustomEditorId == ariadne.sagaEditor || resourceFilename =~ /\\.saga\\.yaml$/"
+        },
+        {
+          "command": "ariadne.copyMarkdown",
+          "when": "activeCustomEditorId == ariadne.sagaEditor || resourceFilename =~ /\\.saga\\.yaml$/"
         }
       ],
       "editor/title": [
@@ -112,6 +176,11 @@
           "command": "ariadne.generateCsharp",
           "when": "activeCustomEditorId == ariadne.sagaEditor",
           "group": "navigation"
+        },
+        {
+          "command": "ariadne.export",
+          "when": "activeCustomEditorId == ariadne.sagaEditor",
+          "group": "navigation"
         }
       ],
       "explorer/context": [
@@ -127,6 +196,11 @@
         },
         {
           "command": "ariadne.generateCsharp",
+          "when": "resourceFilename =~ /\\.saga\\.yaml$/",
+          "group": "navigation"
+        },
+        {
+          "command": "ariadne.export",
           "when": "resourceFilename =~ /\\.saga\\.yaml$/",
           "group": "navigation"
         }
@@ -175,6 +249,12 @@
           "default": true,
           "description": "On save, compare a diagram with the C# file it names (saga.source) and report differences in the Problems panel.",
           "scope": "resource"
+        },
+        "ariadne.export.folder": {
+          "type": "string",
+          "default": "",
+          "description": "Folder for exported files (SVG, PNG, Mermaid, Markdown), relative to the workspace folder. Empty: next to the diagram.",
+          "scope": "resource"
         }
       }
     },
@@ -183,31 +263,37 @@
         "fileMatch": "*.saga.yaml",
         "url": "./dist/saga.schema.json"
       }
-    ]
+    ],
+    "markdown.markdownItPlugins": true
   },
   "scripts": {
     "build": "pnpm --filter @ariadne/web build:embedded && node build.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-vscode.xml",
-    "test:integration": "pnpm build && tsc -p tsconfig.test.json && node dist-test/run-tests.js",
+    "test:integration": "pnpm build && node -e \"require('node:fs').rmSync('dist-test',{recursive:true,force:true})\" && tsc -p tsconfig.test.json && node dist-test/run-tests.js",
     "test:integration:ci": "xvfb-run -a pnpm test:integration",
     "dev": "pnpm build && node scripts/dev.mjs"
   },
   "dependencies": {
     "@ariadne/core": "workspace:*",
     "@ariadne/editor-protocol": "workspace:*",
+    "@ariadne/export": "workspace:*",
     "@ariadne/masstransit": "workspace:*",
+    "@resvg/resvg-wasm": "^2.6.2",
     "tree-sitter-c-sharp": "^0.23.5",
     "web-tree-sitter": "^0.27.0",
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@types/markdown-it": "^14.2.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^24.19.1",
     "@types/vscode": "^1.96.0",
     "@vscode/test-electron": "^2.5.2",
+    "dejavu-fonts-ttf": "^2.37.3",
     "esbuild": "^0.28.2",
+    "markdown-it": "^15.0.2",
     "mocha": "^11.7.0",
     "vitest": "^5.0.0"
   }

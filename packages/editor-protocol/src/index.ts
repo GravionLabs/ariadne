@@ -15,11 +15,6 @@ export const THEME_KINDS: readonly ThemeKind[] = [
   'high-contrast-light',
 ];
 
-/** Formats the host can ask the editor to render. */
-export type ExportFormat = 'svg' | 'png';
-
-export const EXPORT_FORMATS: readonly ExportFormat[] = ['svg', 'png'];
-
 /** Settings of the extension that the editor needs (`ariadne.editor.*`). */
 export interface EditorSettings {
   autoLayout: boolean;
@@ -39,9 +34,7 @@ export type HostMessage =
   | { v: 1; type: 'init'; text: string; theme: ThemeKind; settings: EditorSettings }
   /** The document text changed outside the editor (text editor, git, undo, revert). */
   | { v: 1; type: 'documentChanged'; text: string }
-  | { v: 1; type: 'theme'; kind: ThemeKind }
-  /** Render the diagram; the answer is defined with the export commands. */
-  | { v: 1; type: 'requestExport'; format: ExportFormat };
+  | { v: 1; type: 'theme'; kind: ThemeKind };
 
 /** Editor → host. */
 export type EditorMessage =
@@ -63,9 +56,6 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 
 const isTheme = (value: unknown): value is ThemeKind =>
   typeof value === 'string' && (THEME_KINDS as readonly string[]).includes(value);
-
-const isFormat = (value: unknown): value is ExportFormat =>
-  typeof value === 'string' && (EXPORT_FORMATS as readonly string[]).includes(value);
 
 function readSettings(value: unknown): EditorSettings {
   const settings = isObject(value) ? value : {};
@@ -97,10 +87,6 @@ export function parseHostMessage(data: unknown): HostMessage | null {
         : null;
     case 'theme':
       return isTheme(data['kind']) ? { v: 1, type: 'theme', kind: data['kind'] } : null;
-    case 'requestExport':
-      return isFormat(data['format'])
-        ? { v: 1, type: 'requestExport', format: data['format'] }
-        : null;
     default:
       return null;
   }
