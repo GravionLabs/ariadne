@@ -134,6 +134,8 @@ jobs:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @ariadne/viewer package ${{ steps.version.outputs.semver }}
+      # The files of the package against their size budgets (docs/specs/performance-budgets.md).
+      - run: pnpm --filter @ariadne/viewer size
       - run: pnpm --filter @ariadne/viewer test:package
       - uses: actions/upload-artifact@v4
         with:
