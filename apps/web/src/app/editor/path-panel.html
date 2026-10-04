@@ -1,0 +1,65 @@
+<header class="head">
+  <span class="title"><app-icon name="trigger" /> Path of an instance</span>
+  <span class="note">read-only</span>
+  <button
+    type="button"
+    class="icon-button"
+    aria-label="Close path"
+    title="Close path"
+    (click)="closed.emit()"
+  >
+    <app-icon name="close" />
+  </button>
+</header>
+
+<div class="body">
+  <label class="kicker" for="path-text">Paste the steps</label>
+  <textarea
+    id="path-text"
+    class="text"
+    rows="6"
+    spellcheck="false"
+    [value]="path.text()"
+    [placeholder]="example"
+    [attr.aria-invalid]="path.error() ? 'true' : null"
+    (input)="onInput($event)"
+  ></textarea>
+  <p class="hint">
+    A list as JSON or YAML: the events the saga received, or steps like
+    <code>{{ '{ state: Charging payment }' }}</code
+    >. Add <code>to</code> to tell transitions on one event apart.
+  </p>
+
+  @if (path.error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  } @else if (path.result(); as result) {
+    <section class="result" aria-label="Result" role="status">
+      <strong>{{ summary() }}</strong>
+      @if (result.problems.length) {
+        <ul class="problems" aria-label="Steps that could not be followed">
+          @for (problem of result.problems; track $index) {
+            <li>{{ problem.message }}</li>
+          }
+        </ul>
+      }
+    </section>
+
+    @if (steps().length) {
+      <section class="steps" aria-label="Steps followed">
+        <span class="kicker">Steps followed</span>
+        <ol>
+          @for (step of steps(); track step.number) {
+            <li [value]="step.number">
+              <span class="event">{{ step.what }}</span> → {{ step.to }}
+              @if (step.note) {
+                <span class="note">{{ step.note }}</span>
+              }
+            </li>
+          }
+        </ol>
+      </section>
+    }
+  } @else {
+    <p class="none">Nothing to show yet.</p>
+  }
+</div>

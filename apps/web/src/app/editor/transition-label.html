@@ -38,3 +38,6 @@
     (picked)="inserted.emit($event)"
   />
 }
+@if (badge(); as badge) {
+  <span class="path-badge" aria-hidden="true">{{ badge }}</span>
+}

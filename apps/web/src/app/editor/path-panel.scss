@@ -1,0 +1,129 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px 10px 14px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+
+  app-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--c-text-subtle);
+  }
+}
+
+.note {
+  flex: 1;
+  color: var(--c-text-subtle);
+  font-size: 12px;
+}
+
+.body {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 10px;
+  min-height: 0;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.kicker {
+  color: var(--c-text-subtle);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.text {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  color: var(--c-text);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  font:
+    12px/1.5 ui-monospace,
+    'SFMono-Regular',
+    Menlo,
+    Consolas,
+    monospace;
+  resize: vertical;
+
+  &[aria-invalid='true'] {
+    border-color: var(--c-error);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 1px;
+  }
+}
+
+.hint,
+.none {
+  margin: 0;
+  color: var(--c-text-subtle);
+  font-size: 12px;
+}
+
+.error {
+  margin: 0;
+  color: var(--c-error);
+  font-size: 13px;
+}
+
+.result {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--c-primary-soft);
+  border: 1px solid var(--c-primary);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.problems {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: var(--c-error);
+  font-size: 12px;
+}
+
+.steps ol {
+  margin: 4px 0 0;
+  padding-left: 22px;
+  font-size: 13px;
+
+  .event {
+    color: var(--c-event);
+    font-weight: 600;
+  }
+
+  .note {
+    display: block;
+    flex: none;
+  }
+}

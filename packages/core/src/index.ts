@@ -5,7 +5,8 @@
  * - `diagram-yaml`: the file format (read, write, migrate);
  * - `diagram-edits`: pure edits of a diagram (add, connect, retarget, remove, rename details);
  * - `messages`: naming hints for commands and events;
- * - `validation`, `catalog`, `walkthrough`: what to tell about a diagram;
+ * - `validation`, `catalog`, `walkthrough`, `path`: what to tell about a diagram, and the path
+ *   a saga instance took;
  * - `layout`: where everything goes (dagre), sizes, routes of loops and parallel transitions.
  */
 export * from './catalog';
@@ -16,5 +17,6 @@ export * from './diagram-yaml';
 export * from './layout';
 export * from './messages';
 export * from './node-info';
+export * from './path';
 export * from './validation';
 export * from './walkthrough';

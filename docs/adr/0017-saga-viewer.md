@@ -68,7 +68,8 @@ everything not exported from the two entry points.
 
 Opt-in extras (`features="walkthrough messages problems"`) use the logic of `@ariadne/core` that the editor uses
 (walkthrough, message catalog, validation) and draw on the viewer's SVG. The path view draws the path a saga
-instance took from a history the host supplies, resolved by a pure `resolvePath` in `@ariadne/core`. Ariadne
+instance took from a history the host supplies, resolved by a pure `resolvePath` in `@ariadne/core` (the editor's
+**Path** panel shows the same view for a pasted path, read-only like the walkthrough). Ariadne
 documents sagas only: it does not run or monitor them.
 
 ## Consequences

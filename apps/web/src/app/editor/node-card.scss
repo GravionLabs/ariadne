@@ -394,3 +394,18 @@
     left: auto;
   }
 }
+
+// The path view: how often an instance visited the state.
+.path-badge {
+  position: absolute;
+  top: -9px;
+  right: -6px;
+  padding: 1px 7px;
+  color: var(--c-on-primary);
+  background: var(--c-primary);
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  pointer-events: none;
+}

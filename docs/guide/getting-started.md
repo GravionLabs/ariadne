@@ -10,7 +10,9 @@
 
 Choose **New** and, under "Or start from a sample", the _Order saga_. It opens as a new diagram that is not saved
 anywhere yet. Click a state or a transition: the inspector on the right shows what it is. **Walkthrough** steps
-through the saga event by event, and **Messages** lists its commands and events and where they are used.
+through the saga event by event, **Messages** lists its commands and events and where they are used, and **Path**
+draws the path a saga instance took: paste the events it received (a JSON or YAML list, e.g. `- OrderReceived`) and the
+diagram shows the states visited, the transitions taken with their step numbers, and where the instance stands.
 
 ## Draw your own
 

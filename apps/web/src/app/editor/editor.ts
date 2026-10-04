@@ -28,6 +28,8 @@ import { AddStepButton } from './add-step-button';
 import { DiagramDetails } from './diagram-details';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
+import { PathPanel } from './path-panel';
+import { PathStore } from './path-store';
 import { WalkthroughPanel } from './walkthrough-panel';
 import { WalkthroughStore } from './walkthrough-store';
 import { ExportMenu } from './export-menu';
@@ -68,6 +70,7 @@ const FIT_PADDING = { x: 80, y: 80 };
   imports: [
     AddStepButton,
     CatalogPanel,
+    PathPanel,
     WalkthroughPanel,
     DiagramDetails,
     ExportMenu,
@@ -89,6 +92,7 @@ const FIT_PADDING = { x: 80, y: 80 };
     provideFFlow({ diagnostics: { maxNodePositionDrift: 0 } }, withA11y()),
     DiagramLayout,
     EditorStore,
+    PathStore,
     WalkthroughStore,
   ],
   host: {
@@ -104,8 +108,9 @@ export class Editor {
   protected readonly file = inject(DiagramDocument);
   protected readonly ui = inject(EditorStore);
   protected readonly walk = inject(WalkthroughStore);
-  /** Walking through the saga: the diagram is read-only. */
-  protected readonly walking = this.walk.active;
+  protected readonly path = inject(PathStore);
+  /** Walking through the saga or looking at a path: the diagram is read-only. */
+  protected readonly walking = computed(() => this.walk.active() || this.path.active());
   private readonly newDialog = viewChild.required(NewDiagramDialog);
   private readonly importDialog = viewChild.required(ImportDialog);
   private readonly generateDialog = viewChild.required(GenerateDialog);
@@ -199,6 +204,23 @@ export class Editor {
       untracked(() => this.ui.setHighlight([node.id], last ? [last] : []));
       const timer = setTimeout(() =>
         this.canvas()?.centerGroupOrNode(node.id, !prefersReducedMotion()),
+      );
+      onCleanup(() => clearTimeout(timer));
+    });
+    // Looking at a path: emphasise the states visited and the transitions taken, and bring the
+    // state the instance is in into view.
+    effect((onCleanup) => {
+      if (!this.path.active()) return;
+      const result = this.path.result();
+      untracked(() =>
+        result
+          ? this.ui.setHighlight(this.path.nodeIds(), this.path.edgeIds())
+          : this.ui.clearHighlight(),
+      );
+      const current = result?.current;
+      if (!current) return;
+      const timer = setTimeout(() =>
+        this.canvas()?.centerGroupOrNode(current, !prefersReducedMotion()),
       );
       onCleanup(() => clearTimeout(timer));
     });
@@ -364,8 +386,8 @@ export class Editor {
     this.clearSelection();
   }
 
-  /** The panel on the left of the canvas: the message catalog, or the walkthrough. */
-  protected readonly leftPanel = signal<'messages' | 'walkthrough' | null>(null);
+  /** The panel on the left of the canvas: the message catalog, the walkthrough or a path. */
+  protected readonly leftPanel = signal<'messages' | 'walkthrough' | 'path' | null>(null);
 
   protected toggleMessages(): void {
     const opening = this.leftPanel() !== 'messages';
@@ -381,10 +403,19 @@ export class Editor {
     this.leftPanel.set('walkthrough');
   }
 
-  /** Closes whichever panel is open; leaving a walkthrough ends it and lets the diagram go. */
+  protected togglePath(): void {
+    const opening = this.leftPanel() !== 'path';
+    this.closeLeftPanel();
+    if (!opening) return;
+    this.path.start();
+    this.leftPanel.set('path');
+  }
+
+  /** Closes whichever panel is open; leaving a walkthrough or a path ends it and lets the diagram go. */
   protected closeLeftPanel(): void {
-    if (this.walk.active()) {
+    if (this.walk.active() || this.path.active()) {
       this.walk.stop();
+      this.path.stop();
       this.ui.clearHighlight();
     }
     this.leftPanel.set(null);

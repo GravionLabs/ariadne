@@ -35,6 +35,8 @@ const DARK = `
   --ariadne-palette-pink: #f472b6;
   --ariadne-focus: #8b93f8;
   --ariadne-emphasis: #fbbf24;
+  --ariadne-path: #60a5fa;
+  --ariadne-on-path: #11131a;
 `;
 
 export const STYLES = `
@@ -46,6 +48,7 @@ export const STYLES = `
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --ariadne-focus: #6366f1;
   --ariadne-emphasis: #d97706;
+  --ariadne-path: #2563eb;
 }
 :host([theme='dark']) {${DARK}}
 @media (prefers-color-scheme: dark) {
@@ -211,9 +214,29 @@ export const STYLES = `
 [data-emphasis] { filter: drop-shadow(0 0 4px var(--ariadne-emphasis)); }
 [data-walk] { filter: drop-shadow(0 0 3px var(--ariadne-start, #22c55e)); }
 [data-walk='current'] { filter: drop-shadow(0 0 5px var(--ariadne-start, #22c55e)); }
+[data-path] { filter: drop-shadow(0 0 3px var(--ariadne-path, #2563eb)); }
+[data-path='current'] { filter: drop-shadow(0 0 6px var(--ariadne-path, #2563eb)); }
+[data-path='finished'] { filter: drop-shadow(0 0 6px var(--ariadne-start, #22c55e)); }
+[data-path-problem] { filter: drop-shadow(0 0 6px var(--ariadne-fault, #dc2626)); }
 [data-message] { filter: drop-shadow(0 0 3px var(--ariadne-event, #9333ea)); }
 [data-problem='error'] { filter: drop-shadow(0 0 3px var(--ariadne-fault, #dc2626)); }
 [data-problem='warning'] { filter: drop-shadow(0 0 3px var(--ariadne-timeout, #d97706)); }
 [data-problem='info'] { filter: drop-shadow(0 0 3px var(--ariadne-command, #2563eb)); }
 [data-node-id], [data-edge-id] { cursor: pointer; }
+
+.path-info {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  max-width: min(420px, calc(100% - 150px));
+  box-sizing: border-box;
+  padding: 6px 10px;
+  font-size: 12px;
+  background: var(--ariadne-surface, #ffffff);
+  border: 1px solid var(--ariadne-border, #e2e5eb);
+  border-radius: 8px;
+}
+.path-info[hidden] { display: none; }
+.path-info ul { margin: 4px 0 0; padding-left: 16px; color: var(--ariadne-fault, #dc2626); }
+.path-info .summary { color: var(--ariadne-text-subtle, #6b7086); }
 `;

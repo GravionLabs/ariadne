@@ -5,11 +5,14 @@ import {
   eventLabel,
   Finding,
   MessageEntry,
+  PathStep,
+  ResolvedPath,
+  resolvePath,
   validate,
 } from '@ariadne/core';
 import { renderDiagramSvg, SvgExport } from '@ariadne/export';
 import { FEATURES, parseFeatures, ViewerFeature } from './features';
-import { Marks, applyMarks, SagaEmphasis, SagaSelection } from './marks';
+import { applyMarks, drawPath, Marks, SagaEmphasis, SagaSelection } from './marks';
 import { messagesPanel, Panel, problemsPanel, SagaWalk, walkthroughPanel } from './panels';
 import { fetchSaga, Loaded, readSaga, ViewerError } from './read-saga';
 import { STYLES } from './styles';
@@ -26,6 +29,8 @@ export type SagaErrorDetail = ViewerError;
 export type SagaSelectDetail = {
   selection: (SagaSelection & { node?: DiagramNode; edge?: DiagramEdge }) | null;
 };
+/** The `pathresolved` event: the path of an instance resolved against the diagram. */
+export type SagaPathDetail = ResolvedPath;
 /** The `walkthrough` event: the path of the walkthrough after each step. */
 export type SagaWalkDetail = SagaWalk;
 
@@ -36,7 +41,11 @@ const Base: typeof HTMLElement =
 let instances = 0;
 
 /** Controls drawn over the diagram: they take their own pointer and key events. */
-const OVERLAY = '.toolbar, .tabs, .panels';
+const OVERLAY = '.toolbar, .tabs, .panels, .path-info';
+
+/** Whether the event came from a control. Uses the path, which a re-render of the control cannot change. */
+const inOverlay = (event: Event) =>
+  event.composedPath().some((node) => node instanceof Element && node.matches(OVERLAY));
 
 /**
  * `<ariadne-saga>`: shows one saga read-only, drawn with the SVG renderer of `@ariadne/export`.
@@ -48,10 +57,20 @@ const OVERLAY = '.toolbar, .tabs, .panels';
  * - `emphasis` (property): states (id or name) and transitions (id) to pick out, e.g. where a running
  *   saga instance is; `selection` (property): the picked state or transition.
  *
- * Events `load`, `error`, `select` and `walkthrough`; they bubble.
+ * - `path` (property): the steps a saga instance took (`{ event }` or `{ state }`, with optional `to`,
+ *   `at`, `note`), drawn on the diagram; `show-untaken` keeps what was not taken at full strength.
+ *
+ * Events `load`, `error`, `select`, `walkthrough` and `pathresolved`; they bubble.
  */
 export class AriadneSagaElement extends Base {
-  static readonly observedAttributes = ['src', 'source', 'direction', 'theme', 'features'];
+  static readonly observedAttributes = [
+    'src',
+    'source',
+    'direction',
+    'theme',
+    'features',
+    'show-untaken',
+  ];
 
   readonly #id = `ariadne-${++instances}-`;
   readonly #name: HTMLElement;
@@ -62,6 +81,7 @@ export class AriadneSagaElement extends Base {
   readonly #status: HTMLElement;
   readonly #tabs: HTMLElement;
   readonly #panels: HTMLElement;
+  readonly #pathInfo: HTMLElement;
 
   #diagram?: Diagram;
   #svg?: SvgExport;
@@ -71,6 +91,8 @@ export class AriadneSagaElement extends Base {
   #scheduled = false;
   #request = 0;
   #abort?: AbortController;
+  #path: readonly PathStep[] | null = null;
+  #resolved: ResolvedPath | null = null;
   #emphasis: SagaEmphasis | null = null;
   #selection: SagaSelection | null = null;
   #walk: SagaWalk | null = null;
@@ -90,6 +112,7 @@ export class AriadneSagaElement extends Base {
     <div class="stage" part="diagram"></div>
     <div class="tabs" part="tabs" role="toolbar" aria-label="Views" hidden></div>
     <div class="panels" part="panels"></div>
+    <div class="path-info" part="path-info" role="status" hidden></div>
     <div class="toolbar" part="toolbar" role="toolbar" aria-label="Zoom">
       <button type="button" part="button" data-action="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
       <button type="button" part="button" data-action="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
@@ -107,6 +130,7 @@ export class AriadneSagaElement extends Base {
     this.#status = find('.status');
     this.#tabs = find('.tabs');
     this.#panels = find('.panels');
+    this.#pathInfo = find('.path-info');
     this.#listen(root);
   }
 
@@ -169,6 +193,31 @@ export class AriadneSagaElement extends Base {
     this.#mark();
   }
 
+  /**
+   * The steps a saga instance took, drawn on the diagram; the host can set it again as the instance
+   * moves on. `null` for none. `pathresolved` reports how it resolved.
+   */
+  get path(): readonly PathStep[] | null {
+    return this.#path;
+  }
+  set path(value: readonly PathStep[] | null) {
+    this.#path = value;
+    this.#resolvePath();
+  }
+
+  /** Keep what the path did not take at full strength (attribute `show-untaken`). */
+  get showUntaken(): boolean {
+    return this.hasAttribute('show-untaken');
+  }
+  set showUntaken(value: boolean) {
+    this.toggleAttribute('show-untaken', value);
+  }
+
+  /** The path as resolved against the diagram; `null` without a path or a diagram. */
+  get resolvedPath(): ResolvedPath | null {
+    return this.#resolved;
+  }
+
   /** The diagram that is shown, once loaded. */
   get diagram(): Diagram | undefined {
     return this.#diagram;
@@ -196,6 +245,10 @@ export class AriadneSagaElement extends Base {
       return;
     }
     if (name === 'theme') return;
+    if (name === 'show-untaken') {
+      this.#mark();
+      return;
+    }
     this.#schedule();
   }
 
@@ -274,6 +327,7 @@ export class AriadneSagaElement extends Base {
     this.#message = null;
     this.#findings = validate(diagram);
     this.#setupFeatures();
+    this.#resolvePath();
     const name = diagram.name?.trim() ?? '';
     const description = diagram.description?.trim() ?? '';
     this.#name.textContent = name;
@@ -290,6 +344,8 @@ export class AriadneSagaElement extends Base {
     this.#diagram = undefined;
     this.#svg = undefined;
     this.#closePanel();
+    this.#resolved = null;
+    this.#pathInfo.hidden = true;
     this.#tabs.hidden = true;
     this.#tabs.replaceChildren();
     this.#stage.replaceChildren();
@@ -304,7 +360,7 @@ export class AriadneSagaElement extends Base {
     this.toggleAttribute('aria-busy', state === 'loading');
   }
 
-  #emit<T>(type: 'load' | 'error' | 'select' | 'walkthrough', detail: T): void {
+  #emit<T>(type: 'load' | 'error' | 'select' | 'walkthrough' | 'pathresolved', detail: T): void {
     this.dispatchEvent(new CustomEvent<T>(type, { detail, bubbles: true, composed: true }));
   }
 
@@ -418,6 +474,42 @@ export class AriadneSagaElement extends Base {
     this.#emit('select', detail);
   }
 
+  /** Resolves the path against the diagram, draws it and tells the host. */
+  #resolvePath(): void {
+    const diagram = this.#diagram;
+    this.#resolved = diagram && this.#path ? resolvePath(diagram, this.#path) : null;
+    if (diagram) {
+      drawPath(this.#stage, diagram, this.#resolved);
+      this.#mark();
+    }
+    this.#describePath(this.#resolved);
+    if (this.#resolved) this.#emit('pathresolved', this.#resolved);
+  }
+
+  #describePath(path: ResolvedPath | null): void {
+    const info = this.#pathInfo;
+    info.replaceChildren();
+    info.hidden = !path;
+    if (!path || !this.#diagram) return;
+    const name = (id?: string) => this.#diagram!.nodes.find((n) => n.id === id)?.name ?? '';
+    const taken = path.transitions.length;
+    const summary = document.createElement('div');
+    summary.className = 'summary';
+    summary.textContent = path.finished
+      ? `Finished in ${name(path.current)} after ${taken} step${taken === 1 ? '' : 's'}.`
+      : `Now in ${name(path.current)} after ${taken} step${taken === 1 ? '' : 's'}.`;
+    info.append(summary);
+    if (path.problems.length) {
+      const list = document.createElement('ul');
+      for (const problem of path.problems) {
+        const item = document.createElement('li');
+        item.textContent = problem.message;
+        list.append(item);
+      }
+      info.append(list);
+    }
+  }
+
   /** Writes selection, emphasis, walkthrough, message and problem marks onto the SVG. */
   #mark(): void {
     if (!this.#diagram) return;
@@ -430,6 +522,8 @@ export class AriadneSagaElement extends Base {
         current: this.#walk.path[this.#walk.path.length - 1],
       },
       message: this.#message,
+      path: this.#resolved,
+      showUntaken: this.showUntaken,
       findings: this.features.includes('problems') ? this.#findings : [],
     };
     applyMarks(this.#stage, this.#diagram, marks);
@@ -507,7 +601,7 @@ export class AriadneSagaElement extends Base {
     viewport.addEventListener(
       'wheel',
       (event) => {
-        if (!this.#svg || (event.target as Element).closest(OVERLAY)) return;
+        if (!this.#svg || inOverlay(event)) return;
         event.preventDefault();
         const box = viewport.getBoundingClientRect();
         this.#zoom(Math.exp(-event.deltaY * 0.0015), {
@@ -520,7 +614,7 @@ export class AriadneSagaElement extends Base {
 
     let drag: { x: number; y: number } | undefined;
     viewport.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0 || (event.target as HTMLElement).closest(OVERLAY)) return;
+      if (event.button !== 0 || inOverlay(event)) return;
       drag = { x: event.clientX, y: event.clientY };
       viewport.classList.add('dragging');
       viewport.setPointerCapture?.(event.pointerId);
@@ -538,7 +632,7 @@ export class AriadneSagaElement extends Base {
     viewport.addEventListener('pointercancel', endDrag);
 
     viewport.addEventListener('keydown', (event) => {
-      if ((event.target as Element).closest(OVERLAY)) return;
+      if (inOverlay(event)) return;
       const step = event.shiftKey ? PAN_STEP * 3 : PAN_STEP;
       const handled = (
         {
@@ -570,7 +664,7 @@ export class AriadneSagaElement extends Base {
       if (event.buttons) dragged = true;
     });
     viewport.addEventListener('click', (event) => {
-      if (dragged || !this.#svg || (event.target as Element).closest(OVERLAY)) return;
+      if (dragged || !this.#svg || inOverlay(event)) return;
       this.#selectAt(event.target as Element);
     });
     viewport.addEventListener('keydown', (event) => {
@@ -578,7 +672,7 @@ export class AriadneSagaElement extends Base {
       if (
         (event.key === 'Enter' || event.key === ' ') &&
         target !== viewport &&
-        !target.closest(OVERLAY)
+        !inOverlay(event)
       ) {
         event.preventDefault();
         this.#selectAt(event.target as Element);
