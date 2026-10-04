@@ -191,7 +191,8 @@
     "test": "vitest run",
     "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-vscode.xml",
     "test:integration": "pnpm build && tsc -p tsconfig.test.json && node dist-test/run-tests.js",
-    "test:integration:ci": "xvfb-run -a pnpm test:integration"
+    "test:integration:ci": "xvfb-run -a pnpm test:integration",
+    "dev": "pnpm build && node scripts/dev.mjs"
   },
   "dependencies": {
     "@ariadne/core": "workspace:*",
