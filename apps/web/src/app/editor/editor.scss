@@ -361,6 +361,26 @@ app-export-menu ::ng-deep .menu-button {
   }
 }
 
+// Notices about the document, over the canvas, where a host has no top bar.
+.host-notices {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 32px);
+  transform: translateX(-50%);
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+    box-shadow: var(--shadow-md);
+  }
+}
+
 .floating {
   position: absolute;
   z-index: 10;
@@ -377,6 +397,10 @@ app-export-menu ::ng-deep .menu-button {
   bottom: 16px;
   left: 50%;
   align-items: center;
+  // A narrow editor (VS Code beside the code) wraps the toolbox into rows instead of cutting it off.
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: calc(100% - 32px);
   transform: translateX(-50%);
 }
 

@@ -1,12 +1,12 @@
-<header class="topbar">
-  <div class="brand">
-    <span class="brand-mark"><app-icon name="brand" /></span>
-    <h1>Ariadne</h1>
-  </div>
+@if (!embedded) {
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark"><app-icon name="brand" /></span>
+      <h1>Ariadne</h1>
+    </div>
 
-  <span class="topbar-divider" aria-hidden="true"></span>
+    <span class="topbar-divider" aria-hidden="true"></span>
 
-  @if (!embedded) {
     <nav class="file-actions" aria-label="File">
       <button type="button" class="menu-button" (click)="newDiagram()" title="New diagram">
         <app-icon name="newFile" /><span>New</span>
@@ -55,26 +55,9 @@
     </nav>
 
     <app-export-menu />
-  }
 
-  <div class="topbar-end">
-    @if (file.notice(); as notice) {
-      <p class="error-pill notice-pill" role="status">
-        <span [title]="notice">{{ notice }}</span>
-        <button type="button" aria-label="Dismiss notice" (click)="file.setNotice(null)">
-          <app-icon name="close" />
-        </button>
-      </p>
-    }
-    @if (file.error(); as error) {
-      <p class="error-pill" role="alert">
-        <span>{{ error }}</span>
-        <button type="button" aria-label="Dismiss error" (click)="file.setError(null)">
-          <app-icon name="close" />
-        </button>
-      </p>
-    }
-    @if (!embedded) {
+    <div class="topbar-end">
+      <ng-container [ngTemplateOutlet]="pills" />
       <span class="file-name" [class.dirty]="file.dirty()" [title]="file.name()">
         <app-icon name="file" />
         <span class="file-label">{{ file.name() }}</span>
@@ -87,8 +70,6 @@
           ></span>
         }
       </span>
-    }
-    @if (!embedded) {
       <button
         type="button"
         class="menu-button theme-toggle"
@@ -97,51 +78,76 @@
       >
         <app-icon name="theme" /><span>{{ theme.isDark() ? 'Light' : 'Dark' }}</span>
       </button>
-    }
-    <button
-      type="button"
-      class="menu-button"
-      [class.active]="leftPanel() === 'walkthrough'"
-      [attr.aria-pressed]="leftPanel() === 'walkthrough'"
-      (click)="toggleWalkthrough()"
-      title="Step through the saga event by event"
-    >
-      <app-icon name="trigger" /><span>Walkthrough</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button"
-      [class.active]="leftPanel() === 'path'"
-      [attr.aria-pressed]="leftPanel() === 'path'"
-      (click)="togglePath()"
-      title="Show the path a saga instance took"
-    >
-      <app-icon name="trigger" /><span>Path</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button"
-      [class.active]="leftPanel() === 'messages'"
-      [attr.aria-pressed]="leftPanel() === 'messages'"
-      (click)="toggleMessages()"
-      title="List the commands and events of the saga and where they are used"
-    >
-      <app-icon name="event" /><span>Messages</span>
-    </button>
-    <button
-      type="button"
-      class="menu-button source-toggle"
-      [class.active]="sourceOpen()"
-      [attr.aria-pressed]="sourceOpen()"
-      (click)="toggleSource()"
-      title="Show or hide the diagram as YAML, next to the canvas"
-    >
-      <app-icon name="code" /><span>Source</span>
-    </button>
-  </div>
-</header>
+      <button
+        type="button"
+        class="menu-button"
+        [class.active]="leftPanel() === 'walkthrough'"
+        [attr.aria-pressed]="leftPanel() === 'walkthrough'"
+        (click)="toggleWalkthrough()"
+        title="Step through the saga event by event"
+      >
+        <app-icon name="trigger" /><span>Walkthrough</span>
+      </button>
+      <button
+        type="button"
+        class="menu-button"
+        [class.active]="leftPanel() === 'path'"
+        [attr.aria-pressed]="leftPanel() === 'path'"
+        (click)="togglePath()"
+        title="Show the path a saga instance took"
+      >
+        <app-icon name="trigger" /><span>Path</span>
+      </button>
+      <button
+        type="button"
+        class="menu-button"
+        [class.active]="leftPanel() === 'messages'"
+        [attr.aria-pressed]="leftPanel() === 'messages'"
+        (click)="toggleMessages()"
+        title="List the commands and events of the saga and where they are used"
+      >
+        <app-icon name="event" /><span>Messages</span>
+      </button>
+      <button
+        type="button"
+        class="menu-button source-toggle"
+        [class.active]="sourceOpen()"
+        [attr.aria-pressed]="sourceOpen()"
+        (click)="toggleSource()"
+        title="Show or hide the diagram as YAML, next to the canvas"
+      >
+        <app-icon name="code" /><span>Source</span>
+      </button>
+    </div>
+  </header>
+}
+
+<!-- Notices and errors about the document: in the top bar, or floating over the canvas in a host. -->
+<ng-template #pills>
+  @if (file.notice(); as notice) {
+    <p class="error-pill notice-pill" role="status">
+      <span [title]="notice">{{ notice }}</span>
+      <button type="button" aria-label="Dismiss notice" (click)="file.setNotice(null)">
+        <app-icon name="close" />
+      </button>
+    </p>
+  }
+  @if (file.error(); as error) {
+    <p class="error-pill" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" aria-label="Dismiss error" (click)="file.setError(null)">
+        <app-icon name="close" />
+      </button>
+    </p>
+  }
+</ng-template>
 
 <div #body class="body">
+  @if (embedded) {
+    <div class="host-notices">
+      <ng-container [ngTemplateOutlet]="pills" />
+    </div>
+  }
   @if (sync.invalid(); as problem) {
     <div class="document-error" role="alert">
       <h2>This diagram cannot be shown</h2>
@@ -400,6 +406,23 @@
         </button>
       </div>
       <div class="divider"></div>
+      @if (embedded) {
+        <!-- The top bar is not shown in a host: its panels are here. -->
+        @for (panel of panels; track panel.id) {
+          <button
+            type="button"
+            class="icon-button"
+            [class.active]="leftPanel() === panel.id"
+            [attr.aria-pressed]="leftPanel() === panel.id"
+            (click)="panel.toggle()"
+            [attr.aria-label]="panel.label"
+            [title]="panel.title"
+          >
+            <app-icon [name]="panel.icon" />
+          </button>
+        }
+        <div class="divider"></div>
+      }
       @if (!embedded) {
         <!-- VS Code lists the same findings in its Problems view. -->
         <app-problems-menu (picked)="focusFinding($event)" />

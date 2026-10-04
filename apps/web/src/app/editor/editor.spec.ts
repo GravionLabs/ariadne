@@ -709,6 +709,65 @@ describe('Editor', () => {
       expect(toolbox.querySelector('.divider + .divider')).toBeNull();
     });
 
+    it('has no top bar and no Source button; the panels are buttons of the toolbox', async () => {
+      const { el, settle } = await setup({ embedded: true });
+      expect(el.querySelector('.topbar')).toBeNull();
+      expect(el.textContent).not.toContain('Source');
+      const buttons = [...el.querySelectorAll<HTMLButtonElement>('.toolbox [aria-pressed]')];
+      expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
+        'Walkthrough',
+        'Path',
+        'Messages',
+      ]);
+      expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual([
+        'false',
+        'false',
+        'false',
+      ]);
+
+      buttons[2].click();
+      await settle();
+      expect(el.querySelector('app-catalog-panel')).not.toBeNull();
+      expect(buttons[2].getAttribute('aria-pressed')).toBe('true');
+
+      // One panel at a time: the walkthrough replaces the catalog.
+      buttons[0].click();
+      await settle();
+      expect(el.querySelector('app-catalog-panel')).toBeNull();
+      expect(el.querySelector('app-walkthrough-panel')).not.toBeNull();
+      expect(buttons[0].getAttribute('aria-pressed')).toBe('true');
+      expect(buttons[2].getAttribute('aria-pressed')).toBe('false');
+
+      buttons[0].click();
+      await settle();
+      expect(el.querySelector('app-walkthrough-panel')).toBeNull();
+    });
+
+    it('shows the notices of the document over the canvas, without the top bar', async () => {
+      const { el, fixture, settle } = await setup({ embedded: true });
+      expect(el.querySelector('.host-notices .notice-pill')).toBeNull();
+      const file = TestBed.inject(DiagramDocument);
+      file.setNotice('Migrated from version 1.');
+      file.setError('Could not read it.');
+      await settle();
+      fixture.detectChanges();
+      expect(el.querySelector('.host-notices .notice-pill')?.textContent).toContain('Migrated');
+      expect(el.querySelector('.host-notices [role="alert"]')?.textContent).toContain('Could not');
+      el.querySelector<HTMLButtonElement>('.host-notices [aria-label="Dismiss notice"]')!.click();
+      await settle();
+      expect(el.querySelector('.host-notices .notice-pill')).toBeNull();
+    });
+
+    it('keeps the top bar, with its panels and Source, in the standalone app', async () => {
+      const { el } = await setup();
+      const labels = [...el.querySelectorAll('.topbar .menu-button')].map((b) =>
+        b.textContent?.trim(),
+      );
+      expect(labels).toEqual(expect.arrayContaining(['Walkthrough', 'Path', 'Messages', 'Source']));
+      expect(el.querySelector('.toolbox [aria-pressed]')).toBeNull();
+      expect(el.querySelector('.host-notices')).toBeNull();
+    });
+
     it('keeps the Problems menu in the standalone app', async () => {
       const { el } = await setup();
       expect(el.querySelector('.toolbox app-problems-menu')).not.toBeNull();

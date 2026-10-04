@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   ElementRef,
@@ -68,6 +69,7 @@ const FIT_PADDING = { x: 80, y: 80 };
 
 @Component({
   imports: [
+    NgTemplateOutlet,
     AddStepButton,
     CatalogPanel,
     PathPanel,
@@ -388,6 +390,31 @@ export class Editor {
 
   /** The panel on the left of the canvas: the message catalog, the walkthrough or a path. */
   protected readonly leftPanel = signal<'messages' | 'walkthrough' | 'path' | null>(null);
+
+  /** The panels that open on the left; in a host they are buttons of the toolbox. */
+  protected readonly panels = [
+    {
+      id: 'walkthrough',
+      label: 'Walkthrough',
+      icon: 'play',
+      title: 'Walkthrough: step through the saga event by event',
+      toggle: () => this.toggleWalkthrough(),
+    },
+    {
+      id: 'path',
+      label: 'Path',
+      icon: 'path',
+      title: 'Path: show the path a saga instance took',
+      toggle: () => this.togglePath(),
+    },
+    {
+      id: 'messages',
+      label: 'Messages',
+      icon: 'event',
+      title: 'Messages: the commands and events of the saga and where they are used',
+      toggle: () => this.toggleMessages(),
+    },
+  ] as const;
 
   protected toggleMessages(): void {
     const opening = this.leftPanel() !== 'messages';
