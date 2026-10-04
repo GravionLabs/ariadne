@@ -45,6 +45,8 @@ pnpm start        # dev server on http://localhost:4200
 
 Then open `docs/examples/order.saga.yaml` with **Open…** to see the diagram above.
 
+No Node or pnpm on the machine? Open the repository in the [dev container](.devcontainer/README.md): **Dev Containers: Reopen in Container** in VS Code, or **Code → Codespaces** on GitHub.
+
 Other commands:
 
 ```sh
@@ -158,6 +160,8 @@ Work is tracked on the [project board](https://github.com/users/GravionLabs/proj
 - A Tauri desktop shell is possible, as native features sit behind interfaces, but it is on hold.
 
 ## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the scripts, the tests and how work is tracked. In short:
 
 - pnpm only. Never npm or yarn.
 - Native features (file access) go behind an interface, so the web build works without a desktop shell.

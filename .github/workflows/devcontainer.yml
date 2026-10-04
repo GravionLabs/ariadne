@@ -1,0 +1,29 @@
+name: Dev container
+
+# The dev container has to keep matching CI: build it and run lint, the unit tests and the VS Code
+# integration tests inside it when what it is made of changes.
+on:
+  pull_request:
+    paths:
+      - '.devcontainer/**'
+      - '.nvmrc'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/devcontainer.yml'
+
+concurrency:
+  group: devcontainer-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  devcontainer:
+    name: Dev container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: devcontainers/ci@v0.3
+        with:
+          runCmd: pnpm lint && pnpm test && pnpm --filter ariadne-vscode test:integration:ci

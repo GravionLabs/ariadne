@@ -1,0 +1,40 @@
+{
+  "name": "Ariadne",
+  "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    // The .NET SDK for the generated-C# check (the `generated-csharp` job in CI).
+    "ghcr.io/devcontainers/features/dotnet:2": { "version": "8.0" }
+  },
+  "workspaceFolder": "/workspaces/ariadne",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/ariadne,type=bind",
+  // The dependencies live in volumes: much faster than a bind mount on macOS and Windows, and the
+  // host's native binaries are not mixed with the Linux ones. One per workspace project, as pnpm
+  // keeps a node_modules folder in each; add a line when you add a project.
+  "mounts": [
+    "source=ariadne-node-modules,target=/workspaces/ariadne/node_modules,type=volume",
+    "source=ariadne-node-modules-web,target=/workspaces/ariadne/apps/web/node_modules,type=volume",
+    "source=ariadne-node-modules-server,target=/workspaces/ariadne/apps/server/node_modules,type=volume",
+    "source=ariadne-node-modules-cli,target=/workspaces/ariadne/apps/cli/node_modules,type=volume",
+    "source=ariadne-node-modules-vscode,target=/workspaces/ariadne/apps/vscode/node_modules,type=volume",
+    "source=ariadne-node-modules-viewer-demo,target=/workspaces/ariadne/apps/viewer-demo/node_modules,type=volume",
+    "source=ariadne-node-modules-core,target=/workspaces/ariadne/packages/core/node_modules,type=volume",
+    "source=ariadne-node-modules-export,target=/workspaces/ariadne/packages/export/node_modules,type=volume",
+    "source=ariadne-node-modules-masstransit,target=/workspaces/ariadne/packages/masstransit/node_modules,type=volume",
+    "source=ariadne-node-modules-editor-protocol,target=/workspaces/ariadne/packages/editor-protocol/node_modules,type=volume",
+    "source=ariadne-node-modules-viewer,target=/workspaces/ariadne/packages/viewer/node_modules,type=volume"
+  ],
+  // New volumes belong to root; the user of the container installs into them.
+  "postCreateCommand": "sudo chown -R node:node /workspaces/ariadne/node_modules /workspaces/ariadne/apps/*/node_modules /workspaces/ariadne/packages/*/node_modules && pnpm install --frozen-lockfile",
+  // 4200: the Angular dev server (`pnpm start`); 8080: the Node server (apps/server).
+  "forwardPorts": [4200, 8080],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "angular.ng-template",
+        "redhat.vscode-yaml"
+      ]
+    }
+  }
+}
