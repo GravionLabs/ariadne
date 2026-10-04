@@ -31,6 +31,7 @@ import {
     '[class.bar]': 'bar()',
     '[attr.data-finding]': 'finding() ?? null',
     '[attr.data-highlight]': 'highlight() ?? null',
+    '[attr.data-badge]': 'badge() ?? null',
     '[attr.title]': 'open() ? null : node().description || null',
   },
   templateUrl: './node-card.html',
@@ -41,6 +42,8 @@ export class NodeCard {
   readonly direction = input.required<Direction>();
   /** Emphasised (`on`) or faded (`off`) while a message or a step is being looked at. */
   readonly highlight = input<'on' | 'off'>();
+  /** A short note on the corner, e.g. how often an instance visited the state (the path view). */
+  readonly badge = input<string>();
   /** The worst problem found with this node, shown as a marker. */
   readonly finding = input<Severity>();
   /** For a join: the events of the transitions leading into it. */

@@ -1,0 +1,94 @@
+{
+  "name": "@ariadne/viewer",
+  "version": "0.0.0",
+  "description": "An embeddable, read-only viewer for saga diagrams: the <ariadne-saga> custom element and an Angular wrapper.",
+  "keywords": [
+    "saga",
+    "state-machine",
+    "diagram",
+    "masstransit",
+    "web-component",
+    "custom-element",
+    "angular"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GravionLabs/ariadne.git",
+    "directory": "packages/viewer"
+  },
+  "homepage": "https://github.com/GravionLabs/ariadne/tree/main/packages/viewer#readme",
+  "bugs": "https://github.com/GravionLabs/ariadne/issues",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./angular": "./angular/src/index.ts"
+  },
+  "unpkg": "./dist/ariadne-viewer.js",
+  "jsdelivr": "./dist/ariadne-viewer.js",
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./angular": {
+        "types": "./dist/angular/index.d.ts",
+        "default": "./dist/angular/index.js"
+      },
+      "./ariadne-viewer.js": "./dist/ariadne-viewer.js",
+      "./package.json": "./package.json"
+    }
+  },
+  "files": [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "dist/ariadne-viewer.js",
+    "dist/angular",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-viewer.xml",
+    "package": "node scripts/package.mjs",
+    "test:package": "node scripts/test-package.mjs"
+  },
+  "devDependencies": {
+    "@angular/common": "^22.2.0",
+    "@angular/compiler": "^22.2.0",
+    "@angular/compiler-cli": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@ariadne/core": "workspace:*",
+    "@ariadne/export": "workspace:*",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.0.0",
+    "rollup": "^4.64.0",
+    "rollup-plugin-dts": "^6.5.1",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@angular/common": ">=21.0.0 <23.0.0",
+    "@angular/core": ">=21.0.0 <23.0.0",
+    "rxjs": "^7.8.0"
+  },
+  "peerDependenciesMeta": {
+    "@angular/common": {
+      "optional": true
+    },
+    "@angular/core": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    }
+  }
+}

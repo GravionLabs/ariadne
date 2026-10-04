@@ -111,6 +111,16 @@
     <button
       type="button"
       class="menu-button"
+      [class.active]="leftPanel() === 'path'"
+      [attr.aria-pressed]="leftPanel() === 'path'"
+      (click)="togglePath()"
+      title="Show the path a saga instance took"
+    >
+      <app-icon name="trigger" /><span>Path</span>
+    </button>
+    <button
+      type="button"
+      class="menu-button"
       [class.active]="leftPanel() === 'messages'"
       [attr.aria-pressed]="leftPanel() === 'messages'"
       (click)="toggleMessages()"
@@ -190,6 +200,7 @@
                 [kind]="kindOf()(edge)"
                 [finding]="ui.severityOf(edge.id)"
                 [highlight]="ui.highlightOf(edge.id)"
+                [badge]="path.badges().get(edge.id)"
                 (selectRequested)="selectEdge(edge.id)"
               />
             }
@@ -222,6 +233,7 @@
             [events]="joins().get(node.id) ?? []"
             [finding]="ui.severityOf(node.id)"
             [highlight]="ui.highlightOf(node.id)"
+            [badge]="path.badges().get(node.id)"
             [expanded]="layout.expanded().has(node.id)"
             (expandToggled)="layout.toggleExpanded(node.id)"
             [decision]="layout.decisions().has(node.id)"
@@ -248,6 +260,7 @@
                 [kind]="kindOf()(edge)"
                 [finding]="ui.severityOf(edge.id)"
                 [highlight]="ui.highlightOf(edge.id)"
+                [badge]="path.badges().get(edge.id)"
                 [insertable]="!walking()"
                 (selectRequested)="selectEdge(edge.id)"
                 (inserted)="insert(edge.id, $event)"
@@ -300,6 +313,8 @@
       <app-catalog-panel class="left-panel" (closed)="closeLeftPanel()" />
     } @else if (leftPanel() === 'walkthrough') {
       <app-walkthrough-panel class="left-panel" (closed)="closeLeftPanel()" />
+    } @else if (leftPanel() === 'path') {
+      <app-path-panel class="left-panel" (closed)="closeLeftPanel()" />
     }
 
     @if (ui.inspectorOpen() && !walking()) {

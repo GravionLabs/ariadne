@@ -1,0 +1,20 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "../dist/angular",
+    "declaration": true,
+    "module": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "types": [],
+    // The wrapper sees the viewer as its published declarations, as a consumer's build does.
+    "paths": { "@ariadne/viewer": ["../dist/index.d.ts"] }
+  },
+  "angularCompilerOptions": {
+    "compilationMode": "partial",
+    "strictInjectionParameters": true,
+    "strictTemplates": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts"]
+}

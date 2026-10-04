@@ -113,6 +113,68 @@ describe('renderDiagramSvg', () => {
   });
 });
 
+describe('renderDiagramSvg options', () => {
+  it('is unchanged without options', () => {
+    expect(renderDiagramSvg(orderSaga, {}).svg).toBe(renderDiagramSvg(orderSaga).svg);
+    expect(renderDiagramSvg(orderSaga).svg).not.toContain('data-');
+  });
+
+  it('groups every state and transition with stable attributes, labels with their transition', () => {
+    const { svg } = renderDiagramSvg(orderSaga, { addressable: true });
+    for (const n of orderSaga.nodes) {
+      expect(svg).toContain(`<g data-node-id="${n.id}" data-kind="${n.type}">`);
+    }
+    // each transition: its line and its label (edge-5 has an event too)
+    for (const e of orderSaga.edges) {
+      expect(
+        svg.match(
+          new RegExp(`data-edge-id="${e.id}" data-kind="${e.kind}" data-part="(line|label)"`, 'g'),
+        ),
+      ).toHaveLength(2);
+    }
+    expect(svg).toContain('data-edge-id="edge-5" data-kind="compensation"');
+    // the label sits inside its transition's group
+    expect(svg).toMatch(/data-edge-id="edge-1"[^>]*><g><rect[^>]*\/>.*OrderSubmitted/s);
+  });
+
+  it('prefixes the ids of the arrow markers and their references', () => {
+    const { svg } = renderDiagramSvg(orderSaga, { idPrefix: 'a1-' });
+    expect(svg).toContain('<marker id="a1-arrow-forward"');
+    expect(svg).toContain('<marker id="a1-arrow-compensation"');
+    expect(svg).toContain('marker-end="url(#a1-arrow-forward)"');
+    expect(svg).not.toMatch(/id="arrow-|url\(#arrow-/);
+    const ids = [...svg.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("writes colours as custom properties with today's values as fallbacks", () => {
+    const plain = renderDiagramSvg(orderSaga).svg;
+    const themed = renderDiagramSvg(orderSaga, { cssVariables: true }).svg;
+    expect(themed).toContain('var(--ariadne-surface, #ffffff)');
+    expect(themed).toContain('var(--ariadne-text-subtle, #6b7086)');
+    expect(themed).toContain('var(--ariadne-palette-orange, #f97316)');
+    expect(themed).toContain(
+      'color-mix(in srgb, var(--ariadne-external, #0d9488) 75%, var(--ariadne-text, #1a1c23))',
+    );
+    // dropping the variables gives back the plain output
+    const flattened = themed.replace(/var\(--ariadne-[a-z-]+, (#[0-9a-f]{6})\)/g, '$1');
+    expect(flattened).not.toContain('var(');
+    expect(plain).not.toMatch(/var\(|color-mix/);
+  });
+
+  it('keeps custom colours of a state and resets the colours after a themed render', () => {
+    const custom = {
+      ...orderSaga,
+      nodes: orderSaga.nodes.map((n) => ({
+        ...n,
+        color: n.id === 'state-1' ? ('#123456' as const) : n.color,
+      })),
+    };
+    expect(renderDiagramSvg(custom, { cssVariables: true }).svg).toContain('#123456');
+    expect(renderDiagramSvg(orderSaga).svg).not.toContain('var(');
+  });
+});
+
 describe('fit', () => {
   it('keeps text that fits and truncates the rest with an ellipsis', () => {
     expect(fit('short', 200, 12)).toBe('short');

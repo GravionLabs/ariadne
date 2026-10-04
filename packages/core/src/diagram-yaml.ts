@@ -43,6 +43,16 @@ export class DiagramFormatError extends Error {
   override readonly name = 'DiagramFormatError';
 }
 
+/** A file in a newer format version than this reader knows; a host can tell the user to update. */
+export class DiagramVersionError extends DiagramFormatError {
+  constructor(
+    message: string,
+    readonly version: number,
+  ) {
+    super(message);
+  }
+}
+
 /**
  * Serializes a diagram to YAML. Output is deterministic: fixed key order, element order
  * as in the model, absent optional fields omitted. Layout is derived, so no positions.
@@ -125,9 +135,11 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
   }
   const root = asRecord(file, 'file');
   if (!READABLE_VERSIONS.includes(root['version'] as number)) {
-    throw new DiagramFormatError(
-      `Unsupported format version ${JSON.stringify(root['version'])} (expected ${FORMAT_VERSION})`,
-    );
+    const message = `Unsupported format version ${JSON.stringify(root['version'])} (expected ${FORMAT_VERSION})`;
+    const version = root['version'];
+    throw typeof version === 'number' && Number.isInteger(version) && version > FORMAT_VERSION
+      ? new DiagramVersionError(message, version)
+      : new DiagramFormatError(message);
   }
   const direction = root['direction'] ?? 'top-bottom';
   if (!DIRECTIONS.includes(direction as Direction)) {

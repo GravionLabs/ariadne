@@ -27,6 +27,7 @@ import {
     '[class.empty]': 'rows() === 0',
     '[class.inline]': '!insertable()',
     '[attr.data-highlight]': 'highlight() ?? null',
+    '[attr.data-badge]': 'badge() ?? null',
   },
   templateUrl: './transition-label.html',
   styleUrl: './transition-label.scss',
@@ -37,6 +38,8 @@ export class TransitionLabel {
   readonly selected = input(false);
   /** Emphasised (`on`) or faded (`off`), like the states. */
   readonly highlight = input<'on' | 'off'>();
+  /** A short note on the corner: the numbers of the steps that took it (the path view). */
+  readonly badge = input<string>();
   /** The worst problem found with this transition: its card gets a coloured edge. */
   readonly finding = input<Severity>();
   /** Where the event comes from: the saga itself, outside it, or a timeout firing. */

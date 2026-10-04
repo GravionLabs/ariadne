@@ -848,6 +848,121 @@ describe('Editor', () => {
     });
   });
 
+  describe('path view', () => {
+    async function pathView() {
+      const ctx = await setup();
+      const { el, store, settle } = ctx;
+      store.appendNode('start-1', 'state');
+      store.appendNode('state-1', 'state');
+      store.appendNode('state-2', 'end');
+      store.updateNode('state-1', { name: 'Reserving' });
+      store.updateNode('state-2', { name: 'Charging' });
+      store.updateEdge('edge-1', { event: 'OrderPlaced', eventSource: 'Shop' });
+      store.updateEdge('edge-2', { event: 'StockReserved', eventSource: 'Warehouse' });
+      store.updateEdge('edge-3', { event: 'PaymentCharged', eventSource: 'Payments' });
+      await settle();
+      const button = () =>
+        [...el.querySelectorAll<HTMLButtonElement>('.menu-button')].find(
+          (b) => b.textContent?.trim() === 'Path',
+        )!;
+      const panel = () => el.querySelector('app-path-panel');
+      const paste = async (text: string) => {
+        const area = el.querySelector<HTMLTextAreaElement>('app-path-panel textarea')!;
+        area.value = text;
+        area.dispatchEvent(new Event('input'));
+        await settle();
+      };
+      const open = async () => {
+        button().click();
+        await settle();
+      };
+      const highlights = () =>
+        [...el.querySelectorAll('app-node-card')].map((c) => c.getAttribute('data-highlight'));
+      return { ...ctx, button, panel, paste, open, highlights };
+    }
+
+    it('opens a panel, read-only like the walkthrough', async () => {
+      const { el, panel, open, button } = await pathView();
+      expect(panel()).toBeNull();
+      await open();
+      expect(panel()).toBeTruthy();
+      expect(button().getAttribute('aria-pressed')).toBe('true');
+      expect(el.querySelector('.workspace.walking')).toBeTruthy();
+      expect(panel()?.textContent).toContain('Nothing to show yet.');
+    });
+
+    it('draws a pasted path: states and transitions emphasised, the rest faded, badges on both', async () => {
+      const { el, open, paste, highlights } = await pathView();
+      await open();
+      await paste('- OrderPlaced\n- StockReserved');
+      expect(highlights()).toEqual(['on', 'on', 'on', 'off']);
+      expect(el.querySelectorAll('f-connection[data-highlight="on"]')).toHaveLength(2);
+      expect(
+        [...el.querySelectorAll('app-node-card .path-badge')].map((b) => b.textContent?.trim()),
+      ).toEqual(['×1', '×1', '×1']);
+      expect(
+        [...el.querySelectorAll('app-transition-label .path-badge')].map((b) =>
+          b.textContent?.trim(),
+        ),
+      ).toEqual(['1', '2']);
+      expect(el.querySelector('app-path-panel .result')?.textContent).toContain(
+        'Now in Charging after 2 steps.',
+      );
+      expect(
+        [...el.querySelectorAll('app-path-panel .steps li')].map((l) =>
+          l.textContent?.replace(/\s+/g, ' ').trim(),
+        ),
+      ).toEqual(['OrderPlaced → Reserving', 'StockReserved → Charging']);
+    });
+
+    it('says finished when the path ends in a final state, and lists steps it cannot follow', async () => {
+      const { el, open, paste } = await pathView();
+      await open();
+      await paste('- OrderPlaced\n- StockReserved\n- PaymentCharged');
+      expect(el.querySelector('app-path-panel .result strong')?.textContent).toContain(
+        'Finished in Final',
+      );
+      await paste('- OrderPlaced\n- Nonsense');
+      expect(el.querySelector('app-path-panel .problems')?.textContent).toContain('“Nonsense”');
+    });
+
+    it('reports text that is not a path', async () => {
+      const { el, open, paste, highlights } = await pathView();
+      await open();
+      await paste('event: X');
+      expect(el.querySelector('app-path-panel [role="alert"]')?.textContent).toContain(
+        'list of steps',
+      );
+      expect(highlights().every((h) => h === null)).toBe(true);
+    });
+
+    it('ends when closed, leaving nothing highlighted, and keeps the text for next time', async () => {
+      const { el, open, paste, panel, highlights, settle } = await pathView();
+      await open();
+      await paste('- OrderPlaced');
+      el.querySelector<HTMLButtonElement>('app-path-panel [aria-label="Close path"]')!.click();
+      await settle();
+      expect(panel()).toBeNull();
+      expect(highlights().every((h) => h === null)).toBe(true);
+      expect(el.querySelector('app-node-card .path-badge')).toBeNull();
+      await open();
+      expect(el.querySelector<HTMLTextAreaElement>('app-path-panel textarea')!.value).toBe(
+        '- OrderPlaced',
+      );
+    });
+
+    it('is exclusive with the walkthrough: opening one closes the other', async () => {
+      const { el, open, panel, settle } = await pathView();
+      await open();
+      [...el.querySelectorAll<HTMLButtonElement>('.menu-button')]
+        .find((b) => b.textContent?.trim() === 'Walkthrough')!
+        .click();
+      await settle();
+      expect(panel()).toBeNull();
+      expect(el.querySelector('app-walkthrough-panel')).toBeTruthy();
+    });
+  });
+
   describe('walkthrough', () => {
     async function walking() {
       const ctx = await setup();

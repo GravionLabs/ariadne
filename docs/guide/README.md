@@ -10,6 +10,7 @@ diagram and C#. It documents a saga; it never runs one.
 4. [Exports](exports.md): images, Mermaid and a Markdown page.
 5. [Keyboard shortcuts](shortcuts.md).
 6. [Ariadne in VS Code](vscode.md): install the extension from a release and work next to the code.
+7. [Show a saga in your own app](viewer.md): the `<ariadne-saga>` viewer for web and Angular apps.
 
 Operators: [self-hosting](../self-hosting.md). The file format: [diagram-format.md](../specs/diagram-format.md).
 
