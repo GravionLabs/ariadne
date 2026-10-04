@@ -5,10 +5,12 @@
   "description": "The Ariadne domain: diagram model, YAML format, validation, layout, message catalog and walkthrough. No framework.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
   },
   "scripts": {
     "test": "vitest run",
+    "perf": "vitest run --config vitest.perf.config.ts",
     "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-core.xml"
   },
   "dependencies": {

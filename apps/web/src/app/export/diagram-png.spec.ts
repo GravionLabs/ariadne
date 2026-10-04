@@ -46,6 +46,19 @@ describe('svgToPng', () => {
     expect(context.fillRect).not.toHaveBeenCalled();
   });
 
+  it('scales a very large diagram down to what a canvas can be, instead of drawing nothing', async () => {
+    // 150 states in a line: 37 000 px tall, over what a browser's canvas can hold (16 384).
+    await svgToPng('<svg/>', { width: 1992, height: 37_029 }, {}, doc);
+    expect(canvas.height).toBe(16_384);
+    expect(canvas.width).toBe(Math.round(1992 * (16_384 / 37_029)));
+    expect(context.drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, canvas.width, 16_384);
+  });
+
+  it('keeps a requested scale as long as the canvas fits', async () => {
+    await svgToPng('<svg/>', { width: 1000, height: 8000 }, { scale: 2 }, doc);
+    expect([canvas.width, canvas.height]).toEqual([2000, 16_000]);
+  });
+
   it('rejects an invalid scale', async () => {
     await expect(svgToPng('<svg/>', size, { scale: 0 }, doc)).rejects.toThrow(/scale/);
   });

@@ -17,7 +17,7 @@ import {
   generateSaga,
   importSagas,
 } from '@ariadne/masstransit';
-import { diagramToMarkdown, diagramToMermaid, renderDiagramSvg } from '@ariadne/export';
+import { diagramToMarkdown, diagramToMermaid, pngScale, renderDiagramSvg } from '@ariadne/export';
 
 /** Everything the command line touches, so it can be run and tested without a process. */
 export interface Io {
@@ -27,7 +27,17 @@ export interface Io {
   stderr(text: string): void;
   /** The C# parser; loaded on demand, because only `import` and `diff` need it. */
   csharpParser(): Promise<CSharpParser>;
+  /** The font files a PNG is drawn with (see {@link PNG_FONTS}), as paths. */
+  pngFonts(): string[];
 }
+
+/**
+ * What a PNG is drawn with: the font files the build copies next to the script. Not the system's
+ * fonts: loading them takes a minute for a large saga on a machine with many, and the picture
+ * would depend on the machine. The extension draws with the same font.
+ */
+export const PNG_FONTS = ['DejaVuSansCondensed.ttf', 'DejaVuSansCondensed-Bold.ttf'];
+const PNG_FONT_FAMILY = 'DejaVu Sans Condensed';
 
 export const VERSION: string = pkg.version;
 
@@ -249,7 +259,7 @@ async function exportCommand(args: readonly string[], io: Io): Promise<number> {
       break;
     case 'png':
       if (!values.output) throw new UsageError('A PNG goes to a file: add -o <file.png>.');
-      output = await toPng(renderDiagramSvg(diagram).svg);
+      output = await toPng(renderDiagramSvg(diagram), io.pngFonts());
       break;
   }
 
@@ -258,13 +268,21 @@ async function exportCommand(args: readonly string[], io: Io): Promise<number> {
   return 0;
 }
 
-/** The image at 2×, like the PNG export in the editor. */
-async function toPng(svg: string): Promise<Uint8Array> {
+/** The image at 2×, like the PNG export in the editor, and smaller when 2× would be too large. */
+export async function toPng(
+  image: { svg: string; width: number; height: number },
+  fontFiles: string[],
+): Promise<Uint8Array> {
   const { Resvg } = await import('@resvg/resvg-js');
-  return new Resvg(svg, {
-    fitTo: { mode: 'zoom', value: 2 },
+  return new Resvg(image.svg, {
+    fitTo: { mode: 'zoom', value: pngScale(image) },
     background: '#ffffff',
-    font: { loadSystemFonts: true },
+    font: {
+      fontFiles,
+      loadSystemFonts: false,
+      defaultFontFamily: PNG_FONT_FAMILY,
+      sansSerifFamily: PNG_FONT_FAMILY,
+    },
   })
     .render()
     .asPng();

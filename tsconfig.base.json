@@ -13,6 +13,7 @@
     "moduleResolution": "bundler",
     "paths": {
       "@ariadne/core": ["./packages/core/src/index.ts"],
+      "@ariadne/core/testing": ["./packages/core/src/testing/index.ts"],
       "@ariadne/export": ["./packages/export/src/index.ts"],
       "@ariadne/viewer": ["./packages/viewer/src/index.ts"],
       "@ariadne/viewer/angular": ["./packages/viewer/angular/src/index.ts"],

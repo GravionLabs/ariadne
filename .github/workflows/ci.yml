@@ -53,6 +53,19 @@ jobs:
       - run: pnpm --filter @ariadne/cli build
       - run: scripts/compile-generated.sh
 
+  # The hot paths on generated large sagas, against the budgets of docs/specs/performance-budgets.md.
+  # A benchmark that is over its budget fails; above 70% of it, it warns.
+  perf:
+    name: Performance budgets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: GravionLabs/ci/node/setup@main
+        with:
+          package-manager: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm perf
+
   # The extension runs in a real VS Code (downloaded, headless under xvfb).
   vscode-extension:
     name: VS Code extension
@@ -121,6 +134,8 @@ jobs:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @ariadne/viewer package ${{ steps.version.outputs.semver }}
+      # The files of the package against their size budgets (docs/specs/performance-budgets.md).
+      - run: pnpm --filter @ariadne/viewer size
       - run: pnpm --filter @ariadne/viewer test:package
       - uses: actions/upload-artifact@v4
         with:
@@ -133,7 +148,7 @@ jobs:
   # 1.0.0, and a GitHub release v1.0.0 is created with notes from the Conventional Commits.
   release:
     name: Release
-    needs: [ci, format, generated-csharp, vscode-extension, vsix, viewer-package]
+    needs: [ci, format, generated-csharp, perf, vscode-extension, vsix, viewer-package]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: GravionLabs/ci/.github/workflows/docker-package.yml@main
     with:

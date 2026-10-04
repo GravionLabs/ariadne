@@ -508,7 +508,7 @@
                 [attr.aria-label]="'To, for ' + eventOf(edge)"
                 (change)="retarget(edge, $event)"
               >
-                @for (target of targetsOf(edge); track target.id) {
+                @for (target of rowTargets().get(edge.id) ?? []; track target.id) {
                   <option
                     [value]="target.id"
                     [selected]="target.id === edge.target"

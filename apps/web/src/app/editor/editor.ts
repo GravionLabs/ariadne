@@ -62,6 +62,7 @@ import {
   nodeSize,
   NodeType,
   outputId,
+  Point,
   SLOT_SIZE,
 } from '@ariadne/core';
 
@@ -124,7 +125,6 @@ export class Editor {
   protected readonly sync = inject(EmbeddedSync);
   protected readonly appendTypes = APPEND_TYPES;
   protected readonly slotSize = SLOT_SIZE;
-  protected readonly nodeSize = nodeSize;
   protected readonly inputId = inputId;
   protected readonly outputId = outputId;
   protected readonly slotInputId = (slotId: string) => `${slotId}:in`;
@@ -183,12 +183,28 @@ export class Editor {
   }
 
   protected edgeLabel(edge: DiagramEdge): string {
-    const name = (id: string) => this.store.nodes().find((n) => n.id === id)?.name ?? id;
+    const nodes = this.nodesById();
+    const name = (id: string) => nodes.get(id)?.name ?? id;
     const kind = edge.kind === 'compensation' ? 'Compensation' : 'Transition';
     return `${kind} from ${name(edge.source)} to ${name(edge.target)}${edge.event ? ` on ${eventLabel(edge)}` : ''}`;
   }
 
   protected readonly edgesById = computed(() => new Map(this.store.edges().map((e) => [e.id, e])));
+  private readonly nodesById = computed(() => new Map(this.store.nodes().map((n) => [n.id, n])));
+
+  // The template hands these to inputs of the canvas and the cards. A value made in the template
+  // (`nodeSize(...)`, `[]`, `{ x: 0, y: 0 }`, `[...route]`) is a new object on every change
+  // detection, so every card and connection was told "changed" for any change, a selection
+  // included: 1.5 s for 300 states. They are made once per change of what they depend on.
+  protected readonly nodeSizes = computed(() => {
+    const expanded = this.layout.expanded();
+    return new Map(this.store.nodes().map((n) => [n.id, nodeSize(n, expanded.has(n.id))]));
+  });
+  protected readonly waypoints = computed(
+    () => new Map([...this.layout.routes()].map(([id, route]) => [id, [...route]])),
+  );
+  protected readonly noEvents: string[] = [];
+  protected readonly origin: Point = { x: 0, y: 0 };
 
   constructor() {
     // Runs after every relayout: fit or select once the new geometry is on the canvas.

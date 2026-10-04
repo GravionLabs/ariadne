@@ -2,12 +2,12 @@
 
 The **Export** menu in the top bar:
 
-| Entry                        | Result                                                                 |
-| ---------------------------- | ---------------------------------------------------------------------- |
-| SVG, PNG                     | The diagram as an image (PNG at 2×). Saved through the file dialog.    |
-| Copy Mermaid                 | Mermaid state-diagram text on the clipboard.                           |
-| Mermaid, Mermaid in Markdown | `.mmd` text, or a fenced block in a `.md` file, for READMEs and wikis. |
-| Markdown page                | A page about the saga: states, transitions, messages (`.docs.md`).     |
+| Entry                        | Result                                                                                                       |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| SVG, PNG                     | The diagram as an image (PNG at 2×, smaller if that would be over 16 384 px). Saved through the file dialog. |
+| Copy Mermaid                 | Mermaid state-diagram text on the clipboard.                                                                 |
+| Mermaid, Mermaid in Markdown | `.mmd` text, or a fenced block in a `.md` file, for READMEs and wikis.                                       |
+| Markdown page                | A page about the saga: states, transitions, messages (`.docs.md`).                                           |
 
 In VS Code, **Ariadne: Export Diagram…** (a button in the diagram editor's title bar, or the Command Palette) saves the
 SVG, PNG, Mermaid or Markdown page next to the diagram, or in the folder of `ariadne.export.folder`, and copies Mermaid or

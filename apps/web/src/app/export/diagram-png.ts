@@ -1,5 +1,10 @@
+import { pngScale } from '@ariadne/export';
+
 export interface PngOptions {
-  /** Pixel ratio: 2 renders at twice the SVG's size. */
+  /**
+   * Pixel ratio: 2 renders at twice the SVG's size. Less when that would be larger than a canvas can
+   * be (see `pngScale`): the picture is then scaled down to fit.
+   */
   scale?: number;
   /** CSS colour, or `null` for a transparent background. */
   background?: string | null;
@@ -14,8 +19,9 @@ export async function svgToPng(
   options: PngOptions = {},
   doc: Document = document,
 ): Promise<Blob> {
-  const { scale, background } = { ...DEFAULT_PNG_OPTIONS, ...options };
-  if (!(scale > 0)) throw new Error('PNG scale must be greater than 0.');
+  const { scale: wanted, background } = { ...DEFAULT_PNG_OPTIONS, ...options };
+  if (!(wanted > 0)) throw new Error('PNG scale must be greater than 0.');
+  const scale = pngScale(size, wanted);
   const image = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
   const canvas = doc.createElement('canvas');
   canvas.width = Math.round(size.width * scale);

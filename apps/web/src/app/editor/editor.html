@@ -192,7 +192,10 @@
           >
             <f-connection-marker-arrow />
             @if (layout.routes().get(edge.id); as route) {
-              <f-connection-waypoints [waypoints]="[...route]" [visibility]="false" />
+              <f-connection-waypoints
+                [waypoints]="waypoints().get(edge.id)!"
+                [visibility]="false"
+              />
             }
             @if (edge.kind === 'compensation' || loops().has(edge.id)) {
               <!-- Compensation and loop transitions are not laid out, so their label rides on the line. -->
@@ -231,12 +234,12 @@
           <app-node-card
             fNode
             [fNodeId]="node.id"
-            [fNodePosition]="layout.positions().get(node.id) ?? { x: 0, y: 0 }"
-            [fNodeSize]="nodeSize(node, layout.expanded().has(node.id))"
+            [fNodePosition]="layout.positions().get(node.id) ?? origin"
+            [fNodeSize]="nodeSizes().get(node.id)!"
             [fNodeDraggingDisabled]="true"
             [fConnectOnNode]="false"
             [node]="node"
-            [events]="joins().get(node.id) ?? []"
+            [events]="joins().get(node.id) ?? noEvents"
             [finding]="ui.severityOf(node.id)"
             [highlight]="ui.highlightOf(node.id)"
             [badge]="path.badges().get(node.id)"
