@@ -93,12 +93,40 @@ jobs:
           path: apps/vscode/vsix/*.vsix
           if-no-files-found: error
 
+  # The viewer as an npm package, with the version of the release: built, packed, and installed into an
+  # empty project to check that what was packed is enough (the element in a DOM, the Angular wrapper,
+  # the types). On main it is published to npm after the release.
+  viewer-package:
+    name: Viewer package
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.semver }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: version
+        uses: GravionLabs/ci/versioning/determine-version@main
+        with:
+          gitversion-config-file: GitVersion.yml
+      - uses: GravionLabs/ci/node/setup@main
+        with:
+          package-manager: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ariadne/viewer package ${{ steps.version.outputs.semver }}
+      - run: pnpm --filter @ariadne/viewer test:package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viewer-package
+          path: packages/viewer/npm/*.tgz
+          if-no-files-found: error
+
   # Every merge to main that passes the checks is a release (GravionLabs/ci docker-package):
   # GitVersion gives the version, the image is published to GHCR with the tags latest, 1, 1.0 and
   # 1.0.0, and a GitHub release v1.0.0 is created with notes from the Conventional Commits.
   release:
     name: Release
-    needs: [ci, format, generated-csharp, vscode-extension, vsix]
+    needs: [ci, format, generated-csharp, vscode-extension, vsix, viewer-package]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: GravionLabs/ci/.github/workflows/docker-package.yml@main
     with:
@@ -130,3 +158,30 @@ jobs:
       - run: gh release upload "${{ needs.vsix.outputs.tag }}" vsix/*.vsix --clobber --repo "${{ github.repository }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # @ariadne/viewer goes to npm with the version of the release. The npm account and the NPM_TOKEN
+  # secret (a token that may publish the @ariadne scope) are the owner's; without the secret the job
+  # only says so and the package stays a build artifact.
+  viewer-publish:
+    name: Publish the viewer to npm
+    needs: [release, viewer-package]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - if: env.NPM_TOKEN == ''
+        run: echo "::notice::NPM_TOKEN is not set, so @ariadne/viewer ${{ needs.viewer-package.outputs.version }} was not published."
+      - if: env.NPM_TOKEN != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: viewer-package
+          path: viewer-package
+      - if: env.NPM_TOKEN != ''
+        uses: GravionLabs/ci/node/setup@main
+        with:
+          package-manager: pnpm
+      - if: env.NPM_TOKEN != ''
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+          pnpm publish viewer-package/*.tgz --access public --no-git-checks

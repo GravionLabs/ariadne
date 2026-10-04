@@ -35,6 +35,23 @@ exports, and must not pull the editor (f-flow, the store, the file dialogs) into
   before). Packages never import from `apps/` (ADR 0006).
 - Published to **npm**, with the version of the release (ADR 0015); the npm account and token are the owner's.
 
+## Building and publishing (#244)
+
+- **One tarball, nothing to install with it.** esbuild bundles `@ariadne/core`, `@ariadne/export` and the YAML and
+  layout libraries into `dist/index.js`; rollup-plugin-dts bundles their declarations into `dist/index.d.ts`. The
+  workspace packages stay private. A single file for plain HTML pages, `dist/ariadne-viewer.js`, registers the element
+  when loaded (`unpkg` and `jsdelivr` point to it).
+- **The wrapper is compiled with `ngc` in partial mode**, against the element's published declarations, and then
+  bundled to one file (and one `.d.ts`), because Node's ES module loader and TypeScript's `node16` resolution do not
+  take extensionless relative imports. The consumer's Angular build links the partial declarations.
+- **In the workspace the entry points are the TypeScript sources**; `publishConfig` swaps in the build when packing,
+  so apps and tests need no build of the viewer.
+- **The pack is tested as a consumer would use it** (`test:package`): installed into an empty project, the element is
+  imported without a DOM, the Angular entry is loaded and type-checked with `node16`, and the one-file bundle draws a
+  saga in jsdom.
+- **CI** packs the package on every build with the version of the release; on `main`, after the release, a job
+  publishes it to npm when the owner's `NPM_TOKEN` secret exists, and says so when it does not.
+
 ## The element
 
 - **Shadow DOM**, so the host's CSS does not leak in and the viewer's does not leak out. Several elements on one

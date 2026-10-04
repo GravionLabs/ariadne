@@ -11,9 +11,10 @@ import {
   output,
   PLATFORM_ID,
 } from '@angular/core';
-import type { PathStep, ResolvedPath } from '@ariadne/core';
 import type {
   AriadneSagaElement,
+  PathStep,
+  ResolvedPath,
   SagaEmphasis,
   SagaErrorDetail,
   SagaLoadDetail,
