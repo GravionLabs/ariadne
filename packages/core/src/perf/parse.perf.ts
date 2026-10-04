@@ -8,10 +8,10 @@ import { expectWithinBudget, largeSaga, measure } from '../testing';
 
 /** Budgets in milliseconds by number of states; see docs/specs/performance-budgets.md. */
 const BUDGETS: Record<string, Record<number, number>> = {
-  parseDiagram: { 50: 120, 150: 100, 300: 200 },
-  serializeDiagram: { 50: 50, 150: 50, 300: 100 },
+  parseDiagram: { 50: 120, 150: 160, 300: 200 },
+  serializeDiagram: { 50: 50, 150: 70, 300: 80 },
   validate: { 50: 50, 150: 50, 300: 50 },
-  layoutDiagram: { 50: 150, 150: 350, 300: 2050 },
+  layoutDiagram: { 50: 280, 150: 600, 300: 2050 },
   buildCatalog: { 50: 50, 150: 50, 300: 50 },
   resolvePath: { 50: 50, 150: 50, 300: 50 },
 };

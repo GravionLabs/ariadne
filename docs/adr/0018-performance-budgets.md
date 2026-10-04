@@ -25,9 +25,9 @@ found the first time anyone measured: turning a 150-state saga into a PNG took a
    slow each other down.
 3. **Median of runs.** `measure` runs the work twice to warm up, then seven times, and takes the
    median in milliseconds: robust against one slow run, unlike the mean or the best.
-4. **Budget = 3× the median measured on CI, rounded up, with 50 ms as the least.** CI is slower and
-   noisier than a laptop, and the 3× margin is what makes a budget fail on a real regression and
-   not on a bad minute. Where a target was stated first (a 150-state saga opens, lays out and renders
+4. **Budget = 3× the highest median measured, rounded up, with 50 ms as the least.** Measurements on CI
+   vary from run to run (one layout went from 49 to 92 ms), and the 3× margin is what makes a budget
+   fail on a real regression and not on a bad minute. Where a target was stated first (a 150-state saga opens, lays out and renders
    in under a second) the target is the budget, even if it is far above what is measured: a budget is
    not tightened to a number that happens to hold today.
 5. **Over budget fails, above 70% warns.** `expectWithinBudget` throws over the budget, and above 70%
@@ -48,7 +48,7 @@ found the first time anyone measured: turning a 150-state saga into a PNG took a
   the operation and the size.
 - The benchmarks take about a minute (the PNG ones most), so they are a separate CI job, in parallel
   with the others, not part of `pnpm test`.
-- Budgets measured on CI have to be read from the first CI run of a change that adds a benchmark: a
-  local number is only a guide (CI was between 1× and 3× slower than a developer machine).
+- Budgets are read from the first CI runs of a change that adds a benchmark: a local number is only
+  a guide (the CI runner was about as fast as a developer machine, but not always).
 - jsdom times for the editor and the viewer are not a browser's: they catch regressions in how much
   work is done (layouts, change detection cycles), not how smooth it feels.

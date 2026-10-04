@@ -5,7 +5,7 @@ import { renderDiagramSvg } from './svg';
 
 /** Budgets in milliseconds by number of states; see docs/specs/performance-budgets.md. */
 const BUDGETS: Record<string, Record<number, number>> = {
-  renderDiagramSvg: { 50: 150, 150: 400, 300: 2150 },
+  renderDiagramSvg: { 50: 190, 150: 450, 300: 2150 },
   diagramToMermaid: { 50: 50, 150: 50, 300: 50 },
   diagramToMarkdown: { 50: 50, 150: 50, 300: 50 },
 };
