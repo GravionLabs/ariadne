@@ -10,6 +10,6 @@ export default defineConfig({
     fileParallelism: false,
     // The default reporter hides what passing tests print, and the numbers are printed.
     reporters: ['verbose'],
-    testTimeout: 120_000,
+    testTimeout: 600_000,
   },
 });

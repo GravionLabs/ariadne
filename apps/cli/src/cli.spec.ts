@@ -3,13 +3,16 @@ import travelBooking from '../../../docs/examples/travel-booking.saga.yaml?raw';
 import orderCode from '../../../samples/sagas/order/OrderStateMachine.cs?raw';
 import orderGolden from '../../../samples/sagas/order/OrderStateMachine.saga.yaml?raw';
 import bookingCode from '../../../samples/sagas/booking/BookingStateMachine.cs?raw';
+import { serializeDiagram } from '@ariadne/core';
+import { largeSaga } from '@ariadne/core/testing';
 import { createNodeParser } from '@ariadne/masstransit/node';
 import { describe, expect, it } from 'vitest';
 import pkg from '../package.json' with { type: 'json' };
 import { Io, VERSION, run } from './cli';
+import { testFonts } from './test-fonts';
 
 /** The command line on an in-memory disk. */
-function setup(files: Record<string, string> = {}) {
+function setup(files: Record<string, string> = {}, overrides: Partial<Io> = {}) {
   const disk = new Map<string, string | Uint8Array>(Object.entries(files));
   const out: string[] = [];
   const err: string[] = [];
@@ -27,6 +30,8 @@ function setup(files: Record<string, string> = {}) {
     stdout: (text) => out.push(text),
     stderr: (text) => err.push(text),
     csharpParser: createNodeParser,
+    pngFonts: testFonts,
+    ...overrides,
   };
   return {
     disk,
@@ -231,6 +236,28 @@ describe('ariadne export', () => {
       expect(await t.run('export', 't.saga.yaml', '--format', format)).toBe(0);
     }
     expect(await t.run('export', 't.saga.yaml', '--format', 'png', '-o', 't.png')).toBe(0);
+  });
+
+  it('scales a PNG down so that no side is longer than 16 384 px, instead of drawing 300 megapixels', async () => {
+    // 150 states in a line are 37 000 px tall: at 2× the picture would be 300 megapixels.
+    const t = setup({ 'big.saga.yaml': serializeDiagram(largeSaga(150)) });
+    expect(await t.run('export', 'big.saga.yaml', '--format', 'png', '-o', 'big.png')).toBe(0);
+    const png = t.disk.get('big.png') as Uint8Array;
+    const view = new DataView(png.buffer, png.byteOffset);
+    const [width, height] = [view.getUint32(16), view.getUint32(20)];
+    expect(height).toBe(16_384);
+    expect(width).toBeGreaterThan(500);
+    expect(width).toBeLessThan(2_000);
+  });
+
+  it("draws the text of a PNG with the font it was given, not the machine's fonts", async () => {
+    const withFonts = setup({ 'o.saga.yaml': orderSaga });
+    const without = setup({ 'o.saga.yaml': orderSaga }, { pngFonts: () => [] });
+    expect(await withFonts.run('export', 'o.saga.yaml', '--format', 'png', '-o', 'o.png')).toBe(0);
+    expect(await without.run('export', 'o.saga.yaml', '--format', 'png', '-o', 'o.png')).toBe(0);
+    // No system fonts are read, so with no font file there is no text: a smaller picture.
+    const size = (t: typeof withFonts) => (t.disk.get('o.png') as Uint8Array).length;
+    expect(size(withFonts)).toBeGreaterThan(size(without) * 1.1);
   });
 
   it('is used wrongly without a format, with an unknown one, with PNG to the console, or with two files', async () => {

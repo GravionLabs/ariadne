@@ -54,6 +54,9 @@ importers:
       '@types/node':
         specifier: ^24.19.1
         version: 24.19.1
+      dejavu-fonts-ttf:
+        specifier: ^2.37.3
+        version: 2.37.3
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2

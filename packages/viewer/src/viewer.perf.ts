@@ -4,8 +4,8 @@ import { AriadneSagaElement, defineAriadneSaga } from './saga-element';
 
 /** Budgets in milliseconds by number of states; see docs/specs/performance-budgets.md. */
 const BUDGETS: Record<string, Record<number, number>> = {
-  'source to load': { 50: 1000, 150: 2600, 300: 8000 },
-  'path set': { 50: 300, 150: 1000, 300: 1500 },
+  'source to load': { 50: 500, 150: 1300, 300: 4000 },
+  'path set': { 50: 150, 150: 450, 300: 800 },
 };
 
 defineAriadneSaga();

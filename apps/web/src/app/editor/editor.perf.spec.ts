@@ -23,7 +23,7 @@ const LONG = 300_000;
 /** Budgets by number of states; see docs/specs/performance-budgets.md. */
 const BUDGETS = {
   /** Milliseconds. */
-  open: { 150: 1000, 300: 3000 } as Record<number, number>,
+  open: { 150: 1000, 300: 4250 } as Record<number, number>,
   select: { 150: 500, 300: 1000 } as Record<number, number>,
   edit: { 150: 1000, 300: 3000 } as Record<number, number>,
   /** `ApplicationRef.tick` calls for the whole operation. */

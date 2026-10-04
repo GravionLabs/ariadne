@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fit, renderDiagramSvg } from './svg';
 import { Diagram } from '@ariadne/core';
 
@@ -244,7 +246,7 @@ describe('renderDiagramSvg title', () => {
     );
     const { svg } = renderDiagramSvg({ ...orderSaga, nodes, edges });
     expect(svg).toContain('stroke="#d97706" stroke-width="2" stroke-dasharray="2 5"');
-    expect(svg).toContain('⏱');
+    expect(svg).toContain('◷');
     expect(svg).toContain('Schedule</tspan> StockTimeout in 1h');
   });
 
@@ -361,5 +363,17 @@ describe('renderDiagramSvg title', () => {
       ],
     });
     expect(svg).toContain('RetryCharge');
+  });
+});
+
+describe('the symbols of the SVG', () => {
+  it('are all in the font the PNG export draws with', () => {
+    // The CLI and the VS Code extension draw PNGs with DejaVu Sans Condensed only. A symbol outside
+    // it is drawn as an empty box (the stopwatch ⏱ was). Add a symbol here only after checking that
+    // the font has it (U+2026 … U+2709 below are all in DejaVuSansCondensed.ttf, regular and bold).
+    const inFont = ['…', '↗', '↩', '↺', '⊘', '◷', '▬', '⚑', '⚠', '⚡', '✉'];
+    const source = readFileSync(join(import.meta.dirname, 'svg.ts'), 'utf8');
+    const used = [...new Set([...source].filter((c) => c.codePointAt(0)! > 0x2000))];
+    expect(used.sort()).toEqual([...inFont].sort());
   });
 });

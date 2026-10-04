@@ -6,7 +6,7 @@ import { createNodeParser } from './node';
 import { CSharpParser } from './parser';
 
 /** Budgets in milliseconds by number of states; see docs/specs/performance-budgets.md. */
-const BUDGETS: Record<number, number> = { 50: 100, 150: 350, 300: 600 };
+const BUDGETS: Record<number, number> = { 50: 60, 150: 170, 300: 300 };
 
 let parser: CSharpParser;
 beforeAll(async () => {

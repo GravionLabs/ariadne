@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCSharpParser } from '@ariadne/masstransit';
-import { Io, run } from './cli';
+import { Io, PNG_FONTS, run } from './cli';
 
 const io: Io = {
   readText: (path) => readFile(path, 'utf8'),
@@ -12,6 +12,8 @@ const io: Io = {
   },
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),
+  // The build copies the fonts next to this file, like the grammar and the runtime.
+  pngFonts: () => PNG_FONTS.map((f) => fileURLToPath(new URL(`./${f}`, import.meta.url))),
   // The build copies the grammar and the runtime next to this file.
   csharpParser: async () =>
     createCSharpParser({
