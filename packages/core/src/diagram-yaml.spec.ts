@@ -1,6 +1,7 @@
 import { Diagram } from './diagram';
 import {
   DiagramFormatError,
+  DiagramVersionError,
   parseDiagram,
   parseDiagramWithNotes,
   serializeDiagram,
@@ -228,6 +229,23 @@ edges:
 
   it('reports no notes for current files', () => {
     expect(parseDiagramWithNotes(serializeDiagram(sample)).notes).toEqual([]);
+  });
+
+  it('tells a newer format version from other unsupported ones', () => {
+    const newer = (() => {
+      try {
+        parseDiagram('version: 4');
+      } catch (e) {
+        return e;
+      }
+    })();
+    expect(newer).toBeInstanceOf(DiagramVersionError);
+    expect(newer).toBeInstanceOf(DiagramFormatError);
+    expect((newer as DiagramVersionError).version).toBe(4);
+    for (const text of ['version: 0', 'version: "4"', 'version: 3.5', 'nodes: []']) {
+      expect(() => parseDiagram(text)).toThrow(DiagramFormatError);
+      expect(() => parseDiagram(text)).not.toThrow(DiagramVersionError);
+    }
   });
 
   it.each([

@@ -14,6 +14,7 @@
     "paths": {
       "@ariadne/core": ["./packages/core/src/index.ts"],
       "@ariadne/export": ["./packages/export/src/index.ts"],
+      "@ariadne/viewer": ["./packages/viewer/src/index.ts"],
       "@ariadne/masstransit": ["./packages/masstransit/src/index.ts"],
       "@ariadne/editor-protocol": ["./packages/editor-protocol/src/index.ts"]
     }

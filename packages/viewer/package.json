@@ -1,0 +1,24 @@
+{
+  "name": "@ariadne/viewer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "An embeddable, read-only viewer for saga diagrams: the <ariadne-saga> custom element.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-viewer.xml"
+  },
+  "dependencies": {
+    "@ariadne/core": "workspace:*",
+    "@ariadne/export": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.0.0",
+    "vitest": "^5.0.0"
+  }
+}

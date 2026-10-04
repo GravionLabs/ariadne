@@ -106,7 +106,10 @@ export interface SvgOptions {
   idPrefix?: string;
   /** Colours as `var(--ariadne-*, <hex>)`, so a host can theme the SVG; plain hex colours without. */
   cssVariables?: boolean;
-  /** Wraps each state and transition in a group with `data-node-id` / `data-edge-id` and `data-kind`. */
+  /**
+   * Wraps each state and transition in a group with `data-node-id` / `data-edge-id` and `data-kind`;
+   * a transition has two (`data-part` `line` and `label`).
+   */
   addressable?: boolean;
 }
 
@@ -127,8 +130,10 @@ export function renderDiagramSvg(diagram: Diagram, options: SvgOptions = {}): Sv
 function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
   const prefix = options.idPrefix ?? '';
   /** A state's or transition's group, when the SVG is addressable. */
-  const addressed = (attr: string, id: string, kind: string, inner: string) =>
-    options.addressable ? `<g ${attr}="${esc(id)}" data-kind="${esc(kind)}">${inner}</g>` : inner;
+  const addressed = (attr: string, id: string, kind: string, inner: string, part = '') =>
+    options.addressable
+      ? `<g ${attr}="${esc(id)}" data-kind="${esc(kind)}"${part && ` data-part="${part}"`}>${inner}</g>`
+      : inner;
   const { positions, labels, routes } = layoutDiagram(diagram);
   const lr = diagram.direction === 'left-right';
   const decisions = decisionIds(diagram);
@@ -223,12 +228,13 @@ function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
         edge.id,
         edge.kind,
         `<path d="${roundedPath(points)}" fill="none" stroke="${stroke}" stroke-width="2"${dash} marker-end="url(#${prefix}arrow-${edge.kind})"/>`,
+        'line',
       ),
     );
     if (labelRows(edge) > 0) {
       const label = transitionLabel(edge, labelCentre, lr, diagram);
       grow(label.x, label.y, label.width, label.height);
-      labelSvg.push(addressed('data-edge-id', edge.id, edge.kind, label.svg));
+      labelSvg.push(addressed('data-edge-id', edge.id, edge.kind, label.svg, 'label'));
     }
   }
 

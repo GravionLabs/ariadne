@@ -121,10 +121,10 @@ importers:
         version: 1.140.0
       '@vscode/test-electron':
         specifier: ^2.5.2
-        version: 2.5.2
+        version: 2.5.2(supports-color@8.1.1)
       '@vscode/vsce':
         specifier: ^4.0.0
-        version: 4.0.0
+        version: 4.0.0(supports-color@8.1.1)
       dejavu-fonts-ttf:
         specifier: ^2.37.3
         version: 2.37.3
@@ -312,6 +312,25 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.1
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.2(@types/node@24.19.1)(jsdom@30.1.1)(vite@8.3.0(@types/node@24.19.1)(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1)(yaml@2.9.1))
+
+  packages/viewer:
+    dependencies:
+      '@ariadne/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ariadne/export':
+        specifier: workspace:*
+        version: link:../export
+    devDependencies:
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
+      jsdom:
+        specifier: ^30.0.0
+        version: 30.1.1
       vitest:
         specifier: ^5.0.0
         version: 5.0.2(@types/node@24.19.1)(jsdom@30.1.1)(vite@8.3.0(@types/node@24.19.1)(esbuild@0.28.2)(sass-embedded@1.104.1)(sass@1.104.1)(yaml@2.9.1))
@@ -5247,7 +5266,7 @@ snapshots:
     transitivePeerDependencies:
       - chokidar
 
-  '@secretlint/core@10.2.2':
+  '@secretlint/core@10.2.2(supports-color@8.1.1)':
     dependencies:
       '@secretlint/profiler': 10.2.2
       '@secretlint/types': 10.2.2
@@ -5400,8 +5419,8 @@ snapshots:
 
   '@typespec/ts-http-runtime@0.3.9':
     dependencies:
-      http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.6
+      http-proxy-agent: 7.0.2(supports-color@8.1.1)
+      https-proxy-agent: 7.0.6(supports-color@8.1.1)
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
@@ -5421,10 +5440,10 @@ snapshots:
 
   '@vitest/spy@5.0.2': {}
 
-  '@vscode/test-electron@2.5.2':
+  '@vscode/test-electron@2.5.2(supports-color@8.1.1)':
     dependencies:
-      http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.6
+      http-proxy-agent: 7.0.2(supports-color@8.1.1)
+      https-proxy-agent: 7.0.6(supports-color@8.1.1)
       jszip: 3.10.2
       ora: 8.2.0
       semver: 7.8.5
@@ -5470,11 +5489,11 @@ snapshots:
       '@vscode/vsce-sign-win32-arm64': 2.0.6
       '@vscode/vsce-sign-win32-x64': 2.0.6
 
-  '@vscode/vsce@4.0.0':
+  '@vscode/vsce@4.0.0(supports-color@8.1.1)':
     dependencies:
       '@azure/identity': 4.13.3
       '@napi-rs/keyring': 1.3.0
-      '@secretlint/core': 10.2.2
+      '@secretlint/core': 10.2.2(supports-color@8.1.1)
       '@secretlint/secretlint-rule-no-dotenv': 10.2.2
       '@secretlint/secretlint-rule-preset-recommend': 10.2.2
       '@secretlint/source-creator': 10.2.2
@@ -6075,14 +6094,14 @@ snapshots:
       domutils: 4.0.2
       entities: 8.1.0
 
-  http-proxy-agent@7.0.2:
+  http-proxy-agent@7.0.2(supports-color@8.1.1):
     dependencies:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
-  https-proxy-agent@7.0.6:
+  https-proxy-agent@7.0.6(supports-color@8.1.1):
     dependencies:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@8.1.1)

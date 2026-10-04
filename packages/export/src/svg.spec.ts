@@ -127,7 +127,9 @@ describe('renderDiagramSvg options', () => {
     // each transition: its line and its label (edge-5 has an event too)
     for (const e of orderSaga.edges) {
       expect(
-        svg.match(new RegExp(`data-edge-id="${e.id}" data-kind="${e.kind}"`, 'g')),
+        svg.match(
+          new RegExp(`data-edge-id="${e.id}" data-kind="${e.kind}" data-part="(line|label)"`, 'g'),
+        ),
       ).toHaveLength(2);
     }
     expect(svg).toContain('data-edge-id="edge-5" data-kind="compensation"');
