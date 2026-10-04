@@ -13,6 +13,16 @@ export interface OpenEditor {
   readonly posted: HostMessage[];
 }
 
+/**
+ * Reports a failure of something nobody waits for (posting to the webview, opening an editor)
+ * instead of leaving it as an unhandled rejection.
+ */
+function reporting(what: string, work: PromiseLike<unknown>): void {
+  Promise.resolve(work).catch((e: unknown) => {
+    void vscode.window.showErrorMessage(`${what}: ${(e as Error).message}`);
+  });
+}
+
 /** The custom editor of `*.saga.yaml`: the document stays a text document, the webview shows it. */
 export class SagaEditorProvider implements vscode.CustomTextEditorProvider {
   private readonly webviewRoot: vscode.Uri;
@@ -50,16 +60,28 @@ export class SagaEditorProvider implements vscode.CustomTextEditorProvider {
         post: (message) => {
           posted.push(message);
           if (posted.length > 50) posted.shift();
-          void webview.postMessage(message);
+          reporting('The editor could not be updated', webview.postMessage(message));
         },
         theme: () => themeKindOf(vscode.window.activeColorTheme.kind),
         settings: () => ({
           autoLayout: vscode.workspace.getConfiguration('ariadne.editor').get('autoLayout', true),
         }),
         showAsText: () =>
-          void vscode.commands.executeCommand('vscode.openWith', document.uri, 'default'),
-        goToCode: (target) => void this.goToCode(document.uri, target),
+          reporting(
+            'The text editor could not be opened',
+            vscode.commands.executeCommand('vscode.openWith', document.uri, 'default'),
+          ),
+        goToCode: (target) =>
+          reporting('The code could not be shown', this.goToCode(document.uri, target)),
         showError: (message) => void vscode.window.showErrorMessage(message),
+        editFailed: async (message) => {
+          const choice = await vscode.window.showErrorMessage(message, 'Open as text', 'Revert');
+          if (choice === 'Open as text') {
+            await vscode.commands.executeCommand('vscode.openWith', document.uri, 'default');
+          } else if (choice === 'Revert') {
+            session.revert();
+          }
+        },
       },
     );
 

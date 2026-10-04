@@ -61,6 +61,21 @@ describe('DiagramDocument', () => {
     });
   });
 
+  it('stays dirty and says why when the file cannot be written', async () => {
+    store.addNode('state');
+    storage.opened = { ref: { name: 'a.saga.yaml' }, content: serializeDiagram(store.diagram()) };
+    await doc.open();
+    store.addNode('state');
+    storage.save.mockRejectedValue(new Error('disk full'));
+
+    expect(await doc.save()).toBe(false);
+
+    expect(doc.dirty()).toBe(true);
+    expect(doc.error()).toBe('disk full');
+    // The edits are still there, to save again.
+    expect(store.nodes().map((n) => n.id)).toEqual(['start-1', 'state-1', 'state-2']);
+  });
+
   it('stays dirty when saving is cancelled', async () => {
     storage.saveAsName = null;
     store.addNode('state');

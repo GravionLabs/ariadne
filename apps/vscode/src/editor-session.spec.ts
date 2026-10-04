@@ -5,6 +5,8 @@ function setup(initial = 'a') {
   let text = initial;
   const posted: HostMessage[] = [];
   const shown: string[] = [];
+  const failures: string[] = [];
+  const answers: (() => void)[] = [];
   let apply = (next: string) => {
     text = next;
     return true;
@@ -25,12 +27,18 @@ function setup(initial = 'a') {
     showAsText: vi.fn(),
     goToCode: vi.fn(),
     showError: (m) => shown.push(m),
+    editFailed: (m) => {
+      failures.push(m);
+      return new Promise<void>((resolve) => answers.push(resolve));
+    },
   };
   const session = new EditorSession(document, view);
   return {
     session,
     posted,
     shown,
+    failures,
+    answerFailure: () => answers.shift()?.(),
     view,
     text: () => text,
     setText: (next: string) => (text = next),
@@ -103,13 +111,13 @@ describe('EditorSession', () => {
   });
 
   it('reports an edit that could not be applied and keeps going', async () => {
-    const { session, shown, text, setText, failWith } = setup('a');
+    const { session, failures, text, setText, failWith } = setup('a');
     failWith(() => {
       throw new Error('read-only');
     });
     session.receive({ v: 1, type: 'edit', text: 'b' });
     await session.idle();
-    expect(shown).toEqual(['The change could not be saved: read-only']);
+    expect(failures).toEqual(['The change could not be saved: read-only']);
     failWith((next) => {
       setText(next);
       return true;
@@ -117,6 +125,53 @@ describe('EditorSession', () => {
     session.receive({ v: 1, type: 'edit', text: 'c' });
     await session.idle();
     expect(text()).toBe('c');
+  });
+
+  it('reports an edit that VS Code did not apply', async () => {
+    const { session, failures, text, failWith } = setup('a');
+    failWith(() => false);
+    session.receive({ v: 1, type: 'edit', text: 'b' });
+    await session.idle();
+    expect(failures).toEqual([
+      'The change could not be saved: VS Code did not apply it (the file may be read-only).',
+    ]);
+    expect(text()).toBe('a');
+  });
+
+  it('shows one message for a run of failed edits, and the next one after it was answered', async () => {
+    const { session, failures, answerFailure, failWith } = setup('a');
+    failWith(() => false);
+    for (const next of ['b', 'c', 'd']) session.receive({ v: 1, type: 'edit', text: next });
+    await session.idle();
+    expect(failures).toHaveLength(1);
+    answerFailure();
+    await Promise.resolve();
+    await Promise.resolve();
+    session.receive({ v: 1, type: 'edit', text: 'e' });
+    await session.idle();
+    expect(failures).toHaveLength(2);
+  });
+
+  it('keeps going when the failure message itself fails', async () => {
+    const { session, view, failWith } = setup('a');
+    const editFailed = vi.fn(() => Promise.reject(new Error('no window')));
+    view.editFailed = editFailed;
+    failWith(() => false);
+    session.receive({ v: 1, type: 'edit', text: 'b' });
+    await session.idle();
+    await Promise.resolve();
+    await Promise.resolve();
+    session.receive({ v: 1, type: 'edit', text: 'c' });
+    await session.idle();
+    // Not stuck: the next failure is reported again.
+    expect(editFailed).toHaveBeenCalledTimes(2);
+  });
+
+  it('reverts the webview to the document on request', () => {
+    const { session, posted, setText } = setup('a');
+    setText('what the file says');
+    session.revert();
+    expect(posted).toEqual([{ v: 1, type: 'documentChanged', text: 'what the file says' }]);
   });
 
   it('opens the text editor on request and shows errors of the webview', () => {

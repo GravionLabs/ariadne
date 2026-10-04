@@ -23,6 +23,12 @@ export interface SessionView {
   /** Opens the C# of the diagram at a state or transition. */
   goToCode(target: CodeTarget): void;
   showError(message: string): void;
+  /**
+   * Tells the user a change of the webview could not be written into the document, and offers a way
+   * out (open the text, or revert the webview to the document). Resolves once they answered or
+   * dismissed it.
+   */
+  editFailed(message: string): PromiseLike<unknown>;
 }
 
 /**
@@ -35,6 +41,8 @@ export class EditorSession {
   private queue: PromiseLike<unknown> = Promise.resolve();
   /** Texts the webview wrote that VS Code has not reported as a change yet. */
   private readonly own: string[] = [];
+  /** An `editFailed` message is on screen: further failures wait for it instead of piling up. */
+  private failureShown = false;
 
   constructor(
     private readonly document: SessionDocument,
@@ -85,6 +93,11 @@ export class EditorSession {
     this.view.post({ v: 1, type: 'theme', kind: this.view.theme() });
   }
 
+  /** Puts the webview back to what the document says, dropping changes that could not be saved. */
+  revert(): void {
+    this.view.post({ v: 1, type: 'documentChanged', text: this.document.getText() });
+  }
+
   /** Resolves when the edits received so far are applied. */
   idle(): PromiseLike<unknown> {
     return this.queue;
@@ -95,12 +108,23 @@ export class EditorSession {
       if (this.document.getText() === text) return;
       this.own.push(text);
       let applied = false;
+      let reason = 'VS Code did not apply it (the file may be read-only).';
       try {
         applied = await this.document.replaceText(text);
       } catch (e) {
-        this.view.showError(`The change could not be saved: ${(e as Error).message}`);
+        reason = (e as Error).message;
       }
+      if (!applied) this.failed(`The change could not be saved: ${reason}`);
       if (!applied) this.own.splice(this.own.lastIndexOf(text), 1);
     });
+  }
+
+  private failed(message: string): void {
+    if (this.failureShown) return;
+    this.failureShown = true;
+    void Promise.resolve(this.view.editFailed(message)).then(
+      () => (this.failureShown = false),
+      () => (this.failureShown = false),
+    );
   }
 }

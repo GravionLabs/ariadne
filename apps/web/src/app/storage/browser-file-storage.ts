@@ -15,7 +15,12 @@ import {
 interface FileHandle {
   readonly name: string;
   getFile(): Promise<File>;
-  createWritable(): Promise<{ write(data: string | Blob): Promise<void>; close(): Promise<void> }>;
+  createWritable(): Promise<{
+    write(data: string | Blob): Promise<void>;
+    close(): Promise<void>;
+    /** Throws the pending write away: the file stays as it was. */
+    abort?(): Promise<void>;
+  }>;
 }
 interface FilePickerOptions {
   suggestedName?: string;
@@ -33,6 +38,8 @@ interface FileSystemAccessWindow {
 
 interface BrowserFileRef extends FileRef {
   readonly handle?: FileHandle;
+  /** `lastModified` of the file when it was opened or last saved by us: to notice other writers. */
+  readonly modified?: number;
 }
 
 // The pickers keep their "All files" option, so older `.yaml` / `.yml` diagrams can still be opened.
@@ -63,8 +70,12 @@ export class BrowserFileStorage extends FileStorage {
     if (fs) {
       const [handle] = (await cancelled(fs.showOpenFilePicker({ types: PICKER_TYPES }))) ?? [];
       if (!handle) return null;
-      const content = await (await handle.getFile()).text();
-      return { ref: { name: handle.name, handle } as BrowserFileRef, content };
+      const file = await handle.getFile();
+      const content = await file.text();
+      return {
+        ref: { name: handle.name, handle, modified: file.lastModified } as BrowserFileRef,
+        content,
+      };
     }
     const file = await this.pickFile();
     return file && { ref: { name: file.name }, content: await file.text() };
@@ -91,10 +102,11 @@ export class BrowserFileStorage extends FileStorage {
   }
 
   async save(content: string, ref: FileRef): Promise<FileRef | null> {
-    const { handle } = ref as BrowserFileRef;
+    const { handle, modified } = ref as BrowserFileRef;
     if (!handle) return this.saveAs(content, ref.name);
+    if (modified !== undefined && !(await this.confirmOverwrite(handle, modified))) return null;
     await write(handle, content);
-    return ref;
+    return { name: ref.name, handle, modified: await modifiedOf(handle) } as BrowserFileRef;
   }
 
   async saveAs(content: string, suggestedName: string): Promise<FileRef | null> {
@@ -104,7 +116,7 @@ export class BrowserFileStorage extends FileStorage {
       const handle = await cancelled(fs.showSaveFilePicker({ suggestedName, types: PICKER_TYPES }));
       if (!handle) return null;
       await write(handle, content);
-      return { name: handle.name, handle } as BrowserFileRef;
+      return { name: handle.name, handle, modified: await modifiedOf(handle) } as BrowserFileRef;
     }
     this.download(content, suggestedName);
     return { name: suggestedName };
@@ -153,6 +165,21 @@ export class BrowserFileStorage extends FileStorage {
     return { name: suggestedName };
   }
 
+  /**
+   * Saving over a file that changed on disk since we opened it (another editor, a `git pull`)
+   * would silently throw that change away, so the user is asked first. Not asked when the file
+   * cannot be read (it was deleted): the write then decides what happens.
+   */
+  private async confirmOverwrite(handle: FileHandle, opened: number): Promise<boolean> {
+    const now = await modifiedOf(handle);
+    if (now === undefined || now <= opened) return true;
+    return (
+      this.document.defaultView?.confirm(
+        `${handle.name} changed on disk since you opened it. Overwrite it?`,
+      ) ?? true
+    );
+  }
+
   private pickFile(): Promise<File | null> {
     return new Promise((resolve) => {
       const input = this.document.createElement('input');
@@ -190,10 +217,28 @@ export class BrowserFileStorage extends FileStorage {
   }
 }
 
+/**
+ * Writes the whole file or none of it: the browser writes to a swap file that replaces the real one
+ * on `close()`, so a failure must `abort()` it to leave the old file as it was.
+ */
 async function write(handle: FileHandle, content: string | Blob): Promise<void> {
   const writable = await handle.createWritable();
-  await writable.write(content);
-  await writable.close();
+  try {
+    await writable.write(content);
+    await writable.close();
+  } catch (e) {
+    await writable.abort?.().catch(() => undefined);
+    throw e;
+  }
+}
+
+/** When the file was last changed, or `undefined` when it cannot be read. */
+async function modifiedOf(handle: FileHandle): Promise<number | undefined> {
+  try {
+    return (await handle.getFile()).lastModified;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Maps the picker's AbortError (user cancelled) to `null`. */

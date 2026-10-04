@@ -792,3 +792,17 @@ describe('limits', () => {
     },
   );
 });
+
+describe('YAML syntax errors', () => {
+  it('give one line: the reason and where, without the code frame', () => {
+    const text = 'version: 3\nnodes: [\n  - a: b\nedges: {\n';
+    expect(() => parseDiagram(text)).toThrow(
+      'Not valid YAML: Block collections are not allowed within flow collections at line 3, column 3:',
+    );
+    try {
+      parseDiagram(text);
+    } catch (e) {
+      expect((e as Error).message).not.toContain('\n');
+    }
+  });
+});
