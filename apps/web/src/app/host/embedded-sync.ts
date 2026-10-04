@@ -74,9 +74,6 @@ export class EmbeddedSync {
       case 'theme':
         this.theme.setHost(message.kind);
         break;
-      case 'requestExport':
-        // Answered with the export commands.
-        break;
     }
   }
 

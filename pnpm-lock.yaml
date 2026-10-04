@@ -88,9 +88,15 @@ importers:
       '@ariadne/editor-protocol':
         specifier: workspace:*
         version: link:../../packages/editor-protocol
+      '@ariadne/export':
+        specifier: workspace:*
+        version: link:../../packages/export
       '@ariadne/masstransit':
         specifier: workspace:*
         version: link:../../packages/masstransit
+      '@resvg/resvg-wasm':
+        specifier: ^2.6.2
+        version: 2.6.2
       tree-sitter-c-sharp:
         specifier: ^0.23.5
         version: 0.23.5
@@ -113,6 +119,9 @@ importers:
       '@vscode/test-electron':
         specifier: ^2.5.2
         version: 2.5.2(supports-color@8.1.1)
+      dejavu-fonts-ttf:
+        specifier: ^2.37.3
+        version: 2.37.3
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
@@ -1560,6 +1569,10 @@ packages:
     resolution: {integrity: sha512-xBaJish5OeGmniDj9cW5PRa/PtmuVU3ziqrbr5xJj901ZDN4TosrVaNZpEiLZAxdfnhAe7uQ7QFWfjPe9d9K2Q==}
     engines: {node: '>= 10'}
 
+  '@resvg/resvg-wasm@2.6.2':
+    resolution: {integrity: sha512-FqALmHI8D4o6lk/LRWDnhw95z5eO+eAa6ORjVg09YRR7BkcM6oPHU9uyC0gtQG5vpFLvgpeU4+zEAz2H8APHNw==}
+    engines: {node: '>= 10'}
+
   '@rolldown/binding-android-arm-eabi@1.2.11':
     resolution: {integrity: sha512-A5kXfGKvKWWZE0TtPrfsvT+q4Y5d1QG8gGUzpYjGydM+fARM9MuX90PrXYXe0XbsDVgyxxNzHo6giCj90bsFNw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2115,6 +2128,9 @@ packages:
 
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
+
+  dejavu-fonts-ttf@2.37.3:
+    resolution: {integrity: sha512-f1hd7jJbeQa1VWcw+K2KrTXS50zTMaHpVC4XIKJpNcDeYR5ajMtj/iLlQDYNvLOKamUB3ARVVCf79lNwNVztSQ==}
 
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
@@ -4465,6 +4481,8 @@ snapshots:
       '@resvg/resvg-js-win32-ia32-msvc': 2.6.2
       '@resvg/resvg-js-win32-x64-msvc': 2.6.2
 
+  '@resvg/resvg-wasm@2.6.2': {}
+
   '@rolldown/binding-android-arm-eabi@1.2.11':
     optional: true
 
@@ -4937,6 +4955,8 @@ snapshots:
   decimal.js@10.6.0: {}
 
   deep-is@0.1.4: {}
+
+  dejavu-fonts-ttf@2.37.3: {}
 
   detect-libc@2.1.2: {}
 

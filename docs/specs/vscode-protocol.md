@@ -16,15 +16,18 @@ messages are in `@ariadne/editor-protocol`; both sides use that package, so ther
 
 ## Host → editor
 
-| `type`            | Fields                      | When                                                                                   |
-| ----------------- | --------------------------- | -------------------------------------------------------------------------------------- |
-| `init`            | `text`, `theme`, `settings` | The answer to `ready`. The editor shows `text` and resets its state.                   |
-| `documentChanged` | `text`                      | The text changed outside the editor: a text editor, `git checkout`, undo, revert.      |
-| `theme`           | `kind`                      | The VS Code colour theme changed.                                                      |
-| `requestExport`   | `format` (`svg` or `png`)   | An export command wants the diagram rendered. The answer is defined with the commands. |
+| `type`            | Fields                      | When                                                                              |
+| ----------------- | --------------------------- | --------------------------------------------------------------------------------- |
+| `init`            | `text`, `theme`, `settings` | The answer to `ready`. The editor shows `text` and resets its state.              |
+| `documentChanged` | `text`                      | The text changed outside the editor: a text editor, `git checkout`, undo, revert. |
+| `theme`           | `kind`                      | The VS Code colour theme changed.                                                 |
 
 `theme` and `kind` are `light`, `dark`, `high-contrast` or `high-contrast-light` (VS Code's theme
 kinds). `settings` holds the `ariadne.editor.*` settings the editor needs: `autoLayout` (boolean).
+
+There is no message for exports: SVG, PNG, Mermaid and Markdown are rendered by the extension itself
+from the document text (`@ariadne/export`, PNG with a WebAssembly rasteriser), so they work without
+the editor being open.
 
 ## Editor → host
 
