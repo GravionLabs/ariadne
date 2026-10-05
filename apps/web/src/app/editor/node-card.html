@@ -40,6 +40,7 @@
   @if (
     node().activities?.length ||
     node().requests?.length ||
+    node().routingSlips?.length ||
     node().timers?.length ||
     node().ignores?.length ||
     node().compensation
@@ -63,6 +64,15 @@
           <span
             ><span class="verb">Request</span> {{ request.name
             }}{{ request.timeout ? ' · ' + request.timeout : '' }}</span
+          >
+        </li>
+      }
+      @for (slip of node().routingSlips ?? []; track $index) {
+        <li class="chip chip-slip" title="Starts a routing slip on entering this state">
+          <app-icon name="route" />
+          <span
+            ><span class="verb">Routing slip</span> {{ slip.name }} · {{ slip.activities.length }}
+            {{ slip.activities.length === 1 ? 'activity' : 'activities' }}</span
           >
         </li>
       }

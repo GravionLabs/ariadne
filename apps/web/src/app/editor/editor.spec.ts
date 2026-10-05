@@ -444,6 +444,65 @@ describe('Editor', () => {
     expect(el.querySelector('app-inspector .origin')?.textContent).toContain('State');
   });
 
+  it('starts a routing slip on a state: its itinerary, compensation order and outcomes (#399)', async () => {
+    const { el, store, select, settle, fill, expand } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    await select(['state-1']);
+    await expand('Routing slips');
+    inspectorButton(el, 'Start a routing slip').click();
+    await settle();
+    expect(store.nodes()[1].routingSlips).toEqual([
+      { name: 'DoTheWork', activities: [{ name: 'FirstActivity', compensates: true }] },
+    ]);
+    const change = async (input: HTMLInputElement, value: string) => {
+      input.value = value;
+      input.dispatchEvent(new Event('change'));
+      await settle();
+    };
+    await change(el.querySelector<HTMLInputElement>('app-inspector .slip-name')!, 'Fulfil');
+    await change(el.querySelector<HTMLInputElement>('app-inspector .activity-name')!, 'Reserve');
+    inspectorButton(el, 'Add an activity').click();
+    await settle();
+    await change(
+      el.querySelectorAll<HTMLInputElement>('app-inspector .activity-name')[1],
+      'Notify',
+    );
+    // Notify does not compensate; then it moves first.
+    el.querySelectorAll<HTMLInputElement>('app-inspector .compensates input')[1].click();
+    await settle();
+    el.querySelector<HTMLButtonElement>(
+      'app-inspector [aria-label="Move Notify earlier"]',
+    )!.click();
+    await settle();
+    expect(store.nodes()[1].routingSlips).toEqual([
+      { name: 'Fulfil', activities: [{ name: 'Notify' }, { name: 'Reserve', compensates: true }] },
+    ]);
+    expect(el.querySelector('app-inspector .undo-order')?.textContent).toContain('Reserve.');
+    expect(el.querySelector('app-node-card .chip-slip')?.textContent).toContain(
+      'Routing slip Fulfil · 2 activities',
+    );
+    expect(await axeFindings(el)).toEqual([]);
+
+    // The event field offers the two outcomes, and a transition on one shows where it comes from.
+    await select([], ['edge-2']);
+    const options = [...el.querySelectorAll<HTMLOptionElement>('#event-suggestions option')];
+    expect(options.map((o) => o.value)).toEqual(['Fulfil.Completed', 'Fulfil.Faulted']);
+    await fill('input[placeholder="e.g. PaymentCharged"]', 'Fulfil.Faulted');
+    const label = el.querySelectorAll('app-transition-label')[1];
+    expect(label.querySelector('.event')?.classList).toContain('slipFaulted');
+    expect(el.querySelector('app-inspector .origin')?.textContent).toContain(
+      'Outcome of the routing slip started when entering State',
+    );
+
+    // Removing the last activity leaves an empty slip (the checks say so); an empty name removes it.
+    await select(['state-1']);
+    await change(el.querySelector<HTMLInputElement>('app-inspector .slip-name')!, '');
+    expect(store.nodes()[1].routingSlips).toBeUndefined();
+    store.undo();
+    expect(store.nodes()[1].routingSlips?.[0].name).toBe('Fulfil');
+  });
+
   it('adds a join from the "+"; it waits for the events of its incoming transitions', async () => {
     const { el, store, select, settle, fill, pick } = await setup();
     store.appendNode('start-1', 'state');

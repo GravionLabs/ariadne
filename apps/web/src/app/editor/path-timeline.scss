@@ -158,8 +158,12 @@ button {
   &.kind-reply {
     --kind: var(--c-reply);
   }
-  &.kind-fault {
+  &.kind-fault,
+  &.kind-slipFaulted {
     --kind: var(--c-fault);
+  }
+  &.kind-slipCompleted {
+    --kind: var(--c-reply);
   }
   &.kind-composite {
     --kind: var(--c-join);

@@ -157,6 +157,14 @@
   --row-color: var(--c-fault);
 }
 
+.event.slipCompleted {
+  --row-color: var(--c-reply);
+}
+
+.event.slipFaulted {
+  --row-color: var(--c-fault);
+}
+
 .source {
   --row-color: var(--c-external);
   color: var(--c-text-subtle);

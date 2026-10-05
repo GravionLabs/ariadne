@@ -20,6 +20,8 @@ const EVENT_ICONS: Partial<Record<string, IconName>> = {
   reply: 'reply',
   fault: 'fault',
   composite: 'join',
+  slipCompleted: 'route',
+  slipFaulted: 'compensation',
 };
 
 /**

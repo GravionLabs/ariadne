@@ -336,6 +336,10 @@
   --chip-color: var(--c-timeout);
 }
 
+.chip-slip {
+  --chip-color: var(--c-reply);
+}
+
 // An ignored event: grey and struck through.
 .chip-ignore {
   --chip-color: var(--c-text-subtle);
