@@ -148,6 +148,29 @@ describe('generateSaga', () => {
   });
 });
 
+describe('generateSaga and compensation', () => {
+  it('says that a compensation is written as an ordinary transition, and that its undo action is not', () => {
+    const d: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'start', name: 'Initial' },
+        { id: 'p', type: 'state', name: 'Paying', compensation: { name: 'Refund' } },
+        { id: 'f', type: 'state', name: 'Failing' },
+      ],
+      edges: [
+        { id: '1', source: 'a', target: 'p', kind: 'forward', event: 'Placed' },
+        { id: '2', source: 'p', target: 'f', kind: 'compensation', event: 'ShipFailed' },
+      ],
+    };
+    const { files, warnings } = generateSaga(d);
+    expect(warnings).toEqual([
+      'The compensation Paying → Failing (ShipFailed) is written as an ordinary transition: C# does not mark it.',
+      'The compensation Refund of state Paying is not generated: write the undo action yourself.',
+    ]);
+    expect(files[0].content).toContain('When(ShipFailed)');
+  });
+});
+
 describe('generateSaga on a large saga', () => {
   it('writes C# for 50 generated states without throwing', () => {
     const { files, warnings } = generateSaga(largeSaga(50));

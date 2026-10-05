@@ -995,6 +995,7 @@ class SagaReader {
   private resolveJoins(): Transition[] {
     const flow: Transition[] = [];
     const left = new Set<string>();
+    const said = new Set<string>();
     for (const t of this.transitions) {
       const composite = this.composites.get(t.event);
       if (composite) {
@@ -1016,10 +1017,11 @@ class SagaReader {
       } else {
         flow.push(t);
         for (const [name] of joins) {
-          this.warn(
-            t.at,
-            `${t.event} counts towards the join ${name} but moves the saga on: drawn as an ordinary transition, not into the join.`,
-          );
+          const message = `${t.event} counts towards the join ${name} but moves the saga on: drawn as an ordinary transition, not into the join.`;
+          const key = `${t.at.path}:${t.at.line}:${message}`;
+          if (said.has(key)) continue;
+          said.add(key);
+          this.warn(t.at, message);
         }
       }
     }

@@ -191,6 +191,22 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     ),
   ];
 
+  // C# has no marker for a compensation: it is written as what it is, an ordinary transition or none.
+  for (const edge of usable) {
+    if (edge.kind === 'compensation') {
+      warnings.push(
+        `The compensation ${nodes.get(edge.source)!.name} → ${nodes.get(edge.target)!.name} (${edge.event}) is written as an ordinary transition: C# does not mark it.`,
+      );
+    }
+  }
+  for (const n of states) {
+    if (n.compensation) {
+      warnings.push(
+        `The compensation ${n.compensation.name} of state ${n.name} is not generated: write the undo action yourself.`,
+      );
+    }
+  }
+
   const stateName = new Map<string, string>();
   for (const n of states) stateName.set(n.id, names.of(n.id, 'State', n.name, 'State'));
 
