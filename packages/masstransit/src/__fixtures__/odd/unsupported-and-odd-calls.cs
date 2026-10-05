@@ -1,4 +1,4 @@
-// ODD: constructs that are valid but not drawn (If, Schedule, Request, Switch, WhenLeave, CompositeEvent).
+// ODD: constructs that are valid but not drawn (Switch, WhenLeave), among others that are.
 using MassTransit;
 
 namespace Odd;
@@ -11,11 +11,9 @@ public class UnsupportedStateMachine : MassTransitStateMachine<UnsupportedState>
     public Event<Stopped> Stopped { get; private set; } = null!;
     public Schedule<UnsupportedState, Timeout> Timeout { get; private set; } = null!;
     public Request<UnsupportedState, Ask, Answer> Ask { get; private set; } = null!;
-    public Event Both { get; private set; } = null!;
 
     public UnsupportedStateMachine()
     {
-        CompositeEvent(() => Both, x => x.Flags, Started, Stopped);
         Initially(
             When(Started)
                 .If(context => context.Message.Big, x => x.TransitionTo(Working))

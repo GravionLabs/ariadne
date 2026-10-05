@@ -22,7 +22,6 @@ import './native-dialog.testing';
 import { parseDiagram, serializeDiagram } from '@ariadne/core';
 import { axeFindings } from '../testing/axe';
 import orderYaml from '../../../../../docs/examples/order.saga.yaml';
-import travelYaml from '../../../../../docs/examples/travel-booking.saga.yaml';
 
 // jsdom has no ResizeObserver; f-flow uses it to track node sizes.
 globalThis.ResizeObserver ??= class {
@@ -1445,7 +1444,23 @@ describe('Editor', () => {
 
     it('lists what could not be generated', async () => {
       const { store, dialog, start } = await generating();
-      store.load(parseDiagram(travelYaml));
+      store.load(
+        parseDiagram(`version: 3
+name: Without an event
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-1
+    type: state
+    name: Working
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-1
+`),
+      );
       await start();
       expect(dialog().querySelectorAll('.warnings li').length).toBeGreaterThan(0);
     });

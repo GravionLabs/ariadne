@@ -7,4 +7,5 @@ public class LoanApplicationState : SagaStateMachineInstance
 {
     public Guid CorrelationId { get; set; }
     public int CurrentState { get; set; }
+    public int ChecksStatus { get; set; }
 }

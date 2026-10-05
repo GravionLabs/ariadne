@@ -9,4 +9,5 @@ public class LoanApplicationState : SagaStateMachineInstance
 {
     public Guid CorrelationId { get; set; }
     public string CurrentState { get; set; } = null!;
+    public int ChecksCompletedStatus { get; set; }
 }

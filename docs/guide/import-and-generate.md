@@ -9,12 +9,24 @@ your machine, for the command line): source code is never sent anywhere.
 what it found. Pick a saga and choose **Open as new diagram**.
 
 What is read: `Initially`, `During`, `DuringAny` and `WhenEnter`; `When(Event)` with an optional filter (shown as a
-guard); `TransitionTo`, `Finalize` and `Ignore`; `Send` and `Publish` (shown as activities of the target state);
-helper methods of the same class; partial classes spread over several files; `Event(() => E, x => x.CorrelateById(...))`.
+guard); `If` and `IfElse` (a transition for each branch, each with its guard); `TransitionTo`, `Finalize` and
+`Ignore`; `Send` and `Publish` (shown as activities of the target state); `Request` with its answers
+`Name.Completed`, `.Faulted` and `.TimeoutExpired`; `Schedule` and `Unschedule` with `Name.Received`;
+`CompositeEvent` (a join); helper methods of the same class; partial classes spread over several files;
+`Event(() => E, x => x.CorrelateById(...))`.
 
-What is not drawn is listed as a **warning with file and line**: code that runs in `Then(...)`, `Request`,
-`Schedule`, `If`, or a base class that cannot be resolved. The diagram is a view of the structure, not of every
-line of code.
+What is not drawn is listed as a **warning with file and line**:
+
+- code that runs in `Then(...)`, `Catch` and the like;
+- `Fault`, `OnUnhandledEvent`, `Switch`, and `WhenLeave`, `WhenEnterAny`, `WhenLeaveAny`, `BeforeEnter`, `AfterLeave`
+  and `Finally`;
+- anything sent, published, requested or scheduled on the way into the final state, because nothing happens in a
+  final state;
+- transitions into one state that do different things, because the diagram shows what happens on the state;
+- a member of a `CompositeEvent` that moves the saga on instead of staying in its state, and a base class that
+  cannot be resolved.
+
+The diagram is a view of the structure, not of every line of code.
 
 The result opens as a new, unsaved diagram. Import never changes your code.
 
@@ -32,14 +44,16 @@ without a folder picker).
 The generated code is a starting point:
 
 - search for `TODO`: the properties of the messages, and every guard, are left for you;
-- joins, requests and per-state timeouts are not generated yet and are listed in the dialog;
+- what a diagram cannot say, such as a transition without an event, is not generated and is listed in the dialog;
+- C# has no marker for a compensation: a compensation transition is written as an ordinary one, the undo action
+  of a state is not generated, and the dialog says so. Importing the code gives ordinary transitions back;
 - names are turned into C# identifiers (`Charging payment` → `ChargingPayment`), and a clash gets a number.
 
 Save generated files where you want them; Ariadne never overwrites a project.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../images/guide/generate-dialog-dark.png">
-  <img alt="The generate dialog: a note about what was not generated, tabs for the three files, the C# of the state machine, and the buttons Close, Copy file and Save all" src="../images/guide/generate-dialog-light.png">
+  <img alt="The generate dialog: tabs for the three files, the C# of the state machine, and the buttons Close, Copy file and Save all" src="../images/guide/generate-dialog-light.png">
 </picture>
 
 ## In VS Code

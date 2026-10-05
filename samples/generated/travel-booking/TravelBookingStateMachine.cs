@@ -13,7 +13,7 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
         Event(() => FlightReserved); // from Airline gateway
         Event(() => PaymentMethodConfirmed); // from Booking API
         Event(() => FlightRejected); // from Airline gateway
-        Event(() => FlightHoldExpired);
+        Event(() => PaymentAuthorized); // from Payment gateway
         Event(() => PaymentDeclined); // from Payment gateway
         Event(() => ConfirmationSent); // from Notification service
         Event(() => ConfirmationRejected); // from Airline gateway
@@ -23,9 +23,30 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
         Event(() => TravellerUpdated);
         Event(() => HotelRequested);
 
+        Request(() => ValidateTraveller, x => x.ValidateTravellerRequestId, r => r.Timeout = TimeSpan.FromSeconds(10));
+        Request(() => CheckAvailability, x => x.CheckAvailabilityRequestId, r => r.Timeout = TimeSpan.FromSeconds(5));
+
+        Schedule(() => FlightHoldExpired, x => x.FlightHoldExpiredTokenId, s =>
+        {
+            s.Delay = TimeSpan.FromMinutes(15);
+            s.Received = e => e.CorrelateById(context => context.Message.CorrelationId);
+        });
+
+        CompositeEvent(() => BookingReady, x => x.BookingReadyStatus, CheckAvailability.Completed, PaymentAuthorized);
+
         Initially(
             When(TravellerSubmitted)
                 .TransitionTo(ValidatingTraveller));
+
+        During(ValidatingTraveller,
+            When(ValidateTraveller.Completed)
+                .TransitionTo(ReservingFlight),
+            When(ValidateTraveller.Faulted)
+                .Finalize(),
+            When(ValidateTraveller.TimeoutExpired, context => true /* TODO guard: attempts < 3 */)
+                .TransitionTo(ValidatingTraveller),
+            When(ValidateTraveller.TimeoutExpired, context => true /* TODO guard: attempts >= 3 */)
+                .Finalize());
 
         During(ReservingFlight,
             When(FlightReserved, context => true /* TODO guard: cabin = business */)
@@ -38,13 +59,25 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
                 .TransitionTo(ReservingFlight),
             When(FlightRejected, context => true /* TODO guard: attempts >= 3 */)
                 .Finalize(),
-            When(FlightHoldExpired)
+            When(FlightHoldExpired.Received)
                 .Finalize(),
             Ignore(TravellerUpdated));
 
+        During(ReservingHotel,
+            When(CheckAvailability.Completed),
+            When(CheckAvailability.Faulted)
+                .Finalize(),
+            When(CheckAvailability.TimeoutExpired)
+                .Finalize(),
+            When(BookingReady)
+                .TransitionTo(ConfirmingBooking));
+
         During(AuthorizingPayment,
+            When(PaymentAuthorized),
             When(PaymentDeclined)
                 .Finalize(),
+            When(BookingReady)
+                .TransitionTo(ConfirmingBooking),
             When(PaymentDeclined)
                 .TransitionTo(ReservingHotel));
 
@@ -68,14 +101,20 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
             When(CancelRequested)
                 .TransitionTo(Cancelling));
 
+        WhenEnter(ValidatingTraveller, binder => binder
+            .Request(ValidateTraveller, context => new ValidateTravellerRequest { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
+
         WhenEnter(ReservingFlight, binder => binder
+            .Schedule(FlightHoldExpired, context => new FlightHoldExpiredMessage { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })
             .Send(context => new ReserveFlight { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
 
         WhenEnter(ReservingHotel, binder => binder
+            .Request(CheckAvailability, context => new CheckAvailabilityRequest { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })
             .Send(context => new ReserveHotel { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })
             .Publish(context => new HotelRequested { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
 
         WhenEnter(AuthorizingPayment, binder => binder
+            .Unschedule(FlightHoldExpired)
             .Send(context => new AuthorizePayment { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
 
         WhenEnter(ConfirmingBooking, binder => binder
@@ -100,7 +139,7 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
     public Event<FlightReserved> FlightReserved { get; private set; } = null!;
     public Event<PaymentMethodConfirmed> PaymentMethodConfirmed { get; private set; } = null!;
     public Event<FlightRejected> FlightRejected { get; private set; } = null!;
-    public Event<FlightHoldExpired> FlightHoldExpired { get; private set; } = null!;
+    public Event<PaymentAuthorized> PaymentAuthorized { get; private set; } = null!;
     public Event<PaymentDeclined> PaymentDeclined { get; private set; } = null!;
     public Event<ConfirmationSent> ConfirmationSent { get; private set; } = null!;
     public Event<ConfirmationRejected> ConfirmationRejected { get; private set; } = null!;
@@ -109,4 +148,11 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
     public Event<BookingConfirmed> BookingConfirmed { get; private set; } = null!;
     public Event<TravellerUpdated> TravellerUpdated { get; private set; } = null!;
     public Event<HotelRequested> HotelRequested { get; private set; } = null!;
+
+    public Event BookingReady { get; private set; } = null!;
+
+    public Request<TravelBookingState, ValidateTravellerRequest, ValidateTravellerResponse> ValidateTraveller { get; private set; } = null!;
+    public Request<TravelBookingState, CheckAvailabilityRequest, CheckAvailabilityResponse> CheckAvailability { get; private set; } = null!;
+
+    public Schedule<TravelBookingState, FlightHoldExpiredMessage> FlightHoldExpired { get; private set; } = null!;
 }

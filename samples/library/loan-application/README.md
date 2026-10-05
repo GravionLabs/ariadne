@@ -4,9 +4,9 @@ Handles a loan application through three checks and a decision, with a person to
 
 ## The process
 
-A submitted application starts a **credit check**, then an **identity check**, then an **income check**. Each has its own time limit: if the answer does not come, the scheduler sends a timeout event and the application is **withdrawn**, with the applicant told.
+A submitted application starts a **credit check**, an **identity check** and an **income check** at the same time. Each has its own time limit: if one answer does not come, the scheduler sends a timeout event and the application is **withdrawn**, with the applicant told.
 
-When the three checks are in, the **scoring service** decides, and reports `Approved`, `Referred` or `Declined` in `ScoringCompleted`. One event, three ways on:
+When all three checks are in, in whatever order, the **scoring service** decides, and reports `Approved`, `Referred` or `Declined` in `ScoringCompleted`. One event, three ways on:
 
 - **Approved:** an offer is prepared.
 - **Referred:** a reviewer is assigned, and `ReviewCompleted` says whether the application is approved (an offer follows) or declined.
@@ -17,10 +17,10 @@ An **offer** waits for the applicant. If it is accepted the funds are **disburse
 ## What it shows
 
 - **Guards on one event:** `When(ScoringCompleted, context => context.Message.Outcome == "Approved")` and two more, which the diagram shows as three conditional transitions.
-- **A time limit on each wait,** as events from the scheduler.
+- **`IfElse` for a decision with two outcomes:** after the review, `IfElse(context => context.Message.Approved, …)` shows as two conditional transitions, the second with the opposite guard.
+- **A join:** `CompositeEvent(() => ChecksCompleted, …)` waits for the three answers, which the diagram shows as three transitions into a join and one out of it.
+- **A time limit on each check,** as events from the scheduler.
 - A decision that goes to a person, and comes back.
 - Declined and withdrawn applications each publish what happened and tell the applicant before they end.
-
-The three checks run one after the other here. A saga could wait for all three at once with a composite event (MassTransit's `CompositeEvent`, a join in the diagram), but Ariadne does not read or generate that yet, so the sample does not use it.
 
 The messages are in [`Contracts.cs`](Contracts.cs), the saga in [`LoanApplicationStateMachine.cs`](LoanApplicationStateMachine.cs). The diagram is [`loan-application.saga.yaml`](loan-application.saga.yaml), the generated C# is in [`generated`](generated), and the documentation page is [`loan-application.docs.md`](loan-application.docs.md).

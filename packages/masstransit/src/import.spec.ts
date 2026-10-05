@@ -330,21 +330,224 @@ describe('importSagas on small sagas', () => {
       saga(`Initially(When(Start)
           .Then(ctx => { })
           .Then(ctx => { })
-          .Schedule(Reminder, ctx => new Remind())
-          .IfElse(ctx => true, a => a.TransitionTo(Working), b => b.TransitionTo(Waiting))
+          .Switch(ctx => ctx.Message.Kind)
           .TransitionTo(Working));
         WhenLeave(Working, b => b.Then(c => { }));`),
       parser,
     );
     expect(messages(result)).toEqual([
       'DemoStateMachine: Then(…) runs code; it is left out of the diagram.',
-      'DemoStateMachine: Schedule(…) is not shown in the diagram yet.',
-      'DemoStateMachine: IfElse(…) is not shown in the diagram yet.',
+      'DemoStateMachine: Switch(…) is not shown in the diagram yet.',
       'DemoStateMachine: WhenLeave(…) is not shown in the diagram yet.',
     ]);
     // `Then` is said once, at its first place; the others where they are.
-    expect(result.warnings.map((w) => w.line)).toEqual([15, 17, 18, 20]);
+    expect(result.warnings.map((w) => w.line)).toEqual([15, 17, 19]);
     expect(edgesOf(only(result))).toEqual(['Initial -Start-> Working']);
+  });
+
+  it('says so for declarations in the constructor that are not drawn, instead of dropping them', () => {
+    const result = importSagas(
+      saga(`Fault<Start>(Start);
+        OnUnhandledEvent(x => x.Ignore());
+        Initially(When(Start).TransitionTo(Working));`),
+      parser,
+    );
+    expect(messages(result)).toEqual([
+      'DemoStateMachine: Fault(…) is not shown in the diagram yet.',
+      'DemoStateMachine: OnUnhandledEvent(…) is not shown in the diagram yet.',
+    ]);
+  });
+
+  it('reads If and IfElse as guarded transitions, the rest being the way out', () => {
+    const d = only(
+      importSagas(
+        saga(`Initially(When(Start)
+            .Publish(ctx => new B())
+            .If(ctx => ctx.Message.Big, then => then.Send(ctx => new A()).TransitionTo(Working))
+            .TransitionTo(Waiting));
+          During(Working,
+            When(Next).IfElse(ctx => ctx.Message.Fast,
+              yes => yes.TransitionTo(Waiting),
+              no => no.Finalize()));`),
+        parser,
+      ),
+    );
+    expect(edgesOf(d)).toEqual([
+      'Initial -Start [ctx.Message.Big]-> Working',
+      'Initial -Start [!(ctx.Message.Big)]-> Waiting',
+      'Working -Next [ctx.Message.Fast]-> Waiting',
+      'Working -Next [!(ctx.Message.Fast)]-> Final',
+    ]);
+    expect(d.nodes.find((n) => n.name === 'Working')?.activities).toEqual([
+      { kind: 'event', name: 'B' },
+      { kind: 'command', name: 'A' },
+    ]);
+  });
+
+  it('warns about an If that cannot be read or is nested, and about code in a branch', () => {
+    const result = importSagas(
+      saga(`Initially(When(Start)
+          .If(ctx => true, then => then.Then(c => { }).If(c => true, t => t.TransitionTo(Waiting)).TransitionTo(Working)));`),
+      parser,
+    );
+    expect(messages(result)).toEqual([
+      'DemoStateMachine: Then(…) runs code; it is left out of the diagram.',
+      'DemoStateMachine: If(…) is not shown in the diagram yet.',
+    ]);
+  });
+
+  it('reads a request: the declaration, the call on entry and the three answers', () => {
+    const result = importSagas(
+      saga(`Request(() => Ask, x => x.RequestId, r => r.Timeout = TimeSpan.FromSeconds(30));
+        Initially(When(Start).Request(Ask, ctx => new AskIt()).TransitionTo(Working));
+        During(Working,
+          When(Ask.Completed).TransitionTo(Waiting),
+          When(Ask.Faulted).Finalize(),
+          When(Ask.TimeoutExpired).TransitionTo(Waiting));`),
+      parser,
+    );
+    const d = only(result);
+    expect(messages(result)).toEqual([]);
+    expect(d.nodes.find((n) => n.name === 'Working')?.requests).toEqual([
+      { name: 'Ask', timeout: '30s' },
+    ]);
+    expect(edgesOf(d)).toEqual([
+      'Initial -Start-> Working',
+      'Working -Ask.Completed-> Waiting',
+      'Working -Ask.Faulted-> Final',
+      'Working -Ask.TimeoutExpired-> Waiting',
+    ]);
+  });
+
+  it('reads a request made in WhenEnter, keeps an odd timeout as written, and a request without one', () => {
+    const d = only(
+      importSagas(
+        saga(`Request(() => Ask, x => x.RequestId, r => r.Timeout = Settings.AskTimeout);
+          Request(() => Check, x => x.CheckId);
+          Initially(When(Start).TransitionTo(Working));
+          WhenEnter(Working, b => b.Request(Ask, ctx => new AskIt()).Request(Check, ctx => new CheckIt()));`),
+        parser,
+      ),
+    );
+    expect(d.nodes.find((n) => n.name === 'Working')?.requests).toEqual([
+      { name: 'Ask', timeout: 'Settings.AskTimeout' },
+      { name: 'Check' },
+    ]);
+  });
+
+  it('warns about a request on the way to the final state', () => {
+    const result = importSagas(
+      saga(`Initially(When(Start).TransitionTo(Working));
+        During(Working, When(Next).Request(Ask, ctx => new AskIt()).Finalize());`),
+      parser,
+    );
+    expect(messages(result)).toEqual([
+      'DemoStateMachine: Ask on the way to the final state cannot be shown: nothing happens in a final state.',
+    ]);
+  });
+
+  it('reads a timeout: the declaration, Schedule and Unschedule in order, and Received as the event', () => {
+    const result = importSagas(
+      saga(`Schedule(() => Reminder, x => x.TimeoutId, s =>
+          { s.Delay = TimeSpan.FromMinutes(5); s.Received = e => e.CorrelateById(c => c.Message.CorrelationId); });
+        Initially(When(Start).Schedule(Reminder, ctx => new Remind()).TransitionTo(Working));
+        During(Working,
+          When(Reminder.Received).Unschedule(Reminder).TransitionTo(Waiting),
+          When(Next).Unschedule(Reminder).TransitionTo(Waiting));`),
+      parser,
+    );
+    const d = only(result);
+    expect(messages(result)).toEqual([]);
+    expect(d.nodes.find((n) => n.name === 'Working')?.timers).toEqual([
+      { action: 'schedule', name: 'Reminder', delay: '5m' },
+    ]);
+    expect(d.nodes.find((n) => n.name === 'Waiting')?.timers).toEqual([
+      { action: 'unschedule', name: 'Reminder' },
+    ]);
+    expect(edgesOf(d)).toEqual([
+      'Initial -Start-> Working',
+      'Working -Reminder-> Waiting',
+      'Working -Next-> Waiting',
+    ]);
+  });
+
+  it('reads a timeout set in WhenEnter, with a delay that is not a plain duration', () => {
+    const d = only(
+      importSagas(
+        saga(`Schedule(() => Reminder, x => x.TimeoutId, s => s.Delay = Settings.ReminderDelay);
+          Initially(When(Start).TransitionTo(Working));
+          WhenEnter(Working, b => b.Schedule(Reminder, ctx => new Remind()).Publish(ctx => new B()));`),
+        parser,
+      ),
+    );
+    expect(d.nodes.find((n) => n.name === 'Working')?.timers).toEqual([
+      { action: 'schedule', name: 'Reminder', delay: 'Settings.ReminderDelay' },
+    ]);
+  });
+
+  it('reads a CompositeEvent as a join: handlers that stay lead into it, its own handler leaves it', () => {
+    const result = importSagas(
+      saga(
+        `CompositeEvent(() => Ready, x => x.Flags, Next, Stop);
+        Initially(When(Start).TransitionTo(Working));
+        During(Working,
+          When(Next),
+          When(Stop),
+          When(Ready).TransitionTo(Waiting));
+        During(Waiting, When(Ready).TransitionTo(Waiting));`,
+        'public Event Ready { get; private set; }',
+      ),
+      parser,
+    );
+    const d = only(result);
+    expect(messages(result)).toEqual([]);
+    expect(d.nodes.filter((n) => n.type === 'join').map((n) => n.name)).toEqual(['Ready']);
+    expect(edgesOf(d)).toEqual([
+      'Initial -Start-> Working',
+      'Working -Next-> Ready',
+      'Working -Stop-> Ready',
+      'Ready -Ready-> Waiting',
+    ]);
+  });
+
+  it('draws a join once when several states handle the composite event', () => {
+    const d = only(
+      importSagas(
+        saga(
+          `CompositeEvent(() => Ready, x => x.Flags, Next, Stop);
+          Initially(When(Start).TransitionTo(Working));
+          During(Working, When(Next), When(Ready).TransitionTo(Waiting));
+          During(Waiting, When(Stop), When(Ready).TransitionTo(Waiting));`,
+          'public Event Ready { get; private set; }',
+        ),
+        parser,
+      ),
+    );
+    expect(edgesOf(d).filter((e) => e.includes('Ready -Ready'))).toEqual([
+      'Ready -Ready-> Waiting',
+    ]);
+  });
+
+  it('warns about what a join cannot show: options, a member that moves on, activities, no use', () => {
+    const result = importSagas(
+      saga(
+        `CompositeEvent(() => Ready, x => x.Flags, CompositeEventOptions.IncludeInitial, Next, Stop);
+        CompositeEvent(() => Unused, x => x.Other, Odd, Even);
+        Initially(When(Start).TransitionTo(Working));
+        During(Working,
+          When(Next).Publish(ctx => new B()),
+          When(Stop).TransitionTo(Waiting),
+          When(Ready).TransitionTo(Waiting));`,
+        'public Event Ready { get; private set; } public Event Unused { get; private set; } public Event<Odd> Odd { get; private set; } public Event<Even> Even { get; private set; }',
+      ),
+      parser,
+    );
+    expect(messages(result)).toEqual([
+      'DemoStateMachine: CompositeEventOptions.IncludeInitial is not shown in the diagram.',
+      'DemoStateMachine: Stop counts towards the join Ready but moves the saga on: drawn as an ordinary transition, not into the join.',
+      'DemoStateMachine: The join Unused is not used by any transition: not drawn.',
+      'DemoStateMachine: B on Next, which counts towards the join Ready, cannot be shown.',
+    ]);
   });
 
   it('does not draw what cannot be drawn, and says so', () => {

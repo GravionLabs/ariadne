@@ -5,6 +5,7 @@ import {
   DiagramNode,
   EventInfo,
   SagaInfo,
+  Timer,
   bytesOver,
   formatMegabytes,
   nextId,
@@ -192,6 +193,13 @@ function warnForUnknownBase(name: string, parts: readonly ClassPart[], warnings:
 
 // ---- reading one saga
 
+/** One way out of an `If`/`IfElse`: its condition, where it leads, what it sends. */
+interface Branch {
+  guard?: string;
+  target: string | undefined;
+  activities: Activity[];
+}
+
 interface Chain {
   /** The calls of `When(E).A().B()`, outermost last. */
   calls: Call[];
@@ -203,20 +211,75 @@ interface Transition {
   event: string;
   guard?: string;
   activities: Activity[];
+  /** The requests made on entering the target, by name. */
+  requests: string[];
+  /** The timeouts scheduled or cancelled on entering the target, in order. */
+  timers: Pick<Timer, 'action' | 'name'>[];
   at: SourceLocation;
 }
 
-/** Calls that change the flow and are not mapped yet. */
-const UNSUPPORTED = new Set([
-  'If',
-  'IfElse',
-  'IfAsync',
-  'IfElseAsync',
-  'Schedule',
-  'Unschedule',
-  'Request',
-  'Switch',
-]);
+/**
+ * The text of a TODO comment ("TODO guard: X" or "TODO timeout: X" in a block comment) right after `node`. Ariadne writes the text of a
+ * guard or a timeout there, so that a round trip keeps what the diagram said.
+ */
+function todoNote(node: SyntaxNode, kind: string): string | undefined {
+  const comments: string[] = [];
+  for (let n: SyntaxNode | null = node; n && !comments.length; n = n.parent) {
+    for (let next = n.nextSibling; next?.type === 'comment'; next = next.nextSibling) {
+      comments.push(next.text);
+    }
+    if (n.type === 'argument_list') break;
+  }
+  const found = comments.join(' ').match(new RegExp(`^/\\*\\s*TODO ${kind}:\\s*(.*?)\\s*\\*/$`));
+  return found ? found[1].replace(/\* \//g, '*/') : undefined;
+}
+
+/** The text of a guard: the body of its lambda; a generated `true` gives the guard it stands for. */
+function guardText(lambda: SyntaxNode): string {
+  const body = lambdaBody(lambda) ?? lambda;
+  const text = body.text.replace(/\s+/g, ' ');
+  return (text === 'true' ? todoNote(body, 'guard') : undefined) ?? text;
+}
+
+const REQUEST_OUTCOMES: readonly string[] = ['Completed', 'Faulted', 'TimeoutExpired'];
+
+/**
+ * The event a `When(…)` waits for: `Ask.Completed` keeps the request it belongs to, and the
+ * timeout `Reminder.Received` is the event `Reminder`.
+ */
+function eventName(node: SyntaxNode | null): string | null {
+  const name = lastName(node);
+  if (node?.type === 'member_access_expression' && name) {
+    const owner = lastName(node.childForFieldName('expression'));
+    if (owner && REQUEST_OUTCOMES.includes(name)) return `${owner}.${name}`;
+    if (owner && name === 'Received') return owner;
+  }
+  return name;
+}
+
+const DURATION_UNITS: Record<string, string> = {
+  Milliseconds: 'ms',
+  Seconds: 's',
+  Minutes: 'm',
+  Hours: 'h',
+  Days: 'd',
+};
+
+/** `TimeSpan.FromSeconds(30)` as `30s`; a TODO note (`kind`) or else the code as it is written. */
+function durationText(node: SyntaxNode, kind = 'timeout'): string {
+  const note = todoNote(node, kind);
+  if (note) return note;
+  const text = node.text.replace(/\s+/g, ' ');
+  const found = text.match(/^TimeSpan\.From(\w+)\(\s*(\d+(?:\.\d+)?)\s*\)$/);
+  const unit = found ? DURATION_UNITS[found[1]] : undefined;
+  if (found && unit) return `${found[2]}${unit}`;
+  return text;
+}
+
+/** Prefix of the key of a join among the states: no state can be called that. */
+const JOIN = 'join:';
+
+const UNSUPPORTED = new Set(['IfAsync', 'IfElseAsync', 'Switch']);
 
 class SagaReader {
   private readonly states = new Map<string, SourceLocation>();
@@ -224,6 +287,12 @@ class SagaReader {
   private readonly methods = new Map<string, SyntaxNode>();
   private readonly transitions: Transition[] = [];
   private readonly enterActivities = new Map<string, Activity[]>();
+  private readonly enterRequests = new Map<string, string[]>();
+  private readonly enterTimers = new Map<string, Pick<Timer, 'action' | 'name'>[]>();
+  private readonly requests = new Map<string, { timeout?: string }>();
+  private readonly schedules = new Map<string, { delay?: string }>();
+  /** `CompositeEvent(() => X, …, A, B)`: X, the events it waits for, and where it is declared. */
+  private readonly composites = new Map<string, { events: string[]; at: SourceLocation }>();
   private readonly ignores = new Map<string, string[]>();
   private readonly said = new Set<string>();
   private stateProperty: string | undefined;
@@ -317,9 +386,17 @@ class SagaReader {
         case 'WhenEnter':
           this.readWhenEnter(call, at);
           break;
+        case 'Request':
+          this.readRequest(call, at);
+          break;
+        case 'Schedule':
+          this.readSchedule(call, at);
+          break;
         case 'SetCompletedWhenFinalized':
         case 'SetCompleted':
-        case 'OnUnhandledEvent':
+          break;
+        case 'CompositeEvent':
+          this.readComposite(call, at);
           break;
         case 'WhenLeave':
         case 'WhenEnterAny':
@@ -327,7 +404,8 @@ class SagaReader {
         case 'BeforeEnter':
         case 'AfterLeave':
         case 'Finally':
-        case 'CompositeEvent':
+        case 'Fault':
+        case 'OnUnhandledEvent':
           this.warn(at, `${call.name}(…) is not shown in the diagram yet.`);
           break;
         default:
@@ -340,6 +418,91 @@ class SagaReader {
     const lambda = call.args[0];
     const body = lambda ? lambdaBody(lambda) : null;
     if (body?.type === 'member_access_expression') this.stateProperty = lastName(body) ?? undefined;
+  }
+
+  /** `Request(() => Ask, x => x.RequestId, r => r.Timeout = …)`: a request and how long it waits. */
+  private readRequest(call: Call, at: SourceLocation): void {
+    const lambda = call.args[0];
+    const name = lambda ? lastName(lambdaBody(lambda)) : null;
+    if (!name) {
+      this.warn(at, 'Request(…) names no request that could be read.');
+      return;
+    }
+    let timeout: string | undefined;
+    for (const arg of call.args.slice(1)) {
+      for (const node of [arg, ...descendants(arg)]) {
+        const right =
+          node.type === 'assignment_expression' ? node.childForFieldName('right') : null;
+        if (right && lastName(node.childForFieldName('left')) === 'Timeout') {
+          timeout = durationText(right);
+        }
+      }
+    }
+    this.requests.set(name, timeout ? { timeout } : {});
+  }
+
+  /** `CompositeEvent(() => Ready, x => x.Status, A, B)`: the join `Ready` and the events it waits for. */
+  private readComposite(call: Call, at: SourceLocation): void {
+    const lambda = call.args[0];
+    const name = lambda ? lastName(lambdaBody(lambda)) : null;
+    if (!name) {
+      this.warn(at, 'CompositeEvent(…) names no event that could be read.');
+      return;
+    }
+    const events: string[] = [];
+    for (const arg of call.args.slice(2)) {
+      if (arg.type === 'member_access_expression' && /^CompositeEventOptions\b/.test(arg.text)) {
+        this.warn(at, `${arg.text} is not shown in the diagram.`);
+        continue;
+      }
+      const event = eventName(arg);
+      if (event) events.push(event);
+    }
+    if (events.length < 2) {
+      this.warn(
+        at,
+        `CompositeEvent(${name}, …) waits for fewer than two events that could be read.`,
+      );
+    }
+    this.composites.set(name, { events, at });
+  }
+
+  /** `Schedule(() => Reminder, x => x.TokenId, s => s.Delay = …)`: a timeout and when it fires. */
+  private readSchedule(call: Call, at: SourceLocation): void {
+    const lambda = call.args[0];
+    const name = lambda ? lastName(lambdaBody(lambda)) : null;
+    if (!name) {
+      this.warn(at, 'Schedule(…) names no timeout that could be read.');
+      return;
+    }
+    let delay: string | undefined;
+    for (const arg of call.args.slice(1)) {
+      for (const node of [arg, ...descendants(arg)]) {
+        const right =
+          node.type === 'assignment_expression' ? node.childForFieldName('right') : null;
+        if (right && lastName(node.childForFieldName('left')) === 'Delay') {
+          delay = durationText(right, 'delay');
+        }
+      }
+    }
+    this.schedules.set(name, delay ? { delay } : {});
+  }
+
+  /** `Schedule(Reminder, …)` or `Unschedule(Reminder)` in a chain, as a timer of the state. */
+  private timerIn(call: Call, place: SourceLocation): Pick<Timer, 'action' | 'name'> | undefined {
+    const name = lastName(call.args[0] ?? null);
+    if (!name) {
+      this.warn(place, `${call.name}(…) names no timeout that could be read.`);
+      return undefined;
+    }
+    return { action: call.name === 'Schedule' ? 'schedule' : 'unschedule', name };
+  }
+
+  /** `Request(Ask, context => new Ask(…))` in a chain: the request, by name. */
+  private requestIn(call: Call, place: SourceLocation): string | undefined {
+    const name = lastName(call.args[0] ?? null);
+    if (!name) this.warn(place, 'Request(…) names no request that could be read.');
+    return name ?? undefined;
   }
 
   /** `Event(() => X, x => x.CorrelateById(…))`: what correlates the event. */
@@ -424,7 +587,7 @@ class SagaReader {
   /** One `When(E)…` chain: a transition from each source. */
   private readWhen(sources: string[], chain: Chain, at: SourceLocation): void {
     const [when, ...calls] = chain.calls;
-    const event = lastName(when.args[0] ?? null);
+    const event = eventName(when.args[0] ?? null);
     if (!event) {
       this.warn(
         { path: at.path, line: callLine(when) },
@@ -435,14 +598,18 @@ class SagaReader {
     let guard: string | undefined;
     const filter = when.args[1];
     if (filter) {
-      const body = lambdaBody(filter);
-      guard = (body ?? filter).text.replace(/\s+/g, ' ');
+      guard = guardText(filter);
     }
     let target: string | undefined;
     const activities: Activity[] = [];
+    const requests: string[] = [];
+    const timers: Pick<Timer, 'action' | 'name'>[] = [];
+    const branches: Branch[] = [];
     for (const call of calls) {
       const place = { path: at.path, line: callLine(call) };
-      if (call.name === 'TransitionTo') {
+      if (call.name === 'If' || call.name === 'IfElse') {
+        branches.push(...this.readIf(call, place));
+      } else if (call.name === 'TransitionTo') {
         target = lastName(call.args[0] ?? null) ?? undefined;
         if (!target) this.warn(place, 'TransitionTo(…) names no state that could be read.');
       } else if (call.name === 'Finalize') {
@@ -450,23 +617,83 @@ class SagaReader {
       } else if (['Send', 'SendAsync', 'Publish', 'PublishAsync'].includes(call.name)) {
         const activity = this.activityOf(call, place);
         if (activity) activities.push(activity);
+      } else if (call.name === 'Request') {
+        const request = this.requestIn(call, place);
+        if (request) requests.push(request);
+      } else if (call.name === 'Schedule' || call.name === 'Unschedule') {
+        const timer = this.timerIn(call, place);
+        if (timer) timers.push(timer);
       } else if (UNSUPPORTED.has(call.name)) {
         this.warn(place, `${call.name}(…) is not shown in the diagram yet.`);
       } else {
         this.warnOnce(place, `${call.name}(…) runs code; it is left out of the diagram.`);
       }
     }
-    if (target === FINAL) this.usesFinal = true;
-    for (const source of sources) {
-      this.transitions.push({
-        source,
-        target,
-        event,
-        ...(guard ? { guard } : {}),
-        activities,
-        at: { path: at.path, line: callLine(when) },
-      });
+    // `If(c, then…)` and `IfElse(c, then…, else…)`: a transition per branch, each with its guard.
+    // What follows an `If` (`.TransitionTo(B)`) is the way out when no condition holds.
+    const ways: Branch[] = [...branches];
+    if (branches.length > 0) {
+      const guard = branches.length === 1 ? `!(${branches[0].guard})` : 'otherwise';
+      if (target) ways.push({ guard, target, activities: [] });
+    } else {
+      ways.push({ guard, target, activities: [] });
     }
+    for (const way of ways) {
+      if (way.target === FINAL) this.usesFinal = true;
+      for (const source of sources) {
+        this.transitions.push({
+          source,
+          target: way.target,
+          event,
+          ...(way.guard ? { guard: way.guard } : {}),
+          activities: [...activities, ...way.activities],
+          requests,
+          timers,
+          at: { path: at.path, line: callLine(when) },
+        });
+      }
+    }
+  }
+
+  /** `If(c, then => …)` / `IfElse(c, then => …, otherwise => …)`: one branch per lambda. */
+  private readIf(call: Call, place: SourceLocation): Branch[] {
+    const isElse = call.name === 'IfElse';
+    const condition = call.args[0];
+    const lambdas = call.args.slice(1, isElse ? 3 : 2);
+    if (!condition || lambdas.length < (isElse ? 2 : 1)) {
+      this.warn(place, `${call.name}(…) could not be read.`);
+      return [];
+    }
+    const text = guardText(condition);
+    const branches = lambdas.map((lambda, index): Branch => {
+      const branch: Branch = {
+        guard: index === 0 ? text : `!(${text})`,
+        target: undefined,
+        activities: [],
+      };
+      const inner = this.flatten(
+        lambda.type === 'lambda_expression' ? lambdaBody(lambda) : null,
+        0,
+      );
+      for (const step of inner?.calls ?? []) {
+        const at = { path: place.path, line: callLine(step) };
+        if (step.name === 'TransitionTo') {
+          branch.target = lastName(step.args[0] ?? null) ?? undefined;
+          if (!branch.target) this.warn(at, 'TransitionTo(…) names no state that could be read.');
+        } else if (step.name === 'Finalize') {
+          branch.target = FINAL;
+        } else if (['Send', 'SendAsync', 'Publish', 'PublishAsync'].includes(step.name)) {
+          const activity = this.activityOf(step, at);
+          if (activity) branch.activities.push(activity);
+        } else if (UNSUPPORTED.has(step.name) || step.name === 'If' || step.name === 'IfElse') {
+          this.warn(at, `${step.name}(…) is not shown in the diagram yet.`);
+        } else {
+          this.warnOnce(at, `${step.name}(…) runs code; it is left out of the diagram.`);
+        }
+      }
+      return branch;
+    });
+    return branches;
   }
 
   private readWhenEnter(call: Call, at: SourceLocation): void {
@@ -492,6 +719,13 @@ class SagaReader {
         if (activity) {
           this.enterActivities.set(state, [...(this.enterActivities.get(state) ?? []), activity]);
         }
+      } else if (inner.name === 'Schedule' || inner.name === 'Unschedule') {
+        const timer = this.timerIn(inner, place);
+        if (timer) this.enterTimers.set(state, [...(this.enterTimers.get(state) ?? []), timer]);
+      } else if (inner.name === 'Request') {
+        const request = this.requestIn(inner, place);
+        if (request)
+          this.enterRequests.set(state, [...(this.enterRequests.get(state) ?? []), request]);
       } else {
         this.warnOnce(place, `${inner.name}(…) runs code; it is left out of the diagram.`);
       }
@@ -577,11 +811,17 @@ class SagaReader {
     const nodes: DiagramNode[] = [{ id: 'start-1', type: 'start', name: INITIAL }];
     const ids = new Map<string, string>([[INITIAL, 'start-1']]);
 
+    const flow = this.resolveJoins();
     const stateNames = [...this.states.keys()];
     // States used but not declared in the given files (e.g. inherited) still get a node.
-    for (const t of this.transitions) {
+    for (const t of flow) {
       for (const name of [t.source, t.target]) {
-        if (name && !['*', INITIAL, FINAL].includes(name) && !this.states.has(name)) {
+        if (
+          name &&
+          !['*', INITIAL, FINAL].includes(name) &&
+          !name.startsWith(JOIN) &&
+          !this.states.has(name)
+        ) {
           this.states.set(name, t.at);
           stateNames.push(name);
           this.warn(t.at, `The state ${name} is not declared in the given files.`);
@@ -603,11 +843,18 @@ class SagaReader {
       nodes.push({ id: 'any-1', type: 'any', name: 'Any state' });
       ids.set('*', 'any-1');
     }
+    for (const name of this.joinsIn(flow)) {
+      const id = uniqueId(`join-${slug(name)}`, nodes);
+      nodes.push({ id, type: 'join', name });
+      ids.set(`${JOIN}${name}`, id);
+    }
 
     // Activities belong to the state a transition leads into; WhenEnter ones to their state.
     const entering = new Map<string, Activity[][]>();
+    const requesting = new Map<string, string[][]>();
+    const timing = new Map<string, string[][]>();
     const edges: DiagramEdge[] = [];
-    for (const t of this.transitions) {
+    for (const t of flow) {
       const source = ids.get(t.source)!;
       const target = t.target === undefined ? t.source : t.target;
       if (t.source === '*' && t.target === undefined) {
@@ -630,19 +877,36 @@ class SagaReader {
         ...(t.guard ? { guard: t.guard } : {}),
       });
       locations.transitions[id] = t.at;
-      if (target === FINAL) {
-        if (t.activities.length) {
+      const things = [
+        ...t.activities.map((a) => a.name),
+        ...t.requests,
+        ...t.timers.map((x) => `${x.action} ${x.name}`),
+      ];
+      if (target.startsWith(JOIN)) {
+        if (things.length) {
           this.warn(
             t.at,
-            `${t.activities.map((a) => a.name).join(', ')} on the way to the final state cannot be shown: nothing happens in a final state.`,
+            `${things.join(', ')} on ${t.event}, which counts towards the join ${target.slice(JOIN.length)}, cannot be shown.`,
+          );
+        }
+      } else if (target === FINAL) {
+        if (things.length) {
+          this.warn(
+            t.at,
+            `${things.join(', ')} on the way to the final state cannot be shown: nothing happens in a final state.`,
           );
         }
       } else {
         entering.set(target, [...(entering.get(target) ?? []), t.activities]);
-        if (t.target === undefined && t.activities.length) {
+        requesting.set(target, [...(requesting.get(target) ?? []), t.requests]);
+        timing.set(target, [
+          ...(timing.get(target) ?? []),
+          t.timers.map((x) => `${x.action}:${x.name}`),
+        ]);
+        if (t.target === undefined && things.length) {
           this.warn(
             t.at,
-            `${t.event} keeps the saga in ${t.source}; ${t.activities.map((a) => a.name).join(', ')} is shown on entering it.`,
+            `${t.event} keeps the saga in ${t.source}; ${things.join(', ')} is shown on entering it.`,
           );
         }
       }
@@ -655,7 +919,35 @@ class SagaReader {
       const lists = entering.get(name) ?? [];
       const merged = dedupe([...fromEnter, ...lists.flat()]);
       if (merged.length) node.activities = merged;
-      const distinct = new Set(lists.map((l) => l.map((a) => `${a.kind}:${a.name}`).join(',')));
+      const asked = requesting.get(name) ?? [];
+      const requests = dedupe([...(this.enterRequests.get(name) ?? []), ...asked.flat()]);
+      if (requests.length) {
+        node.requests = requests.map((request) => ({
+          name: request,
+          ...(this.requests.get(request)?.timeout
+            ? { timeout: this.requests.get(request)!.timeout }
+            : {}),
+        }));
+      }
+      const timed = timing.get(name) ?? [];
+      const timers = dedupe([
+        ...(this.enterTimers.get(name) ?? []).map((x) => `${x.action}:${x.name}`),
+        ...timed.flat(),
+      ]);
+      if (timers.length) {
+        node.timers = timers.map((key): Timer => {
+          const [action, timer] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+          const delay = action === 'schedule' ? this.schedules.get(timer)?.delay : undefined;
+          return { action: action as Timer['action'], name: timer, ...(delay ? { delay } : {}) };
+        });
+      }
+      const distinct = new Set(
+        lists.map(
+          (l, i) =>
+            l.map((a) => `${a.kind}:${a.name}`).join(',') +
+            `|${(asked[i] ?? []).join(',')}|${(timed[i] ?? []).join(',')}`,
+        ),
+      );
       if (distinct.size > 1) {
         this.warn(
           this.states.get(name)!,
@@ -691,6 +983,62 @@ class SagaReader {
       edges,
     };
     return { className: this.className, diagram, locations };
+  }
+
+  // ---- joins
+
+  /**
+   * The transitions as the diagram draws them. A handler of an event a `CompositeEvent` waits for
+   * that stays in its state counts towards the join: it becomes a transition into the join. The
+   * handler of the composite event itself leaves the join (once, however many states have it).
+   */
+  private resolveJoins(): Transition[] {
+    const flow: Transition[] = [];
+    const left = new Set<string>();
+    const said = new Set<string>();
+    for (const t of this.transitions) {
+      const composite = this.composites.get(t.event);
+      if (composite) {
+        const key = `${t.event}|${t.target}|${t.guard ?? ''}`;
+        if (left.has(key)) continue;
+        left.add(key);
+        if (t.target === undefined) {
+          this.warn(t.at, `${t.event} is a join and leads nowhere: not drawn.`);
+          continue;
+        }
+        flow.push({ ...t, source: `${JOIN}${t.event}` });
+        continue;
+      }
+      const joins = [...this.composites].filter(([, c]) => c.events.includes(t.event));
+      if (joins.length === 0) {
+        flow.push(t);
+      } else if (t.target === undefined && t.source !== '*') {
+        for (const [name] of joins) flow.push({ ...t, target: `${JOIN}${name}` });
+      } else {
+        flow.push(t);
+        for (const [name] of joins) {
+          const message = `${t.event} counts towards the join ${name} but moves the saga on: drawn as an ordinary transition, not into the join.`;
+          const key = `${t.at.path}:${t.at.line}:${message}`;
+          if (said.has(key)) continue;
+          said.add(key);
+          this.warn(t.at, message);
+        }
+      }
+    }
+    return flow;
+  }
+
+  /** The joins that have a transition into or out of them, in the order of the declarations. */
+  private joinsIn(flow: readonly Transition[]): string[] {
+    const used = new Set(
+      flow.flatMap((t) => [t.source, t.target ?? '']).filter((n) => n.startsWith(JOIN)),
+    );
+    const joins: string[] = [];
+    for (const [name, composite] of this.composites) {
+      if (used.has(`${JOIN}${name}`)) joins.push(name);
+      else this.warn(composite.at, `The join ${name} is not used by any transition: not drawn.`);
+    }
+    return joins;
   }
 
   // ---- warnings

@@ -15,7 +15,12 @@ public class OrderStateMachine : MassTransitStateMachine<OrderState>
         Event(() => PaymentCharged); // from Payment service
         Event(() => PaymentFailed); // from Payment service
         Event(() => OrderShipped); // from Warehouse service
-        Event(() => PaymentTimeout);
+
+        Schedule(() => PaymentTimeout, x => x.PaymentTimeoutTokenId, s =>
+        {
+            s.Delay = TimeSpan.FromSeconds(30);
+            s.Received = e => e.CorrelateById(context => context.Message.CorrelationId);
+        });
 
         Initially(
             When(OrderReceived)
@@ -34,7 +39,7 @@ public class OrderStateMachine : MassTransitStateMachine<OrderState>
                 .Finalize(),
             When(PaymentFailed, context => true /* TODO guard: attempts < 3 */)
                 .TransitionTo(ChargingPayment),
-            When(PaymentTimeout)
+            When(PaymentTimeout.Received)
                 .Finalize());
 
         During(Shipping,
@@ -46,6 +51,7 @@ public class OrderStateMachine : MassTransitStateMachine<OrderState>
             .Send(context => new ReserveStock { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
 
         WhenEnter(ChargingPayment, binder => binder
+            .Schedule(PaymentTimeout, context => new PaymentTimeoutMessage { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })
             .Send(context => new ChargePayment { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
 
         WhenEnter(Shipping, binder => binder
@@ -65,5 +71,6 @@ public class OrderStateMachine : MassTransitStateMachine<OrderState>
     public Event<PaymentCharged> PaymentCharged { get; private set; } = null!;
     public Event<PaymentFailed> PaymentFailed { get; private set; } = null!;
     public Event<OrderShipped> OrderShipped { get; private set; } = null!;
-    public Event<PaymentTimeout> PaymentTimeout { get; private set; } = null!;
+
+    public Schedule<OrderState, PaymentTimeoutMessage> PaymentTimeout { get; private set; } = null!;
 }

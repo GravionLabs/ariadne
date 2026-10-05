@@ -38,12 +38,6 @@ public record OrderShipped
     // TODO: add the properties of the message
 }
 
-public record PaymentTimeout
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
 public record ReserveStock
 {
     public Guid CorrelationId { get; init; }
@@ -63,6 +57,12 @@ public record ShipOrder
 }
 
 public record OrderAccepted
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record PaymentTimeoutMessage
 {
     public Guid CorrelationId { get; init; }
     // TODO: add the properties of the message

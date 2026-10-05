@@ -16,36 +16,6 @@ public record EmailVerified
     // TODO: add the properties of the message
 }
 
-public record ReminderDue
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
-public record VerificationExpired
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
-public record KycApproved
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
-public record KycRejected
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
-public record KycTimedOut
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
 public record AccountActivated
 {
     public Guid CorrelationId { get; init; }
@@ -77,12 +47,6 @@ public record SendVerificationEmail
 }
 
 public record SendReminderEmail
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
-public record StartKycCheck
 {
     public Guid CorrelationId { get; init; }
     // TODO: add the properties of the message
@@ -125,6 +89,30 @@ public record CustomerDeclined
 }
 
 public record SendDeclineNotice
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record IdentityCheckRequest
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record IdentityCheckResponse
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record ReminderMessage
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record ExpiryMessage
 {
     public Guid CorrelationId { get; init; }
     // TODO: add the properties of the message

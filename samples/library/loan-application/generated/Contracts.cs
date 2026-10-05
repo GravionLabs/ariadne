@@ -16,25 +16,25 @@ public record CreditCheckCompleted
     // TODO: add the properties of the message
 }
 
-public record CreditCheckTimedOut
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
 public record IdentityVerified
 {
     public Guid CorrelationId { get; init; }
     // TODO: add the properties of the message
 }
 
-public record IdentityCheckTimedOut
+public record IncomeVerified
 {
     public Guid CorrelationId { get; init; }
     // TODO: add the properties of the message
 }
 
-public record IncomeVerified
+public record CreditCheckTimedOut
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record IdentityCheckTimedOut
 {
     public Guid CorrelationId { get; init; }
     // TODO: add the properties of the message

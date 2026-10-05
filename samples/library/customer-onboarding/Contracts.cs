@@ -5,21 +5,21 @@ namespace Acme.Accounts;
 // Events from the web site, the identity provider, the account service and the scheduler.
 public record SignUpReceived(Guid CorrelationId, string Email);
 public record EmailVerified(Guid CorrelationId);
-// The scheduler sends these 24 hours and 7 days after the sign-up.
+// The scheduler delivers these 24 hours and 7 days after the sign-up, unless the saga cancelled them.
 public record ReminderDue(Guid CorrelationId);
 public record VerificationExpired(Guid CorrelationId);
-public record KycApproved(Guid CorrelationId);
-public record KycRejected(Guid CorrelationId, string Reason);
-// The identity provider did not answer within two days.
-public record KycTimedOut(Guid CorrelationId);
 public record AccountActivated(Guid CorrelationId);
 public record WelcomeSequenceCompleted(Guid CorrelationId);
 public record CleanupCompleted(Guid CorrelationId);
 public record DeclineNoticeSent(Guid CorrelationId);
 
+// The identity provider's answer to StartKycCheck, which the saga sends as a request.
+public record KycResult(Guid CorrelationId, bool Approved, string? Reason);
+
 // Commands the saga sends.
 public record SendVerificationEmail(Guid CorrelationId, string Email);
 public record SendReminderEmail(Guid CorrelationId);
+// A request: it waits for KycResult, a failure, or two days of silence.
 public record StartKycCheck(Guid CorrelationId);
 public record ActivateAccount(Guid CorrelationId);
 public record StartWelcomeSequence(Guid CorrelationId);
