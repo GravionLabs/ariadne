@@ -698,6 +698,51 @@ describe('Editor', () => {
     expect(el.querySelector('app-node-card[data-finding]')).toBeNull();
   });
 
+  describe('the top bar on a narrow window', () => {
+    it('keeps every label as the accessible name, even when it is hidden, and never wraps one', async () => {
+      const { el } = await setup();
+      const buttons = [...el.querySelectorAll<HTMLButtonElement>('header.topbar button')];
+      expect(buttons.length).toBeGreaterThan(10);
+      for (const button of buttons) {
+        const name =
+          button.getAttribute('aria-label') ?? button.textContent?.replace(/\s+/g, ' ').trim();
+        expect(name, button.outerHTML.slice(0, 80)).toBeTruthy();
+        expect(
+          button.getAttribute('title') ?? button.getAttribute('aria-label'),
+          name,
+        ).toBeTruthy();
+      }
+      // The labels that give way are marked, so the container queries can hide them visually.
+      const labels = [...el.querySelectorAll('header.topbar .menu-button .label')].map((l) =>
+        l.textContent?.trim(),
+      );
+      expect(labels).toEqual(
+        expect.arrayContaining([
+          'New',
+          'Open…',
+          'Import C#…',
+          'Generate C#…',
+          'Save',
+          'Save as…',
+          'Export',
+        ]),
+      );
+    });
+
+    it('gives Walkthrough and Path icons of their own', async () => {
+      const { el } = await setup();
+      const icon = (label: string) =>
+        [...el.querySelectorAll<HTMLButtonElement>('header.topbar .menu-button')]
+          .find((b) => b.querySelector('.label')?.textContent?.trim() === label)!
+          .querySelector('app-icon')!
+          .getAttribute('ng-reflect-name') ??
+        [...el.querySelectorAll<HTMLButtonElement>('header.topbar .menu-button')]
+          .find((b) => b.querySelector('.label')?.textContent?.trim() === label)!
+          .querySelector('app-icon')!.innerHTML;
+      expect(icon('Walkthrough')).not.toEqual(icon('Path'));
+    });
+  });
+
   describe('view mode', () => {
     const toggle = (el: HTMLElement) =>
       el.querySelector<HTMLButtonElement>('.toolbox [aria-label="View mode: hide the + buttons"]')!;

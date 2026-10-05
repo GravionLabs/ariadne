@@ -7,11 +7,17 @@
 // Top bar: brand, file actions, file name.
 
 .topbar {
+  // The buttons give way as the window narrows (#390): their labels go, then the file name; as a last
+  // resort the bar scrolls, so that no button is ever out of reach.
+  container: topbar / inline-size;
   display: flex;
+  flex: none;
   align-items: center;
   gap: 14px;
   height: 52px;
   padding: 0 14px;
+  overflow: auto hidden;
+  scrollbar-width: none;
   background: var(--c-surface-1);
   border-bottom: 1px solid var(--c-border);
   box-shadow: var(--shadow);
@@ -71,8 +77,10 @@ app-export-menu ::ng-deep .menu-button {
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   font: inherit;
+  flex: none;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
@@ -546,4 +554,55 @@ f-connection[data-finding='warning'] {
   --ff-connection-color: var(--c-compensation);
   --ff-connection-hover-color: var(--c-compensation);
   stroke-dasharray: 6 4;
+}
+
+// ---- The top bar on a narrow window (#390). A label that gives way stays the button's accessible
+// name: it is hidden visually, not removed (and the tooltip names the action).
+
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@container topbar (max-width: 1519px) {
+  .collapse-a .label,
+  .menu-button .more {
+    @include visually-hidden;
+  }
+}
+
+@container topbar (max-width: 1199px) {
+  .topbar-end {
+    gap: 6px;
+  }
+
+  .collapse-b .label,
+  app-export-menu ::ng-deep .menu-button .label {
+    @include visually-hidden;
+  }
+
+  .file-name {
+    max-width: 160px;
+  }
+}
+
+@container topbar (max-width: 799px) {
+  .menu-button,
+  app-export-menu ::ng-deep .menu-button {
+    padding: 0 7px;
+  }
+
+  .topbar .menu-button .label {
+    @include visually-hidden;
+  }
+
+  .file-name,
+  .topbar-divider {
+    display: none;
+  }
 }
