@@ -1,6 +1,8 @@
 ---
 name: ariadne
 description: Work with MassTransit saga diagrams (*.saga.yaml) using the ariadne CLI. Use when the user wants to document, draw, review or check a MassTransit saga state machine (a class derived from MassTransitStateMachine<T>), turn its C# into a diagram or a diagram into C#, check that a diagram and its code still agree, lint a *.saga.yaml file, or export a saga as Mermaid, SVG, PNG or a Markdown page.
+license: MIT
+compatibility: Needs the ariadne command (Node 22 or later); the skill says how to install it.
 ---
 
 # Ariadne: saga diagrams for MassTransit
@@ -75,8 +77,8 @@ the files contain several state machines. It is a good CI step to keep a committ
 ### export
 
 `mermaid` and `md` (a documentation page with the diagram, the states and the messages) go to standard output
-unless `-o` is given; `svg` and `png` need `-o`. To **look at a diagram yourself**, export a PNG and open the
-image:
+unless `-o` is given; `svg` and `png` need `-o`. To **look at a diagram yourself** (if you can read images),
+export a PNG and open it:
 
 ```sh
 ariadne export order.saga.yaml --format png -o /tmp/order.png

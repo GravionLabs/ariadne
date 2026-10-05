@@ -13,15 +13,18 @@ skill and not an MCP server).
    npm install -g https://github.com/GravionLabs/ariadne/releases/latest/download/ariadne-cli.tgz
    ```
 
-2. The skill, in Claude Code:
+2. The skill, for your agent. It is one folder, [`skills/ariadne`](../../skills/ariadne/SKILL.md), in the
+   [Agent Skills](https://agentskills.io) format, so any of these work:
 
-   ```text
-   /plugin marketplace add GravionLabs/ariadne
-   /plugin install ariadne@ariadne
-   ```
+   | Agent                                         | Install                                                                                                                                                               |
+   | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | **GitHub Copilot**                            | `gh skill install GravionLabs/ariadne ariadne` (into the repository, `.agents/skills/ariadne`; add `--scope user` for all your projects)                              |
+   | **Several agents, pinned in your repository** | [APM](https://github.com/microsoft/apm): `apm install GravionLabs/ariadne/skills/ariadne` (records it in `apm.yml`; deploys to `.agents/skills` and `.claude/skills`) |
+   | **Claude Code**                               | `/plugin marketplace add GravionLabs/ariadne`, then `/plugin install ariadne@ariadne`                                                                                 |
+   | **Cursor, Codex, Gemini CLI and others**      | `gh skill install GravionLabs/ariadne ariadne --agent <agent>` (`gh skill install --help` lists them)                                                                 |
 
-   Other agents that read skills can use the file directly:
-   [`plugins/ariadne/skills/ariadne/SKILL.md`](../../plugins/ariadne/skills/ariadne/SKILL.md).
+   `gh skill` takes the skill from the newest release unless you pin one (`ariadne@v1.2.0`); `gh skill update`
+   brings it up to date.
 
 ## What to ask
 

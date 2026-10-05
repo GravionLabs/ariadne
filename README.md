@@ -85,9 +85,14 @@ Every release carries the extension as `ariadne-vscode-<version>.vsix`: download
 
 ## Coding agents
 
-An AI coding agent can check, draw, import, generate and compare sagas with the `ariadne` command. In Claude Code:
-`/plugin marketplace add GravionLabs/ariadne`, then `/plugin install ariadne@ariadne`. See
-[the guide](docs/guide/agents.md).
+An AI coding agent can check, draw, import, generate and compare sagas with the `ariadne` command, through the
+[`ariadne` skill](skills/ariadne/SKILL.md):
+
+- **GitHub Copilot** (and Cursor, Codex, Gemini CLI, …): `gh skill install GravionLabs/ariadne ariadne`
+- **APM**, for any of them: `apm install GravionLabs/ariadne/skills/ariadne`
+- **Claude Code**: `/plugin marketplace add GravionLabs/ariadne`, then `/plugin install ariadne@ariadne`
+
+See [the guide](docs/guide/agents.md).
 
 ## Command line
 
@@ -155,8 +160,8 @@ packages/
   masstransit/ @ariadne/masstransit: import saga state machines from C# (tree-sitter), generate C#, diff
   editor-protocol/ @ariadne/editor-protocol: the messages between the extension and the editor in its webview
   viewer/     @ariadne/viewer: the embeddable <ariadne-saga> viewer and its Angular wrapper (published to npm)
-plugins/
-  ariadne/    the Claude Code plugin with the agent skill (listed in .claude-plugin/marketplace.json)
+skills/
+  ariadne/    the agent skill (Agent Skills format; the repository is also its Claude Code plugin)
 samples/
   sagas/      C# sagas with the diagrams the importer must produce
 docs/

@@ -1,4 +1,4 @@
-// The agent skill (plugins/ariadne/skills/ariadne/SKILL.md) tells an agent how to call this command.
+// The agent skill (skills/ariadne/SKILL.md) tells an agent how to call this command.
 // These tests keep it honest: every command and option it mentions exists in the usage, and its
 // example diagram is a diagram that lints clean. A renamed option fails here, not in an agent's hands.
 import { readFileSync } from 'node:fs';
@@ -9,7 +9,7 @@ import { Io, USAGE, run } from './cli';
 import { testFonts } from './test-fonts';
 
 const skill = readFileSync(
-  resolve(import.meta.dirname, '../../../plugins/ariadne/skills/ariadne/SKILL.md'),
+  resolve(import.meta.dirname, '../../../skills/ariadne/SKILL.md'),
   'utf8',
 );
 
@@ -94,13 +94,19 @@ describe('the agent skill', () => {
     expect(code).toBe(0);
   });
 
-  it('is offered by the marketplace of the repository, under the same name', () => {
+  it('is where every agent looks for it: skills/<name>/SKILL.md, named like its folder', () => {
+    // The Agent Skills convention (agentskills.io), read by `gh skill install`, APM and Copilot.
+    expect(/^name: (.+)$/m.exec(skill)?.[1]).toBe('ariadne');
+    expect(/^license: /m.test(skill)).toBe(true);
+  });
+
+  it('is offered by the Claude Code marketplace of the repository, which is the plugin itself', () => {
     const root = resolve(import.meta.dirname, '../../..');
     const read = (path: string) => JSON.parse(readFileSync(resolve(root, path), 'utf8'));
     const marketplace = read('.claude-plugin/marketplace.json');
-    const plugin = read('plugins/ariadne/.claude-plugin/plugin.json');
+    const plugin = read('.claude-plugin/plugin.json');
     expect(marketplace.plugins).toEqual([
-      expect.objectContaining({ name: 'ariadne', source: './plugins/ariadne' }),
+      expect.objectContaining({ name: 'ariadne', source: './' }),
     ]);
     expect(plugin.name).toBe('ariadne');
     expect(plugin.version).toMatch(/^\d+\.\d+\.\d+$/);

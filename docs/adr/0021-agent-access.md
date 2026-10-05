@@ -12,13 +12,13 @@ does with Ariadne: check a diagram, draw one from C#, generate C# from one, see 
 agree, and look at the picture. The `ariadne` CLI already does all of this (`lint`, `import`, `generate`, `diff`,
 `export`), with exit codes and messages meant for CI. Two ways to give it to an agent:
 
-|                         | Skill over the CLI                                                             | MCP server                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| **Who can use it**      | agents with a shell that load skills: Claude Code, the Agent SDK               | any MCP client, also without a shell (Claude Desktop, IDE assistants)                  |
-| **What the agent gets** | the CLI's text, JSON (`lint --format json`) and files; a PNG it can open       | typed tools; images as tool results                                                    |
-| **Install**             | the CLI (a release download, #385) and the skill (a plugin of this repository) | a server the client starts; it has to be built, released and configured per client     |
-| **Safety**              | the agent's own permission rules for shell commands and files                  | the server decides which folders (MCP roots); the client asks per tool                 |
-| **Cost**                | one Markdown file, checked against the CLI in CI                               | a new app (`apps/mcp`): its tools, tests, release, and keeping it in step with the CLI |
+|                         | Skill over the CLI                                                                                      | MCP server                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Who can use it**      | agents with a shell that load skills: GitHub Copilot, Claude Code, Cursor, Codex, Gemini CLI and others | any MCP client, also without a shell (Claude Desktop, IDE assistants)                  |
+| **What the agent gets** | the CLI's text, JSON (`lint --format json`) and files; a PNG it can open                                | typed tools; images as tool results                                                    |
+| **Install**             | the CLI (a release download, #385) and the skill (a plugin of this repository)                          | a server the client starts; it has to be built, released and configured per client     |
+| **Safety**              | the agent's own permission rules for shell commands and files                                           | the server decides which folders (MCP roots); the client asks per tool                 |
+| **Cost**                | one Markdown file, checked against the CLI in CI                                                        | a new app (`apps/mcp`): its tools, tests, release, and keeping it in step with the CLI |
 
 The people who model MassTransit sagas work in a code editor with an agent that has a shell; the C# and the
 diagrams are files in their repository. Nothing the agent needs requires a tool call that a shell command cannot
@@ -27,8 +27,15 @@ make.
 ## Decision
 
 - **A skill**, `ariadne`, teaches an agent the commands, how to read their output and exit codes, and the rules of
-  the file format. It is a Claude Code plugin in this repository (`plugins/ariadne`, listed in
-  `.claude-plugin/marketplace.json`), so it is installed with `/plugin marketplace add GravionLabs/ariadne`.
+  the file format. It is one folder in the open [Agent Skills](https://agentskills.io) format, `skills/ariadne`, so
+  every agent that reads skills can use it, installed the way that agent prefers:
+  - GitHub Copilot and the other agents `gh skill` knows: `gh skill install GravionLabs/ariadne ariadne`;
+  - [APM](https://github.com/microsoft/apm), to pin it in a project for several agents at once:
+    `apm install GravionLabs/ariadne/skills/ariadne`;
+  - Claude Code: the repository is also a plugin marketplace whose one plugin is the repository itself
+    (`.claude-plugin/marketplace.json` and `plugin.json`, source `./`), so `/plugin marketplace add GravionLabs/ariadne`.
+    A plugin may only refer to skills inside its own folder, hence the repository as the plugin rather than a
+    `plugins/ariadne` folder with a second copy of the skill.
 - **The CLI is attached to every GitHub release** (`ariadne-cli.tgz`, #385), so the skill can say how to install it
   without a clone: `npm install -g https://github.com/GravionLabs/ariadne/releases/latest/download/ariadne-cli.tgz`.
 - **The commands in the skill are tested** against the CLI's own usage text, so a renamed command or option fails CI

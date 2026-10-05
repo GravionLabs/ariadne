@@ -211,7 +211,7 @@ jobs:
 
   # The command goes onto the release too, twice: with its version, and as ariadne-cli.tgz, so that
   # https://github.com/<repository>/releases/latest/download/ariadne-cli.tgz is always the newest
-  # (npm install -g <that address>). The agent skill (plugins/ariadne) points there.
+  # (npm install -g <that address>). The agent skill (skills/ariadne) points there.
   cli-release:
     name: Attach the CLI to the release
     needs: [release, cli-package]
