@@ -78,6 +78,22 @@ Every change comes with tests, and the suite is green before every commit.
   [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs it; you only need it when you change
   the generator).
 
+## The images of the user guide
+
+The screenshots and GIFs in `docs/images/guide` are made by a script, so that they stay current when the
+interface changes. After a change that shows (a button, a panel, a colour), re-capture them and commit the ones
+that changed:
+
+```sh
+pnpm --filter @ariadne/web capture:install   # once: Chromium (needs sudo for its system libraries)
+sudo apt-get install -y ffmpeg fonts-dejavu  # once, for GIFs and the one font every picture uses
+pnpm --filter @ariadne/web capture           # builds the app, serves it, writes docs/images/guide
+```
+
+The captures are in `apps/web/capture` (`*.capture.ts`, one test for each image, named after it), with their
+helpers in `helpers.ts`. A capture that cannot find something the interface no longer has fails: that is the
+signal that the guide needs a look. They are not part of `pnpm test`.
+
 ## Work tracking
 
 Work is tracked in GitHub issues as **Epic → Feature → PBI → Task** (a **Bug** has Tasks), linked as

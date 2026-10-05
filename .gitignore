@@ -47,3 +47,6 @@ dist-test
 .vscode-test
 vsix
 apps/vscode/LICENSE
+
+# Playwright report of the guide captures (apps/web/capture)
+apps/web/capture/report
