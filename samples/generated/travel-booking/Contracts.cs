@@ -26,6 +26,12 @@ public record FlightRejected
     // TODO: add the properties of the message
 }
 
+public record PaymentAuthorized
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
 public record PaymentDeclined
 {
     public Guid CorrelationId { get; init; }

@@ -13,10 +13,10 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
 
         Event(() => ApplicationSubmitted);
         Event(() => CreditCheckCompleted);
-        Event(() => CreditCheckTimedOut);
         Event(() => IdentityVerified);
-        Event(() => IdentityCheckTimedOut);
         Event(() => IncomeVerified);
+        Event(() => CreditCheckTimedOut);
+        Event(() => IdentityCheckTimedOut);
         Event(() => IncomeCheckTimedOut);
         Event(() => ScoringCompleted);
         Event(() => ReviewCompleted);
@@ -25,25 +25,22 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
         Event(() => FundsDisbursed);
         Event(() => ApplicantNotified);
 
+        CompositeEvent(() => ChecksCompleted, x => x.ChecksCompletedStatus, CreditCheckCompleted, IdentityVerified, IncomeVerified);
+
         Initially(
             When(ApplicationSubmitted)
-                .TransitionTo(AwaitingCreditCheck));
+                .TransitionTo(AwaitingChecks));
 
-        During(AwaitingCreditCheck,
-            When(CreditCheckCompleted)
-                .TransitionTo(AwaitingIdentityCheck),
-            When(CreditCheckTimedOut)
-                .TransitionTo(Withdrawn));
-
-        During(AwaitingIdentityCheck,
-            When(IdentityVerified)
-                .TransitionTo(AwaitingIncomeCheck),
-            When(IdentityCheckTimedOut)
-                .TransitionTo(Withdrawn));
-
-        During(AwaitingIncomeCheck,
-            When(IncomeVerified)
+        During(AwaitingChecks,
+            When(CreditCheckCompleted),
+            When(IdentityVerified),
+            When(IncomeVerified),
+            When(ChecksCompleted)
                 .TransitionTo(Scoring),
+            When(CreditCheckTimedOut)
+                .TransitionTo(Withdrawn),
+            When(IdentityCheckTimedOut)
+                .TransitionTo(Withdrawn),
             When(IncomeCheckTimedOut)
                 .TransitionTo(Withdrawn));
 
@@ -79,13 +76,9 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
             When(ApplicantNotified)
                 .Finalize());
 
-        WhenEnter(AwaitingCreditCheck, binder => binder
-            .Send(context => new RunCreditCheck { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
-
-        WhenEnter(AwaitingIdentityCheck, binder => binder
-            .Send(context => new VerifyIdentity { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
-
-        WhenEnter(AwaitingIncomeCheck, binder => binder
+        WhenEnter(AwaitingChecks, binder => binder
+            .Send(context => new RunCreditCheck { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })
+            .Send(context => new VerifyIdentity { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })
             .Send(context => new VerifyIncome { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
 
         WhenEnter(Scoring, binder => binder
@@ -111,9 +104,7 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
         SetCompletedWhenFinalized();
     }
 
-    public State AwaitingCreditCheck { get; private set; } = null!;
-    public State AwaitingIdentityCheck { get; private set; } = null!;
-    public State AwaitingIncomeCheck { get; private set; } = null!;
+    public State AwaitingChecks { get; private set; } = null!;
     public State Scoring { get; private set; } = null!;
     public State InManualReview { get; private set; } = null!;
     public State OfferMade { get; private set; } = null!;
@@ -123,10 +114,10 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
 
     public Event<ApplicationSubmitted> ApplicationSubmitted { get; private set; } = null!;
     public Event<CreditCheckCompleted> CreditCheckCompleted { get; private set; } = null!;
-    public Event<CreditCheckTimedOut> CreditCheckTimedOut { get; private set; } = null!;
     public Event<IdentityVerified> IdentityVerified { get; private set; } = null!;
-    public Event<IdentityCheckTimedOut> IdentityCheckTimedOut { get; private set; } = null!;
     public Event<IncomeVerified> IncomeVerified { get; private set; } = null!;
+    public Event<CreditCheckTimedOut> CreditCheckTimedOut { get; private set; } = null!;
+    public Event<IdentityCheckTimedOut> IdentityCheckTimedOut { get; private set; } = null!;
     public Event<IncomeCheckTimedOut> IncomeCheckTimedOut { get; private set; } = null!;
     public Event<ScoringCompleted> ScoringCompleted { get; private set; } = null!;
     public Event<ReviewCompleted> ReviewCompleted { get; private set; } = null!;
@@ -134,4 +125,6 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
     public Event<OfferExpired> OfferExpired { get; private set; } = null!;
     public Event<FundsDisbursed> FundsDisbursed { get; private set; } = null!;
     public Event<ApplicantNotified> ApplicantNotified { get; private set; } = null!;
+
+    public Event ChecksCompleted { get; private set; } = null!;
 }

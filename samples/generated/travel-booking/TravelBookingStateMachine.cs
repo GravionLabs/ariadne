@@ -13,6 +13,7 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
         Event(() => FlightReserved); // from Airline gateway
         Event(() => PaymentMethodConfirmed); // from Booking API
         Event(() => FlightRejected); // from Airline gateway
+        Event(() => PaymentAuthorized); // from Payment gateway
         Event(() => PaymentDeclined); // from Payment gateway
         Event(() => ConfirmationSent); // from Notification service
         Event(() => ConfirmationRejected); // from Airline gateway
@@ -30,6 +31,8 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
             s.Delay = TimeSpan.FromMinutes(15);
             s.Received = e => e.CorrelateById(context => context.Message.CorrelationId);
         });
+
+        CompositeEvent(() => BookingReady, x => x.BookingReadyStatus, CheckAvailability.Completed, PaymentAuthorized);
 
         Initially(
             When(TravellerSubmitted)
@@ -61,14 +64,20 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
             Ignore(TravellerUpdated));
 
         During(ReservingHotel,
+            When(CheckAvailability.Completed),
             When(CheckAvailability.Faulted)
                 .Finalize(),
             When(CheckAvailability.TimeoutExpired)
-                .Finalize());
+                .Finalize(),
+            When(BookingReady)
+                .TransitionTo(ConfirmingBooking));
 
         During(AuthorizingPayment,
+            When(PaymentAuthorized),
             When(PaymentDeclined)
                 .Finalize(),
+            When(BookingReady)
+                .TransitionTo(ConfirmingBooking),
             When(PaymentDeclined)
                 .TransitionTo(ReservingHotel));
 
@@ -130,6 +139,7 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
     public Event<FlightReserved> FlightReserved { get; private set; } = null!;
     public Event<PaymentMethodConfirmed> PaymentMethodConfirmed { get; private set; } = null!;
     public Event<FlightRejected> FlightRejected { get; private set; } = null!;
+    public Event<PaymentAuthorized> PaymentAuthorized { get; private set; } = null!;
     public Event<PaymentDeclined> PaymentDeclined { get; private set; } = null!;
     public Event<ConfirmationSent> ConfirmationSent { get; private set; } = null!;
     public Event<ConfirmationRejected> ConfirmationRejected { get; private set; } = null!;
@@ -139,8 +149,10 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
     public Event<TravellerUpdated> TravellerUpdated { get; private set; } = null!;
     public Event<HotelRequested> HotelRequested { get; private set; } = null!;
 
+    public Event BookingReady { get; private set; } = null!;
 
-    public Schedule<TravelBookingState, FlightHoldExpiredMessage> FlightHoldExpired { get; private set; } = null!;
     public Request<TravelBookingState, ValidateTravellerRequest, ValidateTravellerResponse> ValidateTraveller { get; private set; } = null!;
     public Request<TravelBookingState, CheckAvailabilityRequest, CheckAvailabilityResponse> CheckAvailability { get; private set; } = null!;
+
+    public Schedule<TravelBookingState, FlightHoldExpiredMessage> FlightHoldExpired { get; private set; } = null!;
 }

@@ -183,6 +183,62 @@ describe('generate → import', () => {
     expect(again.edges.map((e) => e.event)).toEqual(diagram.edges.map((e) => e.event));
   });
 
+  it('keeps joins: the events they wait for, and the way on', async () => {
+    const diagram: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'start', name: 'Initial' },
+        { id: 'b', type: 'state', name: 'Booking' },
+        { id: 'j', type: 'join', name: 'BookingReady' },
+        { id: 'c', type: 'state', name: 'Confirming' },
+        { id: 'z', type: 'end', name: 'Final' },
+      ],
+      edges: [
+        { id: 'e1', source: 'a', target: 'b', kind: 'forward', event: 'Placed' },
+        { id: 'e2', source: 'b', target: 'j', kind: 'forward', event: 'FlightHeld' },
+        { id: 'e3', source: 'b', target: 'j', kind: 'forward', event: 'PaymentAuthorized' },
+        { id: 'e4', source: 'j', target: 'c', kind: 'forward', event: 'BookingReady' },
+        { id: 'e5', source: 'c', target: 'z', kind: 'forward', event: 'Done' },
+      ],
+    };
+    const { files, warnings } = generateSaga(diagram);
+    expect(warnings).toEqual([]);
+    const code = files.find((f) => f.path === 'SagaStateMachine.cs')!.content;
+    expect(code).toContain(
+      'CompositeEvent(() => BookingReady, x => x.BookingReadyStatus, FlightHeld, PaymentAuthorized);',
+    );
+    expect(code).not.toContain('Event(() => BookingReady)');
+    const again = await roundTrip(diagram);
+    const nodesOf = (d: Diagram) => d.nodes.map((n) => `${n.type} ${n.name}`).sort();
+    expect(nodesOf(again)).toEqual(nodesOf(diagram));
+    expect(again.edges.map((e) => e.event)).toEqual(diagram.edges.map((e) => e.event));
+    expect(validate(again).filter((f) => f.severity === 'error')).toEqual([]);
+  });
+
+  it('writes the way out of a join in every state that feeds it', async () => {
+    const diagram: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'start', name: 'Initial' },
+        { id: 'b', type: 'state', name: 'Paying' },
+        { id: 'd', type: 'state', name: 'Packing' },
+        { id: 'j', type: 'join', name: 'Ready' },
+        { id: 'z', type: 'end', name: 'Final' },
+      ],
+      edges: [
+        { id: 'e1', source: 'a', target: 'b', kind: 'forward', event: 'Placed' },
+        { id: 'e2', source: 'a', target: 'd', kind: 'forward', event: 'Picked' },
+        { id: 'e3', source: 'b', target: 'j', kind: 'forward', event: 'Paid' },
+        { id: 'e4', source: 'd', target: 'j', kind: 'forward', event: 'Packed' },
+        { id: 'e5', source: 'j', target: 'z', kind: 'forward', event: 'Ready' },
+      ],
+    };
+    const code = generateSaga(diagram).files.find((f) => f.path === 'SagaStateMachine.cs')!.content;
+    expect(code.match(/When\(Ready\)/g)).toHaveLength(2);
+    const again = await roundTrip(diagram);
+    expect(again.edges.filter((e) => e.event === 'Ready')).toHaveLength(1);
+  });
+
   it('keeps the saga metadata of the diagram', async () => {
     const diagram = parseDiagram(readFileSync(goldens[0].path, 'utf8'));
     const again = await roundTrip(diagram);

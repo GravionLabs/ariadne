@@ -121,8 +121,8 @@ public class CustomerOnboardingStateMachine : MassTransitStateMachine<CustomerOn
     public Event<CleanupCompleted> CleanupCompleted { get; private set; } = null!;
     public Event<DeclineNoticeSent> DeclineNoticeSent { get; private set; } = null!;
 
+    public Request<CustomerOnboardingState, IdentityCheckRequest, IdentityCheckResponse> IdentityCheck { get; private set; } = null!;
 
     public Schedule<CustomerOnboardingState, ReminderMessage> Reminder { get; private set; } = null!;
     public Schedule<CustomerOnboardingState, ExpiryMessage> Expiry { get; private set; } = null!;
-    public Request<CustomerOnboardingState, IdentityCheckRequest, IdentityCheckResponse> IdentityCheck { get; private set; } = null!;
 }

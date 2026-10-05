@@ -10,4 +10,5 @@ public class TravelBookingState : SagaStateMachineInstance
     public Guid? ValidateTravellerRequestId { get; set; }
     public Guid? CheckAvailabilityRequestId { get; set; }
     public Guid? FlightHoldExpiredTokenId { get; set; }
+    public int BookingReadyStatus { get; set; }
 }

@@ -3,8 +3,8 @@ using MassTransit;
 namespace Acme.Lending;
 
 /// <summary>
-/// Handles a loan application: a credit check, an identity check and an income check, each with its
-/// own time limit, then a decision. The scoring service approves, declines or refers the case to a
+/// Handles a loan application: a credit check, an identity check and an income check, run at the same
+/// time and each with its own time limit, then a decision. The scoring service approves, declines or refers the case to a
 /// person; an offer that is approved lapses if the applicant does not accept it in time.
 /// </summary>
 public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicationState>
@@ -13,7 +13,7 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
     {
         InstanceState(
             x => x.CurrentState,
-            AwaitingCreditCheck, AwaitingIdentityCheck, AwaitingIncomeCheck, Scoring,
+            AwaitingChecks, Scoring,
             InManualReview, OfferMade, Disbursing, Declined, Withdrawn);
 
         Event(() => ApplicationSubmitted);
@@ -30,29 +30,28 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
         Event(() => FundsDisbursed);
         Event(() => ApplicantNotified);
 
+        // ChecksCompleted is raised once all three answers have arrived, whatever the order.
+        CompositeEvent(() => ChecksCompleted, x => x.ChecksStatus,
+            CreditCheckCompleted, IdentityVerified, IncomeVerified);
+
         Initially(
             When(ApplicationSubmitted)
                 .Send(context => new RunCreditCheck(context.Saga.CorrelationId, context.Message.Applicant))
-                .TransitionTo(AwaitingCreditCheck));
-
-        During(AwaitingCreditCheck,
-            When(CreditCheckCompleted)
                 .Send(context => new VerifyIdentity(context.Saga.CorrelationId))
-                .TransitionTo(AwaitingIdentityCheck),
-            When(CreditCheckTimedOut)
-                .TransitionTo(Withdrawn));
-
-        During(AwaitingIdentityCheck,
-            When(IdentityVerified)
                 .Send(context => new VerifyIncome(context.Saga.CorrelationId))
-                .TransitionTo(AwaitingIncomeCheck),
-            When(IdentityCheckTimedOut)
-                .TransitionTo(Withdrawn));
+                .TransitionTo(AwaitingChecks));
 
-        During(AwaitingIncomeCheck,
-            When(IncomeVerified)
+        During(AwaitingChecks,
+            When(CreditCheckCompleted),
+            When(IdentityVerified),
+            When(IncomeVerified),
+            When(ChecksCompleted)
                 .Send(context => new ScoreApplication(context.Saga.CorrelationId))
                 .TransitionTo(Scoring),
+            When(CreditCheckTimedOut)
+                .TransitionTo(Withdrawn),
+            When(IdentityCheckTimedOut)
+                .TransitionTo(Withdrawn),
             When(IncomeCheckTimedOut)
                 .TransitionTo(Withdrawn));
 
@@ -106,9 +105,7 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
         SetCompletedWhenFinalized();
     }
 
-    public State AwaitingCreditCheck { get; private set; } = null!;
-    public State AwaitingIdentityCheck { get; private set; } = null!;
-    public State AwaitingIncomeCheck { get; private set; } = null!;
+    public State AwaitingChecks { get; private set; } = null!;
     public State Scoring { get; private set; } = null!;
     public State InManualReview { get; private set; } = null!;
     public State OfferMade { get; private set; } = null!;
@@ -129,4 +126,7 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
     public Event<OfferExpired> OfferExpired { get; private set; } = null!;
     public Event<FundsDisbursed> FundsDisbursed { get; private set; } = null!;
     public Event<ApplicantNotified> ApplicantNotified { get; private set; } = null!;
+
+    // Raised by the CompositeEvent above, not by a message.
+    public Event ChecksCompleted { get; private set; } = null!;
 }

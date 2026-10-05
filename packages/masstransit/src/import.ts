@@ -276,6 +276,9 @@ function durationText(node: SyntaxNode, kind = 'timeout'): string {
   return text;
 }
 
+/** Prefix of the key of a join among the states: no state can be called that. */
+const JOIN = 'join:';
+
 const UNSUPPORTED = new Set(['IfAsync', 'IfElseAsync', 'Switch']);
 
 class SagaReader {
@@ -288,6 +291,8 @@ class SagaReader {
   private readonly enterTimers = new Map<string, Pick<Timer, 'action' | 'name'>[]>();
   private readonly requests = new Map<string, { timeout?: string }>();
   private readonly schedules = new Map<string, { delay?: string }>();
+  /** `CompositeEvent(() => X, …, A, B)`: X, the events it waits for, and where it is declared. */
+  private readonly composites = new Map<string, { events: string[]; at: SourceLocation }>();
   private readonly ignores = new Map<string, string[]>();
   private readonly said = new Set<string>();
   private stateProperty: string | undefined;
@@ -390,13 +395,15 @@ class SagaReader {
         case 'SetCompletedWhenFinalized':
         case 'SetCompleted':
           break;
+        case 'CompositeEvent':
+          this.readComposite(call, at);
+          break;
         case 'WhenLeave':
         case 'WhenEnterAny':
         case 'WhenLeaveAny':
         case 'BeforeEnter':
         case 'AfterLeave':
         case 'Finally':
-        case 'CompositeEvent':
         case 'Fault':
         case 'OnUnhandledEvent':
           this.warn(at, `${call.name}(…) is not shown in the diagram yet.`);
@@ -432,6 +439,32 @@ class SagaReader {
       }
     }
     this.requests.set(name, timeout ? { timeout } : {});
+  }
+
+  /** `CompositeEvent(() => Ready, x => x.Status, A, B)`: the join `Ready` and the events it waits for. */
+  private readComposite(call: Call, at: SourceLocation): void {
+    const lambda = call.args[0];
+    const name = lambda ? lastName(lambdaBody(lambda)) : null;
+    if (!name) {
+      this.warn(at, 'CompositeEvent(…) names no event that could be read.');
+      return;
+    }
+    const events: string[] = [];
+    for (const arg of call.args.slice(2)) {
+      if (arg.type === 'member_access_expression' && /^CompositeEventOptions\b/.test(arg.text)) {
+        this.warn(at, `${arg.text} is not shown in the diagram.`);
+        continue;
+      }
+      const event = eventName(arg);
+      if (event) events.push(event);
+    }
+    if (events.length < 2) {
+      this.warn(
+        at,
+        `CompositeEvent(${name}, …) waits for fewer than two events that could be read.`,
+      );
+    }
+    this.composites.set(name, { events, at });
   }
 
   /** `Schedule(() => Reminder, x => x.TokenId, s => s.Delay = …)`: a timeout and when it fires. */
@@ -778,11 +811,17 @@ class SagaReader {
     const nodes: DiagramNode[] = [{ id: 'start-1', type: 'start', name: INITIAL }];
     const ids = new Map<string, string>([[INITIAL, 'start-1']]);
 
+    const flow = this.resolveJoins();
     const stateNames = [...this.states.keys()];
     // States used but not declared in the given files (e.g. inherited) still get a node.
-    for (const t of this.transitions) {
+    for (const t of flow) {
       for (const name of [t.source, t.target]) {
-        if (name && !['*', INITIAL, FINAL].includes(name) && !this.states.has(name)) {
+        if (
+          name &&
+          !['*', INITIAL, FINAL].includes(name) &&
+          !name.startsWith(JOIN) &&
+          !this.states.has(name)
+        ) {
           this.states.set(name, t.at);
           stateNames.push(name);
           this.warn(t.at, `The state ${name} is not declared in the given files.`);
@@ -804,13 +843,18 @@ class SagaReader {
       nodes.push({ id: 'any-1', type: 'any', name: 'Any state' });
       ids.set('*', 'any-1');
     }
+    for (const name of this.joinsIn(flow)) {
+      const id = uniqueId(`join-${slug(name)}`, nodes);
+      nodes.push({ id, type: 'join', name });
+      ids.set(`${JOIN}${name}`, id);
+    }
 
     // Activities belong to the state a transition leads into; WhenEnter ones to their state.
     const entering = new Map<string, Activity[][]>();
     const requesting = new Map<string, string[][]>();
     const timing = new Map<string, string[][]>();
     const edges: DiagramEdge[] = [];
-    for (const t of this.transitions) {
+    for (const t of flow) {
       const source = ids.get(t.source)!;
       const target = t.target === undefined ? t.source : t.target;
       if (t.source === '*' && t.target === undefined) {
@@ -838,7 +882,14 @@ class SagaReader {
         ...t.requests,
         ...t.timers.map((x) => `${x.action} ${x.name}`),
       ];
-      if (target === FINAL) {
+      if (target.startsWith(JOIN)) {
+        if (things.length) {
+          this.warn(
+            t.at,
+            `${things.join(', ')} on ${t.event}, which counts towards the join ${target.slice(JOIN.length)}, cannot be shown.`,
+          );
+        }
+      } else if (target === FINAL) {
         if (things.length) {
           this.warn(
             t.at,
@@ -932,6 +983,60 @@ class SagaReader {
       edges,
     };
     return { className: this.className, diagram, locations };
+  }
+
+  // ---- joins
+
+  /**
+   * The transitions as the diagram draws them. A handler of an event a `CompositeEvent` waits for
+   * that stays in its state counts towards the join: it becomes a transition into the join. The
+   * handler of the composite event itself leaves the join (once, however many states have it).
+   */
+  private resolveJoins(): Transition[] {
+    const flow: Transition[] = [];
+    const left = new Set<string>();
+    for (const t of this.transitions) {
+      const composite = this.composites.get(t.event);
+      if (composite) {
+        const key = `${t.event}|${t.target}|${t.guard ?? ''}`;
+        if (left.has(key)) continue;
+        left.add(key);
+        if (t.target === undefined) {
+          this.warn(t.at, `${t.event} is a join and leads nowhere: not drawn.`);
+          continue;
+        }
+        flow.push({ ...t, source: `${JOIN}${t.event}` });
+        continue;
+      }
+      const joins = [...this.composites].filter(([, c]) => c.events.includes(t.event));
+      if (joins.length === 0) {
+        flow.push(t);
+      } else if (t.target === undefined && t.source !== '*') {
+        for (const [name] of joins) flow.push({ ...t, target: `${JOIN}${name}` });
+      } else {
+        flow.push(t);
+        for (const [name] of joins) {
+          this.warn(
+            t.at,
+            `${t.event} counts towards the join ${name} but moves the saga on: drawn as an ordinary transition, not into the join.`,
+          );
+        }
+      }
+    }
+    return flow;
+  }
+
+  /** The joins that have a transition into or out of them, in the order of the declarations. */
+  private joinsIn(flow: readonly Transition[]): string[] {
+    const used = new Set(
+      flow.flatMap((t) => [t.source, t.target ?? '']).filter((n) => n.startsWith(JOIN)),
+    );
+    const joins: string[] = [];
+    for (const [name, composite] of this.composites) {
+      if (used.has(`${JOIN}${name}`)) joins.push(name);
+      else this.warn(composite.at, `The join ${name} is not used by any transition: not drawn.`);
+    }
+    return joins;
   }
 
   // ---- warnings

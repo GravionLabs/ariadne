@@ -140,17 +140,39 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     return found ? { request: found[1], outcome: found[2] } : undefined;
   };
 
-  // Transitions we can write: they need an event, and must not touch a join (CompositeEvent) or
-  // wait for a timer, which are not generated yet.
+  // A join (CompositeEvent) waits for the events of the transitions into it. Those transitions are
+  // written as handlers that stay in their state; the transition leaving the join is written in
+  // each of those states, on the composite event.
+  const joinSources = new Map<string, string[]>();
+  const validIntoJoin = (edge: DiagramEdge): boolean =>
+    !!edge.event &&
+    nodes.get(edge.target)?.type === 'join' &&
+    nodes.has(edge.source) &&
+    nodes.get(edge.source)!.type !== 'join' &&
+    (!answerOf(edge.event) || requestList.some((r) => r.name === answerOf(edge.event!)!.request));
+  for (const edge of diagram.edges.filter(validIntoJoin)) {
+    const sources = joinSources.get(edge.target) ?? [];
+    if (!sources.includes(edge.source)) sources.push(edge.source);
+    joinSources.set(edge.target, sources);
+  }
+  for (const join of diagram.nodes.filter((n) => n.type === 'join')) {
+    if (!joinSources.has(join.id))
+      warnings.push(`The join "${join.name}" waits for no event: not generated.`);
+  }
+
+  // Transitions we can write: they need an event, and must not wait for a timer's answer that no
+  // state schedules or a request no state makes.
   const usable: DiagramEdge[] = [];
   for (const edge of diagram.edges) {
     const source = nodes.get(edge.source);
     const target = nodes.get(edge.target);
     if (!source || !target) continue;
-    if (source.type === 'join' || target.type === 'join') {
-      warnings.push(
-        `A join ("${(source.type === 'join' ? source : target).name}") is not generated yet.`,
-      );
+    if (source.type === 'join' && target.type === 'join') {
+      warnings.push(`The join "${source.name}" leads into another join: not generated.`);
+    } else if (source.type === 'join') {
+      for (const from of joinSources.get(source.id) ?? []) {
+        usable.push({ ...edge, id: `${edge.id}@${from}`, source: from, event: source.name });
+      }
     } else if (!edge.event) {
       warnings.push(`The transition ${source.name} → ${target.name} has no event: not generated.`);
     } else if (
@@ -158,17 +180,29 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       !requestList.some((r) => r.name === answerOf(edge.event!)!.request)
     ) {
       warnings.push(`${edge.event} is the answer of a request no state makes: not generated.`);
-    } else {
+    } else if (target.type !== 'join' || joinSources.has(target.id)) {
       usable.push(edge);
     }
   }
+  const joinList = diagram.nodes.filter((n) => n.type === 'join' && joinSources.has(n.id));
+  const joinEvents = (join: DiagramNode): string[] => [
+    ...new Set(
+      usable.filter((e) => e.target === join.id && !e.id.includes('@')).map((e) => e.event!),
+    ),
+  ];
 
   const stateName = new Map<string, string>();
   for (const n of states) stateName.set(n.id, names.of(n.id, 'State', n.name, 'State'));
 
   const eventNames: string[] = [];
   for (const e of [...usable.map((x) => x.event!), ...states.flatMap((s) => s.ignores ?? [])]) {
-    if (!eventNames.includes(e) && !answerOf(e) && !isTimeout(e)) eventNames.push(e);
+    if (
+      !eventNames.includes(e) &&
+      !answerOf(e) &&
+      !isTimeout(e) &&
+      !joinList.some((n) => n.name === e)
+    )
+      eventNames.push(e);
   }
   const eventProperty = new Map(eventNames.map((e) => [e, names.of(e, 'Event', e, 'Event')]));
   const requestProperty = new Map(
@@ -177,7 +211,11 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   const timerProperty = new Map(
     timerList.map((t) => [t.name, names.of(t.name, 'Timeout', t.name, 'Timeout')]),
   );
+  const joinProperty = new Map(
+    joinList.map((n) => [n.name, names.of(`join:${n.id}`, 'Event', n.name, 'Event')]),
+  );
   const eventRef = (event: string): string => {
+    if (joinProperty.has(event)) return joinProperty.get(event)!;
     if (isTimeout(event)) return `${timerProperty.get(event)}.Received`;
     const answer = answerOf(event);
     return answer && requestProperty.has(answer.request)
@@ -243,6 +281,13 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     );
   }
   if (timerList.length) body.push('');
+  for (const join of joinList) {
+    const property = joinProperty.get(join.name)!;
+    body.push(
+      `${ctor}CompositeEvent(() => ${property}, x => x.${property}Status, ${joinEvents(join).map(eventRef).join(', ')});`,
+    );
+  }
+  if (joinList.length) body.push('');
 
   const endOf = (edge: DiagramEdge): string => {
     const target = nodes.get(edge.target)!;
@@ -338,26 +383,27 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   }
   while (body.at(-1) === '') body.pop();
 
-  const members = [
-    ...states.map(
+  const memberGroups = [
+    states.map(
       (s) => `${indent(1)}public State ${stateName.get(s.id)} { get; private set; } = null!;`,
     ),
-    ...(states.length && eventNames.length ? [''] : []),
-    ...eventNames.map(
+    eventNames.map(
       (e) =>
         `${indent(1)}public Event<${messageType(e)}> ${eventProperty.get(e)} { get; private set; } = null!;`,
     ),
-    ...(eventNames.length && requestList.length ? [''] : []),
-    ...(requestList.length && timerList.length ? [''] : []),
-    ...timerList.map(
-      (t) =>
-        `${indent(1)}public Schedule<${instanceType}, ${timerMessage(t.name)}> ${timerProperty.get(t.name)} { get; private set; } = null!;`,
+    joinList.map(
+      (n) => `${indent(1)}public Event ${joinProperty.get(n.name)} { get; private set; } = null!;`,
     ),
-    ...requestList.map(
+    requestList.map(
       (r) =>
         `${indent(1)}public Request<${instanceType}, ${requestMessage(r.name)}, ${requestResponse(r.name)}> ${requestProperty.get(r.name)} { get; private set; } = null!;`,
     ),
-  ];
+    timerList.map(
+      (t) =>
+        `${indent(1)}public Schedule<${instanceType}, ${timerMessage(t.name)}> ${timerProperty.get(t.name)} { get; private set; } = null!;`,
+    ),
+  ].filter((group) => group.length);
+  const members = memberGroups.flatMap((group, i) => (i ? ['', ...group] : group));
 
   const usings = ['using System;', 'using MassTransit;'];
   if (contractsNamespace && contractsNamespace !== namespace)
@@ -419,6 +465,9 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       ),
       ...timerList.map(
         (t) => `${indent(1)}public Guid? ${timerProperty.get(t.name)}TokenId { get; set; }`,
+      ),
+      ...joinList.map(
+        (n) => `${indent(1)}public int ${joinProperty.get(n.name)}Status { get; set; }`,
       ),
       '}',
     ]),

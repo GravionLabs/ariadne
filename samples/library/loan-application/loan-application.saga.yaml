@@ -10,20 +10,12 @@ nodes:
   - id: start-1
     type: start
     name: Initial
-  - id: state-awaiting-credit-check
+  - id: state-awaiting-checks
     type: state
-    name: AwaitingCreditCheck
+    name: AwaitingChecks
     activities:
       - command: RunCreditCheck
-  - id: state-awaiting-identity-check
-    type: state
-    name: AwaitingIdentityCheck
-    activities:
       - command: VerifyIdentity
-  - id: state-awaiting-income-check
-    type: state
-    name: AwaitingIncomeCheck
-    activities:
       - command: VerifyIncome
   - id: state-scoring
     type: state
@@ -60,93 +52,101 @@ nodes:
   - id: end-1
     type: end
     name: Final
+  - id: join-checks-completed
+    type: join
+    name: ChecksCompleted
 edges:
   - id: edge-1
     source: start-1
-    target: state-awaiting-credit-check
+    target: state-awaiting-checks
     kind: forward
     event: ApplicationSubmitted
   - id: edge-2
-    source: state-awaiting-credit-check
-    target: state-awaiting-identity-check
+    source: state-awaiting-checks
+    target: join-checks-completed
     kind: forward
     event: CreditCheckCompleted
   - id: edge-3
-    source: state-awaiting-credit-check
+    source: state-awaiting-checks
+    target: join-checks-completed
+    kind: forward
+    event: IdentityVerified
+  - id: edge-4
+    source: state-awaiting-checks
+    target: join-checks-completed
+    kind: forward
+    event: IncomeVerified
+  - id: edge-5
+    source: join-checks-completed
+    target: state-scoring
+    kind: forward
+    event: ChecksCompleted
+  - id: edge-6
+    source: state-awaiting-checks
     target: state-withdrawn
     kind: forward
     event: CreditCheckTimedOut
-  - id: edge-4
-    source: state-awaiting-identity-check
-    target: state-awaiting-income-check
-    kind: forward
-    event: IdentityVerified
-  - id: edge-5
-    source: state-awaiting-identity-check
+  - id: edge-7
+    source: state-awaiting-checks
     target: state-withdrawn
     kind: forward
     event: IdentityCheckTimedOut
-  - id: edge-6
-    source: state-awaiting-income-check
-    target: state-scoring
-    kind: forward
-    event: IncomeVerified
-  - id: edge-7
-    source: state-awaiting-income-check
+  - id: edge-8
+    source: state-awaiting-checks
     target: state-withdrawn
     kind: forward
     event: IncomeCheckTimedOut
-  - id: edge-8
+  - id: edge-9
     source: state-scoring
     target: state-offer-made
     kind: forward
     event: ScoringCompleted
     guard: context.Message.Outcome == "Approved"
-  - id: edge-9
+  - id: edge-10
     source: state-scoring
     target: state-in-manual-review
     kind: forward
     event: ScoringCompleted
     guard: context.Message.Outcome == "Referred"
-  - id: edge-10
+  - id: edge-11
     source: state-scoring
     target: state-declined
     kind: forward
     event: ScoringCompleted
     guard: context.Message.Outcome == "Declined"
-  - id: edge-11
+  - id: edge-12
     source: state-in-manual-review
     target: state-offer-made
     kind: forward
     event: ReviewCompleted
     guard: context.Message.Approved
-  - id: edge-12
+  - id: edge-13
     source: state-in-manual-review
     target: state-declined
     kind: forward
     event: ReviewCompleted
     guard: "!(context.Message.Approved)"
-  - id: edge-13
+  - id: edge-14
     source: state-offer-made
     target: state-disbursing
     kind: forward
     event: OfferAccepted
-  - id: edge-14
+  - id: edge-15
     source: state-offer-made
     target: state-withdrawn
     kind: forward
     event: OfferExpired
-  - id: edge-15
+  - id: edge-16
     source: state-disbursing
     target: end-1
     kind: forward
     event: FundsDisbursed
-  - id: edge-16
+  - id: edge-17
     source: state-declined
     target: end-1
     kind: forward
     event: ApplicantNotified
-  - id: edge-17
+  - id: edge-18
     source: state-withdrawn
     target: end-1
     kind: forward

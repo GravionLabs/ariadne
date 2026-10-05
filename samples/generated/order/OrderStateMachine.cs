@@ -71,5 +71,6 @@ public class OrderStateMachine : MassTransitStateMachine<OrderState>
     public Event<PaymentCharged> PaymentCharged { get; private set; } = null!;
     public Event<PaymentFailed> PaymentFailed { get; private set; } = null!;
     public Event<OrderShipped> OrderShipped { get; private set; } = null!;
+
     public Schedule<OrderState, PaymentTimeoutMessage> PaymentTimeout { get; private set; } = null!;
 }

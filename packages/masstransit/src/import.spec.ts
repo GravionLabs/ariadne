@@ -485,6 +485,71 @@ describe('importSagas on small sagas', () => {
     ]);
   });
 
+  it('reads a CompositeEvent as a join: handlers that stay lead into it, its own handler leaves it', () => {
+    const result = importSagas(
+      saga(
+        `CompositeEvent(() => Ready, x => x.Flags, Next, Stop);
+        Initially(When(Start).TransitionTo(Working));
+        During(Working,
+          When(Next),
+          When(Stop),
+          When(Ready).TransitionTo(Waiting));
+        During(Waiting, When(Ready).TransitionTo(Waiting));`,
+        'public Event Ready { get; private set; }',
+      ),
+      parser,
+    );
+    const d = only(result);
+    expect(messages(result)).toEqual([]);
+    expect(d.nodes.filter((n) => n.type === 'join').map((n) => n.name)).toEqual(['Ready']);
+    expect(edgesOf(d)).toEqual([
+      'Initial -Start-> Working',
+      'Working -Next-> Ready',
+      'Working -Stop-> Ready',
+      'Ready -Ready-> Waiting',
+    ]);
+  });
+
+  it('draws a join once when several states handle the composite event', () => {
+    const d = only(
+      importSagas(
+        saga(
+          `CompositeEvent(() => Ready, x => x.Flags, Next, Stop);
+          Initially(When(Start).TransitionTo(Working));
+          During(Working, When(Next), When(Ready).TransitionTo(Waiting));
+          During(Waiting, When(Stop), When(Ready).TransitionTo(Waiting));`,
+          'public Event Ready { get; private set; }',
+        ),
+        parser,
+      ),
+    );
+    expect(edgesOf(d).filter((e) => e.includes('Ready -Ready'))).toEqual([
+      'Ready -Ready-> Waiting',
+    ]);
+  });
+
+  it('warns about what a join cannot show: options, a member that moves on, activities, no use', () => {
+    const result = importSagas(
+      saga(
+        `CompositeEvent(() => Ready, x => x.Flags, CompositeEventOptions.IncludeInitial, Next, Stop);
+        CompositeEvent(() => Unused, x => x.Other, Odd, Even);
+        Initially(When(Start).TransitionTo(Working));
+        During(Working,
+          When(Next).Publish(ctx => new B()),
+          When(Stop).TransitionTo(Waiting),
+          When(Ready).TransitionTo(Waiting));`,
+        'public Event Ready { get; private set; } public Event Unused { get; private set; } public Event<Odd> Odd { get; private set; } public Event<Even> Even { get; private set; }',
+      ),
+      parser,
+    );
+    expect(messages(result)).toEqual([
+      'DemoStateMachine: CompositeEventOptions.IncludeInitial is not shown in the diagram.',
+      'DemoStateMachine: Stop counts towards the join Ready but moves the saga on: drawn as an ordinary transition, not into the join.',
+      'DemoStateMachine: The join Unused is not used by any transition: not drawn.',
+      'DemoStateMachine: B on Next, which counts towards the join Ready, cannot be shown.',
+    ]);
+  });
+
   it('does not draw what cannot be drawn, and says so', () => {
     const result = importSagas(
       saga(`

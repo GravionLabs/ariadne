@@ -33,14 +33,14 @@ without a folder picker).
 The generated code is a starting point:
 
 - search for `TODO`: the properties of the messages, and every guard, are left for you;
-- joins are not generated yet and are listed in the dialog;
+- what a diagram cannot say, such as a transition without an event, is not generated and is listed in the dialog;
 - names are turned into C# identifiers (`Charging payment` → `ChargingPayment`), and a clash gets a number.
 
 Save generated files where you want them; Ariadne never overwrites a project.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../images/guide/generate-dialog-dark.png">
-  <img alt="The generate dialog: a note about what was not generated, tabs for the three files, the C# of the state machine, and the buttons Close, Copy file and Save all" src="../images/guide/generate-dialog-light.png">
+  <img alt="The generate dialog: tabs for the three files, the C# of the state machine, and the buttons Close, Copy file and Save all" src="../images/guide/generate-dialog-light.png">
 </picture>
 
 ## In VS Code
