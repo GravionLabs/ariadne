@@ -148,6 +148,32 @@ describe('generateSaga', () => {
   });
 });
 
+describe('the name of the class', () => {
+  const named = (name: string): Diagram => ({
+    direction: 'top-bottom',
+    name,
+    nodes: [{ id: 'a', type: 'start', name: 'Initial' }],
+    edges: [],
+  });
+  const machine = (name: string) =>
+    generateSaga(named(name)).files.find((f) => f.path.endsWith('StateMachine.cs'))!.path;
+
+  it('drops a closing "saga" or "state machine" and keeps the rest', () => {
+    expect(machine('Order saga')).toBe('OrderStateMachine.cs');
+    expect(machine('Order State Machine  ')).toBe('OrderStateMachine.cs');
+    expect(machine('Order statemachine')).toBe('OrderStateMachine.cs');
+    expect(machine('Saga')).toBe('SagaStateMachine.cs');
+    expect(machine('Sagas of old')).toBe('SagasOfOldStateMachine.cs');
+    expect(machine('')).toBe('SagaStateMachine.cs');
+  });
+
+  it('takes no time with a long run of spaces', () => {
+    const start = performance.now();
+    machine(' '.repeat(100_000) + 'x');
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+});
+
 describe('generateSaga and compensation', () => {
   it('says that a compensation is written as an ordinary transition, and that its undo action is not', () => {
     const d: Diagram = {

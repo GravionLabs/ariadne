@@ -57,6 +57,16 @@ class Names {
   }
 }
 
+/**
+ * `Order saga` → `Order`: the name without a closing "state machine" or "saga" and the space before it.
+ * (`/\s*(state ?machine|saga)\s*$/i` does the same but backtracks quadratically on a long run of spaces.)
+ */
+function withoutSagaSuffix(name: string): string {
+  const end = name.trimEnd();
+  const found = /(state ?machine|saga)$/i.exec(end);
+  return found ? end.slice(0, found.index).trimEnd() : name;
+}
+
 const indent = (n: number): string => '    '.repeat(n);
 const TIMEOUT_UNITS: Record<string, string> = {
   ms: 'Milliseconds',
@@ -93,10 +103,7 @@ const comment = (text: string): string => text.replace(/\*\//g, '* /').replace(/
 export function generateSaga(diagram: Diagram): GenerateResult {
   const warnings: string[] = [];
   const info = diagram.saga ?? {};
-  const base = identifier(
-    (diagram.name ?? '').replace(/\s*(state ?machine|saga)\s*$/i, ''),
-    'Saga',
-  );
+  const base = identifier(withoutSagaSuffix(diagram.name ?? ''), 'Saga');
   const className = info.className ?? `${base}StateMachine`;
   const instanceType = info.instanceType ?? `${base}State`;
   const stateProperty = info.stateProperty ?? 'CurrentState';

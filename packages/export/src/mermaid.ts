@@ -1,4 +1,5 @@
 import { diagramAlternative, diagramTitle } from './describe';
+import { replaceLineBreaks, trimChar } from './text';
 import {
   ACTIVITY_VERBS,
   Diagram,
@@ -38,7 +39,7 @@ function stateIds(nodes: readonly DiagramNode[]): Map<string, string> {
   const used = new Set<string>();
   const ids = new Map<string, string>();
   for (const node of nodes) {
-    let base = node.name.replace(/[^\p{L}\p{N}_]+/gu, '_').replace(/^_+|_+$/g, '') || node.type;
+    let base = trimChar(node.name.replace(/[^\p{L}\p{N}_]+/gu, '_'), '_') || node.type;
     if (/^\d/.test(base) || RESERVED.has(base.toLowerCase())) base = `s_${base}`;
     let id = base;
     for (let i = 2; used.has(id.toLowerCase()); i++) id = `${base}_${i}`;
@@ -50,18 +51,10 @@ function stateIds(nodes: readonly DiagramNode[]): Map<string, string> {
 
 /** Text in a label or a quoted name: `"` and `;` would end it, line breaks would split it. `;` goes first: `#quot;` has one. */
 const text = (s: string): string =>
-  s
-    .replace(/;/g, '#59;')
-    .replace(/"/g, '#quot;')
-    .replace(/\s*\n\s*/g, ' ')
-    .trim();
+  replaceLineBreaks(s.replace(/;/g, '#59;').replace(/"/g, '#quot;'), ' ').trim();
 
 /** Text for `accTitle` and `accDescr`, which run to the end of the line: no line breaks, and `%%` would start a comment. */
-const accessible = (s: string): string =>
-  s
-    .replace(/\s*\n\s*/g, ' ')
-    .replace(/%%/g, '% %')
-    .trim();
+const accessible = (s: string): string => replaceLineBreaks(s, ' ').replace(/%%/g, '% %').trim();
 
 /**
  * `Event / Send A, Publish B`: the event that triggers the transition, then what the saga does on
