@@ -59,7 +59,8 @@
     "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-viewer.xml",
     "package": "node scripts/package.mjs",
     "test:package": "node scripts/test-package.mjs",
-    "size": "node scripts/size.mjs"
+    "size": "node scripts/size.mjs",
+    "typecheck": "tsc --noEmit -p ."
   },
   "devDependencies": {
     "@angular/common": "^22.2.0",

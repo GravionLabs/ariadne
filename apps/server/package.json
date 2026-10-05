@@ -11,7 +11,8 @@
     "build": "node build.mjs",
     "start": "node dist/server.mjs",
     "test": "vitest run",
-    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-server.xml"
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-server.xml",
+    "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
     "@hono/node-server": "^1.19.0",

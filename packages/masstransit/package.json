@@ -13,7 +13,8 @@
   "scripts": {
     "test": "vitest run",
     "perf": "vitest run --config vitest.perf.config.ts",
-    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-masstransit.xml"
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-masstransit.xml",
+    "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
     "@ariadne/core": "workspace:*",

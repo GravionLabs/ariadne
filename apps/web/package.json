@@ -12,7 +12,8 @@
     "build:embedded": "ng build --configuration production,embedded",
     "capture": "ng build && playwright test --config capture/playwright.config.ts",
     "capture:install": "playwright install --with-deps chromium",
-    "test:ci": "ng test --no-watch --configuration=ci"
+    "test:ci": "ng test --no-watch --configuration=ci",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.spec.json"
   },
   "dependencies": {
     "@angular/cdk": "^22.2.1",

@@ -10,7 +10,8 @@
   "scripts": {
     "test": "vitest run",
     "perf": "vitest run --config vitest.perf.config.ts",
-    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-export.xml"
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-export.xml",
+    "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
     "@ariadne/core": "workspace:*",
@@ -18,6 +19,7 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@types/node": "^24.19.1",
     "vitest": "^5.0.0"
   }
 }

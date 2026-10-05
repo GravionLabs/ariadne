@@ -1,6 +1,16 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import type { Plugin } from 'vite';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+
+/** The part of a Vite plugin this needs (Vite is VitePress's, not a dependency of this package). */
+interface DevServerPlugin {
+  name: string;
+  configureServer(server: {
+    middlewares: {
+      use(handler: (req: IncomingMessage, res: ServerResponse, next: () => void) => void): void;
+    };
+  }): void;
+}
 
 /**
  * Files of the repository that the site uses by their address and that VitePress does not bundle (the
@@ -11,7 +21,7 @@ export const SITE_ASSETS: readonly (readonly [string, string])[] = [
 ];
 
 /** Serves the assets while developing (`vitepress dev`); {@link copyAssets} writes them for a build. */
-export function assetsPlugin(repoRoot: string): Plugin {
+export function assetsPlugin(repoRoot: string): DevServerPlugin {
   return {
     name: 'ariadne-assets',
     configureServer(server) {
