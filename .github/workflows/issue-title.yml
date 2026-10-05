@@ -1,0 +1,34 @@
+name: Issue title
+
+# An issue title starts with its level: [Epic], [Feature], [PBI], [Task] or [Bug] (CONTRIBUTING.md). The
+# board, the sub-issue lists and the release notes read the titles, so an issue without it is hard to
+# place. The check comments once and fails, so it shows in the Actions tab; the title is yours to fix.
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+permissions:
+  issues: write
+
+jobs:
+  title-has-level:
+    name: Title starts with its level
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require [Epic], [Feature], [PBI], [Task] or [Bug]
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          NUMBER: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if printf '%s' "$TITLE" | grep -Eq '^\[(Epic|Feature|PBI|Task|Bug)\] '; then
+            exit 0
+          fi
+          marker='<!-- issue-title-check -->'
+          if ! gh api "repos/$GH_REPO/issues/$NUMBER/comments" --jq '.[].body' | grep -qF "$marker"; then
+            gh api "repos/$GH_REPO/issues/$NUMBER/comments" -f body="$marker
+          The title should start with the level of the issue: \`[Epic]\`, \`[Feature]\`, \`[PBI]\`, \`[Task]\` or \`[Bug]\`, for example \`[PBI] feat: short summary\`. Please edit the title; this check runs again when you do." > /dev/null
+          fi
+          echo "::error::The title of #$NUMBER does not start with [Epic], [Feature], [PBI], [Task] or [Bug]."
+          exit 1
