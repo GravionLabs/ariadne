@@ -75,19 +75,27 @@
       }
     },
     "direction": {
-      "enum": ["top-bottom", "left-right"],
+      "enum": ["top-bottom", "bottom-top", "left-right", "right-left"],
       "default": "top-bottom",
-      "description": "Layout direction."
+      "description": "Which way the flow runs, from the initial state on. Defaults to top-bottom."
+    },
+    "spacing": {
+      "enum": ["compact", "normal", "spacious"],
+      "description": "Room between states and between layers. Defaults to normal (and is then left out)."
     },
     "nodes": {
       "type": "array",
       "description": "The states. Ids are unique in the file; there is at most one `any` node.",
-      "items": { "$ref": "#/definitions/node" }
+      "items": {
+        "$ref": "#/definitions/node"
+      }
     },
     "edges": {
       "type": "array",
       "description": "The transitions. Every `source` and `target` is the id of a node.",
-      "items": { "$ref": "#/definitions/edge" }
+      "items": {
+        "$ref": "#/definitions/edge"
+      }
     }
   },
   "definitions": {
@@ -105,12 +113,24 @@
           "enum": ["start", "end", "state", "any", "join"],
           "description": "`start`: the initial state (nothing enters it). `state`: a state. `end`: a final state (nothing leaves it). `any`: transitions leaving it apply in every state; nothing enters it. `join`: waits until the events of all incoming transitions have arrived."
         },
-        "name": { "type": "string", "minLength": 1, "description": "Label shown on the canvas." },
-        "description": { "type": "string", "description": "Documentation only." },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Label shown on the canvas."
+        },
+        "description": {
+          "type": "string",
+          "description": "Documentation only."
+        },
         "color": {
           "anyOf": [
-            { "enum": ["red", "orange", "amber", "green", "teal", "blue", "purple", "pink"] },
-            { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+            {
+              "enum": ["red", "orange", "amber", "green", "teal", "blue", "purple", "pink"]
+            },
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            }
           ],
           "description": "Accent color of the card: a palette name or a `#rrggbb` value."
         },
@@ -139,7 +159,10 @@
         "ignores": {
           "type": "array",
           "description": "Events the state receives and drops (`Ignore(E)`). Only on `state` nodes.",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "requests": {
           "type": "array",
@@ -169,8 +192,15 @@
             "minProperties": 1,
             "additionalProperties": false,
             "oneOf": [
-              { "required": ["schedule"] },
-              { "required": ["unschedule"], "not": { "required": ["delay"] } }
+              {
+                "required": ["schedule"]
+              },
+              {
+                "required": ["unschedule"],
+                "not": {
+                  "required": ["delay"]
+                }
+              }
             ],
             "properties": {
               "schedule": {
@@ -204,14 +234,23 @@
           "additionalProperties": false,
           "description": "Undo action for the work done to reach this state.",
           "properties": {
-            "name": { "type": "string", "minLength": 1 },
-            "description": { "type": "string" }
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": {
+              "type": "string"
+            }
           }
         }
       },
       "if": {
         "required": ["type"],
-        "properties": { "type": { "enum": ["start", "end", "any", "join"] } }
+        "properties": {
+          "type": {
+            "enum": ["start", "end", "any", "join"]
+          }
+        }
       },
       "then": {
         "properties": {
@@ -226,9 +265,15 @@
       "type": "object",
       "required": ["id", "source", "target"],
       "additionalProperties": false,
-      "dependencies": { "guard": ["event"] },
+      "dependencies": {
+        "guard": ["event"]
+      },
       "properties": {
-        "id": { "type": "string", "minLength": 1, "description": "e.g. `edge-4`." },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "e.g. `edge-4`."
+        },
         "source": {
           "type": "string",
           "minLength": 1,

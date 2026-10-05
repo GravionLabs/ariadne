@@ -12,7 +12,24 @@ export interface Point {
  */
 export type NodeType = 'start' | 'end' | 'state' | 'any' | 'join';
 export type EdgeKind = 'forward' | 'compensation';
-export type Direction = 'top-bottom' | 'left-right';
+/** Which way the flow runs on the canvas, from the initial state on (#113). */
+export type Direction = 'top-bottom' | 'bottom-top' | 'left-right' | 'right-left';
+export const DIRECTIONS: readonly Direction[] = [
+  'top-bottom',
+  'bottom-top',
+  'left-right',
+  'right-left',
+];
+/** The flow runs across the screen (left-right, right-left) rather than down or up it. */
+export const isHorizontal = (direction: Direction): boolean =>
+  direction === 'left-right' || direction === 'right-left';
+/** The flow runs against reading order: up (bottom-top) or to the left (right-left). */
+export const isReversed = (direction: Direction): boolean =>
+  direction === 'bottom-top' || direction === 'right-left';
+
+/** How much room the layout leaves between states and between layers (#113). */
+export type Spacing = 'compact' | 'normal' | 'spacious';
+export const SPACINGS: readonly Spacing[] = ['compact', 'normal', 'spacious'];
 
 /**
  * A message in the MassTransit sense: a command is an imperative instruction sent to exactly
@@ -185,6 +202,8 @@ export interface Diagram {
   /** Code metadata per event; shared by every transition with that event. */
   events?: EventInfo[];
   direction: Direction;
+  /** Room between states and layers; absent means `normal`. */
+  spacing?: Spacing;
   nodes: DiagramNode[];
   edges: DiagramEdge[];
 }

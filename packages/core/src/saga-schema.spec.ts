@@ -122,7 +122,6 @@ describe('saga.schema.json rejects what the parser rejects', () => {
     ['no version', 'name: x'],
     ['an unknown version', 'version: 4'],
     ['a name that is not text', 'version: 3\nname: [a]'],
-    ['an unknown direction', 'version: 3\ndirection: sideways'],
     ['nodes that are not a list', 'version: 3\nnodes: {}'],
     ['a node without an id', `version: 3\nnodes:\n  - type: state\n    name: A`],
     ['a node without a name', `version: 3\nnodes:\n  - id: a\n    type: state`],
@@ -234,5 +233,21 @@ describe('saga.schema.json leaves to Ariadne what it cannot see', () => {
   ])('%s', (_name, text) => {
     expect(parserAccepts(text)).toBe(false);
     expect(schemaAccepts(text)).toBe(true);
+  });
+});
+
+describe('saga.schema.json and the layout options', () => {
+  it('accepts the four directions and the three spacings', () => {
+    for (const direction of ['top-bottom', 'bottom-top', 'left-right', 'right-left']) {
+      for (const spacing of ['compact', 'normal', 'spacious']) {
+        const text = `version: 3\ndirection: ${direction}\nspacing: ${spacing}`;
+        expect(validate(parse(text)) ? [] : validate.errors, text).toEqual([]);
+      }
+    }
+  });
+
+  it('flags an unknown direction or spacing in the editor, which the reader only works around', () => {
+    expect(validate(parse('version: 3\ndirection: sideways'))).toBe(false);
+    expect(validate(parse('version: 3\nspacing: roomy'))).toBe(false);
   });
 });

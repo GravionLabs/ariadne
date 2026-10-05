@@ -20,6 +20,9 @@ import {
   Request,
   SagaInfo,
   Timer,
+  DIRECTIONS,
+  SPACINGS,
+  Spacing,
 } from './diagram';
 
 /** Current version of the file format; see docs/specs/diagram-format.md. */
@@ -36,7 +39,6 @@ const NODE_TYPES: readonly NodeType[] = ['start', 'end', 'state', 'any', 'join']
 /** Version 1 node types; both are plain states now (a decision is a state with branches). */
 const V1_STATE_TYPES = ['step', 'decision'];
 const EDGE_KINDS: readonly EdgeKind[] = ['forward', 'compensation'];
-const DIRECTIONS: readonly Direction[] = ['top-bottom', 'left-right'];
 
 /**
  * What the reader accepts, so that a huge or hostile file is refused with a message instead of
@@ -106,6 +108,8 @@ export function serializeDiagram(diagram: Diagram): string {
       ? diagram.events.map((e) => withoutUndefined({ ...e }))
       : undefined,
     direction: diagram.direction,
+    // `normal` is the default and is not written, so files that do not choose stay as they were.
+    spacing: diagram.spacing && diagram.spacing !== 'normal' ? diagram.spacing : undefined,
     nodes: diagram.nodes.map(serializeNode),
     edges: diagram.edges.map(({ id, source, target, kind, event, eventSource, guard }) =>
       withoutUndefined({ id, source, target, kind, event, eventSource, guard }),
@@ -188,9 +192,26 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
       ? new DiagramVersionError(message, version)
       : new DiagramFormatError(message);
   }
-  const direction = root['direction'] ?? 'top-bottom';
-  if (!DIRECTIONS.includes(direction as Direction)) {
-    throw new DiagramFormatError(`direction must be one of ${DIRECTIONS.join(', ')}`);
+  // An unknown direction or spacing (a newer Ariadne, a typo) falls back to the default: the
+  // diagram is still the same diagram, only drawn differently, and the notes say so (#113).
+  const layoutNotes: string[] = [];
+  const rawDirection = root['direction'] ?? 'top-bottom';
+  const direction: Direction = DIRECTIONS.includes(rawDirection as Direction)
+    ? (rawDirection as Direction)
+    : 'top-bottom';
+  if (direction !== rawDirection) {
+    layoutNotes.push(
+      `The direction ${JSON.stringify(rawDirection)} is not one of ${DIRECTIONS.join(', ')}: the diagram is drawn top-bottom.`,
+    );
+  }
+  const rawSpacing = root['spacing'];
+  const spacing: Spacing | undefined = SPACINGS.includes(rawSpacing as Spacing)
+    ? (rawSpacing as Spacing)
+    : undefined;
+  if (rawSpacing !== undefined && !spacing) {
+    layoutNotes.push(
+      `The spacing ${JSON.stringify(rawSpacing)} is not one of ${SPACINGS.join(', ')}: normal spacing is used.`,
+    );
   }
   const version = root['version'] as number;
   const nodeItems = asArray(root['nodes'] ?? [], 'nodes');
@@ -216,7 +237,10 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
   }
   const parsedEdges = edgeItems.map((e, i) => parseEdge(e, i, ids, version));
   const edges = parsedEdges.map((p) => p.edge);
-  const notes = version < 3 ? moveActivitiesToStates(nodes, parsedEdges) : [];
+  const notes = [
+    ...layoutNotes,
+    ...(version < 3 ? moveActivitiesToStates(nodes, parsedEdges) : []),
+  ];
   const name = optionalString(root['name'], 'name')?.trim() || undefined;
   const description = optionalString(root['description'], 'description')?.trim() || undefined;
   const saga = parseSaga(root['saga']);
@@ -227,7 +251,8 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
       description,
       saga,
       events,
-      direction: direction as Direction,
+      direction,
+      spacing: spacing === 'normal' ? undefined : spacing,
       nodes,
       edges,
     }),

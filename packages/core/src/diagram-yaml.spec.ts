@@ -94,9 +94,40 @@ describe('diagram YAML', () => {
     expect(parseDiagram(text)).toEqual(diagram);
   });
 
-  it('round-trips the left-right direction', () => {
-    const diagram: Diagram = { ...sample, direction: 'left-right' };
+  it.each(['top-bottom', 'bottom-top', 'left-right', 'right-left'] as const)(
+    'round-trips the direction %s',
+    (direction) => {
+      const diagram: Diagram = { ...sample, direction };
+      expect(parseDiagram(serializeDiagram(diagram))).toEqual(diagram);
+      expect(serializeDiagram(diagram)).toContain(`direction: ${direction}`);
+    },
+  );
+
+  it.each(['compact', 'spacious'] as const)('round-trips the spacing %s', (spacing) => {
+    const diagram: Diagram = { ...sample, spacing };
     expect(parseDiagram(serializeDiagram(diagram))).toEqual(diagram);
+    expect(serializeDiagram(diagram)).toMatch(
+      new RegExp(`^direction: .*\\nspacing: ${spacing}$`, 'm'),
+    );
+  });
+
+  it('does not write normal spacing, so a file that does not choose stays as it was', () => {
+    expect(serializeDiagram({ ...sample, spacing: 'normal' })).toBe(serializeDiagram(sample));
+    expect(serializeDiagram(sample)).not.toContain('spacing');
+    expect(parseDiagram('version: 3\nspacing: normal').spacing).toBeUndefined();
+  });
+
+  it('draws an unknown direction or spacing with the default instead of failing, and says so', () => {
+    const { diagram, notes } = parseDiagramWithNotes(
+      'version: 3\ndirection: diagonal\nspacing: roomy\nnodes: []',
+    );
+    expect(diagram.direction).toBe('top-bottom');
+    expect(diagram.spacing).toBeUndefined();
+    expect(notes).toEqual([
+      'The direction "diagonal" is not one of top-bottom, bottom-top, left-right, right-left: the diagram is drawn top-bottom.',
+      'The spacing "roomy" is not one of compact, normal, spacious: normal spacing is used.',
+    ]);
+    expect(parseDiagramWithNotes('version: 3\ndirection: 7').diagram.direction).toBe('top-bottom');
   });
 
   it('reads version 1 files: steps and decisions become states, positions and ports are ignored', () => {
@@ -255,7 +286,6 @@ edges:
     ['nodes: [', /Not valid YAML/],
     ['- 1', /file must be a mapping/],
     ['version: 4', /Unsupported format version 4/],
-    ['version: 3\ndirection: diagonal', /direction must be one of top-bottom, left-right/],
     ['version: 3\nnodes: {}', /nodes must be a list/],
     ['version: 3\nnodes:\n  - { id: a, type: task, name: A }', /nodes\[0\]\.type/],
     // `step` and `decision` only exist in version 1.
