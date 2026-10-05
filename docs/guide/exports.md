@@ -31,7 +31,8 @@ nodes: []
 ![The order saga](order.saga.yaml)
 ````
 
-From the command line, for CI and docs builds:
+From the command line, for CI and docs builds (install it from a release: `npm install -g
+https://github.com/GravionLabs/ariadne/releases/latest/download/ariadne-cli.tgz`, Node 22 or later):
 
 ```sh
 ariadne export order.saga.yaml --format svg -o order.svg     # mermaid | svg | png | md

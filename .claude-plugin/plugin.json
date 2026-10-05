@@ -1,0 +1,13 @@
+{
+  "name": "ariadne",
+  "version": "1.0.0",
+  "description": "Check, draw, import, generate and compare MassTransit saga diagrams (*.saga.yaml) with the ariadne CLI.",
+  "author": {
+    "name": "GravionLabs",
+    "url": "https://github.com/GravionLabs"
+  },
+  "homepage": "https://gravionlabs.github.io/ariadne/",
+  "repository": "https://github.com/GravionLabs/ariadne",
+  "license": "MIT",
+  "keywords": ["masstransit", "saga", "state-machine", "diagram", "csharp"]
+}

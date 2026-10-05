@@ -1,0 +1,18 @@
+{
+  "name": "ariadne",
+  "owner": {
+    "name": "GravionLabs",
+    "url": "https://github.com/GravionLabs"
+  },
+  "metadata": {
+    "description": "Ariadne: diagrams for MassTransit saga state machines, for coding agents."
+  },
+  "plugins": [
+    {
+      "name": "ariadne",
+      "source": "./",
+      "description": "Check, draw, import, generate and compare MassTransit saga diagrams (*.saga.yaml) with the ariadne CLI.",
+      "category": "development"
+    }
+  ]
+}

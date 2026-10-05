@@ -83,19 +83,33 @@ Every release carries the extension as `ariadne-vscode-<version>.vsix`: download
 
 `docker run -p 8080:8080 ghcr.io/gravionlabs/ariadne:latest`, see [docs/self-hosting.md](docs/self-hosting.md). The [user guide](docs/guide/README.md) explains the editor, the C# import and generation, the exports and the VS Code extension. To show a saga in your own web or Angular app, see [the viewer](docs/guide/viewer.md) and its [README](packages/viewer/README.md) (demo pages included).
 
+## Coding agents
+
+An AI coding agent can check, draw, import, generate and compare sagas with the `ariadne` command, through the
+[`ariadne` skill](skills/ariadne/SKILL.md):
+
+- **GitHub Copilot** (and Cursor, Codex, Gemini CLI, …): `gh skill install GravionLabs/ariadne ariadne`
+- **APM**, for any of them: `apm install GravionLabs/ariadne/skills/ariadne`
+- **Claude Code**: `/plugin marketplace add GravionLabs/ariadne`, then `/plugin install ariadne@ariadne`
+
+See [the guide](docs/guide/agents.md).
+
 ## Command line
 
-`apps/cli` builds the `ariadne` command (Node 22 or later) for local use and CI:
+The `ariadne` command (Node 22 or later) is attached to every [release](https://github.com/GravionLabs/ariadne/releases):
 
 ```sh
-pnpm --filter @ariadne/cli build
-node apps/cli/dist/ariadne.mjs lint docs/examples/*.saga.yaml      # exit 1 on errors
-node apps/cli/dist/ariadne.mjs lint --max-warnings 0 --format json order.saga.yaml
-node apps/cli/dist/ariadne.mjs export order.saga.yaml --format svg -o order.svg   # mermaid | svg | png | md
-node apps/cli/dist/ariadne.mjs generate order.saga.yaml -o src/Orders    # diagram -> C#
-node apps/cli/dist/ariadne.mjs import src/Orders/*.cs -o docs            # C# -> diagram
-node apps/cli/dist/ariadne.mjs diff docs/order.saga.yaml src/Orders/*.cs   # exit 1 when they differ
+npm install -g https://github.com/GravionLabs/ariadne/releases/latest/download/ariadne-cli.tgz
+
+ariadne lint docs/examples/*.saga.yaml      # exit 1 on errors
+ariadne lint --max-warnings 0 --format json order.saga.yaml
+ariadne export order.saga.yaml --format svg -o order.svg   # mermaid | svg | png | md
+ariadne generate order.saga.yaml -o src/Orders    # diagram -> C#
+ariadne import src/Orders/*.cs -o docs            # C# -> diagram
+ariadne diff docs/order.saga.yaml src/Orders/*.cs   # exit 1 when they differ
 ```
+
+From a clone: `pnpm --filter @ariadne/cli build`, then `node apps/cli/dist/ariadne.mjs …`. See [apps/cli/README.md](apps/cli/README.md).
 
 `lint` reports the same findings as the editor's Problems list.
 
@@ -146,6 +160,8 @@ packages/
   masstransit/ @ariadne/masstransit: import saga state machines from C# (tree-sitter), generate C#, diff
   editor-protocol/ @ariadne/editor-protocol: the messages between the extension and the editor in its webview
   viewer/     @ariadne/viewer: the embeddable <ariadne-saga> viewer and its Angular wrapper (published to npm)
+skills/
+  ariadne/    the agent skill (Agent Skills format; the repository is also its Claude Code plugin)
 samples/
   sagas/      C# sagas with the diagrams the importer must produce
 docs/
@@ -156,7 +172,7 @@ docs/
 
 The repository is a pnpm workspace (`apps/*`, `packages/*`); the root scripts run across all of it.
 
-Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [importing C# with tree-sitter](docs/adr/0007-csharp-import.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md), [generating C# and checking it against the diagram](docs/adr/0013-csharp-generation.md), [the server and the container](docs/adr/0014-server-and-container.md), [versioning and releases](docs/adr/0015-versioning-and-releases.md), [the VS Code extension](docs/adr/0016-vscode-extension.md), [the embeddable saga viewer](docs/adr/0017-saga-viewer.md), [the documentation site](docs/adr/0020-documentation-site.md).
+Decisions are recorded as ADRs: [the foundations](docs/adr/0001-flow-editor-foundations.md), [YAML files and `FileStorage`](docs/adr/0002-yaml-files-and-file-storage.md), [state machines with auto-layout, commands and events](docs/adr/0003-auto-layout-commands-events.md), [app state in NgRx SignalStore](docs/adr/0004-ngrx-signal-store.md), [activities belong to states](docs/adr/0005-activities-on-states.md), [the TypeScript monorepo](docs/adr/0006-typescript-monorepo.md), [importing C# with tree-sitter](docs/adr/0007-csharp-import.md), [the source view](docs/adr/0008-source-view.md), [validation, message catalog and walkthrough](docs/adr/0012-validation-catalog-walkthrough.md), [generating C# and checking it against the diagram](docs/adr/0013-csharp-generation.md), [the server and the container](docs/adr/0014-server-and-container.md), [versioning and releases](docs/adr/0015-versioning-and-releases.md), [the VS Code extension](docs/adr/0016-vscode-extension.md), [the embeddable saga viewer](docs/adr/0017-saga-viewer.md), [the documentation site](docs/adr/0020-documentation-site.md), [agents use a skill over the CLI](docs/adr/0021-agent-access.md).
 
 ## Roadmap
 
