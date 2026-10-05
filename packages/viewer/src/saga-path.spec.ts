@@ -258,3 +258,84 @@ describe('path view', () => {
     expect(element.resolvedPath!.current).toBe('reserving');
   });
 });
+
+describe('path-view', () => {
+  const timeline = (e: AriadneSagaElement) => $(e, '.timeline');
+  const steps = (e: AriadneSagaElement) =>
+    [...timeline(e).querySelectorAll<SVGElement>('[data-timeline-index]')].map(
+      (g) => g.dataset['nodeId'] ?? `step ${g.dataset['step']}`,
+    );
+  const stageMarks = (e: AriadneSagaElement) =>
+    $(e, '.stage').querySelectorAll('[data-path]').length;
+
+  it('is the diagram by default: no timeline', async () => {
+    const element = await open();
+    element.path = retry;
+    expect(element.pathView).toBe('diagram');
+    expect(timeline(element).hidden).toBe(true);
+    expect(stageMarks(element)).toBeGreaterThan(0);
+  });
+
+  it('draws the states and steps left to right with path-view="timeline", and leaves the diagram unmarked', async () => {
+    const element = await open({ 'path-view': 'timeline' });
+    element.path = retry;
+    expect(timeline(element).hidden).toBe(false);
+    expect(timeline(element).tabIndex).toBe(0);
+    expect(steps(element)).toEqual([
+      'start',
+      'step 1',
+      'reserving',
+      'step 2',
+      'charging',
+      'step 3',
+      'reserving',
+      'step 4',
+      'charging',
+      'step 5',
+      'completed',
+    ]);
+    expect(
+      timeline(element).querySelector('[data-status="finished"]')?.getAttribute('data-node-id'),
+    ).toBe('completed');
+    expect(stageMarks(element)).toBe(0);
+    expect($(element, '.stage').hasAttribute('data-dim')).toBe(false);
+    // Its text alternative names the steps.
+    expect(timeline(element).querySelector('desc')?.textContent).toContain(
+      '1. OrderSubmitted: Initial → Reserving stock.',
+    );
+  });
+
+  it('shows both with path-view="both", and follows when it changes, without telling the host again', async () => {
+    const element = await open();
+    element.path = events('OrderSubmitted');
+    let told = 0;
+    element.addEventListener('pathresolved', () => told++);
+    element.pathView = 'both';
+    expect(element.getAttribute('path-view')).toBe('both');
+    expect(timeline(element).hidden).toBe(false);
+    expect(stageMarks(element)).toBeGreaterThan(0);
+    element.pathView = 'diagram';
+    expect(element.hasAttribute('path-view')).toBe(false);
+    expect(timeline(element).hidden).toBe(true);
+    expect(told).toBe(0);
+  });
+
+  it('reads an unknown value as the default, and has no timeline without a path', async () => {
+    const element = await open({ 'path-view': 'sideways' });
+    expect(element.pathView).toBe('diagram');
+    element.setAttribute('path-view', 'timeline');
+    expect(timeline(element).hidden).toBe(true);
+    element.path = events('OrderSubmitted');
+    expect(timeline(element).hidden).toBe(false);
+    element.path = null;
+    expect(timeline(element).hidden).toBe(true);
+  });
+
+  it('shows where the path stopped on the timeline', async () => {
+    const element = await open({ 'path-view': 'timeline' });
+    element.path = events('OrderSubmitted', 'Nonsense');
+    expect(timeline(element).querySelector('[data-kind="problem"] title')?.textContent).toContain(
+      'Step 2',
+    );
+  });
+});

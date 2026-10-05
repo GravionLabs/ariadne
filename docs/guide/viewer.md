@@ -12,6 +12,7 @@ problems (**Problems**), and draw **the path a saga instance took** from the his
 
 ```js
 saga.path = [{ event: 'OrderSubmitted' }, { event: 'StockReserved' }];
+saga.pathView = 'both'; // also as a timeline, left to right, under the diagram
 ```
 
 Your app hears about what the user picks and about the path (`select`, `walkthrough`, `pathresolved`), and can pick
@@ -26,7 +27,7 @@ wrapper, theming with CSS custom properties, events and outputs.
 - A plain HTML page: run `pnpm --filter @ariadne/viewer build`, serve `packages/viewer/dist` with any static server and
   open `/demo/`.
 - An Angular app: `pnpm --filter @ariadne/viewer-demo start` ([apps/viewer-demo](../../apps/viewer-demo)).
-- In the editor, **Path** shows the same view for a path you paste (a JSON or YAML list of the events), to try it or to
+- In the editor, **Path** shows the same view (on the diagram, as a timeline, or both) for a path you paste (a JSON or YAML list of the events), to try it or to
   attach a trace to a review.
 
 The viewer reads files in format version 3 and older, like the editor, and shows an error naming a newer version.

@@ -49,17 +49,18 @@ Give it a saga in one of two ways:
 
 Give the element a height (`ariadne-saga { height: 480px }`); it fills it.
 
-| Attribute / property | Meaning                                                                                                                 |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `src`                | URL of a `.saga.yaml`, fetched with `fetch`.                                                                            |
-| `source`             | The saga as YAML text. Wins over `src`.                                                                                 |
-| `direction`          | `top-bottom` or `left-right`, overriding the file's.                                                                    |
-| `theme`              | `light`, `dark` or `auto` (the default: follows `prefers-color-scheme`).                                                |
-| `features`           | Opt-in extras, space separated: `walkthrough`, `messages`, `problems`. Each adds a button and a read-only panel.        |
-| `emphasis` †         | `{ nodes: ['Reserving stock'], edges: ['edge-2'] }`: states (id or name) and transitions (id) to pick out from outside. |
-| `selection` †        | `{ kind: 'node' \| 'edge', id }`: the picked state or transition. Setting it fires no `select`.                         |
-| `path` †             | The steps a saga instance took (below). Set it again as the instance moves on and the view follows.                     |
-| `show-untaken`       | With a `path`, keep what the instance did not take at full strength instead of fading it.                               |
+| Attribute / property | Meaning                                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src`                | URL of a `.saga.yaml`, fetched with `fetch`.                                                                                                 |
+| `source`             | The saga as YAML text. Wins over `src`.                                                                                                      |
+| `direction`          | `top-bottom` or `left-right`, overriding the file's.                                                                                         |
+| `theme`              | `light`, `dark` or `auto` (the default: follows `prefers-color-scheme`).                                                                     |
+| `features`           | Opt-in extras, space separated: `walkthrough`, `messages`, `problems`. Each adds a button and a read-only panel.                             |
+| `emphasis` †         | `{ nodes: ['Reserving stock'], edges: ['edge-2'] }`: states (id or name) and transitions (id) to pick out from outside.                      |
+| `selection` †        | `{ kind: 'node' \| 'edge', id }`: the picked state or transition. Setting it fires no `select`.                                              |
+| `path` †             | The steps a saga instance took (below). Set it again as the instance moves on and the view follows.                                          |
+| `show-untaken`       | With a `path`, keep what the instance did not take at full strength instead of fading it.                                                    |
+| `path-view`          | With a `path`: `diagram` (the default) draws it on the diagram, `timeline` as the states and steps left to right under it, `both` does both. |
 
 † A property, not an attribute.
 
@@ -102,6 +103,12 @@ show in a tooltip. A step that cannot be resolved (no transition reacts to that 
 several transitions is meant is listed in the element and marked at the last good state; the path is not drawn past
 it, and the viewer never guesses. `pathresolved` reports the same to your app.
 
+With `path-view="timeline"` (or `both`) the viewer adds a **timeline** under the diagram: only what happened, in
+order, left to right. The states are cards and each step's event (and guard, time and note) sits on the arrow between
+them. A loop shows as often as it was taken ("2nd time"), the state the instance is in now is emphasised, and where the
+path stopped is shown at the end. On a long path the timeline scrolls, keeping the current state in view; its text
+alternative lists the steps. It is styled with `::part(timeline)`.
+
 ### Theming
 
 The element reads CSS custom properties; set them on the element or on any ancestor. Without them it looks like the
@@ -125,7 +132,7 @@ ariadne-saga {
 
 A dark theme set on the element wins over properties inherited from an ancestor; set the property on the element
 itself (`ariadne-saga[theme='dark'] { ... }`) for that. The parts `frame`, `header`, `viewport`, `diagram`, `tabs`,
-`panels`, `panel`, `toolbar`, `button`, `status` and `path-info` can be styled with `::part()`.
+`panels`, `panel`, `toolbar`, `button`, `status`, `path-info` and `timeline` can be styled with `::part()`.
 
 ### Accessibility
 
@@ -167,13 +174,13 @@ authentication and base URLs apply (it does not use `fetch`); `source` takes the
 zoneless change detection, renders nothing on the server, and fills in after hydration. Angular 21 and 22 are
 supported (`@angular/core` and `@angular/common` are peer dependencies, as is `rxjs`).
 
-| Input                                                                                             | Output               | Data                          |
-| ------------------------------------------------------------------------------------------------- | -------------------- | ----------------------------- |
-| `url`, `source`, `direction`, `theme`, `features`, `emphasis`, `selection`, `path`, `showUntaken` | `loaded`             | `{ diagram }`                 |
-|                                                                                                   | `failed`             | `{ kind, message, version? }` |
-|                                                                                                   | `selected`           | `{ selection }`               |
-|                                                                                                   | `walkthroughChanged` | `{ steps, path }`             |
-|                                                                                                   | `pathResolved`       | the resolved path             |
+| Input                                                                                                         | Output               | Data                          |
+| ------------------------------------------------------------------------------------------------------------- | -------------------- | ----------------------------- |
+| `url`, `source`, `direction`, `theme`, `features`, `emphasis`, `selection`, `path`, `showUntaken`, `pathView` | `loaded`             | `{ diagram }`                 |
+|                                                                                                               | `failed`             | `{ kind, message, version? }` |
+|                                                                                                               | `selected`           | `{ selection }`               |
+|                                                                                                               | `walkthroughChanged` | `{ steps, path }`             |
+|                                                                                                               | `pathResolved`       | the resolved path             |
 
 ## Demos
 

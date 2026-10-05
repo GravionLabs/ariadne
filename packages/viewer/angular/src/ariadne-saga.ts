@@ -24,6 +24,7 @@ import type {
   ViewerDirection,
   ViewerFeature,
   ViewerTheme,
+  PathView,
 } from '@ariadne/viewer';
 
 /**
@@ -62,6 +63,8 @@ export class AriadneSaga {
   readonly path = input<readonly PathStep[] | null>();
   /** Keep what the path did not take at full strength. */
   readonly showUntaken = input(false, { transform: booleanAttribute });
+  /** Where the path is shown: on the diagram (the default), as a timeline under it, or both. */
+  readonly pathView = input<PathView>('diagram');
 
   /** The saga was read and drawn. */
   readonly loaded = output<SagaLoadDetail>();
@@ -95,6 +98,7 @@ export class AriadneSaga {
     });
     effect(() => (el.path = this.path() ?? null));
     effect(() => (el.showUntaken = this.showUntaken()));
+    effect(() => (el.pathView = this.pathView()));
 
     effect((onCleanup) => {
       const source = this.source();

@@ -237,6 +237,10 @@ export const STYLES = `
   border-radius: 8px;
 }
 .path-info[hidden] { display: none; }
+.timeline { flex: none; overflow: auto hidden; border-top: 1px solid var(--ariadne-border, #e2e5eb); background: var(--ariadne-surface, #fff); scrollbar-width: thin; }
+.timeline[hidden] { display: none; }
+.timeline:focus-visible { outline: 2px solid var(--ariadne-focus, #6366f1); outline-offset: -2px; }
+.timeline svg { display: block; }
 .path-info ul { margin: 4px 0 0; padding-left: 16px; color: var(--ariadne-fault, #dc2626); }
 .path-info .summary { color: var(--ariadne-text-subtle, #676c81); }
 `;
