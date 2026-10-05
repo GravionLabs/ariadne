@@ -14,6 +14,23 @@ through the saga event by event, **Messages** lists its commands and events and 
 draws the path a saga instance took: paste the events it received (a JSON or YAML list, e.g. `- OrderReceived`) and the
 diagram shows the states visited, the transitions taken with their step numbers, and where the instance stands.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/new-dialog-dark.png">
+  <img alt="The New dialog: a name and a description for a new saga, then the samples to start from in two groups, a short tour and real-world sagas" src="../images/guide/new-dialog-light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/order-inspector-dark.png">
+  <img alt="The order sample open in the editor. The state “Charging payment” is selected and its details are in the inspector on the right: its name and description, the command it sends, and its timeout" src="../images/guide/order-inspector-light.png">
+</picture>
+
+![The walkthrough of the order sample: three steps, each choosing an event that happens next, with the saga moving from state to state](../images/guide/walkthrough.gif)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/path-panel-dark.png">
+  <img alt="The Path panel with the events a saga instance received pasted in. The diagram shows the states it visited, the transitions it took with their step numbers, and the panel says it finished in Completed after 5 steps" src="../images/guide/path-panel-light.png">
+</picture>
+
 ## Draw your own
 
 1. **New**, give the saga a name.
@@ -25,6 +42,8 @@ diagram shows the states visited, the transitions taken with their step numbers,
 
 Nothing is positioned by hand; the layout follows the structure. **Top to bottom** and **Left to right** switch the
 direction.
+
+![Drawing a saga from scratch: a new saga is named, a state is added with the plus button and named, a second state follows, and the transition between them gets its event](../images/guide/draw-a-saga.gif)
 
 ## Save
 
@@ -39,6 +58,11 @@ used in VS Code, which keeps unsaved documents itself.
 
 The **Source** button shows the YAML next to the diagram. You can edit either side; a mistake in the text is shown
 with its line and column and the diagram keeps its last valid state.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/source-error-dark.png">
+  <img alt="The Source panel beside the diagram. A mistake in the YAML, a direction that is not top-bottom or left-right, is underlined on line 4, and the panel under the text names it while the diagram keeps its last valid state" src="../images/guide/source-error-light.png">
+</picture>
 
 ## Next
 

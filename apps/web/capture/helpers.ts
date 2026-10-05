@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Browser, Locator, Page, test as base } from '@playwright/test';
@@ -35,6 +35,11 @@ export async function prepare(page: Page): Promise<void> {
       localStorage.clear();
     } catch {
       // No storage: nothing to clear.
+    }
+    // No native file pickers: the app then reads files from an input and saves by download, which
+    // a script can drive (a native dialog cannot be reached from the page).
+    for (const name of ['showOpenFilePicker', 'showSaveFilePicker', 'showDirectoryPicker']) {
+      Object.defineProperty(window, name, { value: undefined, configurable: true });
     }
     document.addEventListener('DOMContentLoaded', () => {
       const style = document.createElement('style');
@@ -142,6 +147,26 @@ export async function shot(page: Page, name: string, options: ShotOptions): Prom
   return file;
 }
 
+/**
+ * Writes `docs/images/guide/<name>.png` for something that is not the app (an exported SVG or page
+ * opened in the browser): no theme, as it has none of its own to switch.
+ */
+export async function plainShot(
+  page: Page,
+  name: string,
+  clip?: { x: number; y: number; width: number; height: number },
+): Promise<string> {
+  const raw = await page.screenshot({ clip, animations: 'disabled', caret: 'hide' });
+  const png = await sharp(raw).png({ palette: true, quality: 90, compressionLevel: 9 }).toBuffer();
+  if (png.length > MAX_PNG_BYTES) {
+    throw new Error(`${name}.png is ${png.length} bytes, over ${MAX_PNG_BYTES}: clip it.`);
+  }
+  mkdirSync(IMAGES, { recursive: true });
+  const file = join(IMAGES, `${name}.png`);
+  writeFileSync(file, png);
+  return file;
+}
+
 /** Both themes of the same view. */
 export async function shots(page: Page, name: string, options: Omit<ShotOptions, 'theme'> = {}) {
   await shot(page, name, { ...options, theme: 'light' });
@@ -150,15 +175,25 @@ export async function shots(page: Page, name: string, options: Omit<ShotOptions,
   await setTheme(page, 'light');
 }
 
+/** What a GIF is made of: pictures of the page that the steps ask for, each held for a while. */
+export interface Frames {
+  /** Takes a picture of the page now and holds it for `holdMs`. */
+  frame(holdMs?: number): Promise<void>;
+  /** Types `text` into `field`, a picture after every `every` characters, so that it can be watched. */
+  type(field: Locator, text: string, every?: number): Promise<void>;
+}
+
 /**
- * Records `steps` as a GIF, `docs/images/guide/<name>.gif`: a video of its own browser window (1600 ×
- * 900 at scale 1), made into a 12 fps, 960 px wide GIF with `ffmpeg`. Fails without `ffmpeg`, and when
- * the GIF is over 2 MB (shorten the steps, or the pauses).
+ * Makes `docs/images/guide/<name>.gif` from the pictures that `steps` asks for (`frames.frame()`), in
+ * a browser window of its own (1600 × 900), each held for the time given, as a 960 px wide GIF made
+ * with `ffmpeg`. Pictures, not a video: a video has codec noise around every letter, which makes a
+ * GIF three times bigger and different on every run. Fails without `ffmpeg`, and when the GIF is
+ * over 2 MB (fewer or shorter frames).
  */
 export async function gif(
   browser: Browser,
   name: string,
-  steps: (page: Page) => Promise<void>,
+  steps: (page: Page, frames: Frames) => Promise<void>,
 ): Promise<string> {
   const have = spawnSync('ffmpeg', ['-version'], { encoding: 'utf8' });
   if (have.error || have.status !== 0) {
@@ -176,37 +211,90 @@ export async function gif(
       locale: 'en-US',
       timezoneId: 'UTC',
       colorScheme: 'light',
-      recordVideo: { dir: work, size: { width: 1600, height: 900 } },
     });
     const page = await context.newPage();
     await prepare(page);
-    await steps(page);
-    // Hold the last picture, then close: the video is written when the page is closed.
-    await page.waitForTimeout(800);
-    await context.close();
 
-    const video = readdirSync(work).find((f) => f.endsWith('.webm'));
-    if (!video) throw new Error('No video was recorded.');
+    const holds: number[] = [];
+    const frames: Frames = {
+      async frame(holdMs = 700) {
+        const file = join(work, `frame-${String(holds.length).padStart(3, '0')}.png`);
+        await page.screenshot({ path: file, animations: 'disabled', caret: 'hide' });
+        holds.push(holdMs);
+      },
+      async type(field, text, every = 3) {
+        for (let at = 0; at < text.length; at += every) {
+          await field.pressSequentially(text.slice(at, at + every));
+          await frames.frame(110);
+        }
+      },
+    };
+    await steps(page, frames);
+    await context.close();
+    if (holds.length < 2) throw new Error(`${name}: a GIF needs at least two frames.`);
+
+    // The concat demuxer: a file and a duration for each frame, the last file once more.
+    const list = holds
+      .map((ms, i) => `file 'frame-${String(i).padStart(3, '0')}.png'\nduration ${ms / 1000}`)
+      .concat(`file 'frame-${String(holds.length - 1).padStart(3, '0')}.png'`)
+      .join('\n');
+    writeFileSync(join(work, 'frames.txt'), list);
+
     mkdirSync(IMAGES, { recursive: true });
     const out = join(IMAGES, `${name}.gif`);
     const filter =
-      'fps=12,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5';
+      'scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer:bayer_scale=3';
     const run = spawnSync(
       'ffmpeg',
-      ['-y', '-v', 'error', '-i', join(work, video), '-vf', filter, '-loop', '0', out],
-      {
-        encoding: 'utf8',
-      },
+      [
+        '-y',
+        '-v',
+        'error',
+        '-f',
+        'concat',
+        '-safe',
+        '0',
+        '-i',
+        join(work, 'frames.txt'),
+        '-vf',
+        filter,
+        '-loop',
+        '0',
+        out,
+      ],
+      { encoding: 'utf8' },
     );
     if (run.status !== 0) throw new Error(`ffmpeg failed: ${run.stderr}`);
     const size = statSync(out).size;
     if (size > MAX_GIF_BYTES) {
       rmSync(out);
-      throw new Error(`${name}.gif is ${size} bytes, over ${MAX_GIF_BYTES}: shorten the steps.`);
+      throw new Error(
+        `${name}.gif is ${size} bytes, over ${MAX_GIF_BYTES}: fewer or shorter frames.`,
+      );
     }
     return out;
   } finally {
     rmSync(work, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Runs `work` with the window at another size, then puts it back: for a panel that scrolls in the
+ * usual window and is cut off in a picture of it.
+ */
+export async function withViewport<T>(
+  page: Page,
+  size: { width: number; height: number },
+  work: () => Promise<T>,
+): Promise<T> {
+  const before = page.viewportSize()!;
+  await page.setViewportSize(size);
+  await settle(page);
+  try {
+    return await work();
+  } finally {
+    await page.setViewportSize(before);
+    await settle(page);
   }
 }
 
