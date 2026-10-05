@@ -1,0 +1,68 @@
+<button
+  #origin="cdkOverlayOrigin"
+  type="button"
+  class="icon-button"
+  cdkOverlayOrigin
+  aria-haspopup="menu"
+  [attr.aria-expanded]="isOpen()"
+  [attr.aria-label]="summary()"
+  [title]="summary()"
+  [disabled]="disabled()"
+  [class.active]="isOpen()"
+  (click)="toggle()"
+>
+  <app-icon [name]="current().icon" />
+</button>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="origin"
+  [cdkConnectedOverlayOpen]="isOpen()"
+  [cdkConnectedOverlayPositions]="positions"
+  [cdkConnectedOverlayHasBackdrop]="true"
+  [cdkConnectedOverlayPush]="true"
+  [cdkConnectedOverlayViewportMargin]="12"
+  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+  (backdropClick)="close()"
+  (detach)="close()"
+  (overlayKeydown)="onOverlayKeydown($event)"
+>
+  <section class="menu layout-menu" role="menu" aria-label="Layout">
+    <div role="group" class="group" aria-label="Direction">
+      <header aria-hidden="true">Direction</header>
+      @for (direction of directions; track direction.id) {
+        <button
+          type="button"
+          role="menuitemradio"
+          class="item"
+          [attr.aria-checked]="store.direction() === direction.id"
+          [attr.data-direction]="direction.id"
+          (click)="setDirection(direction.id)"
+        >
+          <app-icon [name]="direction.icon" /><span>{{ direction.label }}</span>
+          @if (store.direction() === direction.id) {
+            <app-icon class="check" name="ok" />
+          }
+        </button>
+      }
+    </div>
+    <div role="group" class="group" aria-label="Spacing">
+      <header aria-hidden="true">Spacing</header>
+      @for (spacing of spacings; track spacing.id) {
+        <button
+          type="button"
+          role="menuitemradio"
+          class="item"
+          [attr.aria-checked]="store.spacing() === spacing.id"
+          [attr.data-spacing]="spacing.id"
+          (click)="setSpacing(spacing.id)"
+        >
+          <span class="no-icon"></span><span>{{ spacing.label }}</span>
+          @if (store.spacing() === spacing.id) {
+            <app-icon class="check" name="ok" />
+          }
+        </button>
+      }
+    </div>
+  </section>
+</ng-template>

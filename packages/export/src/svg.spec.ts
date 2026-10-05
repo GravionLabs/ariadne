@@ -435,3 +435,45 @@ describe('the colours of the SVG (WCAG 2.2 AA)', () => {
     ).toEqual(['surface', 'line', 'text', 'textSubtle', ...accents].sort());
   });
 });
+
+describe('renderDiagramSvg in every direction (#113)', () => {
+  const two: Diagram = {
+    direction: 'top-bottom',
+    nodes: [
+      { id: 'a', type: 'start', name: 'Initial' },
+      { id: 'b', type: 'state', name: 'Working' },
+    ],
+    edges: [{ id: 'e', source: 'a', target: 'b', kind: 'forward', event: 'Go' }],
+  };
+  /** The first and the last point of the transition's path, and the boxes of its two states. */
+  const geometry = (direction: Diagram['direction']) => {
+    const { svg } = renderDiagramSvg({ ...two, direction }, { addressable: true });
+    const d = /data-edge-id="e"[^>]*data-part="line"><path d="([^"]+)"/.exec(svg)![1];
+    const numbers = d.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+    const first = { x: numbers[0], y: numbers[1] };
+    const last = { x: numbers.at(-2)!, y: numbers.at(-1)! };
+    const box = (id: string) => {
+      const m = new RegExp(
+        `data-node-id="${id}"[^>]*><g><rect x="([\\d.-]+)" y="([\\d.-]+)" width="([\\d.]+)" height="([\\d.]+)"`,
+      ).exec(svg)!;
+      const [x, y, w, h] = m.slice(1).map(Number);
+      return { x, y, w, h };
+    };
+    return { first, last, a: box('a'), b: box('b') };
+  };
+
+  it.each(['top-bottom', 'bottom-top', 'left-right', 'right-left'] as const)(
+    'leaves the state on its downstream side and enters the next on its upstream side (%s)',
+    (direction) => {
+      const { first, last, a, b } = geometry(direction);
+      const near = (p: number, q: number) => Math.abs(p - q) < 1.5;
+      const ok = {
+        'top-bottom': near(first.y, a.y + a.h) && near(last.y, b.y),
+        'bottom-top': near(first.y, a.y) && near(last.y, b.y + b.h),
+        'left-right': near(first.x, a.x + a.w) && near(last.x, b.x),
+        'right-left': near(first.x, a.x) && near(last.x, b.x + b.w),
+      }[direction];
+      expect(ok, JSON.stringify({ first, last, a, b })).toBe(true);
+    },
+  );
+});

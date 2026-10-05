@@ -393,34 +393,7 @@
         </button>
       }
       <div class="divider"></div>
-      <div class="segmented" role="radiogroup" aria-label="Layout direction">
-        <button
-          type="button"
-          class="icon-button"
-          role="radio"
-          [class.active]="store.direction() === 'top-bottom'"
-          [attr.aria-checked]="store.direction() === 'top-bottom'"
-          [disabled]="walking()"
-          (click)="setDirection('top-bottom')"
-          aria-label="Top to bottom"
-          title="Top to bottom"
-        >
-          <app-icon name="directionDown" />
-        </button>
-        <button
-          type="button"
-          class="icon-button"
-          role="radio"
-          [class.active]="store.direction() === 'left-right'"
-          [attr.aria-checked]="store.direction() === 'left-right'"
-          [disabled]="walking()"
-          (click)="setDirection('left-right')"
-          aria-label="Left to right"
-          title="Left to right"
-        >
-          <app-icon name="directionRight" />
-        </button>
-      </div>
+      <app-layout-menu [disabled]="walking()" />
       <div class="divider"></div>
       @if (embedded) {
         <!-- The top bar is not shown in a host: its panels are here. -->

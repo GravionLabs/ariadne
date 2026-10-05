@@ -20,8 +20,8 @@ export default defineConfig({
   timeout: 120_000,
   use: {
     baseURL: `http://localhost:${port}`,
-    // 1600 × 900: the top bar needs about 1500 px; at 1280 it is cut off after "Messages", at 1440 after "Path".
-    viewport: { width: 1600, height: 900 },
+    // 1720 × 900: with every label in the top bar (it hides some below 1600 px) in the screenshots' font.
+    viewport: { width: 1720, height: 900 },
     deviceScaleFactor: 2,
     reducedMotion: 'reduce',
     locale: 'en-US',
@@ -35,7 +35,7 @@ export default defineConfig({
       // After the device: its own viewport and pixel ratio would win over the ones above.
       use: {
         ...devices['Desktop Chrome'],
-        viewport: { width: 1600, height: 900 },
+        viewport: { width: 1720, height: 900 },
         deviceScaleFactor: 2,
       },
     },

@@ -185,7 +185,7 @@ export interface Frames {
 
 /**
  * Makes `docs/images/guide/<name>.gif` from the pictures that `steps` asks for (`frames.frame()`), in
- * a browser window of its own (1600 × 900), each held for the time given, as a 960 px wide GIF made
+ * a browser window of its own (1720 × 900), each held for the time given, as a 960 px wide GIF made
  * with `ffmpeg`. Pictures, not a video: a video has codec noise around every letter, which makes a
  * GIF three times bigger and different on every run. Fails without `ffmpeg`, and when the GIF is
  * over 2 MB (fewer or shorter frames).
@@ -205,7 +205,7 @@ export async function gif(
   try {
     const context = await browser.newContext({
       baseURL: 'http://localhost:' + (process.env['CAPTURE_PORT'] ?? 4310),
-      viewport: { width: 1600, height: 900 },
+      viewport: { width: 1720, height: 900 },
       deviceScaleFactor: 1,
       reducedMotion: 'reduce',
       locale: 'en-US',

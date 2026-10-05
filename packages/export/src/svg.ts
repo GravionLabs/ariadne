@@ -24,6 +24,10 @@ import {
   Size,
   TimelineEntry,
   TimelineState,
+  Direction,
+  isHorizontal,
+  isReversed,
+  labelCard,
 } from '@ariadne/core';
 
 /**
@@ -138,7 +142,9 @@ function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
       ? `<g ${attr}="${esc(id)}" data-kind="${esc(kind)}"${part && ` data-part="${part}"`}>${inner}</g>`
       : inner;
   const { positions, labels, routes } = layoutDiagram(diagram);
-  const lr = diagram.direction === 'left-right';
+  const lr = isHorizontal(diagram.direction);
+  /** +1 when the flow runs down or right, -1 when it runs up or left (#113). */
+  const sense = isReversed(diagram.direction) ? -1 : 1;
   const decisions = decisionIds(diagram);
   const back = backEdgeIds(diagram);
   const joins = joinEventsOf(diagram);
@@ -171,9 +177,17 @@ function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
   const anchors = (edge: DiagramEdge) => {
     const s = rect(edge.source);
     const t = rect(edge.target);
+    // Out of the source on its downstream side, into the target on its upstream side.
+    const down = sense > 0;
     return lr
-      ? { out: { x: s.x + s.width, y: s.y + s.height / 2 }, in: { x: t.x, y: t.y + t.height / 2 } }
-      : { out: { x: s.x + s.width / 2, y: s.y + s.height }, in: { x: t.x + t.width / 2, y: t.y } };
+      ? {
+          out: { x: down ? s.x + s.width : s.x, y: s.y + s.height / 2 },
+          in: { x: down ? t.x : t.x + t.width, y: t.y + t.height / 2 },
+        }
+      : {
+          out: { x: s.x + s.width / 2, y: down ? s.y + s.height : s.y },
+          in: { x: t.x + t.width / 2, y: down ? t.y : t.y + t.height },
+        };
   };
   const mainOf = (p: Point) => (lr ? p.x : p.y);
   const crossOf = (p: Point) => (lr ? p.y : p.x);
@@ -193,10 +207,10 @@ function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
       points = through
         ? [
             out,
-            pt(mainOf(through) - PARALLEL_JOG, crossOf(out)),
-            pt(mainOf(through) - PARALLEL_JOG, crossOf(through)),
-            pt(mainOf(through) + PARALLEL_JOG, crossOf(through)),
-            pt(mainOf(through) + PARALLEL_JOG, crossOf(inn)),
+            pt(mainOf(through) - sense * PARALLEL_JOG, crossOf(out)),
+            pt(mainOf(through) - sense * PARALLEL_JOG, crossOf(through)),
+            pt(mainOf(through) + sense * PARALLEL_JOG, crossOf(through)),
+            pt(mainOf(through) + sense * PARALLEL_JOG, crossOf(inn)),
             inn,
           ]
         : [out, pt(mid, crossOf(out)), pt(mid, crossOf(inn)), inn];
@@ -208,8 +222,8 @@ function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
         : pt(mid, (crossOf(out) + crossOf(inn)) / 2);
     } else {
       const lane = laneStart + MARGIN + lanes++ * LANE_GAP;
-      const a = mainOf(out) + STUB;
-      const b = mainOf(inn) - STUB;
+      const a = mainOf(out) + sense * STUB;
+      const b = mainOf(inn) - sense * STUB;
       points = [out, pt(a, crossOf(out)), pt(a, lane), pt(b, lane), pt(b, crossOf(inn)), inn];
       labelCentre = pt((a + b) / 2, lane);
       const corner = pt(a, lane);
@@ -235,7 +249,7 @@ function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
       ),
     );
     if (labelRows(edge) > 0) {
-      const label = transitionLabel(edge, labelCentre, lr, diagram);
+      const label = transitionLabel(edge, labelCentre, diagram.direction, diagram);
       grow(label.x, label.y, label.width, label.height);
       labelSvg.push(addressed('data-edge-id', edge.id, edge.kind, label.svg, 'label'));
     }
@@ -514,7 +528,7 @@ function toward(from: Point, to: Point, by: number): Point {
 function transitionLabel(
   edge: DiagramEdge,
   centre: Point,
-  lr: boolean,
+  direction: Direction,
   diagram: Diagram,
 ): { svg: string } & Point & Size {
   const kind = eventKindOf(diagram)(edge);
@@ -527,8 +541,15 @@ function transitionLabel(
   );
   // The layout box includes the "+" overhang, which is not drawn: the card is centred on its own.
   const card = { width: boxWidth, height };
-  const x = centre.x - (lr ? (card.width + INSERT_OVERHANG) / 2 : card.width / 2);
-  const y = centre.y - (lr ? card.height / 2 : (card.height + INSERT_OVERHANG) / 2);
+  // The label's box is the card and the "+" overhanging it downstream; the card sits upstream in it.
+  const lr = isHorizontal(direction);
+  const box = lr
+    ? { width: card.width + INSERT_OVERHANG, height: card.height }
+    : { width: card.width, height: card.height + INSERT_OVERHANG };
+  const { x, y } = labelCard(
+    { x: centre.x - box.width / 2, y: centre.y - box.height / 2, ...box },
+    direction,
+  );
   const parts = [
     `<rect x="${n(x)}" y="${n(y)}" width="${card.width}" height="${card.height}" rx="8" fill="${paint.surface}" stroke="${paint.border}"/>`,
   ];

@@ -10,6 +10,8 @@ import {
   resolvePath,
   validate,
   pathTimeline,
+  DIRECTIONS,
+  Direction,
 } from '@ariadne/core';
 import { renderDiagramSvg, renderTimelineSvg, SvgExport } from '@ariadne/export';
 import { FEATURES, parseFeatures, ViewerFeature } from './features';
@@ -20,7 +22,7 @@ import { STYLES } from './styles';
 import { fitView, PAN_STEP, panBy, revealBox, View, ZOOM_STEP, zoomAt } from './view-transform';
 
 export type ViewerTheme = 'light' | 'dark' | 'auto';
-export type ViewerDirection = 'top-bottom' | 'left-right';
+export type ViewerDirection = Direction;
 
 /** The `load` event: the saga was read and drawn. */
 export type SagaLoadDetail = { diagram: Diagram };
@@ -55,7 +57,7 @@ const inOverlay = (event: Event) =>
  * `<ariadne-saga>`: shows one saga read-only, drawn with the SVG renderer of `@ariadne/export`.
  *
  * - `src`: URL of a `.saga.yaml`, fetched; `source`: the YAML text (wins over `src`);
- * - `direction`: `top-bottom` or `left-right`, overriding the file's;
+ * - `direction`: `top-bottom`, `bottom-top`, `left-right` or `right-left`, overriding the file's;
  * - `theme`: `light`, `dark` or `auto` (the default; follows `prefers-color-scheme`);
  * - `features`: any of `walkthrough`, `messages`, `problems`, each with its panel (read-only);
  * - `emphasis` (property): states (id or name) and transitions (id) to pick out, e.g. where a running
@@ -164,7 +166,7 @@ export class AriadneSagaElement extends Base {
 
   get direction(): ViewerDirection | null {
     const value = this.getAttribute('direction');
-    return value === 'top-bottom' || value === 'left-right' ? value : null;
+    return DIRECTIONS.includes(value as Direction) ? (value as Direction) : null;
   }
   set direction(value: ViewerDirection | null) {
     this.#reflect('direction', value);

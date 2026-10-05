@@ -276,3 +276,14 @@ describe('diagramToMermaid title', () => {
     expect(out).not.toContain('state "Order ready" as Order_ready');
   });
 });
+
+describe('diagramToMermaid in every direction', () => {
+  it.each([
+    ['top-bottom', 'TB'],
+    ['bottom-top', 'BT'],
+    ['left-right', 'LR'],
+    ['right-left', 'RL'],
+  ] as const)('writes %s as direction %s', (direction, mermaid) => {
+    expect(diagramToMermaid({ ...orderSaga, direction })).toContain(`  direction ${mermaid}\n`);
+  });
+});

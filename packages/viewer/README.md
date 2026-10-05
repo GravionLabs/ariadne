@@ -53,7 +53,7 @@ Give the element a height (`ariadne-saga { height: 480px }`); it fills it.
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src`                | URL of a `.saga.yaml`, fetched with `fetch`.                                                                                                 |
 | `source`             | The saga as YAML text. Wins over `src`.                                                                                                      |
-| `direction`          | `top-bottom` or `left-right`, overriding the file's.                                                                                         |
+| `direction`          | `top-bottom`, `bottom-top`, `left-right` or `right-left`, overriding the file's.                                                             |
 | `theme`              | `light`, `dark` or `auto` (the default: follows `prefers-color-scheme`).                                                                     |
 | `features`           | Opt-in extras, space separated: `walkthrough`, `messages`, `problems`. Each adds a button and a read-only panel.                             |
 | `emphasis` †         | `{ nodes: ['Reserving stock'], edges: ['edge-2'] }`: states (id or name) and transitions (id) to pick out from outside.                      |

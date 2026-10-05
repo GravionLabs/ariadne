@@ -17,6 +17,8 @@ import booking from '../../../../../samples/sagas/booking/BookingStateMachine.cs
 import type { Mock } from 'vitest';
 import { CODE_EDITOR_FACTORY, CodeEditor, CodeEditorOptions } from './code-editor';
 import { Editor } from './editor';
+import { SIDES } from './node-card';
+import { EFConnectableSide } from '@foblex/flow';
 import { EditorStore } from './editor-store';
 import { EditorHost } from '../host/editor-host';
 import { AppErrors } from '../error-handler';
@@ -1428,16 +1430,12 @@ describe('Editor', () => {
       expect(el.querySelector('[aria-label="Insert a state here"]')).toBeNull();
       const disabled = (label: string) =>
         el.querySelector<HTMLButtonElement>(`.toolbox [aria-label="${label}"]`)!.disabled;
-      for (const label of [
-        'Add the Any state',
-        'Delete selection',
-        'Undo',
-        'Redo',
-        'Top to bottom',
-        'Left to right',
-      ]) {
+      for (const label of ['Add the Any state', 'Delete selection', 'Undo', 'Redo']) {
         expect(disabled(label), label).toBe(true);
       }
+      expect(el.querySelector<HTMLButtonElement>('.toolbox app-layout-menu button')!.disabled).toBe(
+        true,
+      );
       expect(el.querySelector<HTMLInputElement>('app-diagram-details input.name')!.readOnly).toBe(
         true,
       );
@@ -1922,12 +1920,100 @@ edges:
     expect(store.edges().at(-1)).toMatchObject({ source: 'state-2', target: 'end-1' });
   });
 
-  it('toggles the layout direction', async () => {
-    const { el, store, settle } = await setup();
-    el.querySelector<HTMLButtonElement>('[aria-label="Left to right"]')!.click();
-    await settle();
-    expect(store.direction()).toBe('left-right');
-    expect(el.querySelector('.workspace')?.getAttribute('data-direction')).toBe('left-right');
+  describe('the layout menu (#113)', () => {
+    const trigger = (el: HTMLElement) =>
+      el.querySelector<HTMLButtonElement>('.toolbox app-layout-menu button')!;
+    const item = (name: string) =>
+      [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          '.cdk-overlay-container [role=menuitemradio]',
+        ),
+      ].find((b) => b.textContent?.trim() === name)!;
+    const choose = async (el: HTMLElement, settle: () => Promise<void>, name: string) => {
+      trigger(el).click();
+      await settle();
+      item(name).click();
+      await settle();
+    };
+
+    it('says the direction and spacing on its button, and offers four directions and three spacings', async () => {
+      const { el, settle } = await setup();
+      expect(trigger(el).getAttribute('aria-label')).toBe('Layout: top to bottom, normal spacing');
+      trigger(el).click();
+      await settle();
+      const items = [...document.querySelectorAll('.cdk-overlay-container [role=menuitemradio]')];
+      expect(items.map((i) => i.textContent?.trim())).toEqual([
+        'Top to bottom',
+        'Bottom to top',
+        'Left to right',
+        'Right to left',
+        'Compact',
+        'Normal',
+        'Spacious',
+      ]);
+      expect(
+        items
+          .filter((i) => i.getAttribute('aria-checked') === 'true')
+          .map((i) => i.textContent?.trim()),
+      ).toEqual(['Top to bottom', 'Normal']);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+
+    it.each([
+      ['Bottom to top', 'bottom-top'],
+      ['Left to right', 'left-right'],
+      ['Right to left', 'right-left'],
+    ] as const)(
+      'lays the diagram out %s, and puts the connectors on the matching sides',
+      async (name, direction) => {
+        const { el, store, settle } = await setup();
+        store.appendNode('start-1', 'state');
+        await settle();
+        await choose(el, settle, name);
+        expect(store.direction()).toBe(direction);
+        expect(el.querySelector('.workspace')?.getAttribute('data-direction')).toBe(direction);
+        expect(trigger(el).getAttribute('aria-label')).toBe(
+          `Layout: ${name.toLowerCase()}, normal spacing`,
+        );
+        // In on the upstream side, out on the downstream side.
+        const expected = {
+          'bottom-top': [EFConnectableSide.BOTTOM, EFConnectableSide.TOP],
+          'left-right': [EFConnectableSide.LEFT, EFConnectableSide.RIGHT],
+          'right-left': [EFConnectableSide.RIGHT, EFConnectableSide.LEFT],
+        }[direction];
+        expect([SIDES[direction].in, SIDES[direction].out]).toEqual(expected);
+        expect([SIDES['top-bottom'].in, SIDES['top-bottom'].out]).toEqual([
+          EFConnectableSide.TOP,
+          EFConnectableSide.BOTTOM,
+        ]);
+      },
+    );
+
+    it('sets the spacing, saved in the diagram, and undoes it like an edit', async () => {
+      const { el, store, settle } = await setup();
+      await choose(el, settle, 'Spacious');
+      expect(store.spacing()).toBe('spacious');
+      expect(store.diagram().spacing).toBe('spacious');
+      expect(trigger(el).getAttribute('aria-label')).toBe(
+        'Layout: top to bottom, spacious spacing',
+      );
+      await choose(el, settle, 'Normal');
+      expect(store.diagram().spacing).toBeUndefined();
+      store.undo();
+      expect(store.spacing()).toBe('spacious');
+      store.undo();
+      expect(store.spacing()).toBe('normal');
+    });
+
+    it('has nothing for an accessibility check to find, open or closed', async () => {
+      const { el, settle } = await setup();
+      expect(await axeFindings(el)).toEqual([]);
+      trigger(el).click();
+      await settle();
+      expect(
+        await axeFindings(document.querySelector<HTMLElement>('.cdk-overlay-container')!),
+      ).toEqual([]);
+    });
   });
 
   it('fits the diagram when a layout option changes, but not when it is edited', async () => {

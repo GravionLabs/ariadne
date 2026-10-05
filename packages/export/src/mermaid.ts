@@ -81,6 +81,14 @@ function transitionLabel(edge: DiagramEdge, target: DiagramNode): string {
  * - A compensation transition is labelled `compensate`, and states that have a compensation are
  *   in the `compensation` class (amber, like the editor).
  */
+/** Mermaid's `direction` for each of the diagram's (#113). */
+const MERMAID_DIRECTION: Readonly<Record<string, 'TB' | 'BT' | 'LR' | 'RL'>> = {
+  'top-bottom': 'TB',
+  'bottom-top': 'BT',
+  'left-right': 'LR',
+  'right-left': 'RL',
+};
+
 export function diagramToMermaid(diagram: Diagram): string {
   const ids = stateIds(diagram.nodes.filter((n) => n.type !== 'start'));
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
@@ -94,7 +102,7 @@ export function diagramToMermaid(diagram: Diagram): string {
     // Mermaid's accessibility syntax: GitHub draws it into the title and description of its SVG.
     `  accTitle: ${accessible(diagramTitle(diagram))}`,
     `  accDescr: ${accessible(diagramAlternative(diagram))}`,
-    `  direction ${diagram.direction === 'left-right' ? 'LR' : 'TB'}`,
+    `  direction ${MERMAID_DIRECTION[diagram.direction] ?? 'TB'}`,
   ];
 
   for (const node of diagram.nodes) {
