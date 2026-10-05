@@ -66,9 +66,7 @@ describe('renderTimelineSvg', () => {
     const { svg } = renderTimelineSvg(order, happy, { idPrefix: 'p-' });
     expect(svg).toContain('role="img" aria-labelledby="p-timeline-title p-timeline-desc"');
     expect(svg).toContain('<title id="p-timeline-title">Path of the instance</title>');
-    expect(svg).toContain(
-      `<desc id="p-timeline-desc">${describeTimeline(happy).replace(/→/g, '→')}</desc>`,
-    );
+    expect(svg).toContain(`<desc id="p-timeline-desc">${describeTimeline(happy)}</desc>`);
     expect(svg).toContain('id="p-arrow-timeline"');
   });
 
