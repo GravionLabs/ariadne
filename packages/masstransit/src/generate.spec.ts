@@ -197,6 +197,88 @@ describe('generateSaga and compensation', () => {
   });
 });
 
+describe('generateSaga and routing slips (ADR 0023)', () => {
+  const slips = (): Diagram => ({
+    direction: 'top-bottom',
+    nodes: [
+      { id: 'a', type: 'start', name: 'Initial' },
+      {
+        id: 'p',
+        type: 'state',
+        name: 'Provisioning',
+        routingSlips: [
+          {
+            name: 'Provision',
+            activities: [{ name: 'create tenant', compensates: true }, { name: 'SendMail' }],
+          },
+        ],
+      },
+      { id: 'd', type: 'state', name: 'Active' },
+      { id: 'f', type: 'state', name: 'Failed' },
+    ],
+    edges: [
+      { id: '1', source: 'a', target: 'p', kind: 'forward', event: 'Requested' },
+      { id: '2', source: 'p', target: 'd', kind: 'forward', event: 'Provision.Completed' },
+      { id: '3', source: 'p', target: 'f', kind: 'forward', event: 'Provision.Faulted' },
+    ],
+  });
+
+  it('builds the slip when its state is entered and waits for Courier’s outcome events', () => {
+    const { files, warnings } = generateSaga(slips());
+    expect(warnings).toEqual([]);
+    const code = files[0].content;
+    expect(code).toContain('using MassTransit.Courier.Contracts;');
+    expect(code).toContain(
+      'Event(() => RoutingSlipCompleted, x => x.CorrelateById(context => context.Message.TrackingNumber));',
+    );
+    expect(code).toContain('public Event<RoutingSlipFaulted> RoutingSlipFaulted');
+    expect(code).toContain('When(RoutingSlipCompleted)\n                .TransitionTo(Active)');
+    expect(code).toContain('// Routing slip: Provision');
+    expect(code).toContain('new RoutingSlipBuilder(context.Saga.CorrelationId)');
+    expect(code).toContain(
+      'builder.AddActivity("CreateTenant", new Uri("queue:create-tenant_execute")); // compensates',
+    );
+    expect(code).toContain(
+      'builder.AddActivity("SendMail", new Uri("queue:send-mail_execute"));\n',
+    );
+    expect(code).toContain('await context.Execute(builder.Build());\n            }));');
+    // Courier's messages are not the saga's contracts, and are not requests.
+    expect(files.find((f) => f.path === 'Contracts.cs')?.content ?? '').not.toContain('Provision');
+    expect(code).not.toContain('Request(');
+  });
+
+  it('declares only the outcomes some state waits for', () => {
+    const d = slips();
+    d.edges = d.edges.slice(0, 2);
+    const code = generateSaga(d).files[0].content;
+    expect(code).toContain('RoutingSlipCompleted');
+    expect(code).not.toContain('Event<RoutingSlipFaulted>');
+  });
+
+  it('does not write outcomes of two slips one state waits for, which C# cannot tell apart', () => {
+    const d = slips();
+    d.nodes[1].routingSlips!.push({ name: 'Notify', activities: [{ name: 'Mail' }] });
+    d.edges.push({ id: '4', source: 'p', target: 'd', kind: 'forward', event: 'Notify.Completed' });
+    const { files, warnings } = generateSaga(d);
+    expect(warnings).toEqual([
+      'Provisioning waits for the outcomes of several routing slips, which C# cannot tell apart: Provision.Completed is not generated.',
+      'Provisioning waits for the outcomes of several routing slips, which C# cannot tell apart: Provision.Faulted is not generated.',
+      'Provisioning waits for the outcomes of several routing slips, which C# cannot tell apart: Notify.Completed is not generated.',
+    ]);
+    expect(files[0].content).not.toContain('When(RoutingSlip');
+    // Both slips are still started.
+    expect(files[0].content).toContain('// Routing slip: Notify');
+  });
+
+  it('treats X.Completed as a request answer when no state starts a slip X', () => {
+    const d = slips();
+    d.nodes[1].routingSlips = undefined;
+    expect(generateSaga(d).warnings).toContain(
+      'Provision.Completed is the answer of a request no state makes: not generated.',
+    );
+  });
+});
+
 describe('generateSaga on a large saga', () => {
   it('writes C# for 50 generated states without throwing', () => {
     const { files, warnings } = generateSaga(largeSaga(50));

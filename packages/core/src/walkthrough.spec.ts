@@ -126,3 +126,22 @@ describe('walkAsText', () => {
     expect(walkAsText(order, ['edge-9'])).toBe('');
   });
 });
+
+describe('doingsOf and routing slips', () => {
+  it('says that entering the state starts the slip, with its itinerary', () => {
+    expect(
+      doingsOf({
+        id: 'a',
+        type: 'state',
+        name: 'A',
+        routingSlips: [
+          {
+            name: 'Fulfil',
+            activities: [{ name: 'Reserve', compensates: true }, { name: 'Notify' }],
+          },
+          { name: 'Empty', activities: [] },
+        ],
+      }),
+    ).toEqual(['Start routing slip Fulfil: Reserve → Notify', 'Start routing slip Empty']);
+  });
+});

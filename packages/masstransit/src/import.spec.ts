@@ -550,6 +550,100 @@ describe('importSagas on small sagas', () => {
     ]);
   });
 
+  describe('routing slips (ADR 0023)', () => {
+    const members = `
+      public Event<RoutingSlipCompleted> SlipDone { get; private set; }
+      public Event<RoutingSlipFaulted> SlipFailed { get; private set; }`;
+    const events = `
+      Event(() => SlipDone, x => x.CorrelateById(c => c.Message.TrackingNumber));
+      Event(() => SlipFailed, x => x.CorrelateById(c => c.Message.TrackingNumber));`;
+
+    it('reads the slip a transition builds, with its itinerary, and names its outcomes after it', () => {
+      const result = importSagas(
+        saga(
+          `${events}
+          Initially(When(Start)
+            .ThenAsync(async context =>
+            {
+                // Routing slip: Fulfil
+                var builder = new RoutingSlipBuilder(context.Saga.CorrelationId);
+                builder.AddActivity("Reserve", new Uri("queue:reserve_execute")); // compensates
+                builder.AddActivity(nameof(Charge), new Uri("queue:charge_execute"), new { Amount = 1 }); // compensates
+                builder.AddActivity("Notify", new Uri("queue:notify_execute"));
+                await builder.AddSubscription(context.ReceiveContext.InputAddress, RoutingSlipEvents.Completed | RoutingSlipEvents.Faulted);
+                await context.Execute(builder.Build());
+            })
+            .TransitionTo(Working));
+          During(Working,
+            When(SlipDone).TransitionTo(Waiting),
+            When(SlipFailed).Finalize());`,
+          members,
+        ),
+        parser,
+      );
+      const d = only(result);
+      expect(messages(result)).toEqual([]);
+      expect(d.nodes.find((n) => n.name === 'Working')?.routingSlips).toEqual([
+        {
+          name: 'Fulfil',
+          activities: [
+            { name: 'Reserve', compensates: true },
+            { name: 'Charge', compensates: true },
+            { name: 'Notify' },
+          ],
+        },
+      ]);
+      expect(edgesOf(d)).toEqual([
+        'Initial -Start-> Working',
+        'Working -Fulfil.Completed-> Waiting',
+        'Working -Fulfil.Faulted-> Final',
+      ]);
+      // Their correlation is Courier's: not kept as event metadata of the diagram.
+      expect(d.events?.map((e) => e.name) ?? []).not.toContain('SlipDone');
+    });
+
+    it('reads a slip started in WhenEnter, named after its builder variable without a comment', () => {
+      const d = only(
+        importSagas(
+          saga(
+            `${events}
+            Initially(When(Start).TransitionTo(Working));
+            WhenEnter(Working, b => b.ThenAsync(async context =>
+            {
+                var shipOrder = new RoutingSlipBuilder(NewId.NextGuid());
+                shipOrder.AddActivity("Pack", new Uri("queue:pack_execute"));
+                await context.Execute(shipOrder.Build());
+            }));
+            During(Working, When(SlipDone).Finalize(), When(SlipFailed).Finalize());`,
+            members,
+          ),
+          parser,
+        ),
+      );
+      expect(d.nodes.find((n) => n.name === 'Working')?.routingSlips).toEqual([
+        { name: 'ShipOrder', activities: [{ name: 'Pack' }] },
+      ]);
+      expect(edgesOf(d)).toContain('Working -ShipOrder.Completed-> Final');
+    });
+
+    it('keeps an outcome as written, with a warning, when its state starts no slip; other code still warns', () => {
+      const result = importSagas(
+        saga(
+          `${events}
+          Initially(When(Start).Then(c => Console.WriteLine("x")).TransitionTo(Working));
+          During(Working, When(SlipDone).Finalize());`,
+          members,
+        ),
+        parser,
+      );
+      expect(messages(result)).toEqual([
+        'DemoStateMachine: Then(…) runs code; it is left out of the diagram.',
+        'DemoStateMachine: SlipDone is the outcome of a routing slip, but Working starts none: shown as it is.',
+      ]);
+      expect(edgesOf(only(result))).toContain('Working -SlipDone-> Final');
+    });
+  });
+
   it('does not draw what cannot be drawn, and says so', () => {
     const result = importSagas(
       saga(`

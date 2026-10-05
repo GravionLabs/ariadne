@@ -49,6 +49,9 @@ export const COLORS = {
   composite: '#4f46e5',
   join: '#4f46e5',
   fault: '#dc2626',
+  // The outcomes of a routing slip (ADR 0023): done like a reply, faulted like a fault.
+  slipCompleted: '#059669',
+  slipFaulted: '#dc2626',
   end: '#f43f5e',
   compensation: '#ce8408',
   command: '#2563eb',
@@ -346,7 +349,14 @@ function timelineSvg(
       const kind = entry.eventKind;
       const color = kind === 'internal' || !kind ? paint.event : paint[kind];
       const glyph =
-        { timeout: '◷', reply: '↩', fault: '⚠', composite: '▬' }[kind as string] ?? '⚡';
+        {
+          timeout: '◷',
+          reply: '↩',
+          fault: '⚠',
+          composite: '▬',
+          slipCompleted: '⇢',
+          slipFaulted: '↶',
+        }[kind as string] ?? '⚡';
       const event = entry.event ?? 'no event';
       const meta = [entry.at, entry.note].filter(Boolean).join(' · ');
       const longest = Math.max(
@@ -557,7 +567,15 @@ function transitionLabel(
   let rowY = y + LABEL_PADDING + LABEL_ROW / 2;
   if (edge.event) {
     const color = kind === 'internal' || !kind ? paint.event : paint[kind];
-    const glyph = { timeout: '◷', reply: '↩', fault: '⚠', composite: '▬' }[kind as string] ?? '⚡';
+    const glyph =
+      {
+        timeout: '◷',
+        reply: '↩',
+        fault: '⚠',
+        composite: '▬',
+        slipCompleted: '⇢',
+        slipFaulted: '↶',
+      }[kind as string] ?? '⚡';
     parts.push(
       text(glyph, x + 10, rowY, { size: 11, fill: color }),
       text(fit(eventLabel(edge), textWidth, 11), x + 29, rowY, {
@@ -671,6 +689,19 @@ function stateSvg(
       paint.command,
       text('✉', x + 20, chipY + 10, { size: 11, fill: paint.command }) +
         `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(paint.command, paint.text, 0.8)}"><tspan fill="${paint.textSubtle}">Request</tspan> ${esc(label)}</text>`,
+    );
+  }
+  for (const slip of node.routingSlips ?? []) {
+    const count = slip.activities.length;
+    const label = fit(
+      `${slip.name} · ${count} ${count === 1 ? 'step' : 'steps'}`,
+      chipWidth - 13 * 11 * CHAR_EM,
+      11,
+    );
+    chip(
+      paint.slipCompleted,
+      text('⇢', x + 20, chipY + 10, { size: 11, fill: paint.slipCompleted }) +
+        `<text x="${n(x + 39)}" y="${n(chipY + 10)}" font-size="11" font-weight="500" dominant-baseline="central" fill="${mix(paint.slipCompleted, paint.text, 0.8)}"><tspan fill="${paint.textSubtle}">Routing slip</tspan> ${esc(label)}</text>`,
     );
   }
   for (const t of node.timers ?? []) {

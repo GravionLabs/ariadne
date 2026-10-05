@@ -1,0 +1,93 @@
+version: 3
+name: Tenant Provisioning
+saga:
+  class: TenantProvisioningStateMachine
+  namespace: Acme.Tenants
+  instance: TenantProvisioningState
+  stateProperty: CurrentState
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-provisioning
+    type: state
+    name: Provisioning
+    routingSlips:
+      - routingSlip: Provision
+        activities:
+          - activity: CreateTenant
+            compensates: true
+          - activity: CreateDatabase
+            compensates: true
+          - activity: CreateAdminUser
+            compensates: true
+          - activity: SendWelcomeMail
+  - id: state-active
+    type: state
+    name: Active
+    activities:
+      - event: TenantActivated
+  - id: state-provisioning-failed
+    type: state
+    name: ProvisioningFailed
+    activities:
+      - event: TenantProvisioningFailed
+  - id: state-deprovisioning
+    type: state
+    name: Deprovisioning
+    routingSlips:
+      - routingSlip: Deprovision
+        activities:
+          - activity: ExportData
+          - activity: DropDatabase
+          - activity: DeleteTenant
+  - id: state-needs-attention
+    type: state
+    name: NeedsAttention
+    activities:
+      - command: OpenSupportTicket
+  - id: end-1
+    type: end
+    name: Final
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-provisioning
+    kind: forward
+    event: TenantRequested
+  - id: edge-2
+    source: state-provisioning
+    target: state-active
+    kind: forward
+    event: Provision.Completed
+  - id: edge-3
+    source: state-provisioning
+    target: state-provisioning-failed
+    kind: forward
+    event: Provision.Faulted
+  - id: edge-4
+    source: state-provisioning-failed
+    target: state-provisioning
+    kind: forward
+    event: ProvisioningRetried
+  - id: edge-5
+    source: state-active
+    target: state-deprovisioning
+    kind: forward
+    event: TenantCancelled
+  - id: edge-6
+    source: state-deprovisioning
+    target: end-1
+    kind: forward
+    event: Deprovision.Completed
+  - id: edge-7
+    source: state-deprovisioning
+    target: state-needs-attention
+    kind: forward
+    event: Deprovision.Faulted
+  - id: edge-8
+    source: state-needs-attention
+    target: end-1
+    kind: forward
+    event: CleanupConfirmed

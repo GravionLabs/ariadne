@@ -38,6 +38,11 @@ import {
   requestEvent,
   sameTransition,
   Timer,
+  RoutingSlip,
+  SLIP_OUTCOMES,
+  compensationOrder,
+  hasRoutingSlips,
+  slipEvent,
 } from '@ariadne/core';
 
 /** Inspector sections that start expanded even when empty. */
@@ -108,6 +113,8 @@ export class Inspector {
   protected readonly hasIgnores = hasIgnores;
   protected readonly hasTimers = hasTimers;
   protected readonly hasRequests = hasRequests;
+  protected readonly hasRoutingSlips = hasRoutingSlips;
+  protected readonly compensationOrder = compensationOrder;
   protected readonly colors = NODE_COLORS;
 
   protected readonly customColor = computed(() => {
@@ -280,12 +287,131 @@ export class Inspector {
     this.store.updateNode(node.id, { requests: requests.length ? requests : undefined });
   }
 
+  // ---- routing slips (ADR 0023)
+
+  protected addRoutingSlip(): void {
+    const node = this.node();
+    if (!node) return;
+    this.setSlips(node, [
+      ...(node.routingSlips ?? []),
+      { name: 'DoTheWork', activities: [{ name: 'FirstActivity', compensates: true }] },
+    ]);
+    this.focusLast('.slip .slip-name');
+  }
+
+  /** An empty name removes the slip. */
+  protected setSlipName(index: number, event: Event): void {
+    const node = this.node();
+    const name = optional(event);
+    const slips = node?.routingSlips ?? [];
+    if (!node || name === slips[index]?.name) return;
+    this.setSlips(
+      node,
+      name
+        ? slips.map((s, i) => (i === index ? { ...s, name } : s))
+        : slips.filter((_, i) => i !== index),
+    );
+  }
+
+  protected removeRoutingSlip(index: number): void {
+    const node = this.node();
+    if (node)
+      this.setSlips(
+        node,
+        (node.routingSlips ?? []).filter((_, i) => i !== index),
+      );
+  }
+
+  protected addSlipActivity(index: number): void {
+    this.updateSlip(index, (s) => ({
+      ...s,
+      activities: [...s.activities, { name: 'NextActivity', compensates: true }],
+    }));
+    this.focusLast(`.slip[data-index="${index}"] .activity-name`);
+  }
+
+  /** An empty name removes the activity. */
+  protected setSlipActivityName(index: number, at: number, event: Event): void {
+    const name = optional(event);
+    this.updateSlip(index, (s) => ({
+      ...s,
+      activities: name
+        ? s.activities.map((a, j) => (j === at ? { ...a, name } : a))
+        : s.activities.filter((_, j) => j !== at),
+    }));
+  }
+
+  protected toggleCompensates(index: number, at: number): void {
+    this.updateSlip(index, (s) => ({
+      ...s,
+      activities: s.activities.map((a, j) =>
+        j !== at ? a : a.compensates ? { name: a.name } : { ...a, compensates: true },
+      ),
+    }));
+  }
+
+  /** Moves an activity one place earlier (-1) or later (+1) in the itinerary. */
+  protected moveSlipActivity(index: number, at: number, by: -1 | 1): void {
+    this.updateSlip(index, (s) => {
+      const to = at + by;
+      if (to < 0 || to >= s.activities.length) return s;
+      const activities = [...s.activities];
+      [activities[at], activities[to]] = [activities[to], activities[at]];
+      return { ...s, activities };
+    });
+  }
+
+  protected removeSlipActivity(index: number, at: number): void {
+    this.updateSlip(index, (s) => ({ ...s, activities: s.activities.filter((_, j) => j !== at) }));
+  }
+
+  private updateSlip(index: number, change: (slip: RoutingSlip) => RoutingSlip): void {
+    const node = this.node();
+    const slips = node?.routingSlips ?? [];
+    if (!node || !slips[index]) return;
+    const next = change(slips[index]);
+    if (next !== slips[index])
+      this.setSlips(
+        node,
+        slips.map((s, i) => (i === index ? next : s)),
+      );
+  }
+
+  private setSlips(node: DiagramNode, slips: RoutingSlip[]): void {
+    this.store.updateNode(node.id, { routingSlips: slips.length ? slips : undefined });
+  }
+
+  private focusLast(selector: string): void {
+    afterNextRender(
+      () => {
+        const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>(selector);
+        const last = inputs[inputs.length - 1];
+        last?.focus();
+        last?.select();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** Names of the states that start the routing slip whose outcome the selected transition's event is. */
+  protected readonly slipStarters = computed(() => {
+    const event = this.edge()?.event;
+    if (!event) return [];
+    return this.store
+      .nodes()
+      .filter((n) =>
+        n.routingSlips?.some((s) => SLIP_OUTCOMES.some((o) => slipEvent(s.name, o) === event)),
+      )
+      .map((n) => n.name);
+  });
+
   /** Events worth offering for a transition: the outcomes of requests, and scheduled timeouts. */
   protected readonly eventSuggestions = computed(() =>
     this.store
       .nodes()
       .flatMap((n) => [
         ...(n.requests ?? []).flatMap((r) => REQUEST_OUTCOMES.map((o) => requestEvent(r.name, o))),
+        ...(n.routingSlips ?? []).flatMap((s) => SLIP_OUTCOMES.map((o) => slipEvent(s.name, o))),
         ...(n.timers ?? []).filter((t) => t.action === 'schedule').map((t) => t.name),
         ...(n.type === 'join' ? [n.name] : []),
       ]),

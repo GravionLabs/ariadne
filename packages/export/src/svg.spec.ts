@@ -391,8 +391,9 @@ describe('the symbols of the SVG', () => {
   it('are all in the font the PNG export draws with', () => {
     // The CLI and the VS Code extension draw PNGs with DejaVu Sans Condensed only. A symbol outside
     // it is drawn as an empty box (the stopwatch ⏱ was). Add a symbol here only after checking that
-    // the font has it (U+2026 … U+2709 below are all in DejaVuSansCondensed.ttf, regular and bold).
-    const inFont = ['…', '↗', '↩', '↺', '⊘', '◷', '▬', '⚑', '⚠', '⚡', '✉'];
+    // the font has it (U+2026 … U+2709 below are all in DejaVuSansCondensed.ttf, regular and bold;
+    // ⇢ U+21E2 and ↶ U+21B6, the routing slip outcomes, checked with fontTools).
+    const inFont = ['…', '↗', '↩', '↶', '↺', '⇢', '⊘', '◷', '▬', '⚑', '⚠', '⚡', '✉'];
     const source = readFileSync(join(import.meta.dirname, 'svg.ts'), 'utf8');
     const used = [...new Set([...source].filter((c) => c.codePointAt(0)! > 0x2000))];
     expect(used.sort()).toEqual([...inFont].sort());
@@ -476,4 +477,38 @@ describe('renderDiagramSvg in every direction (#113)', () => {
       expect(ok, JSON.stringify({ first, last, a, b })).toBe(true);
     },
   );
+});
+
+describe('routing slips in the SVG (ADR 0023)', () => {
+  const slipped: Diagram = {
+    direction: 'top-bottom',
+    nodes: [
+      { id: 'a', type: 'start', name: 'Initial' },
+      {
+        id: 'b',
+        type: 'state',
+        name: 'Fulfilling',
+        routingSlips: [
+          {
+            name: 'Fulfil',
+            activities: [{ name: 'Reserve', compensates: true }, { name: 'Notify' }],
+          },
+        ],
+      },
+      { id: 'c', type: 'end', name: 'Done' },
+      { id: 'd', type: 'end', name: 'Failed' },
+    ],
+    edges: [
+      { id: 'e1', source: 'a', target: 'b', kind: 'forward', event: 'Placed' },
+      { id: 'e2', source: 'b', target: 'c', kind: 'forward', event: 'Fulfil.Completed' },
+      { id: 'e3', source: 'b', target: 'd', kind: 'forward', event: 'Fulfil.Faulted' },
+    ],
+  };
+
+  it('shows the slip on its state, and its outcomes with their own symbols and colours', () => {
+    const { svg } = renderDiagramSvg(slipped);
+    expect(svg).toContain('<tspan fill="#676c81">Routing slip</tspan> Fulfil · 2 steps');
+    expect(svg).toMatch(/fill="#059669"[^>]*>⇢<\/text>/);
+    expect(svg).toMatch(/fill="#dc2626"[^>]*>↶<\/text>/);
+  });
 });

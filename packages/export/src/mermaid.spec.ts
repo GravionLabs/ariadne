@@ -287,3 +287,31 @@ describe('diagramToMermaid in every direction', () => {
     expect(diagramToMermaid({ ...orderSaga, direction })).toContain(`  direction ${mermaid}\n`);
   });
 });
+
+describe('diagramToMermaid and routing slips', () => {
+  it('notes the itinerary and the order a fault undoes it in', () => {
+    const d = {
+      ...orderSaga,
+      nodes: orderSaga.nodes.map((n, i) =>
+        i === 1
+          ? {
+              ...n,
+              routingSlips: [
+                {
+                  name: 'Fulfil',
+                  activities: [
+                    { name: 'Reserve', compensates: true },
+                    { name: 'Notify' },
+                    { name: 'Charge', compensates: true },
+                  ],
+                },
+              ],
+            }
+          : n,
+      ),
+    };
+    expect(diagramToMermaid(d)).toContain(
+      'Routing slip Fulfil: Reserve → Notify → Charge (undo: Charge, Reserve)',
+    );
+  });
+});

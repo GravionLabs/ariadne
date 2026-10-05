@@ -444,3 +444,17 @@ describe('four directions and spacing presets', () => {
     }
   });
 });
+
+describe('routing slips on the card', () => {
+  it('give each slip a chip row', () => {
+    const plain: DiagramNode = { id: 'a', type: 'state', name: 'A' };
+    const withSlips: DiagramNode = {
+      ...plain,
+      routingSlips: [
+        { name: 'S', activities: [{ name: 'X' }] },
+        { name: 'T', activities: [] },
+      ],
+    };
+    expect(nodeSize(withSlips).height - nodeSize(plain).height).toBe(2 * 24 + 6);
+  });
+});

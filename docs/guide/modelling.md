@@ -28,6 +28,11 @@ A state has a name, an optional description and colour, and optionally:
   doesn't follow that convention.
 - **Requests** (`ValidateAddress`): the reply arrives as `ValidateAddress.Completed`, `.Faulted` or
   `.TimeoutExpired`; draw a transition for each outcome you handle.
+- **Routing slips** (`Provision`): a MassTransit Courier itinerary the state starts when it is entered, its
+  activities in order. Mark an activity **compensates** when Courier can undo it; on a fault the inspector shows the
+  order they are undone in (last first). The slip ends as `Provision.Completed` or `Provision.Faulted`; draw a
+  transition from the same state for each outcome you handle. A state waits for the outcomes of one slip only: C#
+  cannot tell two apart.
 - **Timeouts**: schedule one when the state is entered (`PaymentTimeout`, `30s`) or cancel it. A transition on the
   timeout's name is the timeout path.
 - **Ignored events**, **retry** and **timeout** notes, and a **compensation** (name and description).
@@ -62,8 +67,8 @@ laid out; use it for the path back after a failure.
 
 An event is **internal** when some state publishes it, and **external** otherwise. Ariadne works that out; you only
 set the **source** of an external event (`Payment service`) so the diagram says where it comes from. External events
-can arrive in any state, not only the first. Other kinds are recognised too: timeouts, replies, faults and composite
-events of a join.
+can arrive in any state, not only the first. Other kinds are recognised too: timeouts, replies, faults, the outcomes of a routing slip
+and composite events of a join.
 
 ## Any state and join
 

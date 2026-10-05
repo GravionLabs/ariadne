@@ -476,3 +476,40 @@ textarea {
     color: var(--c-text-subtle);
   }
 }
+
+// A routing slip: its itinerary, one row per activity (ADR 0023).
+.itinerary {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0;
+  padding-left: 18px;
+
+  .step {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .activity-name {
+    min-width: 0;
+  }
+
+  .icon-button {
+    width: 26px;
+    height: 26px;
+  }
+
+  .compensates {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--c-text-subtle);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+}
+
+.undo-order {
+  color: var(--c-compensation);
+}

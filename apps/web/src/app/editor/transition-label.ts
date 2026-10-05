@@ -60,6 +60,10 @@ export class TransitionLabel {
         return 'fault';
       case 'composite':
         return 'join';
+      case 'slipCompleted':
+        return 'route';
+      case 'slipFaulted':
+        return 'compensation';
       default:
         return 'trigger';
     }
@@ -75,6 +79,10 @@ export class TransitionLabel {
         return 'A request faulted';
       case 'composite':
         return 'All the events of a join have arrived';
+      case 'slipCompleted':
+        return 'Every activity of the routing slip ran';
+      case 'slipFaulted':
+        return 'The routing slip faulted, and what ran was compensated';
       case 'external':
         return 'External event' + (source ? ' from ' + source : '');
       default:

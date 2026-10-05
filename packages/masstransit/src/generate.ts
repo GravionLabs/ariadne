@@ -1,4 +1,12 @@
-import { Activity, Diagram, DiagramEdge, DiagramNode, DEFAULT_CORRELATION } from '@ariadne/core';
+import {
+  Activity,
+  Diagram,
+  DiagramEdge,
+  DiagramNode,
+  DEFAULT_CORRELATION,
+  RoutingSlip,
+  SLIP_OUTCOMES,
+} from '@ariadne/core';
 
 /** A generated source file; `path` is relative, to be written next to the others. */
 export interface GeneratedFile {
@@ -142,10 +150,32 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   }
   const isTimeout = (event: string): boolean =>
     timerList.some((t) => t.scheduled && t.name === event);
+  // The routing slips the states start (ADR 0023), each once; the first itinerary given is used.
+  const slipList: RoutingSlip[] = [];
+  for (const n of states) {
+    for (const s of n.routingSlips ?? []) {
+      if (!slipList.some((k) => k.name === s.name)) slipList.push(s);
+    }
+  }
+  /** `Fulfil.Completed` → the slip and its outcome, when a state starts a slip of that name. */
+  const slipOutcomeOf = (event: string): { slip: string; outcome: string } | undefined => {
+    const found = /^(.+)\.(Completed|Faulted)$/.exec(event);
+    return found && slipList.some((s) => s.name === found[1])
+      ? { slip: found[1], outcome: found[2] }
+      : undefined;
+  };
   const answerOf = (event: string): { request: string; outcome: string } | undefined => {
     const found = /^(.+)\.(Completed|Faulted|TimeoutExpired)$/.exec(event);
-    return found ? { request: found[1], outcome: found[2] } : undefined;
+    return found && !slipOutcomeOf(event) ? { request: found[1], outcome: found[2] } : undefined;
   };
+  // C# has one RoutingSlipCompleted and one RoutingSlipFaulted: a state can wait for the outcome of
+  // one slip only, since its state is what tells the slips apart.
+  const slipsAwaited = (source: string): Set<string> =>
+    new Set(
+      diagram.edges
+        .filter((e) => e.source === source && e.event && slipOutcomeOf(e.event))
+        .map((e) => slipOutcomeOf(e.event!)!.slip),
+    );
 
   // A join (CompositeEvent) waits for the events of the transitions into it. Those transitions are
   // written as handlers that stay in their state; the transition leaving the join is written in
@@ -187,6 +217,10 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       !requestList.some((r) => r.name === answerOf(edge.event!)!.request)
     ) {
       warnings.push(`${edge.event} is the answer of a request no state makes: not generated.`);
+    } else if (slipOutcomeOf(edge.event) && slipsAwaited(source.id).size > 1) {
+      warnings.push(
+        `${source.name} waits for the outcomes of several routing slips, which C# cannot tell apart: ${edge.event} is not generated.`,
+      );
     } else if (target.type !== 'join' || joinSources.has(target.id)) {
       usable.push(edge);
     }
@@ -222,6 +256,7 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     if (
       !eventNames.includes(e) &&
       !answerOf(e) &&
+      !slipOutcomeOf(e) &&
       !isTimeout(e) &&
       !joinList.some((n) => n.name === e)
     )
@@ -237,8 +272,18 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   const joinProperty = new Map(
     joinList.map((n) => [n.name, names.of(`join:${n.id}`, 'Event', n.name, 'Event')]),
   );
+  const slipOutcomes = SLIP_OUTCOMES.filter((o) =>
+    [...usable.map((x) => x.event!), ...states.flatMap((s) => s.ignores ?? [])].some(
+      (e) => slipOutcomeOf(e)?.outcome === o,
+    ),
+  );
+  const slipProperty = new Map<string, string>(
+    slipOutcomes.map((o) => [o, names.of(`slip:${o}`, 'Event', `RoutingSlip${o}`, 'Event')]),
+  );
   const eventRef = (event: string): string => {
     if (joinProperty.has(event)) return joinProperty.get(event)!;
+    const slip = slipOutcomeOf(event);
+    if (slip) return slipProperty.get(slip.outcome)!;
     if (isTimeout(event)) return `${timerProperty.get(event)}.Received`;
     const answer = answerOf(event);
     return answer && requestProperty.has(answer.request)
@@ -259,6 +304,27 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   const messageOf = (a: Activity): string => identifier(a.name, 'Message');
   const activityCode = (a: Activity): string =>
     `.${a.kind === 'command' ? 'Send' : 'Publish'}(context => new ${messageOf(a)} { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })`;
+
+  // Courier knows an activity by the queue it executes on; a compensating one also has a queue to
+  // compensate on, but that is a property of its type, so the itinerary only says it in a comment.
+  const queueOf = (name: string): string =>
+    identifier(name, 'Activity')
+      .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+      .toLowerCase();
+  const slipCode = (slip: RoutingSlip): string =>
+    [
+      '.ThenAsync(async context =>',
+      `${indent(3)}{`,
+      `${indent(4)}// Routing slip: ${identifier(slip.name, 'RoutingSlip')}`,
+      `${indent(4)}var builder = new RoutingSlipBuilder(context.Saga.CorrelationId);`,
+      ...slip.activities.map(
+        (a) =>
+          `${indent(4)}builder.AddActivity("${identifier(a.name, 'Activity')}", new Uri("queue:${queueOf(a.name)}_execute"));${a.compensates ? ' // compensates' : ''}`,
+      ),
+      `${indent(4)}builder.AddSubscription(context.ReceiveContext.InputAddress, RoutingSlipEvents.Completed | RoutingSlipEvents.Faulted);`,
+      `${indent(4)}await context.Execute(builder.Build());`,
+      `${indent(3)}})`,
+    ].join('\n');
 
   const timerMessage = (name: string): string => `${timerProperty.get(name)}Message`;
   const timerCode = (t: { action: string; name: string }): string =>
@@ -285,7 +351,12 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       body.push(`${ctor}Event(() => ${eventProperty.get(e)});${at}`);
     }
   }
-  if (eventNames.length) body.push('');
+  for (const o of slipOutcomes) {
+    body.push(
+      `${ctor}Event(() => ${slipProperty.get(o)}, x => x.CorrelateById(context => context.Message.TrackingNumber));`,
+    );
+  }
+  if (eventNames.length || slipOutcomes.length) body.push('');
   for (const r of requestList) {
     const property = requestProperty.get(r.name)!;
     body.push(
@@ -378,7 +449,7 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     const head = `During(${stateName.get(state.id)}`;
     const items = [
       ...transitions(edges, 3),
-      ...ignores.map((e) => `${indent(3)}Ignore(${eventProperty.get(e)})`),
+      ...ignores.map((e) => `${indent(3)}Ignore(${eventRef(e)})`),
     ];
     body.push(`${ctor}${head},`);
     items.forEach((item, i) => body.push(item + (i === items.length - 1 ? ');' : ',')));
@@ -392,6 +463,7 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       ...(state.requests ?? []).map((r) => requestCode(r.name)),
       ...(state.timers ?? []).map(timerCode),
       ...(state.activities ?? []).map(activityCode),
+      ...(state.routingSlips ?? []).filter((s) => s.activities.length).map(slipCode),
     ];
     if (!calls.length) continue;
     body.push(`${ctor}WhenEnter(${stateName.get(state.id)}, binder => binder`);
@@ -414,6 +486,10 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       (e) =>
         `${indent(1)}public Event<${messageType(e)}> ${eventProperty.get(e)} { get; private set; } = null!;`,
     ),
+    slipOutcomes.map(
+      (o) =>
+        `${indent(1)}public Event<RoutingSlip${o}> ${slipProperty.get(o)} { get; private set; } = null!;`,
+    ),
     joinList.map(
       (n) => `${indent(1)}public Event ${joinProperty.get(n.name)} { get; private set; } = null!;`,
     ),
@@ -429,6 +505,8 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   const members = memberGroups.flatMap((group, i) => (i ? ['', ...group] : group));
 
   const usings = ['using System;', 'using MassTransit;'];
+  if (slipOutcomes.length || states.some((s) => s.routingSlips?.length))
+    usings.push('using MassTransit.Courier.Contracts;');
   if (contractsNamespace && contractsNamespace !== namespace)
     usings.push(`using ${contractsNamespace};`);
   const wrap = (ns: string | undefined, lines: string[]): string[] =>

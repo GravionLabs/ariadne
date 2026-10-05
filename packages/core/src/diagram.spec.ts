@@ -1,4 +1,4 @@
-import { Diagram, eventKindOf, joinEventsOf } from './diagram';
+import { Diagram, compensationOrder, eventKindOf, joinEventsOf, slipEvent } from './diagram';
 
 const diagram: Diagram = {
   direction: 'top-bottom',
@@ -111,5 +111,39 @@ describe('joinEventsOf', () => {
 
   it('does not count the transition leaving the join', () => {
     expect(joinEventsOf(diagram).get('join-1')).not.toContain('Ready');
+  });
+});
+
+describe('routing slip outcomes', () => {
+  it('are their own kinds of event, and the compensation order is the reverse of the compensating ones', () => {
+    const d: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        {
+          id: 'a',
+          type: 'state',
+          name: 'A',
+          routingSlips: [
+            {
+              name: 'Fulfil',
+              activities: [
+                { name: 'Reserve', compensates: true },
+                { name: 'Notify' },
+                { name: 'Charge', compensates: true },
+              ],
+            },
+          ],
+        },
+      ],
+      edges: [],
+    };
+    const kind = eventKindOf(d);
+    expect(kind({ event: slipEvent('Fulfil', 'Completed') })).toBe('slipCompleted');
+    expect(kind({ event: 'Fulfil.Faulted' })).toBe('slipFaulted');
+    expect(kind({ event: 'Other.Completed' })).toBe('external');
+    expect(compensationOrder(d.nodes[0].routingSlips![0]).map((a) => a.name)).toEqual([
+      'Charge',
+      'Reserve',
+    ]);
   });
 });

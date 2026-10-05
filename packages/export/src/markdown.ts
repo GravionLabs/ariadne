@@ -10,6 +10,7 @@ import {
   eventKindOf,
   joinEventsOf,
   NODE_INFO,
+  compensationOrder,
 } from '@ariadne/core';
 
 export interface MarkdownOptions {
@@ -36,6 +37,8 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
           reply: 'reply',
           fault: 'fault',
           composite: 'join',
+          slipCompleted: 'routing slip',
+          slipFaulted: 'routing slip',
         }[kind]
       : '';
   const name = (id: string) => nodes.get(id)?.name ?? id;
@@ -55,6 +58,8 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
   const joining = joins.size > 0;
   // The Requests column only appears when some state makes a request.
   const requesting = diagram.nodes.some((n) => n.requests?.length);
+  // The Routing slips column only appears when some state starts one.
+  const slipping = diagram.nodes.some((n) => n.routingSlips?.length);
   // The Timers column only appears when some state schedules a timeout.
   const timing = diagram.nodes.some((n) => n.timers?.length);
   // The Ignores column only appears when some state ignores an event.
@@ -70,6 +75,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
             'Activities',
             ...(joining ? ['Waits for'] : []),
             ...(requesting ? ['Requests'] : []),
+            ...(slipping ? ['Routing slips'] : []),
             ...(timing ? ['Timers'] : []),
             ...(ignoring ? ['Ignores'] : []),
             'Compensation',
@@ -89,6 +95,7 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
                     .join('\n'),
                 ]
               : []),
+            ...(slipping ? [(n.routingSlips ?? []).map((s) => s.name).join('\n')] : []),
             ...(timing
               ? [
                   (n.timers ?? [])
@@ -109,6 +116,29 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
         )
       : none,
   );
+
+  // Each routing slip: its itinerary in order, and the order a fault would undo it in (ADR 0023).
+  const slips = diagram.nodes.flatMap((n) => (n.routingSlips ?? []).map((slip) => ({ slip, n })));
+  if (slips.length) {
+    out.push('## Routing slips');
+    for (const { slip, n } of slips) {
+      const undo = compensationOrder(slip).map((a) => a.name);
+      out.push(
+        [
+          `### ${slip.name}`,
+          '',
+          `Started when the saga enters “${n.name}”. It ends as ${slip.name}.Completed when every activity ran, or as ${slip.name}.Faulted when one faulted.`,
+          '',
+          slip.activities.length
+            ? slip.activities
+                .map((a, i) => `${i + 1}. ${a.name}${a.compensates ? ' (compensates)' : ''}`)
+                .join('\n')
+            : '_No activities._',
+          ...(undo.length ? ['', `On a fault, undone in this order: ${undo.join(' → ')}.`] : []),
+        ].join('\n'),
+      );
+    }
+  }
 
   // The Guard column only appears when some transition has one.
   const guarded = edges.some((e) => e.guard);
@@ -165,6 +195,8 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
               reply: 'Reply',
               fault: 'Fault',
               composite: 'Composite',
+              slipCompleted: 'Routing slip completed',
+              slipFaulted: 'Routing slip faulted',
             }[kindOf({ event: ev })!],
             (publishedBy.get(ev) ?? []).join(', '),
             (reactions.get(ev) ?? []).join('\n'),

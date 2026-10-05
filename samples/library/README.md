@@ -11,6 +11,7 @@ Ariadne generates from that diagram, and a documentation page. Each sample is ch
 | [customer-onboarding](customer-onboarding/README.md) | Accounts | A reminder after a day and giving up after a week, an outside identity check, abandoned and declined sign-ups |
 | [trip-booking](trip-booking/README.md)               | Travel   | Flight, hotel and car one after the other; the bookings already made are cancelled in reverse order           |
 | [loan-application](loan-application/README.md)       | Lending  | Three checks with a time limit each, a decision with three ways on, a manual review, an offer that lapses     |
+| [tenant-provisioning](tenant-provisioning/README.md) | Hosting  | Two routing slips: a set-up Courier undoes step by step on a fault, a take-down, a retry                      |
 
 ## What is in a sample folder
 
@@ -45,10 +46,11 @@ script and the list in the user guide pick the folder up; this table is the one 
 
 The importer reads what a diagram can show: `Initially`, `During`, `DuringAny`, `WhenEnter`, `When(Event)` with an
 optional filter (a guard), `If`/`IfElse` (a guard on each branch), `Request` with its answers `.Completed`,
-`.Faulted` and `.TimeoutExpired`, `Schedule`/`Unschedule` with `.Received`, `CompositeEvent` (a join), `Send`,
+`.Faulted` and `.TimeoutExpired`, `Schedule`/`Unschedule` with `.Received`, `CompositeEvent` (a join), a routing slip built in `Then`/`ThenAsync` with `RoutingSlipCompleted` and
+`RoutingSlipFaulted` (ADR 0023), `Send`,
 `Publish`, `TransitionTo`, `Finalize` and `Ignore`. The tests require that the
 import gives **no warning**, so a sample leaves out what is not read yet:
 
-- Code in `Then(...)`.
+- Other code in `Then(...)`.
 - Anything that happens on the way into the final state (`.Publish(...).Finalize()`): nothing can be shown there.
   A sample publishes when it enters an ordinary state (`WhenEnter`), and an event finalizes it later.

@@ -94,6 +94,7 @@ export function nodeSize(node: DiagramNode, expanded = false): Size {
   const rows =
     (node.activities?.length ?? 0) +
     (node.requests?.length ?? 0) +
+    (node.routingSlips?.length ?? 0) +
     (node.timers?.length ?? 0) +
     (node.ignores?.length ?? 0) +
     (node.compensation ? 1 : 0);

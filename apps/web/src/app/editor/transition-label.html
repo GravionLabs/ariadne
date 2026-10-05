@@ -16,6 +16,8 @@
         [class.reply]="kind() === 'reply'"
         [class.fault]="kind() === 'fault'"
         [class.composite]="kind() === 'composite'"
+        [class.slipCompleted]="kind() === 'slipCompleted'"
+        [class.slipFaulted]="kind() === 'slipFaulted'"
         [title]="hint()"
       >
         <app-icon [name]="icon()" />

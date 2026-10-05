@@ -251,3 +251,25 @@ describe('saga.schema.json and the layout options', () => {
     expect(validate(parse('version: 3\nspacing: roomy'))).toBe(false);
   });
 });
+
+describe('saga.schema.json and routing slips', () => {
+  const state = (slips: string) =>
+    `version: 3\nnodes:\n  - id: a\n    type: state\n    name: A\n    routingSlips: ${slips}`;
+
+  it('accepts a slip with its itinerary on a state', () => {
+    const text = state(
+      '[{ routingSlip: Fulfil, activities: [{ activity: Reserve, compensates: true }, { activity: Notify }] }]',
+    );
+    expect(validate(parse(text)) ? [] : validate.errors).toEqual([]);
+  });
+
+  it('refuses a slip on the initial state, without a name, or with an unknown key', () => {
+    expect(
+      validate(parse('version: 3\nnodes:\n  - { id: s, type: start, name: S, routingSlips: [] }')),
+    ).toBe(false);
+    expect(validate(parse(state('[{ activities: [] }]')))).toBe(false);
+    expect(
+      validate(parse(state('[{ routingSlip: S, activities: [{ activity: X, undo: true }] }]'))),
+    ).toBe(false);
+  });
+});

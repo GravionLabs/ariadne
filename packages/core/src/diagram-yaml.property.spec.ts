@@ -151,6 +151,18 @@ function nodeOf(id: string, type: NodeType): fc.Arbitrary<DiagramNode> {
           requests: nonEmptyList(
             fc.record({ name: nonEmpty, timeout: optionalTrimmed }, { requiredKeys: ['name'] }),
           ),
+          routingSlips: nonEmptyList(
+            fc.record({
+              name: nonEmpty,
+              activities: fc.array(
+                fc.record(
+                  { name: nonEmpty, compensates: fc.constant(true as const) },
+                  { requiredKeys: ['name'] },
+                ),
+                { maxLength: 4 },
+              ),
+            }),
+          ),
           timers: nonEmptyList(
             fc.oneof(
               fc.record({

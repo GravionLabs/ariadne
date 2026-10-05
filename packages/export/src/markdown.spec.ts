@@ -270,3 +270,54 @@ describe('diagramToMarkdown', () => {
     expect(md).toMatch(/\| OrderReady \| Composite \|/);
   });
 });
+
+describe('diagramToMarkdown and routing slips', () => {
+  it('names the slips of each state and gives each its itinerary and undo order', () => {
+    const d: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'start', name: 'Initial' },
+        {
+          id: 'b',
+          type: 'state',
+          name: 'Fulfilling',
+          routingSlips: [
+            {
+              name: 'Fulfil',
+              activities: [
+                { name: 'Reserve', compensates: true },
+                { name: 'Charge', compensates: true },
+                { name: 'Notify' },
+              ],
+            },
+          ],
+        },
+      ],
+      edges: [{ id: 'e1', source: 'a', target: 'b', kind: 'forward', event: 'Placed' }],
+    };
+    const md = diagramToMarkdown(d);
+    expect(md).toMatch(/\| State \|.*\| Routing slips \|/);
+    expect(md).toContain(
+      [
+        '### Fulfil',
+        '',
+        'Started when the saga enters “Fulfilling”. It ends as Fulfil.Completed when every activity ran, or as Fulfil.Faulted when one faulted.',
+        '',
+        '1. Reserve (compensates)',
+        '2. Charge (compensates)',
+        '3. Notify',
+        '',
+        'On a fault, undone in this order: Charge → Reserve.',
+      ].join('\n'),
+    );
+  });
+
+  it('has no Routing slips column or section when no state starts one', () => {
+    const md = diagramToMarkdown({
+      direction: 'top-bottom',
+      nodes: [{ id: 'a', type: 'start', name: 'I' }],
+      edges: [],
+    });
+    expect(md).not.toContain('Routing slip');
+  });
+});

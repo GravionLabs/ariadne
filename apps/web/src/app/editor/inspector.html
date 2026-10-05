@@ -281,6 +281,123 @@
       </section>
     }
 
+    @if (hasRoutingSlips(node.type)) {
+      <section class="group" aria-label="Routing slips">
+        <button
+          type="button"
+          class="group-toggle"
+          [attr.aria-expanded]="isOpen('slips', node.routingSlips?.length ?? 0)"
+          (click)="toggle('slips', node.routingSlips?.length ?? 0)"
+        >
+          <app-icon
+            [name]="isOpen('slips', node.routingSlips?.length ?? 0) ? 'expandLess' : 'expandMore'"
+          />
+          <span>Routing slips</span>
+          @if (node.routingSlips?.length ?? 0) {
+            <span class="count">{{ node.routingSlips?.length ?? 0 }}</span>
+          }
+        </button>
+        @if (isOpen('slips', node.routingSlips?.length ?? 0)) {
+          <small class="group-desc">
+            Started when the saga enters “{{ node.name }}”: its activities run in order. When one
+            faults, the compensating ones that ran are undone in reverse order. The outcome comes
+            back as <em>&lt;Name&gt;.Completed</em> or <em>.Faulted</em>: give a transition each.
+          </small>
+          @for (slip of node.routingSlips ?? []; track $index; let i = $index) {
+            <div class="slip message" data-kind="slip" [attr.data-index]="i">
+              <span class="timer-title"><app-icon name="route" /> Routing slip</span>
+              <div class="row">
+                <input
+                  type="text"
+                  class="name slip-name"
+                  aria-label="Routing slip"
+                  placeholder="e.g. FulfilOrder"
+                  [value]="slip.name"
+                  (change)="setSlipName(i, $event)"
+                />
+                <button
+                  type="button"
+                  class="icon-button"
+                  [attr.aria-label]="'Remove ' + slip.name"
+                  title="Remove"
+                  (click)="removeRoutingSlip(i)"
+                >
+                  <app-icon name="delete" />
+                </button>
+              </div>
+              <ol class="itinerary" [attr.aria-label]="'Activities of ' + slip.name">
+                @for (activity of slip.activities; track $index; let j = $index; let last = $last) {
+                  <li class="step">
+                    <input
+                      type="text"
+                      class="activity-name"
+                      [attr.aria-label]="'Activity ' + (j + 1)"
+                      placeholder="e.g. ReserveStock"
+                      [value]="activity.name"
+                      (change)="setSlipActivityName(i, j, $event)"
+                    />
+                    <label class="compensates" title="It is undone when a later activity faults">
+                      <input
+                        type="checkbox"
+                        [checked]="!!activity.compensates"
+                        (change)="toggleCompensates(i, j)"
+                      />
+                      Compensates
+                    </label>
+                    <button
+                      type="button"
+                      class="icon-button"
+                      [attr.aria-label]="'Move ' + activity.name + ' earlier'"
+                      title="Earlier"
+                      [disabled]="j === 0"
+                      (click)="moveSlipActivity(i, j, -1)"
+                    >
+                      <app-icon name="directionUp" />
+                    </button>
+                    <button
+                      type="button"
+                      class="icon-button"
+                      [attr.aria-label]="'Move ' + activity.name + ' later'"
+                      title="Later"
+                      [disabled]="last"
+                      (click)="moveSlipActivity(i, j, 1)"
+                    >
+                      <app-icon name="directionDown" />
+                    </button>
+                    <button
+                      type="button"
+                      class="icon-button"
+                      [attr.aria-label]="'Remove ' + activity.name"
+                      title="Remove"
+                      (click)="removeSlipActivity(i, j)"
+                    >
+                      <app-icon name="delete" />
+                    </button>
+                  </li>
+                }
+              </ol>
+              @if (compensationOrder(slip); as undo) {
+                @if (undo.length) {
+                  <small class="undo-order"
+                    >On a fault, undone in this order:
+                    {{ undo.map((a) => a.name).join(' → ') }}.</small
+                  >
+                }
+              }
+              <button type="button" class="ghost" (click)="addSlipActivity(i)">
+                <app-icon name="add" /> Add an activity
+              </button>
+            </div>
+          }
+          <div class="add-row">
+            <button type="button" class="ghost" (click)="addRoutingSlip()">
+              <app-icon name="route" /> Start a routing slip
+            </button>
+          </div>
+        }
+      </section>
+    }
+
     @if (hasTimers(node.type)) {
       <section class="group" aria-label="Timers">
         <button
@@ -644,6 +761,14 @@
           <span
             >Raised when {{ joinRaisedBy().join(' and ') || 'its events' }} have all arrived (join
             “{{ join.name }}”).</span
+          >
+        </p>
+      } @else if (slipStarters().length) {
+        <p class="origin" [class.timeout]="eventEnds('Faulted')">
+          <app-icon [name]="eventEnds('Faulted') ? 'compensation' : 'route'" />
+          <span
+            >Outcome of the routing slip started when entering
+            {{ slipStarters().join(', ') }}.</span
           >
         </p>
       } @else if (requesters().length) {

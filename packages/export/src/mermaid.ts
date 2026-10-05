@@ -7,6 +7,7 @@ import {
   DiagramNode,
   eventLabel,
   joinEventsOf,
+  compensationOrder,
 } from '@ariadne/core';
 
 /** Words Mermaid's state diagram grammar treats as keywords; an id must not be one of them. */
@@ -126,6 +127,10 @@ export function diagramToMermaid(diagram: Diagram): string {
       ...(node.requests ?? []).map(
         (r) => `Requests ${r.name}${r.timeout ? ` (timeout ${r.timeout})` : ''}`,
       ),
+      ...(node.routingSlips ?? []).map((s) => {
+        const undo = compensationOrder(s).map((a) => a.name);
+        return `Routing slip ${s.name}: ${s.activities.map((a) => a.name).join(' → ') || 'no activities'}${undo.length ? ` (undo: ${undo.join(', ')})` : ''}`;
+      }),
       ...(node.timers ?? []).map(
         (t) =>
           `${t.action === 'schedule' ? 'Schedules' : 'Unschedules'} ${t.name}${t.delay ? ` in ${t.delay}` : ''}`,

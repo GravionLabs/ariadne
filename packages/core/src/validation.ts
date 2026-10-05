@@ -1,4 +1,4 @@
-import { Diagram, DiagramEdge, eventKindOf } from './diagram';
+import { Diagram, DiagramEdge, SLIP_OUTCOMES, eventKindOf, slipEvent } from './diagram';
 import { namingHint } from './messages';
 
 export type Severity = 'error' | 'warning' | 'info';
@@ -14,7 +14,11 @@ export type RuleCode =
   | 'missing-event'
   | 'external-without-source'
   | 'naming-command'
-  | 'naming-event';
+  | 'naming-event'
+  | 'empty-routing-slip'
+  | 'duplicate-routing-slip'
+  | 'unhandled-slip-outcome'
+  | 'slip-outcome-elsewhere';
 
 export interface Finding {
   severity: Severity;
@@ -31,9 +35,11 @@ export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
  * deterministic (findings follow the order of the diagram), so the web app, a CLI and an editor
  * extension can report the same things.
  *
- * - error: no or several initial states, unreachable states, a transition into the initial state;
+ * - error: no or several initial states, unreachable states, a transition into the initial state,
+ *   a routing slip without activities, two routing slips (or a slip and a request) with one name;
  * - warning: dead ends, an event that two transitions of a state cannot be told apart by, a
- *   transition without an event;
+ *   transition without an event, a routing slip outcome nothing reacts to, a transition on the
+ *   outcome of a routing slip its state does not start;
  * - info: an external event without a source, naming hints.
  */
 export function validate(diagram: Diagram): Finding[] {
@@ -87,6 +93,36 @@ export function validate(diagram: Diagram): Finding[] {
     }
   }
 
+  // Routing slips (ADR 0023): an itinerary, and a name of its own, since the outcomes are named after it.
+  const slipNames = new Map<string, number>();
+  const requestNames = new Set(diagram.nodes.flatMap((n) => (n.requests ?? []).map((r) => r.name)));
+  for (const node of diagram.nodes) {
+    for (const slip of node.routingSlips ?? []) {
+      slipNames.set(slip.name, (slipNames.get(slip.name) ?? 0) + 1);
+      if (!slip.activities.length) {
+        findings.push({
+          severity: 'error',
+          code: 'empty-routing-slip',
+          message: `The routing slip “${slip.name}” of “${node.name}” has no activities.`,
+          elementId: node.id,
+        });
+      }
+      if (
+        slipNames.get(slip.name) === 2 ||
+        (slipNames.get(slip.name) === 1 && requestNames.has(slip.name))
+      ) {
+        findings.push({
+          severity: 'error',
+          code: 'duplicate-routing-slip',
+          message: requestNames.has(slip.name)
+            ? `The routing slip “${slip.name}” has the name of a request: their outcomes would be the same events.`
+            : `Two routing slips are called “${slip.name}”: their outcomes would be the same events.`,
+          elementId: node.id,
+        });
+      }
+    }
+  }
+
   // ---- warnings
   const forward = edges.filter((e) => e.kind === 'forward');
   const canFinish = reachBackwards(
@@ -126,6 +162,40 @@ export function validate(diagram: Diagram): Finding[] {
         severity: 'warning',
         code: 'missing-event',
         message: `The transition from “${from.name}” to “${nodes.get(edge.target)!.name}” has no event.`,
+        elementId: edge.id,
+      });
+    }
+  }
+
+  // An outcome of a routing slip that no transition of its state reacts to: the saga would wait.
+  const startedBy = new Map<string, Set<string>>();
+  for (const node of diagram.nodes) {
+    for (const slip of node.routingSlips ?? []) {
+      for (const outcome of SLIP_OUTCOMES) {
+        const event = slipEvent(slip.name, outcome);
+        startedBy.set(event, (startedBy.get(event) ?? new Set()).add(node.id));
+        const handled = edges.some(
+          (e) => e.event === event && (e.source === node.id || nodes.get(e.source)?.type === 'any'),
+        );
+        if (!handled) {
+          findings.push({
+            severity: 'warning',
+            code: 'unhandled-slip-outcome',
+            message: `“${node.name}” starts the routing slip “${slip.name}” but nothing reacts to ${event}.`,
+            elementId: node.id,
+          });
+        }
+      }
+    }
+  }
+  for (const edge of edges) {
+    const states = edge.event ? startedBy.get(edge.event) : undefined;
+    const from = nodes.get(edge.source)!;
+    if (states && from.type === 'state' && !states.has(edge.source)) {
+      findings.push({
+        severity: 'warning',
+        code: 'slip-outcome-elsewhere',
+        message: `“${from.name}” reacts to ${edge.event}, but it does not start that routing slip.`,
         elementId: edge.id,
       });
     }

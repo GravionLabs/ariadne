@@ -42,12 +42,16 @@ export function follow(diagram: Diagram, steps: readonly string[]): DiagramNode[
   return path;
 }
 
-/** What entering a state does, one line each: send, publish, request, schedule. */
+/** What entering a state does, one line each: send, publish, request, start a routing slip, schedule. */
 export function doingsOf(node: DiagramNode): string[] {
   return [
     ...(node.activities ?? []).map((a) => `${ACTIVITY_VERBS[a.kind]} ${a.name}`),
     ...(node.requests ?? []).map(
       (r) => `Request ${r.name}${r.timeout ? ` (wait ${r.timeout})` : ''}`,
+    ),
+    ...(node.routingSlips ?? []).map(
+      (s) =>
+        `Start routing slip ${s.name}${s.activities.length ? `: ${s.activities.map((a) => a.name).join(' → ')}` : ''}`,
     ),
     ...(node.timers ?? []).map(
       (t) =>
