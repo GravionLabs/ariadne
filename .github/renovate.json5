@@ -1,0 +1,82 @@
+// Renovate keeps npm packages and GitHub Actions current: a few grouped pull requests a week, gated
+// by CI, merged by a person (no automerge). See docs/adr/0019-dependency-updates-and-supply-chain.md.
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: ['config:recommended', ':semanticCommits', ':dependencyDashboard'],
+  // `chore(deps): …` keeps dependency updates out of the release notes (ADR 0015).
+  semanticCommitType: 'chore',
+  semanticCommitScope: 'deps',
+  timezone: 'Europe/Zurich',
+  schedule: ['before 6am on monday'],
+  lockFileMaintenance: { enabled: true, schedule: ['before 6am on the first day of the month'] },
+  // Raise the range in package.json to the new version instead of leaving it as it was.
+  rangeStrategy: 'bump',
+  postUpdateOptions: ['pnpmDedupe'],
+  // A known vulnerability gets a pull request at once, outside the schedule. This also covers what
+  // a separate `pnpm audit` job would.
+  vulnerabilityAlerts: { enabled: true, labels: ['security'], schedule: ['at any time'] },
+  osvVulnerabilityAlerts: true,
+  packageRules: [
+    {
+      groupName: 'angular',
+      // Angular pins the range of TypeScript it supports: they move together.
+      matchPackageNames: [
+        '@angular/{/,}**',
+        '@angular-devkit/{/,}**',
+        '@schematics/angular',
+        'angular-eslint',
+        'zone.js',
+        'typescript',
+      ],
+    },
+    { groupName: 'ngrx', matchPackageNames: ['@ngrx/{/,}**'] },
+    { groupName: 'foblex', matchPackageNames: ['@foblex/{/,}**'] },
+    { groupName: 'codemirror', matchPackageNames: ['@codemirror/{/,}**', '@lezer/{/,}**'] },
+    {
+      groupName: 'vscode tooling',
+      matchPackageNames: ['@vscode/{/,}**', '@types/vscode'],
+    },
+    {
+      // Never newer than `engines.vscode` of apps/vscode/package.json (^1.96.0), or the .vsix will
+      // not install on that VS Code. Raise both together, by hand.
+      matchPackageNames: ['@types/vscode'],
+      allowedVersions: '<1.97.0',
+    },
+    {
+      // The WebAssembly files of the two must stay compatible (the vsix test checks it).
+      groupName: 'tree-sitter',
+      matchPackageNames: ['tree-sitter-c-sharp', 'web-tree-sitter'],
+    },
+    {
+      groupName: 'build and test tooling',
+      matchPackageNames: [
+        'vitest',
+        'esbuild',
+        'rollup',
+        'rollup-plugin-dts',
+        'eslint',
+        'typescript-eslint',
+        'prettier',
+        'jsdom',
+        'axe-core',
+        'fast-check',
+      ],
+    },
+    {
+      groupName: 'types',
+      matchPackageNames: ['@types/{/,}**', '!@types/vscode'],
+    },
+    { groupName: 'github-actions', matchManagers: ['github-actions'] },
+    {
+      // The shared workflows of the organisation are followed on `main` on purpose.
+      matchPackageNames: ['GravionLabs/ci/**'],
+      enabled: false,
+    },
+    {
+      // Majors get their own pull requests, labelled, and a person decides.
+      matchUpdateTypes: ['major'],
+      addLabels: ['major'],
+      automerge: false,
+    },
+  ],
+}

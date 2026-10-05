@@ -1,0 +1,14 @@
+# CodeQL configuration, used by .github/workflows/codeql.yml.
+name: Ariadne CodeQL
+
+# The extended security queries: more findings than the default suite, still security only.
+queries:
+  - uses: security-extended
+
+# Build output, dependencies, the generated C# samples (not shipped) and the documentation are not
+# scanned: findings there are noise.
+paths-ignore:
+  - '**/dist/**'
+  - '**/node_modules/**'
+  - 'samples/generated/**'
+  - 'docs/**'
