@@ -324,6 +324,9 @@
       <app-walkthrough-panel class="left-panel" (closed)="closeLeftPanel()" />
     } @else if (leftPanel() === 'path') {
       <app-path-panel class="left-panel" (closed)="closeLeftPanel()" />
+      @if (path.timeline()) {
+        <app-path-timeline class="path-timeline" (picked)="focusElement($event)" />
+      }
     }
 
     @if (ui.inspectorOpen() && !walking()) {

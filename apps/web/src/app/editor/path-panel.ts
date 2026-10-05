@@ -1,7 +1,7 @@
 import { Component, computed, inject, output } from '@angular/core';
 import { DiagramStore } from '../model/diagram-store';
 import { Icon } from './icon';
-import { PathStore } from './path-store';
+import { PATH_VIEWS, PathStore } from './path-store';
 
 /**
  * Shows the path a saga instance took: paste the steps it went through (the events it received) and
@@ -20,6 +20,8 @@ export class PathPanel {
   private readonly store = inject(DiagramStore);
 
   readonly closed = output<void>();
+
+  protected readonly views = PATH_VIEWS;
 
   protected readonly example =
     '- OrderReceived\n- StockReserved\n- { event: PaymentFailed, note: card declined }';

@@ -32,6 +32,7 @@ import { DiagramDetails } from './diagram-details';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
 import { PathPanel } from './path-panel';
+import { PathTimeline } from './path-timeline';
 import { PathStore } from './path-store';
 import { WalkthroughPanel } from './walkthrough-panel';
 import { WalkthroughStore } from './walkthrough-store';
@@ -83,6 +84,7 @@ const OBSCURING =
     AddStepButton,
     CatalogPanel,
     PathPanel,
+    PathTimeline,
     WalkthroughPanel,
     DiagramDetails,
     ExportMenu,
@@ -256,8 +258,9 @@ export class Editor {
     effect((onCleanup) => {
       if (!this.path.active()) return;
       const result = this.path.result();
+      const onDiagram = this.path.onDiagram();
       untracked(() =>
-        result
+        result && onDiagram
           ? this.ui.setHighlight(this.path.nodeIds(), this.path.edgeIds())
           : this.ui.clearHighlight(),
       );
@@ -631,8 +634,11 @@ export class Editor {
 
   /** A problem was picked: select the node or transition it is about and bring it into view. */
   protected focusFinding(finding: Finding): void {
-    const id = finding.elementId;
-    if (!id) return;
+    if (finding.elementId) this.focusElement(finding.elementId);
+  }
+
+  /** Selects a state or a transition (by id) and brings it into view: a problem, a step of a path. */
+  protected focusElement(id: string): void {
     const edge = this.edgesById().get(id);
     if (edge) {
       this.selectEdge(id);

@@ -1,0 +1,75 @@
+<p class="sr-only">{{ description() }}</p>
+<ol class="track" aria-label="States and steps, in order">
+  @for (entry of entries(); track $index; let i = $index) {
+    @switch (entry.kind) {
+      @case ('state') {
+        <li class="item">
+          <button
+            #button
+            type="button"
+            class="state"
+            [class]="'state type-' + (decisions().has(entry.nodeId) ? 'decision' : entry.type)"
+            [class.current]="entry.status === 'current'"
+            [class.finished]="entry.status === 'finished'"
+            [attr.data-index]="i"
+            [attr.data-node-id]="entry.nodeId"
+            [tabindex]="active() === i ? 0 : -1"
+            [attr.aria-current]="entry.status === 'visited' ? null : 'step'"
+            (click)="pick(i)"
+            (keydown)="onKeydown($event, i)"
+          >
+            <span class="badge" aria-hidden="true"><app-icon [name]="icon(entry)" /></span>
+            <span class="text">
+              <span class="name">{{ entry.name }}</span>
+              @if (visitNote(entry); as note) {
+                <span class="note">{{ note }}</span>
+              }
+            </span>
+          </button>
+        </li>
+      }
+      @case ('step') {
+        <li class="item">
+          <button
+            #button
+            type="button"
+            class="step"
+            [class]="'step kind-' + (entry.eventKind ?? 'internal')"
+            [attr.data-index]="i"
+            [attr.data-edge-id]="entry.edgeId"
+            [tabindex]="active() === i ? 0 : -1"
+            [attr.aria-label]="
+              'Step ' +
+              entry.number +
+              ': ' +
+              (entry.event ?? 'a transition') +
+              (entry.guard ? ' [' + entry.guard + ']' : '')
+            "
+            (click)="pick(i)"
+            (keydown)="onKeydown($event, i)"
+          >
+            <span class="label">
+              <span class="number">{{ entry.number }}.</span>
+              <app-icon class="glyph" aria-hidden="true" [name]="icon(entry)" />
+              <span class="event">{{ entry.event ?? 'no event' }}</span>
+            </span>
+            <span class="arrow" aria-hidden="true"></span>
+            @if (entry.guard) {
+              <span class="guard">[{{ entry.guard }}]</span>
+            }
+            @if (meta(entry); as meta) {
+              <span class="meta">{{ meta }}</span>
+            }
+          </button>
+        </li>
+      }
+      @case ('problem') {
+        <li class="item">
+          <span class="problem" role="note" [title]="entry.message">
+            <span aria-hidden="true">⚠</span> {{ entry.message }}
+          </span>
+        </li>
+      }
+    }
+  }
+</ol>

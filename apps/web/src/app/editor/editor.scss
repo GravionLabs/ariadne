@@ -331,6 +331,16 @@ app-export-menu ::ng-deep .menu-button {
   width: min(360px, calc(100% - 32px));
 }
 
+// The timeline of a path: along the bottom, right of the Path panel, above the toolbox.
+.path-timeline {
+  position: absolute;
+  z-index: 11;
+  right: 16px;
+  bottom: 72px;
+  left: calc(min(360px, 100% - 32px) + 32px);
+  max-width: max-content;
+}
+
 .inspector {
   position: absolute;
   z-index: 12;
