@@ -83,6 +83,12 @@ Every release carries the extension as `ariadne-vscode-<version>.vsix`: download
 
 `docker run -p 8080:8080 ghcr.io/gravionlabs/ariadne:latest`, see [docs/self-hosting.md](docs/self-hosting.md). The [user guide](docs/guide/README.md) explains the editor, the C# import and generation, the exports and the VS Code extension. To show a saga in your own web or Angular app, see [the viewer](docs/guide/viewer.md) and its [README](packages/viewer/README.md) (demo pages included).
 
+## Coding agents
+
+An AI coding agent can check, draw, import, generate and compare sagas with the `ariadne` command. In Claude Code:
+`/plugin marketplace add GravionLabs/ariadne`, then `/plugin install ariadne@ariadne`. See
+[the guide](docs/guide/agents.md).
+
 ## Command line
 
 The `ariadne` command (Node 22 or later) is attached to every [release](https://github.com/GravionLabs/ariadne/releases):
@@ -149,6 +155,8 @@ packages/
   masstransit/ @ariadne/masstransit: import saga state machines from C# (tree-sitter), generate C#, diff
   editor-protocol/ @ariadne/editor-protocol: the messages between the extension and the editor in its webview
   viewer/     @ariadne/viewer: the embeddable <ariadne-saga> viewer and its Angular wrapper (published to npm)
+plugins/
+  ariadne/    the Claude Code plugin with the agent skill (listed in .claude-plugin/marketplace.json)
 samples/
   sagas/      C# sagas with the diagrams the importer must produce
 docs/
