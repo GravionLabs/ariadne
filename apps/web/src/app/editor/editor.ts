@@ -67,6 +67,7 @@ import {
   Point,
   SLOT_SIZE,
 } from '@ariadne/core';
+import { attributeSelector } from './selector';
 
 const FIT_PADDING = { x: 80, y: 80 };
 
@@ -395,7 +396,7 @@ export class Editor {
    */
   private revealIfObscured(id: string): void {
     const flow = this.flow()?.hostElement as HTMLElement | undefined;
-    const card = flow?.querySelector<HTMLElement>(`[data-f-node-id="${id.replace(/"/g, '\\"')}"]`);
+    const card = flow?.querySelector<HTMLElement>(attributeSelector('data-f-node-id', id));
     if (!flow || !card) return;
     const rect = card.getBoundingClientRect();
     // Not laid out (nothing to judge by).
