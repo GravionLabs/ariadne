@@ -32,6 +32,7 @@ import { DiagramDetails } from './diagram-details';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
 import { PathPanel } from './path-panel';
+import { PathTimeline } from './path-timeline';
 import { PathStore } from './path-store';
 import { WalkthroughPanel } from './walkthrough-panel';
 import { WalkthroughStore } from './walkthrough-store';
@@ -41,7 +42,7 @@ import { Inspector } from './inspector';
 import { SagaImport } from '../import/saga-import';
 import { CatalogPanel } from './catalog-panel';
 import { AppErrors } from '../error-handler';
-import { takeSampleParam } from '../sample-link';
+import { takeStartParams } from '../sample-link';
 import { findSample, sampleDiagram } from '../samples';
 import { GenerateDialog } from './generate-dialog';
 import { ImportDialog } from './import-dialog';
@@ -83,6 +84,7 @@ const OBSCURING =
     AddStepButton,
     CatalogPanel,
     PathPanel,
+    PathTimeline,
     WalkthroughPanel,
     DiagramDetails,
     ExportMenu,
@@ -256,8 +258,9 @@ export class Editor {
     effect((onCleanup) => {
       if (!this.path.active()) return;
       const result = this.path.result();
+      const onDiagram = this.path.onDiagram();
       untracked(() =>
-        result
+        result && onDiagram
           ? this.ui.setHighlight(this.path.nodeIds(), this.path.edgeIds())
           : this.ui.clearHighlight(),
       );
@@ -325,9 +328,12 @@ export class Editor {
     this.afterReplace();
   }
 
-  /** `?sample=<id>` in the address: opens that sample like New → sample; an unknown id is said so. */
+  /**
+   * `?sample=<id>` in the address: opens that sample like New → sample; `&path=example` also shows the
+   * path of its example instance, on the diagram and as a timeline. What cannot be opened is said so.
+   */
   private async openSampleFromUrl(): Promise<void> {
-    const id = takeSampleParam();
+    const { sample: id, path } = takeStartParams();
     if (!id) return;
     const sample = await findSample(id);
     if (!sample) {
@@ -336,6 +342,18 @@ export class Editor {
     }
     this.file.openImported(sampleDiagram(sample));
     this.afterReplace();
+    if (!path) return;
+    if (path !== 'example' || !sample.path) {
+      this.errors.report(
+        path === 'example'
+          ? `The sample ${id} has no example path.`
+          : `There is no path “${path}”: use path=example.`,
+      );
+      return;
+    }
+    if (this.leftPanel() !== 'path') this.togglePath();
+    this.path.setView('both');
+    this.path.setText(sample.path);
   }
 
   protected async open(): Promise<void> {
@@ -631,8 +649,11 @@ export class Editor {
 
   /** A problem was picked: select the node or transition it is about and bring it into view. */
   protected focusFinding(finding: Finding): void {
-    const id = finding.elementId;
-    if (!id) return;
+    if (finding.elementId) this.focusElement(finding.elementId);
+  }
+
+  /** Selects a state or a transition (by id) and brings it into view: a problem, a step of a path. */
+  protected focusElement(id: string): void {
     const edge = this.edgesById().get(id);
     if (edge) {
       this.selectEdge(id);

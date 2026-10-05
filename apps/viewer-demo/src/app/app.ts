@@ -20,6 +20,7 @@ const HISTORY: PathStep[] = [
       url="order.saga.yaml"
       [features]="['walkthrough', 'messages', 'problems']"
       [path]="path()"
+      pathView="both"
       (selected)="selected.set(describe($event))"
       (pathResolved)="resolved.set($event)"
     />

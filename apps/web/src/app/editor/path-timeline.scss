@@ -1,0 +1,231 @@
+:host {
+  display: block;
+  overflow: auto hidden;
+  padding: 10px 12px;
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  font-size: 12px;
+  scrollbar-width: thin;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.track {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex: none;
+}
+
+button {
+  font: inherit;
+  color: var(--c-text);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 2px;
+  }
+}
+
+.state {
+  --accent: var(--c-step);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  min-height: 44px;
+  padding: 6px 12px 6px 8px;
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg, 10px);
+
+  &:hover {
+    background: var(--c-surface-2);
+  }
+
+  &.type-start {
+    --accent: var(--c-start);
+  }
+  &.type-end {
+    --accent: var(--c-end);
+  }
+  &.type-any {
+    --accent: var(--c-any);
+  }
+  &.type-join {
+    --accent: var(--c-join);
+  }
+  &.type-decision {
+    --accent: var(--c-decision);
+  }
+
+  &.current {
+    background: color-mix(in srgb, var(--accent) 10%, var(--c-surface-1));
+    border: 2px solid var(--accent);
+  }
+
+  &.finished {
+    border: 2px solid var(--c-end);
+  }
+
+  .note {
+    color: var(--c-text-subtle);
+  }
+  &.current .note,
+  &.finished .note {
+    color: var(--accent);
+  }
+}
+
+.badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 50%;
+
+  app-icon {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.text {
+  display: grid;
+  min-width: 0;
+  text-align: left;
+}
+
+.name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note,
+.guard,
+.meta {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step {
+  --kind: var(--c-event);
+  display: grid;
+  grid-template-rows: auto 10px auto auto;
+  min-width: 96px;
+  max-width: 220px;
+  padding: 0 8px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-md);
+  text-align: left;
+
+  &:hover {
+    background: var(--c-surface-2);
+  }
+
+  &.kind-external {
+    --kind: var(--c-external);
+  }
+  &.kind-timeout {
+    --kind: var(--c-timeout);
+  }
+  &.kind-reply {
+    --kind: var(--c-reply);
+  }
+  &.kind-fault {
+    --kind: var(--c-fault);
+  }
+  &.kind-composite {
+    --kind: var(--c-join);
+  }
+
+  .guard,
+  .meta {
+    color: var(--c-text-subtle);
+  }
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+
+  .number {
+    color: var(--c-text-subtle);
+    font-weight: 600;
+  }
+  .glyph {
+    flex: none;
+    width: 13px;
+    height: 13px;
+    color: var(--kind);
+  }
+  .event {
+    overflow: hidden;
+    color: color-mix(in srgb, var(--kind) 75%, var(--c-text));
+    font-weight: 600;
+    text-overflow: ellipsis;
+  }
+}
+
+// The line and arrowhead between two states.
+.arrow {
+  position: relative;
+  align-self: center;
+  height: 2px;
+  background: var(--c-border-muted);
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    right: -1px;
+    border: 5px solid transparent;
+    border-right: 0;
+    border-left: 7px solid var(--c-border-muted);
+  }
+}
+
+.problem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 360px;
+  margin-left: 12px;
+  padding: 6px 10px;
+  overflow: hidden;
+  color: var(--c-fault);
+  background: color-mix(in srgb, var(--c-fault) 8%, var(--c-surface-1));
+  border: 1px solid var(--c-fault);
+  border-radius: var(--radius-lg, 10px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

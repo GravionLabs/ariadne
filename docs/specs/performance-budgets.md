@@ -77,6 +77,6 @@ the budget fails; above 90% warns. The budgets are in `packages/viewer/scripts/s
 
 | File                                                      | Raw      | Gzip    | Budget (gzip) |
 | --------------------------------------------------------- | -------- | ------- | ------------- |
-| `dist/ariadne-viewer.js` (one file, for a `<script>` tag) | 202.2 kB | 66.6 kB | **77 kB**     |
-| `dist/index.js` (the package)                             | 363.5 kB | 89.7 kB | **104 kB**    |
-| `dist/angular/index.js` (the Angular wrapper)             | 8.0 kB   | 2.2 kB  | **2.6 kB**    |
+| `dist/ariadne-viewer.js` (one file, for a `<script>` tag) | 209.3 kB | 68.8 kB | **77 kB**     |
+| `dist/index.js` (the package)                             | 376.7 kB | 93.0 kB | **104 kB**    |
+| `dist/angular/index.js` (the Angular wrapper)             | 8.5 kB   | 2.3 kB  | **2.6 kB**    |

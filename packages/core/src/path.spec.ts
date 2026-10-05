@@ -1,6 +1,7 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { Diagram } from './diagram';
-import { PATH_LIMITS, parsePathSteps, resolvePath } from './path';
+import { PATH_LIMITS, TimelineEntry, parsePathSteps, pathTimeline, resolvePath } from './path';
 
 /**
  * Initial -OrderSubmitted-> Reserving -StockReserved-> Charging -PaymentCharged-> Completed;
@@ -284,5 +285,134 @@ describe('parsePathSteps limits', () => {
   it('answers deep nesting with an error, not an exception', () => {
     const result = parsePathSteps('['.repeat(10_000) + ']'.repeat(10_000));
     expect('error' in result).toBe(true);
+  });
+});
+
+describe('pathTimeline', () => {
+  const timeline = (steps: Parameters<typeof resolvePath>[1]) =>
+    pathTimeline(saga, resolvePath(saga, steps));
+  const summary = (entries: TimelineEntry[]) =>
+    entries.map((e) =>
+      e.kind === 'state'
+        ? `${e.name}${e.visit > 1 ? ` (${e.visit})` : ''}${e.status === 'visited' ? '' : ` [${e.status}]`}`
+        : e.kind === 'step'
+          ? `${e.number}. ${e.event}${e.guard ? ` [${e.guard}]` : ''}`
+          : `! ${e.number}: ${e.problem}`,
+    );
+
+  it('alternates states and the steps between them, and ends in the final state as finished', () => {
+    expect(summary(timeline(events('OrderSubmitted', 'StockReserved', 'PaymentCharged')))).toEqual([
+      'Initial',
+      '1. OrderSubmitted',
+      'Reserving stock',
+      '2. StockReserved',
+      'Charging payment',
+      '3. PaymentCharged',
+      'Completed [finished]',
+    ]);
+  });
+
+  it('unrolls a loop: a state taken twice is there twice, with its count, and the guard is on the step', () => {
+    const entries = timeline([
+      { event: 'OrderSubmitted' },
+      { event: 'StockReserved' },
+      { event: 'PaymentFailed', to: 'Reserving stock' },
+      { event: 'StockReserved' },
+    ]);
+    expect(summary(entries)).toEqual([
+      'Initial',
+      '1. OrderSubmitted',
+      'Reserving stock',
+      '2. StockReserved',
+      'Charging payment',
+      '3. PaymentFailed [retry]',
+      'Reserving stock (2)',
+      '4. StockReserved',
+      'Charging payment (2) [current]',
+    ]);
+  });
+
+  it('keeps when it happened and the note of a step, the transition and the kind of event', () => {
+    const [, step] = timeline([{ event: 'OrderSubmitted', at: '10:02', note: 'from the shop' }]);
+    expect(step).toEqual({
+      kind: 'step',
+      number: 1,
+      edgeId: 'e1',
+      event: 'OrderSubmitted',
+      eventKind: 'external',
+      at: '10:02',
+      note: 'from the shop',
+    });
+  });
+
+  it('is just the initial state, as the current one, for an empty path', () => {
+    expect(timeline([])).toEqual([
+      {
+        kind: 'state',
+        nodeId: 'start',
+        name: 'Initial',
+        type: 'start',
+        status: 'current',
+        visit: 1,
+      },
+    ]);
+  });
+
+  it('ends with the problem where the path stopped, and the state before it is current', () => {
+    const entries = timeline(events('OrderSubmitted', 'Nonsense'));
+    expect(summary(entries)).toEqual([
+      'Initial',
+      '1. OrderSubmitted',
+      'Reserving stock [current]',
+      '! 2: no-transition',
+    ]);
+    expect(entries.at(-1)).toMatchObject({ message: expect.stringContaining('Step 2') });
+  });
+
+  it('is only the problem for a diagram without an initial state', () => {
+    const empty: Diagram = { direction: 'top-bottom', nodes: [], edges: [] };
+    expect(pathTimeline(empty, resolvePath(empty, events('X')))).toEqual([
+      {
+        kind: 'problem',
+        number: 0,
+        problem: 'no-initial-state',
+        message: 'The diagram has no initial state.',
+      },
+    ]);
+  });
+
+  it('has the states resolvePath visited, in order, and a step between each two (any path)', () => {
+    const names = [
+      'OrderSubmitted',
+      'StockReserved',
+      'PaymentCharged',
+      'PaymentFailed',
+      'Cancel',
+      'Nope',
+    ];
+    fc.assert(
+      fc.property(
+        fc.array(fc.constantFrom(...names), { maxLength: 12 }),
+        fc.array(fc.boolean(), { maxLength: 12 }),
+        (picked, retry) => {
+          const steps = picked.map((event, i) =>
+            event === 'PaymentFailed'
+              ? { event, to: retry[i] ? 'Reserving stock' : 'Cancelled' }
+              : { event },
+          );
+          const resolved = resolvePath(saga, steps);
+          const entries = pathTimeline(saga, resolved);
+          const states = entries.filter((e) => e.kind === 'state');
+          expect(states.map((s) => s.nodeId)).toEqual(resolved.nodes);
+          expect(entries.filter((e) => e.kind === 'step').map((s) => s.edgeId)).toEqual(
+            resolved.transitions.map((t) => t.edgeId),
+          );
+          // States and steps alternate, starting and ending with a state; problems come last.
+          const flow = entries.filter((e) => e.kind !== 'problem');
+          flow.forEach((e, i) => expect(e.kind).toBe(i % 2 === 0 ? 'state' : 'step'));
+          expect(states.filter((s) => s.status !== 'visited')).toHaveLength(states.length ? 1 : 0);
+        },
+      ),
+    );
   });
 });

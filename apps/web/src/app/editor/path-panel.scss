@@ -127,3 +127,48 @@
     flex: none;
   }
 }
+
+.views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    width: 100%;
+    margin-bottom: 4px;
+    padding: 0;
+  }
+}
+
+.view {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  color: var(--c-text);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  cursor: pointer;
+
+  &.active {
+    color: var(--c-primary);
+    background: var(--c-primary-soft);
+    border-color: var(--c-primary);
+  }
+
+  // The radio stays for the keyboard and screen readers; the label shows the choice.
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 2px;
+  }
+}

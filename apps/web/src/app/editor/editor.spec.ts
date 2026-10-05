@@ -17,6 +17,7 @@ import booking from '../../../../../samples/sagas/booking/BookingStateMachine.cs
 import type { Mock } from 'vitest';
 import { CODE_EDITOR_FACTORY, CodeEditor, CodeEditorOptions } from './code-editor';
 import { Editor } from './editor';
+import { EditorStore } from './editor-store';
 import { EditorHost } from '../host/editor-host';
 import { AppErrors } from '../error-handler';
 import './native-dialog.testing';
@@ -1119,6 +1120,135 @@ describe('Editor', () => {
     });
   });
 
+  describe('path timeline', () => {
+    async function timeline(options: { embedded?: boolean } = {}) {
+      const ctx = await setup(options);
+      const { el, store, settle, fixture } = ctx;
+      store.appendNode('start-1', 'state');
+      store.appendNode('state-1', 'state');
+      store.appendNode('state-2', 'end');
+      store.updateNode('state-1', { name: 'Reserving' });
+      store.updateNode('state-2', { name: 'Charging' });
+      store.updateEdge('edge-1', { event: 'OrderPlaced', eventSource: 'Shop' });
+      store.updateEdge('edge-2', { event: 'StockReserved', eventSource: 'Warehouse' });
+      store.updateEdge('edge-3', { event: 'PaymentCharged', eventSource: 'Payments' });
+      await settle();
+      const open = async () => {
+        const top = [...el.querySelectorAll<HTMLButtonElement>('.menu-button')].find(
+          (b) => b.textContent?.trim() === 'Path',
+        );
+        (top ?? el.querySelector<HTMLButtonElement>('.toolbox button[aria-label="Path"]')!).click();
+        await settle();
+      };
+      const paste = async (text: string) => {
+        const area = el.querySelector<HTMLTextAreaElement>('app-path-panel textarea')!;
+        area.value = text;
+        area.dispatchEvent(new Event('input'));
+        await settle();
+      };
+      const show = async (label: string) => {
+        const radio = [...el.querySelectorAll<HTMLLabelElement>('app-path-panel .view')]
+          .find((l) => l.textContent?.trim() === label)!
+          .querySelector('input')!;
+        radio.click();
+        await settle();
+      };
+      const strip = () => el.querySelector<HTMLElement>('app-path-timeline');
+      /** Each entry as it is announced: a step by its label, a state by its name and note. */
+      const entries = () =>
+        [...(strip()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].map(
+          (b) =>
+            b.getAttribute('aria-label') ??
+            [...b.querySelectorAll('.name, .note')].map((t) => t.textContent?.trim()).join(' '),
+        );
+      const ui = fixture.debugElement.injector.get(EditorStore);
+      return { ...ctx, open, paste, show, strip, entries, ui };
+    }
+
+    it('shows the states and steps of the path, left to right, with the state the instance is in', async () => {
+      const { open, paste, strip, entries } = await timeline();
+      await open();
+      expect(strip()).toBeNull();
+      await paste('- OrderPlaced\n- StockReserved');
+      expect(entries()).toEqual([
+        'Initial',
+        'Step 1: OrderPlaced',
+        'Reserving',
+        'Step 2: StockReserved',
+        'Charging now',
+      ]);
+      expect(strip()!.querySelector('[aria-current="step"]')?.textContent).toContain('Charging');
+      expect(strip()!.querySelector('.sr-only')?.textContent).toContain(
+        '1. OrderPlaced: Initial → Reserving.',
+      );
+    });
+
+    it('follows the choice in the panel: on the diagram, as a timeline, or both', async () => {
+      const { el, open, paste, show, strip } = await timeline();
+      await open();
+      await paste('- OrderPlaced');
+      const highlighted = () => el.querySelectorAll('app-node-card[data-highlight="on"]').length;
+      const badges = () => el.querySelectorAll('.path-badge').length;
+      expect(strip()).toBeTruthy();
+      expect(highlighted()).toBe(2);
+
+      await show('On the diagram');
+      expect(strip()).toBeNull();
+      expect(highlighted()).toBe(2);
+      expect(badges()).toBeGreaterThan(0);
+
+      await show('Timeline');
+      expect(strip()).toBeTruthy();
+      expect(highlighted()).toBe(0);
+      expect(badges()).toBe(0);
+    });
+
+    it('selects a state or a step on the diagram when it is clicked', async () => {
+      const { open, paste, strip, ui } = await timeline();
+      await open();
+      await paste('- OrderPlaced\n- StockReserved');
+      strip()!.querySelector<HTMLButtonElement>('button[data-edge-id="edge-2"]')!.click();
+      expect(ui.selection()).toEqual({ nodeIds: [], edgeIds: ['edge-2'] });
+      strip()!.querySelector<HTMLButtonElement>('button[data-node-id="state-1"]')!.click();
+      expect(ui.selection()).toEqual({ nodeIds: ['state-1'], edgeIds: [] });
+    });
+
+    it('is one tab stop; the arrow keys, Home and End move between the entries', async () => {
+      const { open, paste, strip, settle } = await timeline();
+      await open();
+      await paste('- OrderPlaced\n- StockReserved');
+      const stops = () => [...strip()!.querySelectorAll<HTMLButtonElement>('button[tabindex="0"]')];
+      expect(stops().map((b) => b.dataset['nodeId'])).toEqual(['state-2']);
+      const key = async (key: string) => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+        await settle();
+      };
+      stops()[0].focus();
+      await key('ArrowLeft');
+      expect((document.activeElement as HTMLElement).dataset['edgeId']).toBe('edge-2');
+      await key('Home');
+      expect((document.activeElement as HTMLElement).dataset['nodeId']).toBe('start-1');
+      expect(stops()).toHaveLength(1);
+      await key('End');
+      expect((document.activeElement as HTMLElement).dataset['nodeId']).toBe('state-2');
+    });
+
+    it('ends with the problem where the path stopped', async () => {
+      const { open, paste, strip } = await timeline();
+      await open();
+      await paste('- OrderPlaced\n- Nonsense');
+      expect(strip()!.querySelector('.problem')?.textContent).toContain('Step 2');
+    });
+
+    it('is there in VS Code too, and has nothing for an accessibility check to find', async () => {
+      const { el, open, paste, strip } = await timeline({ embedded: true });
+      await open();
+      await paste('- OrderPlaced\n- StockReserved\n- PaymentCharged');
+      expect(strip()?.textContent).toContain('finished');
+      expect(await axeFindings(el)).toEqual([]);
+    });
+  });
+
   describe('walkthrough', () => {
     async function walking() {
       const ctx = await setup();
@@ -1399,6 +1529,33 @@ describe('Editor', () => {
         await settle();
         expect(store.diagram().name).toBe(before);
         expect(location.search).toBe('');
+      });
+
+      it('opens the example path of a sample with path=example: the panel, the timeline and both views', async () => {
+        visit('?sample=order&path=example');
+        const { el, store, settle } = await setup();
+        await vi.waitFor(() => expect(store.diagram().name).toBe('OrderSaga'));
+        await vi.waitFor(() => expect(el.querySelector('app-path-timeline')).toBeTruthy());
+        await settle();
+        expect(el.querySelector<HTMLTextAreaElement>('app-path-panel textarea')!.value).toContain(
+          'OrderReceived',
+        );
+        expect(el.querySelector('app-path-panel .result')?.textContent).toContain(
+          'Now in Shipping',
+        );
+        expect(el.querySelector('app-node-card[data-highlight="on"]')).toBeTruthy();
+        expect(location.search).toBe('');
+      });
+
+      it('says so for a path it cannot show, and still opens the sample', async () => {
+        visit('?sample=order&path=yesterday');
+        const { store } = await setup();
+        await vi.waitFor(() => expect(store.diagram().name).toBe('OrderSaga'));
+        await vi.waitFor(() =>
+          expect(TestBed.inject(AppErrors).current()?.message).toBe(
+            'There is no path “yesterday”: use path=example.',
+          ),
+        );
       });
 
       it('does nothing in VS Code, which owns the document, and leaves the address as it is', async () => {

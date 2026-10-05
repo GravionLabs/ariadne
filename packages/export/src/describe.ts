@@ -1,4 +1,4 @@
-import { Diagram } from '@ariadne/core';
+import { Diagram, TimelineEntry } from '@ariadne/core';
 import { replaceLineBreaks } from './text';
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -40,4 +40,41 @@ export const diagramTitle = (diagram: Diagram): string => diagram.name?.trim() |
 export function diagramAlternative(diagram: Diagram): string {
   const description = diagram.description && replaceLineBreaks(diagram.description.trim(), ' ');
   return [description, describeDiagram(diagram)].filter(Boolean).join(' ');
+}
+
+/**
+ * The path of an instance in words, for those who cannot see the timeline: each step with the states
+ * before and after it, then where the instance is. `1. OrderSubmitted: Initial → Reserving stock.
+ * 2. StockReserved: Reserving stock → Charging payment. Now in Charging payment.`
+ */
+export function describeTimeline(entries: readonly TimelineEntry[]): string {
+  const sentences: string[] = [];
+  let before: string | undefined;
+  let pending: TimelineEntry | undefined;
+  for (const entry of entries) {
+    if (entry.kind === 'state') {
+      if (pending?.kind === 'step' && before !== undefined) {
+        const what = [pending.event ?? 'a transition', pending.guard && `[${pending.guard}]`]
+          .filter(Boolean)
+          .join(' ');
+        sentences.push(`${pending.number}. ${what}: ${before} → ${entry.name}.`);
+      }
+      before = entry.name;
+      pending = undefined;
+      if (entry.status === 'current') sentences.push(`Now in ${entry.name}.`);
+      if (entry.status === 'finished') sentences.push(`Finished in ${entry.name}.`);
+    } else if (entry.kind === 'step') {
+      pending = entry;
+    } else {
+      sentences.push(entry.message.endsWith('.') ? entry.message : `${entry.message}.`);
+    }
+  }
+  // "Now in" belongs at the end, after the steps.
+  const now = sentences.findIndex((s) => s.startsWith('Now in ') || s.startsWith('Finished in '));
+  if (now >= 0 && now < sentences.length - 1) {
+    const [moved] = sentences.splice(now, 1);
+    const problem = sentences.findIndex((s) => /^Step \d+:/.test(s) || s.startsWith('The diagram'));
+    sentences.splice(problem >= 0 ? problem : sentences.length, 0, moved);
+  }
+  return sentences.join(' ') || 'No path.';
 }

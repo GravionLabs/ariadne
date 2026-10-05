@@ -261,7 +261,7 @@ const replacements: fc.Arbitrary<unknown> = fc.oneof(
   fc.integer(),
   fc.array(fc.oneof(fc.string({ maxLength: 6 }), fc.integer()), { maxLength: 3 }),
   fc.dictionary(fc.string({ maxLength: 6 }), fc.oneof(fc.string({ maxLength: 6 }), fc.integer()), {
-    maxLength: 3,
+    maxKeys: 3,
   }),
 );
 

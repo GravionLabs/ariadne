@@ -9,8 +9,9 @@ import {
   ResolvedPath,
   resolvePath,
   validate,
+  pathTimeline,
 } from '@ariadne/core';
-import { renderDiagramSvg, SvgExport } from '@ariadne/export';
+import { renderDiagramSvg, renderTimelineSvg, SvgExport } from '@ariadne/export';
 import { FEATURES, parseFeatures, ViewerFeature } from './features';
 import { applyMarks, drawPath, Marks, SagaEmphasis, SagaSelection } from './marks';
 import { messagesPanel, Panel, problemsPanel, SagaWalk, walkthroughPanel } from './panels';
@@ -29,6 +30,9 @@ export type SagaErrorDetail = ViewerError;
 export type SagaSelectDetail = {
   selection: (SagaSelection & { node?: DiagramNode; edge?: DiagramEdge }) | null;
 };
+/** Where `<ariadne-saga>` shows the path of an instance (attribute `path-view`). */
+export type PathView = 'diagram' | 'timeline' | 'both';
+
 /** The `pathresolved` event: the path of an instance resolved against the diagram. */
 export type SagaPathDetail = ResolvedPath;
 /** The `walkthrough` event: the path of the walkthrough after each step. */
@@ -58,7 +62,9 @@ const inOverlay = (event: Event) =>
  *   saga instance is; `selection` (property): the picked state or transition.
  *
  * - `path` (property): the steps a saga instance took (`{ event }` or `{ state }`, with optional `to`,
- *   `at`, `note`), drawn on the diagram; `show-untaken` keeps what was not taken at full strength.
+ *   `at`, `note`), drawn on the diagram; `show-untaken` keeps what was not taken at full strength;
+ *   `path-view` (`diagram`, the default; `timeline`; `both`) shows it on the diagram, as a timeline of the
+ *   states and steps left to right under it, or both.
  *
  * Events `load`, `error`, `select`, `walkthrough` and `pathresolved`; they bubble.
  */
@@ -70,6 +76,7 @@ export class AriadneSagaElement extends Base {
     'theme',
     'features',
     'show-untaken',
+    'path-view',
   ];
 
   readonly #id = `ariadne-${++instances}-`;
@@ -82,6 +89,7 @@ export class AriadneSagaElement extends Base {
   readonly #tabs: HTMLElement;
   readonly #panels: HTMLElement;
   readonly #pathInfo: HTMLElement;
+  readonly #timeline: HTMLElement;
 
   #diagram?: Diagram;
   #svg?: SvgExport;
@@ -121,6 +129,7 @@ export class AriadneSagaElement extends Base {
       <button type="button" part="button" data-action="fit" aria-label="Fit to view" title="Fit to view">⤢</button>
     </div>
   </div>
+  <div class="timeline" part="timeline" role="group" aria-label="Timeline of the path" hidden></div>
   <div class="status" part="status" role="status" aria-live="polite"></div>
 </div>`;
     const find = (selector: string) => root.querySelector<HTMLElement>(selector)!;
@@ -133,6 +142,7 @@ export class AriadneSagaElement extends Base {
     this.#tabs = find('.tabs');
     this.#panels = find('.panels');
     this.#pathInfo = find('.path-info');
+    this.#timeline = find('.timeline');
     this.#listen(root);
   }
 
@@ -217,6 +227,19 @@ export class AriadneSagaElement extends Base {
     this.toggleAttribute('show-untaken', value);
   }
 
+  /**
+   * Where the path is shown (attribute `path-view`): on the diagram (the default), as a timeline of
+   * the states and steps left to right under it, or both.
+   */
+  get pathView(): PathView {
+    const value = this.getAttribute('path-view');
+    return value === 'timeline' || value === 'both' ? value : 'diagram';
+  }
+  set pathView(value: PathView | null) {
+    if (value && value !== 'diagram') this.setAttribute('path-view', value);
+    else this.removeAttribute('path-view');
+  }
+
   /** The path as resolved against the diagram; `null` without a path or a diagram. */
   get resolvedPath(): ResolvedPath | null {
     return this.#resolved;
@@ -251,6 +274,10 @@ export class AriadneSagaElement extends Base {
     if (name === 'theme') return;
     if (name === 'show-untaken') {
       this.#mark();
+      return;
+    }
+    if (name === 'path-view') {
+      this.#showPath();
       return;
     }
     this.#schedule();
@@ -503,12 +530,47 @@ export class AriadneSagaElement extends Base {
   #resolvePath(): void {
     const diagram = this.#diagram;
     this.#resolved = diagram && this.#path ? resolvePath(diagram, this.#path) : null;
+    this.#showPath();
+    if (this.#resolved) this.#emit('pathresolved', this.#resolved);
+  }
+
+  /** Draws the resolved path where `path-view` says: on the diagram, as the timeline, or both. */
+  #showPath(): void {
+    const diagram = this.#diagram;
+    const view = this.pathView;
+    const resolved = this.#resolved;
     if (diagram) {
-      drawPath(this.#stage, diagram, this.#resolved);
+      drawPath(this.#stage, diagram, view === 'timeline' ? null : resolved);
       this.#mark();
     }
-    this.#describePath(this.#resolved);
-    if (this.#resolved) this.#emit('pathresolved', this.#resolved);
+    this.#describePath(resolved);
+    const timeline = this.#timeline;
+    if (!diagram || !resolved || view === 'diagram') {
+      timeline.hidden = true;
+      timeline.removeAttribute('tabindex');
+      timeline.replaceChildren();
+      return;
+    }
+    timeline.innerHTML = renderTimelineSvg(diagram, pathTimeline(diagram, resolved), {
+      idPrefix: `${this.#id}timeline-`,
+      cssVariables: true,
+      addressable: true,
+    }).svg;
+    timeline.hidden = false;
+    // It scrolls, so the keyboard must reach it (only while it is there).
+    timeline.tabIndex = 0;
+    // The state the instance is in stays in view, also on a long path.
+    const now = timeline.querySelector<SVGGraphicsElement>(
+      '[data-status="current"], [data-status="finished"]',
+    );
+    if (now && typeof now.getBBox === 'function') {
+      try {
+        const box = now.getBBox();
+        timeline.scrollLeft = Math.max(0, box.x + box.width - timeline.clientWidth + 24);
+      } catch {
+        // Not laid out (no layout engine): nothing to scroll.
+      }
+    }
   }
 
   #describePath(path: ResolvedPath | null): void {
@@ -547,7 +609,7 @@ export class AriadneSagaElement extends Base {
         current: this.#walk.path[this.#walk.path.length - 1],
       },
       message: this.#message,
-      path: this.#resolved,
+      path: this.pathView === 'timeline' ? null : this.#resolved,
       showUntaken: this.showUntaken,
       findings: this.features.includes('problems') ? this.#findings : [],
     };

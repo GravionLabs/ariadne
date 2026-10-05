@@ -79,8 +79,9 @@ edges:
       extras.addEventListener('walkthrough', (e) =>
         log('walkthrough: ' + e.detail.steps.length + ' steps'),
       );
-      // The path an instance took, drawn on the diagram.
+      // The path an instance took, drawn on the diagram and as a timeline under it.
       extras.path = [{ event: 'OrderSubmitted' }, { event: 'StockReserved', note: 'in stock' }];
+      extras.pathView = 'both';
       // A running instance is in this state: emphasise it from outside.
       extras.addEventListener('load', () => (extras.emphasis = { nodes: ['ReservingStock'] }));
       for (const viewer of document.querySelectorAll('ariadne-saga')) {

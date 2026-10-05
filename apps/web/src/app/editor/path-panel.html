@@ -30,6 +30,22 @@
     >. Add <code>to</code> to tell transitions on one event apart.
   </p>
 
+  <fieldset class="views">
+    <legend class="kicker">Show the path</legend>
+    @for (view of views; track view.id) {
+      <label class="view" [class.active]="path.view() === view.id">
+        <input
+          type="radio"
+          name="path-view"
+          [value]="view.id"
+          [checked]="path.view() === view.id"
+          (change)="path.setView(view.id)"
+        />
+        {{ view.label }}
+      </label>
+    }
+  </fieldset>
+
   @if (path.error(); as error) {
     <p class="error" role="alert">{{ error }}</p>
   } @else if (path.result(); as result) {
