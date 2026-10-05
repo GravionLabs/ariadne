@@ -50,3 +50,6 @@ apps/vscode/LICENSE
 
 # Playwright report of the guide captures (apps/web/capture)
 apps/web/capture/report
+
+# Failed VS Code captures (apps/vscode/capture)
+apps/vscode/capture/failures

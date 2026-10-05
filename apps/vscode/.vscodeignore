@@ -4,6 +4,7 @@ src/**
 test/**
 dist-test/**
 scripts/**
+capture/**
 vsix/**
 .vscode-test/**
 node_modules/**

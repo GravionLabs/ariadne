@@ -5,6 +5,11 @@ normal text document, so save, undo, git and "Open with Text Editor" work as alw
 and generates C#, shows where a diagram and its code have drifted apart, exports, and draws sagas in the Markdown
 preview. Every command and setting is listed in [the extension's README](../../apps/vscode/README.md).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/vscode-editor-and-code-dark.png">
+  <img alt="VS Code with an order saga open as a diagram on the left and the C# that implements it on the right; above the state machine class a CodeLens reads Open saga diagram" src="../images/guide/vscode-editor-and-code-light.png">
+</picture>
+
 ## Install
 
 The extension is not in a marketplace yet; every release of Ariadne carries it as a file.
@@ -20,6 +25,36 @@ There are no automatic updates: to update, install the newer `.vsix` over the ol
 "Ariadne" in the Extensions view. For YAML completion and validation while you edit the text, also install the
 [Red Hat YAML extension](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml); Ariadne
 contributes the schema for it.
+
+## Work next to the code
+
+When a diagram names its C# file (`saga.source`), saving either one compares them. A difference is a warning in
+the **Problems** panel on both files, and a quick fix on the C# or the diagram updates the diagram from the code
+or opens a diff. A diagram that cannot be read is listed there too, on its line.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/vscode-problems-dark.png">
+  <img alt="The Problems panel of VS Code listing an error in a diagram that cannot be read, and a warning on both the C# and the diagram that a transition from Shipping to the final state is in the code but not in the diagram" src="../images/guide/vscode-problems-light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/vscode-drift-quick-fix-dark.png">
+  <img alt="The Quick Fix menu on the state machine class in the C# file, offering Update diagram from code and Open diff" src="../images/guide/vscode-drift-quick-fix-light.png">
+</picture>
+
+**Ariadne: Export Diagram…** asks for the format, then saves the file next to the diagram or copies the text.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/vscode-export-quick-pick-dark.png">
+  <img alt="The diagram editor with the list of exports of Ariadne: Export Diagram open at the top: SVG image, PNG image, Markdown page and Mermaid diagram to save, and Mermaid diagram and Markdown page to copy" src="../images/guide/vscode-export-quick-pick-light.png">
+</picture>
+
+The Markdown preview draws a saga from a fenced block, or from a file, as an image of the diagram.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/vscode-markdown-preview-dark.png">
+  <img alt="A Markdown file beside its preview: the fenced saga block in the text, and the order saga drawn as a diagram in the preview" src="../images/guide/vscode-markdown-preview-light.png">
+</picture>
 
 ## Next
 
