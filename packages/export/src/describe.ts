@@ -1,4 +1,5 @@
 import { Diagram } from '@ariadne/core';
+import { replaceLineBreaks } from './text';
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -37,6 +38,6 @@ export const diagramTitle = (diagram: Diagram): string => diagram.name?.trim() |
  * one, then {@link describeDiagram}. One line of plain text.
  */
 export function diagramAlternative(diagram: Diagram): string {
-  const description = diagram.description?.trim().replace(/\s*\n\s*/g, ' ');
+  const description = diagram.description && replaceLineBreaks(diagram.description.trim(), ' ');
   return [description, describeDiagram(diagram)].filter(Boolean).join(' ');
 }

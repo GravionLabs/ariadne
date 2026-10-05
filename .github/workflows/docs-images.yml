@@ -24,8 +24,8 @@ jobs:
     name: Re-capture the images
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: GravionLabs/ci/node/setup@main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
       # ffmpeg makes the GIFs, DejaVu is the one font every picture is drawn in, xvfb is the display
@@ -40,7 +40,7 @@ jobs:
 
       # What to look at when a capture fails: the report and traces of the web captures, and the
       # picture of the VS Code window at the moment the capture stopped.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: capture-report
@@ -82,7 +82,7 @@ jobs:
 
       # A pull request made with the default GITHUB_TOKEN does not start other workflows (a GitHub
       # rule against loops), so its checks do not run. A token of the owner's own does.
-      - uses: peter-evans/create-pull-request@v7
+      - uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         if: steps.changes.outputs.changed == 'true'
         with:
           token: ${{ secrets.DOCS_IMAGES_TOKEN || secrets.GITHUB_TOKEN }}

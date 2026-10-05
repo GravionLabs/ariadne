@@ -1,4 +1,5 @@
 import { diagramToMermaid, mermaidMarkdown } from './mermaid';
+import { replaceLineBreaks } from './text';
 import {
   ACTIVITY_VERBS,
   DECISION_INFO,
@@ -185,11 +186,7 @@ function push(map: Map<string, string[]>, key: string, value: string): void {
 
 /** A cell: `|` would end it, line breaks become `<br>`. */
 const cell = (s: string): string =>
-  s
-    .replace(/\\/g, '\\\\')
-    .replace(/\|/g, '\\|')
-    .replace(/\s*\n\s*/g, '<br>')
-    .trim();
+  replaceLineBreaks(s.replace(/\\/g, '\\\\').replace(/\|/g, '\\|'), '<br>').trim();
 
 const table = (header: string[], rows: string[][]): string =>
   [header, header.map(() => '---'), ...rows]
