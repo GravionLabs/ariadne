@@ -23,9 +23,22 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
         Event(() => TravellerUpdated);
         Event(() => HotelRequested);
 
+        Request(() => ValidateTraveller, x => x.ValidateTravellerRequestId, r => r.Timeout = TimeSpan.FromSeconds(10));
+        Request(() => CheckAvailability, x => x.CheckAvailabilityRequestId, r => r.Timeout = TimeSpan.FromSeconds(5));
+
         Initially(
             When(TravellerSubmitted)
                 .TransitionTo(ValidatingTraveller));
+
+        During(ValidatingTraveller,
+            When(ValidateTraveller.Completed)
+                .TransitionTo(ReservingFlight),
+            When(ValidateTraveller.Faulted)
+                .Finalize(),
+            When(ValidateTraveller.TimeoutExpired, context => true /* TODO guard: attempts < 3 */)
+                .TransitionTo(ValidatingTraveller),
+            When(ValidateTraveller.TimeoutExpired, context => true /* TODO guard: attempts >= 3 */)
+                .Finalize());
 
         During(ReservingFlight,
             When(FlightReserved, context => true /* TODO guard: cabin = business */)
@@ -41,6 +54,12 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
             When(FlightHoldExpired)
                 .Finalize(),
             Ignore(TravellerUpdated));
+
+        During(ReservingHotel,
+            When(CheckAvailability.Faulted)
+                .Finalize(),
+            When(CheckAvailability.TimeoutExpired)
+                .Finalize());
 
         During(AuthorizingPayment,
             When(PaymentDeclined)
@@ -68,10 +87,14 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
             When(CancelRequested)
                 .TransitionTo(Cancelling));
 
+        WhenEnter(ValidatingTraveller, binder => binder
+            .Request(ValidateTraveller, context => new ValidateTravellerRequest { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
+
         WhenEnter(ReservingFlight, binder => binder
             .Send(context => new ReserveFlight { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
 
         WhenEnter(ReservingHotel, binder => binder
+            .Request(CheckAvailability, context => new CheckAvailabilityRequest { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })
             .Send(context => new ReserveHotel { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })
             .Publish(context => new HotelRequested { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
 
@@ -109,4 +132,7 @@ public class TravelBookingStateMachine : MassTransitStateMachine<TravelBookingSt
     public Event<BookingConfirmed> BookingConfirmed { get; private set; } = null!;
     public Event<TravellerUpdated> TravellerUpdated { get; private set; } = null!;
     public Event<HotelRequested> HotelRequested { get; private set; } = null!;
+
+    public Request<TravelBookingState, ValidateTravellerRequest, ValidateTravellerResponse> ValidateTraveller { get; private set; } = null!;
+    public Request<TravelBookingState, CheckAvailabilityRequest, CheckAvailabilityResponse> CheckAvailability { get; private set; } = null!;
 }

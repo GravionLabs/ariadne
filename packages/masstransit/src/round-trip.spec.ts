@@ -92,6 +92,53 @@ describe('generate → import', () => {
     );
   });
 
+  it('keeps requests, their timeouts and their three answers', async () => {
+    const diagram: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'start', name: 'Initial' },
+        {
+          id: 'b',
+          type: 'state',
+          name: 'Validating',
+          requests: [{ name: 'ValidateAddress', timeout: '30s' }, { name: 'CheckStock' }],
+          activities: [{ kind: 'event', name: 'Started' }],
+        },
+        {
+          id: 'c',
+          type: 'state',
+          name: 'Checking',
+          requests: [{ name: 'Slow', timeout: 'about a week' }],
+        },
+        { id: 'z', type: 'end', name: 'Final' },
+      ],
+      edges: [
+        { id: 'e1', source: 'a', target: 'b', kind: 'forward', event: 'Placed' },
+        { id: 'e2', source: 'b', target: 'c', kind: 'forward', event: 'ValidateAddress.Completed' },
+        { id: 'e3', source: 'b', target: 'z', kind: 'forward', event: 'ValidateAddress.Faulted' },
+        {
+          id: 'e4',
+          source: 'b',
+          target: 'z',
+          kind: 'forward',
+          event: 'ValidateAddress.TimeoutExpired',
+        },
+        { id: 'e5', source: 'c', target: 'z', kind: 'forward', event: 'Slow.Completed' },
+      ],
+    };
+    const { files, warnings } = generateSaga(diagram);
+    expect(warnings).toEqual([]);
+    const code = files.find((f) => f.path === 'SagaStateMachine.cs')!.content;
+    expect(code).toContain(
+      'Request(() => ValidateAddress, x => x.ValidateAddressRequestId, r => r.Timeout = TimeSpan.FromSeconds(30));',
+    );
+    expect(code).toContain('When(ValidateAddress.Completed)');
+    expect(code).not.toContain('Event(() => ValidateAddress');
+    const again = await roundTrip(diagram);
+    expect(again.nodes.map((n) => n.requests)).toEqual(diagram.nodes.map((n) => n.requests));
+    expect(again.edges.map((e) => e.event)).toEqual(diagram.edges.map((e) => e.event));
+  });
+
   it('keeps the saga metadata of the diagram', async () => {
     const diagram = parseDiagram(readFileSync(goldens[0].path, 'utf8'));
     const again = await roundTrip(diagram);

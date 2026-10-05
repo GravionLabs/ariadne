@@ -7,4 +7,5 @@ public class CustomerOnboardingState : SagaStateMachineInstance
 {
     public Guid CorrelationId { get; set; }
     public int CurrentState { get; set; }
+    public Guid? IdentityCheckRequestId { get; set; }
 }

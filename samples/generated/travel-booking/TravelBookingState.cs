@@ -7,4 +7,6 @@ public class TravelBookingState : SagaStateMachineInstance
 {
     public Guid CorrelationId { get; set; }
     public string CurrentState { get; set; } = null!;
+    public Guid? ValidateTravellerRequestId { get; set; }
+    public Guid? CheckAvailabilityRequestId { get; set; }
 }

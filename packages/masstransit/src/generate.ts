@@ -58,6 +58,22 @@ class Names {
 }
 
 const indent = (n: number): string => '    '.repeat(n);
+const TIMEOUT_UNITS: Record<string, string> = {
+  ms: 'Milliseconds',
+  s: 'Seconds',
+  m: 'Minutes',
+  h: 'Hours',
+  d: 'Days',
+};
+
+/** `, r => r.Timeout = TimeSpan.FromSeconds(30)` for `30s`; a text that is no duration stays a TODO. */
+function requestTimeout(timeout: string | undefined): string {
+  if (!timeout) return '';
+  const found = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h|d)$/.exec(timeout.trim());
+  if (found) return `, r => r.Timeout = TimeSpan.From${TIMEOUT_UNITS[found[2]]}(${found[1]})`;
+  return `, r => r.Timeout = TimeSpan.FromSeconds(30) /* TODO timeout: ${comment(timeout)} */`;
+}
+
 const comment = (text: string): string => text.replace(/\*\//g, '* /').replace(/\s+/g, ' ').trim();
 
 /**
@@ -83,8 +99,27 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   const eventInfo = new Map((diagram.events ?? []).map((e) => [e.name, e]));
   const names = new Names([...RESERVED, className, instanceType], warnings);
 
+  const states = diagram.nodes.filter((n) => n.type === 'state');
+  // The requests the states make, each once, and how long it waits (the first state that says).
+  const requestList: { name: string; timeout?: string }[] = [];
+  for (const n of states) {
+    for (const r of n.requests ?? []) {
+      const known = requestList.find((k) => k.name === r.name);
+      if (!known) requestList.push({ ...r });
+      else if (r.timeout && known.timeout && r.timeout !== known.timeout) {
+        warnings.push(
+          `Request ${r.name} has two timeouts (${known.timeout}, ${r.timeout}): the first is used.`,
+        );
+      } else if (r.timeout && !known.timeout) known.timeout = r.timeout;
+    }
+  }
+  const answerOf = (event: string): { request: string; outcome: string } | undefined => {
+    const found = /^(.+)\.(Completed|Faulted|TimeoutExpired)$/.exec(event);
+    return found ? { request: found[1], outcome: found[2] } : undefined;
+  };
+
   // Transitions we can write: they need an event, and must not touch a join (CompositeEvent) or
-  // wait for the answer of a request (`Name.Completed`), which are not generated yet.
+  // wait for a timer, which are not generated yet.
   const usable: DiagramEdge[] = [];
   for (const edge of diagram.edges) {
     const source = nodes.get(edge.source);
@@ -96,20 +131,17 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       );
     } else if (!edge.event) {
       warnings.push(`The transition ${source.name} → ${target.name} has no event: not generated.`);
-    } else if (/^[^.\s]+\.(Completed|Faulted|TimeoutExpired)$/.test(edge.event)) {
-      warnings.push(`${edge.event} is the answer of a request, which is not generated yet.`);
+    } else if (
+      answerOf(edge.event) &&
+      !requestList.some((r) => r.name === answerOf(edge.event!)!.request)
+    ) {
+      warnings.push(`${edge.event} is the answer of a request no state makes: not generated.`);
     } else {
       usable.push(edge);
     }
   }
-  const states = diagram.nodes.filter((n) => n.type === 'state');
   for (const n of states) {
-    for (const [what, present] of [
-      ['requests', n.requests?.length],
-      ['timeouts', n.timers?.length],
-    ] as const) {
-      if (present) warnings.push(`The ${what} of state ${n.name} are not generated yet.`);
-    }
+    if (n.timers?.length) warnings.push(`The timeouts of state ${n.name} are not generated yet.`);
   }
 
   const stateName = new Map<string, string>();
@@ -117,9 +149,18 @@ export function generateSaga(diagram: Diagram): GenerateResult {
 
   const eventNames: string[] = [];
   for (const e of [...usable.map((x) => x.event!), ...states.flatMap((s) => s.ignores ?? [])]) {
-    if (!eventNames.includes(e)) eventNames.push(e);
+    if (!eventNames.includes(e) && !answerOf(e)) eventNames.push(e);
   }
   const eventProperty = new Map(eventNames.map((e) => [e, names.of(e, 'Event', e, 'Event')]));
+  const requestProperty = new Map(
+    requestList.map((r) => [r.name, names.of(r.name, 'Request', r.name, 'Request')]),
+  );
+  const eventRef = (event: string): string => {
+    const answer = answerOf(event);
+    return answer && requestProperty.has(answer.request)
+      ? `${requestProperty.get(answer.request)}.${answer.outcome}`
+      : eventProperty.get(event)!;
+  };
   const messageType = (event: string): string =>
     identifier(eventInfo.get(event)?.messageType ?? event, 'Message');
 
@@ -134,6 +175,11 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   const messageOf = (a: Activity): string => identifier(a.name, 'Message');
   const activityCode = (a: Activity): string =>
     `.${a.kind === 'command' ? 'Send' : 'Publish'}(context => new ${messageOf(a)} { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })`;
+
+  const requestMessage = (name: string): string => `${requestProperty.get(name)}Request`;
+  const requestResponse = (name: string): string => `${requestProperty.get(name)}Response`;
+  const requestCode = (name: string): string =>
+    `.Request(${requestProperty.get(name)}, context => new ${requestMessage(name)} { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })`;
 
   // ---- the state machine
   const body: string[] = [];
@@ -151,6 +197,13 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     }
   }
   if (eventNames.length) body.push('');
+  for (const r of requestList) {
+    const property = requestProperty.get(r.name)!;
+    body.push(
+      `${ctor}Request(() => ${property}, x => x.${property}RequestId${requestTimeout(r.timeout)});`,
+    );
+  }
+  if (requestList.length) body.push('');
 
   const endOf = (edge: DiagramEdge): string => {
     const target = nodes.get(edge.target)!;
@@ -163,15 +216,15 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   const todoGuard = (guard: string): string => `true /* TODO guard: ${comment(guard)} */`;
   const transition = (edge: DiagramEdge, depth: number): string => {
     const when = edge.guard
-      ? `When(${eventProperty.get(edge.event!)}, context => ${todoGuard(edge.guard)})`
-      : `When(${eventProperty.get(edge.event!)})`;
+      ? `When(${eventRef(edge.event!)}, context => ${todoGuard(edge.guard)})`
+      : `When(${eventRef(edge.event!)})`;
     const end = endOf(edge);
     return `${indent(depth)}${when}${end ? `\n${indent(depth + 1)}${end}` : ''}`;
   };
   /** Two edges on one event, the first guarded and the second its opposite: one `IfElse`. */
   const ifElse = (first: DiagramEdge, second: DiagramEdge, depth: number): string =>
     [
-      `${indent(depth)}When(${eventProperty.get(first.event!)})`,
+      `${indent(depth)}When(${eventRef(first.event!)})`,
       `${indent(depth + 1)}.IfElse(context => ${todoGuard(first.guard!)},`,
       `${indent(depth + 2)}then => then${endOf(first)},`,
       `${indent(depth + 2)}otherwise => otherwise${endOf(second)})`,
@@ -228,12 +281,13 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     block('DuringAny', edgesFrom(any));
   }
   for (const state of states) {
-    const acts = state.activities ?? [];
-    if (!acts.length) continue;
+    const calls = [
+      ...(state.requests ?? []).map((r) => requestCode(r.name)),
+      ...(state.activities ?? []).map(activityCode),
+    ];
+    if (!calls.length) continue;
     body.push(`${ctor}WhenEnter(${stateName.get(state.id)}, binder => binder`);
-    acts.forEach((a, i) =>
-      body.push(`${indent(3)}${activityCode(a)}${i === acts.length - 1 ? ');' : ''}`),
-    );
+    calls.forEach((c, i) => body.push(`${indent(3)}${c}${i === calls.length - 1 ? ');' : ''}`));
     body.push('');
   }
   if (
@@ -252,6 +306,11 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     ...eventNames.map(
       (e) =>
         `${indent(1)}public Event<${messageType(e)}> ${eventProperty.get(e)} { get; private set; } = null!;`,
+    ),
+    ...(eventNames.length && requestList.length ? [''] : []),
+    ...requestList.map(
+      (r) =>
+        `${indent(1)}public Request<${instanceType}, ${requestMessage(r.name)}, ${requestResponse(r.name)}> ${requestProperty.get(r.name)} { get; private set; } = null!;`,
     ),
   ];
 
@@ -310,6 +369,9 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       `${indent(1)}public Guid CorrelationId { get; set; }`,
       `${indent(1)}public string ${stateProperty} { get; set; } = null!;`,
       ...extra(sagaProps, 'set'),
+      ...requestList.map(
+        (r) => `${indent(1)}public Guid? ${requestProperty.get(r.name)}RequestId { get; set; }`,
+      ),
       '}',
     ]),
   ];
@@ -319,6 +381,7 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   for (const m of [
     ...eventNames.map(messageType),
     ...states.flatMap((s) => (s.activities ?? []).map(messageOf)),
+    ...requestList.flatMap((r) => [requestMessage(r.name), requestResponse(r.name)]),
   ]) {
     if (!contractNames.includes(m)) contractNames.push(m);
   }

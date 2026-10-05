@@ -210,37 +210,66 @@ interface Transition {
   event: string;
   guard?: string;
   activities: Activity[];
+  /** The requests made on entering the target, by name. */
+  requests: string[];
   at: SourceLocation;
 }
 
-/** Calls that change the flow and are not mapped yet. */
 /**
- * The text of a guard: the body of its lambda. A guard that Ariadne generated (`true` and a TODO comment
- * "guard: X") gives X back, so that a round trip keeps what the diagram said.
+ * The text of a TODO comment ("TODO guard: X" or "TODO timeout: X" in a block comment) right after `node`. Ariadne writes the text of a
+ * guard or a timeout there, so that a round trip keeps what the diagram said.
  */
-function guardText(lambda: SyntaxNode): string {
-  const body = lambdaBody(lambda) ?? lambda;
-  const text = body.text.replace(/\s+/g, ' ');
-  if (text !== 'true') return text;
+function todoNote(node: SyntaxNode, kind: string): string | undefined {
   const comments: string[] = [];
-  for (let n: SyntaxNode | null = body; n && comments.length < 2; n = n.parent) {
+  for (let n: SyntaxNode | null = node; n && !comments.length; n = n.parent) {
     for (let next = n.nextSibling; next?.type === 'comment'; next = next.nextSibling) {
       comments.push(next.text);
     }
-    if (comments.length || n.type === 'argument_list') break;
+    if (n.type === 'argument_list') break;
   }
-  const found = comments.join(' ').match(/^\/\*\s*TODO guard:\s*(.*?)\s*\*\/$/);
-  return found ? found[1].replace(/\* \//g, '*/') : text;
+  const found = comments.join(' ').match(new RegExp(`^/\\*\\s*TODO ${kind}:\\s*(.*?)\\s*\\*/$`));
+  return found ? found[1].replace(/\* \//g, '*/') : undefined;
 }
 
-const UNSUPPORTED = new Set([
-  'IfAsync',
-  'IfElseAsync',
-  'Schedule',
-  'Unschedule',
-  'Request',
-  'Switch',
-]);
+/** The text of a guard: the body of its lambda; a generated `true` gives the guard it stands for. */
+function guardText(lambda: SyntaxNode): string {
+  const body = lambdaBody(lambda) ?? lambda;
+  const text = body.text.replace(/\s+/g, ' ');
+  return (text === 'true' ? todoNote(body, 'guard') : undefined) ?? text;
+}
+
+const REQUEST_OUTCOMES: readonly string[] = ['Completed', 'Faulted', 'TimeoutExpired'];
+
+/** The event a `When(…)` waits for: `Ask.Completed` keeps the request it belongs to. */
+function eventName(node: SyntaxNode | null): string | null {
+  const name = lastName(node);
+  if (node?.type === 'member_access_expression' && name && REQUEST_OUTCOMES.includes(name)) {
+    const owner = lastName(node.childForFieldName('expression'));
+    if (owner) return `${owner}.${name}`;
+  }
+  return name;
+}
+
+const DURATION_UNITS: Record<string, string> = {
+  Milliseconds: 'ms',
+  Seconds: 's',
+  Minutes: 'm',
+  Hours: 'h',
+  Days: 'd',
+};
+
+/** `TimeSpan.FromSeconds(30)` as `30s`; anything else as it is written. */
+function durationText(node: SyntaxNode): string {
+  const note = todoNote(node, 'timeout');
+  if (note) return note;
+  const text = node.text.replace(/\s+/g, ' ');
+  const found = text.match(/^TimeSpan\.From(\w+)\(\s*(\d+(?:\.\d+)?)\s*\)$/);
+  const unit = found ? DURATION_UNITS[found[1]] : undefined;
+  if (found && unit) return `${found[2]}${unit}`;
+  return text;
+}
+
+const UNSUPPORTED = new Set(['IfAsync', 'IfElseAsync', 'Schedule', 'Unschedule', 'Switch']);
 
 class SagaReader {
   private readonly states = new Map<string, SourceLocation>();
@@ -248,6 +277,8 @@ class SagaReader {
   private readonly methods = new Map<string, SyntaxNode>();
   private readonly transitions: Transition[] = [];
   private readonly enterActivities = new Map<string, Activity[]>();
+  private readonly enterRequests = new Map<string, string[]>();
+  private readonly requests = new Map<string, { timeout?: string }>();
   private readonly ignores = new Map<string, string[]>();
   private readonly said = new Set<string>();
   private stateProperty: string | undefined;
@@ -341,6 +372,9 @@ class SagaReader {
         case 'WhenEnter':
           this.readWhenEnter(call, at);
           break;
+        case 'Request':
+          this.readRequest(call, at);
+          break;
         case 'SetCompletedWhenFinalized':
         case 'SetCompleted':
           break;
@@ -351,7 +385,6 @@ class SagaReader {
         case 'AfterLeave':
         case 'Finally':
         case 'CompositeEvent':
-        case 'Request':
         case 'Schedule':
         case 'Fault':
         case 'OnUnhandledEvent':
@@ -367,6 +400,34 @@ class SagaReader {
     const lambda = call.args[0];
     const body = lambda ? lambdaBody(lambda) : null;
     if (body?.type === 'member_access_expression') this.stateProperty = lastName(body) ?? undefined;
+  }
+
+  /** `Request(() => Ask, x => x.RequestId, r => r.Timeout = …)`: a request and how long it waits. */
+  private readRequest(call: Call, at: SourceLocation): void {
+    const lambda = call.args[0];
+    const name = lambda ? lastName(lambdaBody(lambda)) : null;
+    if (!name) {
+      this.warn(at, 'Request(…) names no request that could be read.');
+      return;
+    }
+    let timeout: string | undefined;
+    for (const arg of call.args.slice(1)) {
+      for (const node of [arg, ...descendants(arg)]) {
+        const right =
+          node.type === 'assignment_expression' ? node.childForFieldName('right') : null;
+        if (right && lastName(node.childForFieldName('left')) === 'Timeout') {
+          timeout = durationText(right);
+        }
+      }
+    }
+    this.requests.set(name, timeout ? { timeout } : {});
+  }
+
+  /** `Request(Ask, context => new Ask(…))` in a chain: the request, by name. */
+  private requestIn(call: Call, place: SourceLocation): string | undefined {
+    const name = lastName(call.args[0] ?? null);
+    if (!name) this.warn(place, 'Request(…) names no request that could be read.');
+    return name ?? undefined;
   }
 
   /** `Event(() => X, x => x.CorrelateById(…))`: what correlates the event. */
@@ -451,7 +512,7 @@ class SagaReader {
   /** One `When(E)…` chain: a transition from each source. */
   private readWhen(sources: string[], chain: Chain, at: SourceLocation): void {
     const [when, ...calls] = chain.calls;
-    const event = lastName(when.args[0] ?? null);
+    const event = eventName(when.args[0] ?? null);
     if (!event) {
       this.warn(
         { path: at.path, line: callLine(when) },
@@ -466,6 +527,7 @@ class SagaReader {
     }
     let target: string | undefined;
     const activities: Activity[] = [];
+    const requests: string[] = [];
     const branches: Branch[] = [];
     for (const call of calls) {
       const place = { path: at.path, line: callLine(call) };
@@ -479,6 +541,9 @@ class SagaReader {
       } else if (['Send', 'SendAsync', 'Publish', 'PublishAsync'].includes(call.name)) {
         const activity = this.activityOf(call, place);
         if (activity) activities.push(activity);
+      } else if (call.name === 'Request') {
+        const request = this.requestIn(call, place);
+        if (request) requests.push(request);
       } else if (UNSUPPORTED.has(call.name)) {
         this.warn(place, `${call.name}(…) is not shown in the diagram yet.`);
       } else {
@@ -503,6 +568,7 @@ class SagaReader {
           event,
           ...(way.guard ? { guard: way.guard } : {}),
           activities: [...activities, ...way.activities],
+          requests,
           at: { path: at.path, line: callLine(when) },
         });
       }
@@ -573,6 +639,10 @@ class SagaReader {
         if (activity) {
           this.enterActivities.set(state, [...(this.enterActivities.get(state) ?? []), activity]);
         }
+      } else if (inner.name === 'Request') {
+        const request = this.requestIn(inner, place);
+        if (request)
+          this.enterRequests.set(state, [...(this.enterRequests.get(state) ?? []), request]);
       } else {
         this.warnOnce(place, `${inner.name}(…) runs code; it is left out of the diagram.`);
       }
@@ -687,6 +757,7 @@ class SagaReader {
 
     // Activities belong to the state a transition leads into; WhenEnter ones to their state.
     const entering = new Map<string, Activity[][]>();
+    const requesting = new Map<string, string[][]>();
     const edges: DiagramEdge[] = [];
     for (const t of this.transitions) {
       const source = ids.get(t.source)!;
@@ -711,19 +782,21 @@ class SagaReader {
         ...(t.guard ? { guard: t.guard } : {}),
       });
       locations.transitions[id] = t.at;
+      const things = [...t.activities.map((a) => a.name), ...t.requests];
       if (target === FINAL) {
-        if (t.activities.length) {
+        if (things.length) {
           this.warn(
             t.at,
-            `${t.activities.map((a) => a.name).join(', ')} on the way to the final state cannot be shown: nothing happens in a final state.`,
+            `${things.join(', ')} on the way to the final state cannot be shown: nothing happens in a final state.`,
           );
         }
       } else {
         entering.set(target, [...(entering.get(target) ?? []), t.activities]);
-        if (t.target === undefined && t.activities.length) {
+        requesting.set(target, [...(requesting.get(target) ?? []), t.requests]);
+        if (t.target === undefined && things.length) {
           this.warn(
             t.at,
-            `${t.event} keeps the saga in ${t.source}; ${t.activities.map((a) => a.name).join(', ')} is shown on entering it.`,
+            `${t.event} keeps the saga in ${t.source}; ${things.join(', ')} is shown on entering it.`,
           );
         }
       }
@@ -736,7 +809,22 @@ class SagaReader {
       const lists = entering.get(name) ?? [];
       const merged = dedupe([...fromEnter, ...lists.flat()]);
       if (merged.length) node.activities = merged;
-      const distinct = new Set(lists.map((l) => l.map((a) => `${a.kind}:${a.name}`).join(',')));
+      const asked = requesting.get(name) ?? [];
+      const requests = dedupe([...(this.enterRequests.get(name) ?? []), ...asked.flat()]);
+      if (requests.length) {
+        node.requests = requests.map((request) => ({
+          name: request,
+          ...(this.requests.get(request)?.timeout
+            ? { timeout: this.requests.get(request)!.timeout }
+            : {}),
+        }));
+      }
+      const distinct = new Set(
+        lists.map(
+          (l, i) =>
+            l.map((a) => `${a.kind}:${a.name}`).join(',') + `|${(asked[i] ?? []).join(',')}`,
+        ),
+      );
       if (distinct.size > 1) {
         this.warn(
           this.states.get(name)!,

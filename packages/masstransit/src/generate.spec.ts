@@ -133,18 +133,23 @@ describe('generateSaga', () => {
       direction: 'top-bottom',
       nodes: [
         { id: 'a', type: 'start', name: 'Initial' },
-        { id: 's', type: 'state', name: 'Checking', requests: [{ name: 'Validate' }] },
+        {
+          id: 's',
+          type: 'state',
+          name: 'Checking',
+          timers: [{ action: 'schedule', name: 'Reminder' }],
+        },
         { id: 'z', type: 'end', name: 'Final' },
       ],
       edges: [
         { id: '1', source: 'a', target: 's', kind: 'forward' },
-        { id: '2', source: 's', target: 'z', kind: 'forward', event: 'Validate.Completed' },
+        { id: '2', source: 's', target: 'z', kind: 'forward', event: 'Nobody.Completed' },
       ],
     };
     expect(generateSaga(d).warnings).toEqual([
       'The transition Initial → Checking has no event: not generated.',
-      'Validate.Completed is the answer of a request, which is not generated yet.',
-      'The requests of state Checking are not generated yet.',
+      'Nobody.Completed is the answer of a request no state makes: not generated.',
+      'The timeouts of state Checking are not generated yet.',
     ]);
   });
 });

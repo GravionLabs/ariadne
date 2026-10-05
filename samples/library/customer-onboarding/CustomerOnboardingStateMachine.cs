@@ -19,13 +19,13 @@ public class CustomerOnboardingStateMachine : MassTransitStateMachine<CustomerOn
         Event(() => EmailVerified);
         Event(() => ReminderDue);
         Event(() => VerificationExpired);
-        Event(() => KycApproved);
-        Event(() => KycRejected);
-        Event(() => KycTimedOut);
         Event(() => AccountActivated);
         Event(() => WelcomeSequenceCompleted);
         Event(() => CleanupCompleted);
         Event(() => DeclineNoticeSent);
+
+        // The identity check is a request to the provider: one answer, a failure, or silence for two days.
+        Request(() => IdentityCheck, x => x.IdentityCheckRequestId, r => r.Timeout = TimeSpan.FromDays(2));
 
         Initially(
             When(SignUpReceived)
@@ -34,7 +34,7 @@ public class CustomerOnboardingStateMachine : MassTransitStateMachine<CustomerOn
 
         During(AwaitingVerification,
             When(EmailVerified)
-                .Send(context => new StartKycCheck(context.Saga.CorrelationId))
+                .Request(IdentityCheck, context => new StartKycCheck(context.Saga.CorrelationId))
                 .TransitionTo(CheckingIdentity),
             When(ReminderDue)
                 .Send(context => new SendReminderEmail(context.Saga.CorrelationId))
@@ -44,18 +44,22 @@ public class CustomerOnboardingStateMachine : MassTransitStateMachine<CustomerOn
 
         During(Reminded,
             When(EmailVerified)
-                .Send(context => new StartKycCheck(context.Saga.CorrelationId))
+                .Request(IdentityCheck, context => new StartKycCheck(context.Saga.CorrelationId))
                 .TransitionTo(CheckingIdentity),
             When(VerificationExpired)
                 .TransitionTo(Abandoning));
 
         During(CheckingIdentity,
-            When(KycApproved)
-                .Send(context => new ActivateAccount(context.Saga.CorrelationId))
-                .TransitionTo(Activating),
-            When(KycRejected)
+            When(IdentityCheck.Completed)
+                .IfElse(context => context.Message.Approved,
+                    approved => approved
+                        .Send(context => new ActivateAccount(context.Saga.CorrelationId))
+                        .TransitionTo(Activating),
+                    rejected => rejected
+                        .TransitionTo(Declined)),
+            When(IdentityCheck.Faulted)
                 .TransitionTo(Declined),
-            When(KycTimedOut)
+            When(IdentityCheck.TimeoutExpired)
                 .TransitionTo(Declined));
 
         During(Activating,
@@ -101,11 +105,10 @@ public class CustomerOnboardingStateMachine : MassTransitStateMachine<CustomerOn
     public Event<EmailVerified> EmailVerified { get; private set; } = null!;
     public Event<ReminderDue> ReminderDue { get; private set; } = null!;
     public Event<VerificationExpired> VerificationExpired { get; private set; } = null!;
-    public Event<KycApproved> KycApproved { get; private set; } = null!;
-    public Event<KycRejected> KycRejected { get; private set; } = null!;
-    public Event<KycTimedOut> KycTimedOut { get; private set; } = null!;
     public Event<AccountActivated> AccountActivated { get; private set; } = null!;
     public Event<WelcomeSequenceCompleted> WelcomeSequenceCompleted { get; private set; } = null!;
     public Event<CleanupCompleted> CleanupCompleted { get; private set; } = null!;
     public Event<DeclineNoticeSent> DeclineNoticeSent { get; private set; } = null!;
+
+    public Request<CustomerOnboardingState, StartKycCheck, KycResult> IdentityCheck { get; private set; } = null!;
 }

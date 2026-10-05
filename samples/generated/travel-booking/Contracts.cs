@@ -115,3 +115,27 @@ public record CancelReservations
     public Guid CorrelationId { get; init; }
     // TODO: add the properties of the message
 }
+
+public record ValidateTravellerRequest
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record ValidateTravellerResponse
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record CheckAvailabilityRequest
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record CheckAvailabilityResponse
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}

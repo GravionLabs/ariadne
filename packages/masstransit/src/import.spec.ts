@@ -349,15 +349,13 @@ describe('importSagas on small sagas', () => {
 
   it('says so for declarations in the constructor that are not drawn, instead of dropping them', () => {
     const result = importSagas(
-      saga(`Request(() => Ask, x => x.RequestId);
-        Schedule(() => Reminder, x => x.TimeoutId, s => s.Delay = TimeSpan.FromMinutes(1));
+      saga(`Schedule(() => Reminder, x => x.TimeoutId, s => s.Delay = TimeSpan.FromMinutes(1));
         Fault<Start>(Start);
         OnUnhandledEvent(x => x.Ignore());
         Initially(When(Start).TransitionTo(Working));`),
       parser,
     );
     expect(messages(result)).toEqual([
-      'DemoStateMachine: Request(…) is not shown in the diagram yet.',
       'DemoStateMachine: Schedule(…) is not shown in the diagram yet.',
       'DemoStateMachine: Fault(…) is not shown in the diagram yet.',
       'DemoStateMachine: OnUnhandledEvent(…) is not shown in the diagram yet.',
@@ -399,6 +397,56 @@ describe('importSagas on small sagas', () => {
     expect(messages(result)).toEqual([
       'DemoStateMachine: Then(…) runs code; it is left out of the diagram.',
       'DemoStateMachine: If(…) is not shown in the diagram yet.',
+    ]);
+  });
+
+  it('reads a request: the declaration, the call on entry and the three answers', () => {
+    const result = importSagas(
+      saga(`Request(() => Ask, x => x.RequestId, r => r.Timeout = TimeSpan.FromSeconds(30));
+        Initially(When(Start).Request(Ask, ctx => new AskIt()).TransitionTo(Working));
+        During(Working,
+          When(Ask.Completed).TransitionTo(Waiting),
+          When(Ask.Faulted).Finalize(),
+          When(Ask.TimeoutExpired).TransitionTo(Waiting));`),
+      parser,
+    );
+    const d = only(result);
+    expect(messages(result)).toEqual([]);
+    expect(d.nodes.find((n) => n.name === 'Working')?.requests).toEqual([
+      { name: 'Ask', timeout: '30s' },
+    ]);
+    expect(edgesOf(d)).toEqual([
+      'Initial -Start-> Working',
+      'Working -Ask.Completed-> Waiting',
+      'Working -Ask.Faulted-> Final',
+      'Working -Ask.TimeoutExpired-> Waiting',
+    ]);
+  });
+
+  it('reads a request made in WhenEnter, keeps an odd timeout as written, and a request without one', () => {
+    const d = only(
+      importSagas(
+        saga(`Request(() => Ask, x => x.RequestId, r => r.Timeout = Settings.AskTimeout);
+          Request(() => Check, x => x.CheckId);
+          Initially(When(Start).TransitionTo(Working));
+          WhenEnter(Working, b => b.Request(Ask, ctx => new AskIt()).Request(Check, ctx => new CheckIt()));`),
+        parser,
+      ),
+    );
+    expect(d.nodes.find((n) => n.name === 'Working')?.requests).toEqual([
+      { name: 'Ask', timeout: 'Settings.AskTimeout' },
+      { name: 'Check' },
+    ]);
+  });
+
+  it('warns about a request on the way to the final state', () => {
+    const result = importSagas(
+      saga(`Initially(When(Start).TransitionTo(Working));
+        During(Working, When(Next).Request(Ask, ctx => new AskIt()).Finalize());`),
+      parser,
+    );
+    expect(messages(result)).toEqual([
+      'DemoStateMachine: Ask on the way to the final state cannot be shown: nothing happens in a final state.',
     ]);
   });
 

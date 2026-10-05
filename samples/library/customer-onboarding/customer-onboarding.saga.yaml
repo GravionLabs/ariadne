@@ -23,8 +23,9 @@ nodes:
   - id: state-checking-identity
     type: state
     name: CheckingIdentity
-    activities:
-      - command: StartKycCheck
+    requests:
+      - request: IdentityCheck
+        timeout: 2d
   - id: state-activating
     type: state
     name: Activating
@@ -86,33 +87,40 @@ edges:
     source: state-checking-identity
     target: state-activating
     kind: forward
-    event: KycApproved
+    event: IdentityCheck.Completed
+    guard: context.Message.Approved
   - id: edge-8
     source: state-checking-identity
     target: state-declined
     kind: forward
-    event: KycRejected
+    event: IdentityCheck.Completed
+    guard: "!(context.Message.Approved)"
   - id: edge-9
     source: state-checking-identity
     target: state-declined
     kind: forward
-    event: KycTimedOut
+    event: IdentityCheck.Faulted
   - id: edge-10
+    source: state-checking-identity
+    target: state-declined
+    kind: forward
+    event: IdentityCheck.TimeoutExpired
+  - id: edge-11
     source: state-activating
     target: state-welcoming
     kind: forward
     event: AccountActivated
-  - id: edge-11
+  - id: edge-12
     source: state-welcoming
     target: end-1
     kind: forward
     event: WelcomeSequenceCompleted
-  - id: edge-12
+  - id: edge-13
     source: state-abandoning
     target: end-1
     kind: forward
     event: CleanupCompleted
-  - id: edge-13
+  - id: edge-14
     source: state-declined
     target: end-1
     kind: forward

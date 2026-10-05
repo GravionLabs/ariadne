@@ -15,13 +15,12 @@ public class CustomerOnboardingStateMachine : MassTransitStateMachine<CustomerOn
         Event(() => EmailVerified);
         Event(() => ReminderDue);
         Event(() => VerificationExpired);
-        Event(() => KycApproved);
-        Event(() => KycRejected);
-        Event(() => KycTimedOut);
         Event(() => AccountActivated);
         Event(() => WelcomeSequenceCompleted);
         Event(() => CleanupCompleted);
         Event(() => DeclineNoticeSent);
+
+        Request(() => IdentityCheck, x => x.IdentityCheckRequestId, r => r.Timeout = TimeSpan.FromDays(2));
 
         Initially(
             When(SignUpReceived)
@@ -42,11 +41,13 @@ public class CustomerOnboardingStateMachine : MassTransitStateMachine<CustomerOn
                 .TransitionTo(Abandoning));
 
         During(CheckingIdentity,
-            When(KycApproved)
-                .TransitionTo(Activating),
-            When(KycRejected)
+            When(IdentityCheck.Completed)
+                .IfElse(context => true /* TODO guard: context.Message.Approved */,
+                    then => then.TransitionTo(Activating),
+                    otherwise => otherwise.TransitionTo(Declined)),
+            When(IdentityCheck.Faulted)
                 .TransitionTo(Declined),
-            When(KycTimedOut)
+            When(IdentityCheck.TimeoutExpired)
                 .TransitionTo(Declined));
 
         During(Activating,
@@ -72,7 +73,7 @@ public class CustomerOnboardingStateMachine : MassTransitStateMachine<CustomerOn
             .Send(context => new SendReminderEmail { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
 
         WhenEnter(CheckingIdentity, binder => binder
-            .Send(context => new StartKycCheck { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
+            .Request(IdentityCheck, context => new IdentityCheckRequest { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
 
         WhenEnter(Activating, binder => binder
             .Send(context => new ActivateAccount { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ }));
@@ -104,11 +105,10 @@ public class CustomerOnboardingStateMachine : MassTransitStateMachine<CustomerOn
     public Event<EmailVerified> EmailVerified { get; private set; } = null!;
     public Event<ReminderDue> ReminderDue { get; private set; } = null!;
     public Event<VerificationExpired> VerificationExpired { get; private set; } = null!;
-    public Event<KycApproved> KycApproved { get; private set; } = null!;
-    public Event<KycRejected> KycRejected { get; private set; } = null!;
-    public Event<KycTimedOut> KycTimedOut { get; private set; } = null!;
     public Event<AccountActivated> AccountActivated { get; private set; } = null!;
     public Event<WelcomeSequenceCompleted> WelcomeSequenceCompleted { get; private set; } = null!;
     public Event<CleanupCompleted> CleanupCompleted { get; private set; } = null!;
     public Event<DeclineNoticeSent> DeclineNoticeSent { get; private set; } = null!;
+
+    public Request<CustomerOnboardingState, IdentityCheckRequest, IdentityCheckResponse> IdentityCheck { get; private set; } = null!;
 }
