@@ -15,8 +15,9 @@ A diagram is a saga **state machine**, the way MassTransit writes it. States do 
 | Compensation                             | the undo action for the work that led to the state |
 
 **View mode:** the eye button in the toolbar hides the "+" buttons and the dotted lines that lead to them, to read a
-diagram or take a screenshot. Nothing else changes (you can still select, use the inspector and the keyboard), and the
-choice is remembered. Exports never contain the "+" buttons.
+diagram or take a screenshot. Nothing else changes (you can still select, use the inspector and the keyboard). It lasts
+until you switch it off or close the editor: the editor always opens in edit mode. Exports never contain the "+"
+buttons.
 
 ## States
 

@@ -170,13 +170,13 @@ export class Editor {
   /** Transitions that close a loop: not laid out, their label rides on the line. */
   /**
    * View mode: the "+" buttons and the dotted lines to them are hidden, to read or to take a
-   * screenshot. Everything else still edits (inspector, keyboard, dragging a connection). Remembered.
+   * screenshot. Everything else still edits (inspector, keyboard, dragging a connection). For this
+   * session only: the editor always opens in edit mode (#388).
    */
-  protected readonly insertHidden = signal(remembered('hide-insert') === '1');
+  protected readonly insertHidden = signal(false);
 
   protected toggleInsertHidden(): void {
     this.insertHidden.update((hidden) => !hidden);
-    remember('hide-insert', this.insertHidden() ? '1' : '0');
   }
 
   /** Whether the "+" buttons are shown: not while walking (read-only), nor in view mode. */
@@ -221,6 +221,8 @@ export class Editor {
   protected readonly origin: Point = { x: 0, y: 0 };
 
   constructor() {
+    // Earlier versions kept view mode across sessions; the editor now always opens in edit mode.
+    forget('hide-insert');
     // Runs after every relayout: fit or select once the new geometry is on the canvas.
     effect((onCleanup) => {
       this.layout.positions();
@@ -705,6 +707,14 @@ function remembered(key: string): string | null {
     return localStorage.getItem(`ariadne.${key}`);
   } catch {
     return null;
+  }
+}
+
+function forget(key: string): void {
+  try {
+    localStorage.removeItem(`ariadne.${key}`);
+  } catch {
+    // Nothing kept: fine.
   }
 }
 

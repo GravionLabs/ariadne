@@ -727,25 +727,34 @@ describe('Editor', () => {
       expect(el.querySelector('app-transition-label .insert')).not.toBeNull();
     });
 
-    it('is remembered, and still lets the diagram be edited by other means', async () => {
+    it('lasts for the session only: a new editor opens in edit mode, and the diagram still edits', async () => {
       const first = await setup();
       toggle(first.el).click();
       await first.settle();
-      expect(localStorage.getItem('ariadne.hide-insert')).toBe('1');
+      expect(toggle(first.el).getAttribute('aria-pressed')).toBe('true');
+      expect(localStorage.getItem('ariadne.hide-insert')).toBeNull();
+      // Other means of editing still work in view mode.
+      await first.select(['start-1']);
+      expect(first.el.querySelector('app-inspector')).not.toBeNull();
+      first.store.appendNode('start-1', 'state');
+      await first.settle();
+      expect(first.el.querySelectorAll('app-node-card').length).toBe(2);
+      expect(slotButton(first.el)).toBeNull();
       first.fixture.destroy();
 
-      // A new editor starts in view mode.
       TestBed.resetTestingModule();
-      const { el, store, select, settle } = await setup();
-      expect(toggle(el).getAttribute('aria-pressed')).toBe('true');
-      expect(slotButton(el)).toBeNull();
+      const { el } = await setup();
+      expect(toggle(el).getAttribute('aria-pressed')).toBe('false');
+    });
 
-      await select(['start-1']);
-      expect(el.querySelector('app-inspector')).not.toBeNull();
+    it('opens in edit mode even when an earlier version kept view mode, and forgets that', async () => {
+      localStorage.setItem('ariadne.hide-insert', '1');
+      const { el, store, settle } = await setup();
       store.appendNode('start-1', 'state');
       await settle();
-      expect(el.querySelectorAll('app-node-card').length).toBe(2);
-      expect(slotButton(el)).toBeNull();
+      expect(toggle(el).getAttribute('aria-pressed')).toBe('false');
+      expect(slotButton(el)).not.toBeNull();
+      expect(localStorage.getItem('ariadne.hide-insert')).toBeNull();
     });
 
     it('is in the toolbox of VS Code too', async () => {
