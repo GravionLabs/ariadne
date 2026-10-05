@@ -13,7 +13,7 @@ guard); `TransitionTo`, `Finalize` and `Ignore`; `Send` and `Publish` (shown as 
 helper methods of the same class; partial classes spread over several files; `Event(() => E, x => x.CorrelateById(...))`.
 
 What is not drawn is listed as a **warning with file and line**: code that runs in `Then(...)`,
-`Schedule`, `Fault`, `OnUnhandledEvent` and their declarations in the constructor, or a base class that
+`Fault`, `OnUnhandledEvent` and their declarations in the constructor, or a base class that
 cannot be resolved. The diagram is a view of the structure, not of every
 line of code.
 
@@ -33,7 +33,7 @@ without a folder picker).
 The generated code is a starting point:
 
 - search for `TODO`: the properties of the messages, and every guard, are left for you;
-- joins and per-state timeouts are not generated yet and are listed in the dialog;
+- joins are not generated yet and are listed in the dialog;
 - names are turned into C# identifiers (`Charging payment` → `ChargingPayment`), and a clash gets a number.
 
 Save generated files where you want them; Ariadne never overwrites a project.

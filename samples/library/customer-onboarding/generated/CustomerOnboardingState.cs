@@ -10,4 +10,6 @@ public class CustomerOnboardingState : SagaStateMachineInstance
     public Guid CorrelationId { get; set; }
     public string CurrentState { get; set; } = null!;
     public Guid? IdentityCheckRequestId { get; set; }
+    public Guid? ReminderTokenId { get; set; }
+    public Guid? ExpiryTokenId { get; set; }
 }

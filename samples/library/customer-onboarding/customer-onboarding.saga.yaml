@@ -15,6 +15,11 @@ nodes:
     name: AwaitingVerification
     activities:
       - command: SendVerificationEmail
+    timers:
+      - schedule: Reminder
+        delay: 24h
+      - schedule: Expiry
+        delay: 7d
   - id: state-reminded
     type: state
     name: Reminded
@@ -26,6 +31,9 @@ nodes:
     requests:
       - request: IdentityCheck
         timeout: 2d
+    timers:
+      - unschedule: Reminder
+      - unschedule: Expiry
   - id: state-activating
     type: state
     name: Activating
@@ -67,12 +75,12 @@ edges:
     source: state-awaiting-verification
     target: state-reminded
     kind: forward
-    event: ReminderDue
+    event: Reminder
   - id: edge-4
     source: state-awaiting-verification
     target: state-abandoning
     kind: forward
-    event: VerificationExpired
+    event: Expiry
   - id: edge-5
     source: state-reminded
     target: state-checking-identity
@@ -82,7 +90,7 @@ edges:
     source: state-reminded
     target: state-abandoning
     kind: forward
-    event: VerificationExpired
+    event: Expiry
   - id: edge-7
     source: state-checking-identity
     target: state-activating

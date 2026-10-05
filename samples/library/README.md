@@ -44,10 +44,9 @@ script and the list in the user guide pick the folder up; this table is the one 
 ## What a sample can use
 
 The importer reads what a diagram can show: `Initially`, `During`, `DuringAny`, `WhenEnter`, `When(Event)` with an
-optional filter (a guard), `If`/`IfElse` (a guard on each branch), `Request` with its answers `.Completed`, `.Faulted` and `.TimeoutExpired`, `Send`, `Publish`, `TransitionTo`, `Finalize` and `Ignore`. The tests require that the
+optional filter (a guard), `If`/`IfElse` (a guard on each branch), `Request` with its answers `.Completed`, `.Faulted` and `.TimeoutExpired`, `Schedule`/`Unschedule` with `.Received`, `Send`, `Publish`, `TransitionTo`, `Finalize` and `Ignore`. The tests require that the
 import gives **no warning**, so a sample leaves out what is not read yet:
 
-- `Schedule`, `CompositeEvent` (a join) and code in `Then(...)`. A timeout is an event the scheduler sends
-  (`ReminderDue`), and a wait for several things is a chain of states.
+- `CompositeEvent` (a join) and code in `Then(...)`. A wait for several things is a chain of states.
 - Anything that happens on the way into the final state (`.Publish(...).Finalize()`): nothing can be shown there.
   A sample publishes when it enters an ordinary state (`WhenEnter`), and an event finalizes it later.

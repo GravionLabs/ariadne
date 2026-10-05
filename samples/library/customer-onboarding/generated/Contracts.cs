@@ -16,18 +16,6 @@ public record EmailVerified
     // TODO: add the properties of the message
 }
 
-public record ReminderDue
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
-public record VerificationExpired
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
 public record AccountActivated
 {
     public Guid CorrelationId { get; init; }
@@ -113,6 +101,18 @@ public record IdentityCheckRequest
 }
 
 public record IdentityCheckResponse
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record ReminderMessage
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record ExpiryMessage
 {
     public Guid CorrelationId { get; init; }
     // TODO: add the properties of the message

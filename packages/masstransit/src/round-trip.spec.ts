@@ -139,6 +139,50 @@ describe('generate → import', () => {
     expect(again.edges.map((e) => e.event)).toEqual(diagram.edges.map((e) => e.event));
   });
 
+  it('keeps timeouts: the delay, the order of Schedule and Unschedule, and the timeout path', async () => {
+    const diagram: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'start', name: 'Initial' },
+        {
+          id: 'b',
+          type: 'state',
+          name: 'Waiting',
+          timers: [
+            { action: 'schedule', name: 'PaymentTimeout', delay: '5m' },
+            { action: 'schedule', name: 'Reminder', delay: 'a day or so' },
+            { action: 'schedule', name: 'Nag' },
+          ],
+        },
+        {
+          id: 'c',
+          type: 'state',
+          name: 'Paid',
+          timers: [
+            { action: 'unschedule', name: 'PaymentTimeout' },
+            { action: 'unschedule', name: 'Reminder' },
+          ],
+        },
+        { id: 'z', type: 'end', name: 'Final' },
+      ],
+      edges: [
+        { id: 'e1', source: 'a', target: 'b', kind: 'forward', event: 'Placed' },
+        { id: 'e2', source: 'b', target: 'c', kind: 'forward', event: 'PaymentReceived' },
+        { id: 'e3', source: 'b', target: 'z', kind: 'forward', event: 'PaymentTimeout' },
+        { id: 'e4', source: 'c', target: 'z', kind: 'forward', event: 'Done' },
+      ],
+    };
+    const { files, warnings } = generateSaga(diagram);
+    expect(warnings).toEqual([]);
+    const code = files.find((f) => f.path === 'SagaStateMachine.cs')!.content;
+    expect(code).toContain('s.Delay = TimeSpan.FromMinutes(5);');
+    expect(code).toContain('When(PaymentTimeout.Received)');
+    expect(code).not.toContain('Event(() => PaymentTimeout');
+    const again = await roundTrip(diagram);
+    expect(again.nodes.map((n) => n.timers)).toEqual(diagram.nodes.map((n) => n.timers));
+    expect(again.edges.map((e) => e.event)).toEqual(diagram.edges.map((e) => e.event));
+  });
+
   it('keeps the saga metadata of the diagram', async () => {
     const diagram = parseDiagram(readFileSync(goldens[0].path, 'utf8'));
     const again = await roundTrip(diagram);

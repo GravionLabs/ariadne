@@ -135,7 +135,7 @@ describe('odd but valid C#', () => {
   it('says what it leaves out of the constructs it does not draw', () => {
     const result = importChecked([fixture('unsupported-and-odd-calls.cs')]);
     const said = messages(result).join('\n');
-    for (const call of ['CompositeEvent', 'Schedule', 'Switch', 'WhenLeave']) {
+    for (const call of ['CompositeEvent', 'Switch', 'WhenLeave']) {
       expect(said).toContain(`${call}(…)`);
     }
   });

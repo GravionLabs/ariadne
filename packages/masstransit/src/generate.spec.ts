@@ -133,12 +133,7 @@ describe('generateSaga', () => {
       direction: 'top-bottom',
       nodes: [
         { id: 'a', type: 'start', name: 'Initial' },
-        {
-          id: 's',
-          type: 'state',
-          name: 'Checking',
-          timers: [{ action: 'schedule', name: 'Reminder' }],
-        },
+        { id: 's', type: 'state', name: 'Checking' },
         { id: 'z', type: 'end', name: 'Final' },
       ],
       edges: [
@@ -149,7 +144,6 @@ describe('generateSaga', () => {
     expect(generateSaga(d).warnings).toEqual([
       'The transition Initial → Checking has no event: not generated.',
       'Nobody.Completed is the answer of a request no state makes: not generated.',
-      'The timeouts of state Checking are not generated yet.',
     ]);
   });
 });

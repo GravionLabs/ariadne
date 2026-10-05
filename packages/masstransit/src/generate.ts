@@ -66,6 +66,14 @@ const TIMEOUT_UNITS: Record<string, string> = {
   d: 'Days',
 };
 
+/** The lines setting the delay of a timeout: a duration, a TODO for other text, a reminder for none. */
+function scheduleDelay(delay: string | undefined): string[] {
+  if (!delay) return ['// TODO: set s.Delay, how long the timeout waits'];
+  const found = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h|d)$/.exec(delay.trim());
+  if (found) return [`s.Delay = TimeSpan.From${TIMEOUT_UNITS[found[2]]}(${found[1]});`];
+  return [`s.Delay = TimeSpan.FromMinutes(1); /* TODO delay: ${comment(delay)} */`];
+}
+
 /** `, r => r.Timeout = TimeSpan.FromSeconds(30)` for `30s`; a text that is no duration stays a TODO. */
 function requestTimeout(timeout: string | undefined): string {
   if (!timeout) return '';
@@ -113,6 +121,20 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       } else if (r.timeout && !known.timeout) known.timeout = r.timeout;
     }
   }
+  // The timeouts the states schedule or cancel, each once; the delay is the first one given.
+  const timerList: { name: string; scheduled: boolean; delay?: string }[] = [];
+  for (const n of states) {
+    for (const t of n.timers ?? []) {
+      let known = timerList.find((k) => k.name === t.name);
+      if (!known) timerList.push((known = { name: t.name, scheduled: false }));
+      if (t.action === 'schedule') {
+        known.scheduled = true;
+        if (t.delay && !known.delay) known.delay = t.delay;
+      }
+    }
+  }
+  const isTimeout = (event: string): boolean =>
+    timerList.some((t) => t.scheduled && t.name === event);
   const answerOf = (event: string): { request: string; outcome: string } | undefined => {
     const found = /^(.+)\.(Completed|Faulted|TimeoutExpired)$/.exec(event);
     return found ? { request: found[1], outcome: found[2] } : undefined;
@@ -140,22 +162,23 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       usable.push(edge);
     }
   }
-  for (const n of states) {
-    if (n.timers?.length) warnings.push(`The timeouts of state ${n.name} are not generated yet.`);
-  }
 
   const stateName = new Map<string, string>();
   for (const n of states) stateName.set(n.id, names.of(n.id, 'State', n.name, 'State'));
 
   const eventNames: string[] = [];
   for (const e of [...usable.map((x) => x.event!), ...states.flatMap((s) => s.ignores ?? [])]) {
-    if (!eventNames.includes(e) && !answerOf(e)) eventNames.push(e);
+    if (!eventNames.includes(e) && !answerOf(e) && !isTimeout(e)) eventNames.push(e);
   }
   const eventProperty = new Map(eventNames.map((e) => [e, names.of(e, 'Event', e, 'Event')]));
   const requestProperty = new Map(
     requestList.map((r) => [r.name, names.of(r.name, 'Request', r.name, 'Request')]),
   );
+  const timerProperty = new Map(
+    timerList.map((t) => [t.name, names.of(t.name, 'Timeout', t.name, 'Timeout')]),
+  );
   const eventRef = (event: string): string => {
+    if (isTimeout(event)) return `${timerProperty.get(event)}.Received`;
     const answer = answerOf(event);
     return answer && requestProperty.has(answer.request)
       ? `${requestProperty.get(answer.request)}.${answer.outcome}`
@@ -176,6 +199,11 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   const activityCode = (a: Activity): string =>
     `.${a.kind === 'command' ? 'Send' : 'Publish'}(context => new ${messageOf(a)} { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })`;
 
+  const timerMessage = (name: string): string => `${timerProperty.get(name)}Message`;
+  const timerCode = (t: { action: string; name: string }): string =>
+    t.action === 'schedule'
+      ? `.Schedule(${timerProperty.get(t.name)}, context => new ${timerMessage(t.name)} { CorrelationId = context.Saga.CorrelationId /* TODO: set the other properties */ })`
+      : `.Unschedule(${timerProperty.get(t.name)})`;
   const requestMessage = (name: string): string => `${requestProperty.get(name)}Request`;
   const requestResponse = (name: string): string => `${requestProperty.get(name)}Response`;
   const requestCode = (name: string): string =>
@@ -204,6 +232,17 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     );
   }
   if (requestList.length) body.push('');
+  for (const t of timerList) {
+    const property = timerProperty.get(t.name)!;
+    body.push(
+      `${ctor}Schedule(() => ${property}, x => x.${property}TokenId, s =>`,
+      `${ctor}{`,
+      ...scheduleDelay(t.delay).map((line) => `${indent(3)}${line}`),
+      `${indent(3)}s.Received = e => e.CorrelateById(context => context.Message.CorrelationId);`,
+      `${ctor}});`,
+    );
+  }
+  if (timerList.length) body.push('');
 
   const endOf = (edge: DiagramEdge): string => {
     const target = nodes.get(edge.target)!;
@@ -283,6 +322,7 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   for (const state of states) {
     const calls = [
       ...(state.requests ?? []).map((r) => requestCode(r.name)),
+      ...(state.timers ?? []).map(timerCode),
       ...(state.activities ?? []).map(activityCode),
     ];
     if (!calls.length) continue;
@@ -308,6 +348,11 @@ export function generateSaga(diagram: Diagram): GenerateResult {
         `${indent(1)}public Event<${messageType(e)}> ${eventProperty.get(e)} { get; private set; } = null!;`,
     ),
     ...(eventNames.length && requestList.length ? [''] : []),
+    ...(requestList.length && timerList.length ? [''] : []),
+    ...timerList.map(
+      (t) =>
+        `${indent(1)}public Schedule<${instanceType}, ${timerMessage(t.name)}> ${timerProperty.get(t.name)} { get; private set; } = null!;`,
+    ),
     ...requestList.map(
       (r) =>
         `${indent(1)}public Request<${instanceType}, ${requestMessage(r.name)}, ${requestResponse(r.name)}> ${requestProperty.get(r.name)} { get; private set; } = null!;`,
@@ -372,6 +417,9 @@ export function generateSaga(diagram: Diagram): GenerateResult {
       ...requestList.map(
         (r) => `${indent(1)}public Guid? ${requestProperty.get(r.name)}RequestId { get; set; }`,
       ),
+      ...timerList.map(
+        (t) => `${indent(1)}public Guid? ${timerProperty.get(t.name)}TokenId { get; set; }`,
+      ),
       '}',
     ]),
   ];
@@ -382,6 +430,7 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     ...eventNames.map(messageType),
     ...states.flatMap((s) => (s.activities ?? []).map(messageOf)),
     ...requestList.flatMap((r) => [requestMessage(r.name), requestResponse(r.name)]),
+    ...timerList.filter((t) => t.scheduled).map((t) => timerMessage(t.name)),
   ]) {
     if (!contractNames.includes(m)) contractNames.push(m);
   }

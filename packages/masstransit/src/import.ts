@@ -5,6 +5,7 @@ import {
   DiagramNode,
   EventInfo,
   SagaInfo,
+  Timer,
   bytesOver,
   formatMegabytes,
   nextId,
@@ -212,6 +213,8 @@ interface Transition {
   activities: Activity[];
   /** The requests made on entering the target, by name. */
   requests: string[];
+  /** The timeouts scheduled or cancelled on entering the target, in order. */
+  timers: Pick<Timer, 'action' | 'name'>[];
   at: SourceLocation;
 }
 
@@ -240,12 +243,16 @@ function guardText(lambda: SyntaxNode): string {
 
 const REQUEST_OUTCOMES: readonly string[] = ['Completed', 'Faulted', 'TimeoutExpired'];
 
-/** The event a `When(…)` waits for: `Ask.Completed` keeps the request it belongs to. */
+/**
+ * The event a `When(…)` waits for: `Ask.Completed` keeps the request it belongs to, and the
+ * timeout `Reminder.Received` is the event `Reminder`.
+ */
 function eventName(node: SyntaxNode | null): string | null {
   const name = lastName(node);
-  if (node?.type === 'member_access_expression' && name && REQUEST_OUTCOMES.includes(name)) {
+  if (node?.type === 'member_access_expression' && name) {
     const owner = lastName(node.childForFieldName('expression'));
-    if (owner) return `${owner}.${name}`;
+    if (owner && REQUEST_OUTCOMES.includes(name)) return `${owner}.${name}`;
+    if (owner && name === 'Received') return owner;
   }
   return name;
 }
@@ -258,9 +265,9 @@ const DURATION_UNITS: Record<string, string> = {
   Days: 'd',
 };
 
-/** `TimeSpan.FromSeconds(30)` as `30s`; anything else as it is written. */
-function durationText(node: SyntaxNode): string {
-  const note = todoNote(node, 'timeout');
+/** `TimeSpan.FromSeconds(30)` as `30s`; a TODO note (`kind`) or else the code as it is written. */
+function durationText(node: SyntaxNode, kind = 'timeout'): string {
+  const note = todoNote(node, kind);
   if (note) return note;
   const text = node.text.replace(/\s+/g, ' ');
   const found = text.match(/^TimeSpan\.From(\w+)\(\s*(\d+(?:\.\d+)?)\s*\)$/);
@@ -269,7 +276,7 @@ function durationText(node: SyntaxNode): string {
   return text;
 }
 
-const UNSUPPORTED = new Set(['IfAsync', 'IfElseAsync', 'Schedule', 'Unschedule', 'Switch']);
+const UNSUPPORTED = new Set(['IfAsync', 'IfElseAsync', 'Switch']);
 
 class SagaReader {
   private readonly states = new Map<string, SourceLocation>();
@@ -278,7 +285,9 @@ class SagaReader {
   private readonly transitions: Transition[] = [];
   private readonly enterActivities = new Map<string, Activity[]>();
   private readonly enterRequests = new Map<string, string[]>();
+  private readonly enterTimers = new Map<string, Pick<Timer, 'action' | 'name'>[]>();
   private readonly requests = new Map<string, { timeout?: string }>();
+  private readonly schedules = new Map<string, { delay?: string }>();
   private readonly ignores = new Map<string, string[]>();
   private readonly said = new Set<string>();
   private stateProperty: string | undefined;
@@ -375,6 +384,9 @@ class SagaReader {
         case 'Request':
           this.readRequest(call, at);
           break;
+        case 'Schedule':
+          this.readSchedule(call, at);
+          break;
         case 'SetCompletedWhenFinalized':
         case 'SetCompleted':
           break;
@@ -385,7 +397,6 @@ class SagaReader {
         case 'AfterLeave':
         case 'Finally':
         case 'CompositeEvent':
-        case 'Schedule':
         case 'Fault':
         case 'OnUnhandledEvent':
           this.warn(at, `${call.name}(…) is not shown in the diagram yet.`);
@@ -421,6 +432,37 @@ class SagaReader {
       }
     }
     this.requests.set(name, timeout ? { timeout } : {});
+  }
+
+  /** `Schedule(() => Reminder, x => x.TokenId, s => s.Delay = …)`: a timeout and when it fires. */
+  private readSchedule(call: Call, at: SourceLocation): void {
+    const lambda = call.args[0];
+    const name = lambda ? lastName(lambdaBody(lambda)) : null;
+    if (!name) {
+      this.warn(at, 'Schedule(…) names no timeout that could be read.');
+      return;
+    }
+    let delay: string | undefined;
+    for (const arg of call.args.slice(1)) {
+      for (const node of [arg, ...descendants(arg)]) {
+        const right =
+          node.type === 'assignment_expression' ? node.childForFieldName('right') : null;
+        if (right && lastName(node.childForFieldName('left')) === 'Delay') {
+          delay = durationText(right, 'delay');
+        }
+      }
+    }
+    this.schedules.set(name, delay ? { delay } : {});
+  }
+
+  /** `Schedule(Reminder, …)` or `Unschedule(Reminder)` in a chain, as a timer of the state. */
+  private timerIn(call: Call, place: SourceLocation): Pick<Timer, 'action' | 'name'> | undefined {
+    const name = lastName(call.args[0] ?? null);
+    if (!name) {
+      this.warn(place, `${call.name}(…) names no timeout that could be read.`);
+      return undefined;
+    }
+    return { action: call.name === 'Schedule' ? 'schedule' : 'unschedule', name };
   }
 
   /** `Request(Ask, context => new Ask(…))` in a chain: the request, by name. */
@@ -528,6 +570,7 @@ class SagaReader {
     let target: string | undefined;
     const activities: Activity[] = [];
     const requests: string[] = [];
+    const timers: Pick<Timer, 'action' | 'name'>[] = [];
     const branches: Branch[] = [];
     for (const call of calls) {
       const place = { path: at.path, line: callLine(call) };
@@ -544,6 +587,9 @@ class SagaReader {
       } else if (call.name === 'Request') {
         const request = this.requestIn(call, place);
         if (request) requests.push(request);
+      } else if (call.name === 'Schedule' || call.name === 'Unschedule') {
+        const timer = this.timerIn(call, place);
+        if (timer) timers.push(timer);
       } else if (UNSUPPORTED.has(call.name)) {
         this.warn(place, `${call.name}(…) is not shown in the diagram yet.`);
       } else {
@@ -569,6 +615,7 @@ class SagaReader {
           ...(way.guard ? { guard: way.guard } : {}),
           activities: [...activities, ...way.activities],
           requests,
+          timers,
           at: { path: at.path, line: callLine(when) },
         });
       }
@@ -639,6 +686,9 @@ class SagaReader {
         if (activity) {
           this.enterActivities.set(state, [...(this.enterActivities.get(state) ?? []), activity]);
         }
+      } else if (inner.name === 'Schedule' || inner.name === 'Unschedule') {
+        const timer = this.timerIn(inner, place);
+        if (timer) this.enterTimers.set(state, [...(this.enterTimers.get(state) ?? []), timer]);
       } else if (inner.name === 'Request') {
         const request = this.requestIn(inner, place);
         if (request)
@@ -758,6 +808,7 @@ class SagaReader {
     // Activities belong to the state a transition leads into; WhenEnter ones to their state.
     const entering = new Map<string, Activity[][]>();
     const requesting = new Map<string, string[][]>();
+    const timing = new Map<string, string[][]>();
     const edges: DiagramEdge[] = [];
     for (const t of this.transitions) {
       const source = ids.get(t.source)!;
@@ -782,7 +833,11 @@ class SagaReader {
         ...(t.guard ? { guard: t.guard } : {}),
       });
       locations.transitions[id] = t.at;
-      const things = [...t.activities.map((a) => a.name), ...t.requests];
+      const things = [
+        ...t.activities.map((a) => a.name),
+        ...t.requests,
+        ...t.timers.map((x) => `${x.action} ${x.name}`),
+      ];
       if (target === FINAL) {
         if (things.length) {
           this.warn(
@@ -793,6 +848,10 @@ class SagaReader {
       } else {
         entering.set(target, [...(entering.get(target) ?? []), t.activities]);
         requesting.set(target, [...(requesting.get(target) ?? []), t.requests]);
+        timing.set(target, [
+          ...(timing.get(target) ?? []),
+          t.timers.map((x) => `${x.action}:${x.name}`),
+        ]);
         if (t.target === undefined && things.length) {
           this.warn(
             t.at,
@@ -819,10 +878,23 @@ class SagaReader {
             : {}),
         }));
       }
+      const timed = timing.get(name) ?? [];
+      const timers = dedupe([
+        ...(this.enterTimers.get(name) ?? []).map((x) => `${x.action}:${x.name}`),
+        ...timed.flat(),
+      ]);
+      if (timers.length) {
+        node.timers = timers.map((key): Timer => {
+          const [action, timer] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+          const delay = action === 'schedule' ? this.schedules.get(timer)?.delay : undefined;
+          return { action: action as Timer['action'], name: timer, ...(delay ? { delay } : {}) };
+        });
+      }
       const distinct = new Set(
         lists.map(
           (l, i) =>
-            l.map((a) => `${a.kind}:${a.name}`).join(',') + `|${(asked[i] ?? []).join(',')}`,
+            l.map((a) => `${a.kind}:${a.name}`).join(',') +
+            `|${(asked[i] ?? []).join(',')}|${(timed[i] ?? []).join(',')}`,
         ),
       );
       if (distinct.size > 1) {

@@ -330,33 +330,29 @@ describe('importSagas on small sagas', () => {
       saga(`Initially(When(Start)
           .Then(ctx => { })
           .Then(ctx => { })
-          .Schedule(Reminder, ctx => new Remind())
-          .Unschedule(Reminder)
+          .Switch(ctx => ctx.Message.Kind)
           .TransitionTo(Working));
         WhenLeave(Working, b => b.Then(c => { }));`),
       parser,
     );
     expect(messages(result)).toEqual([
       'DemoStateMachine: Then(…) runs code; it is left out of the diagram.',
-      'DemoStateMachine: Schedule(…) is not shown in the diagram yet.',
-      'DemoStateMachine: Unschedule(…) is not shown in the diagram yet.',
+      'DemoStateMachine: Switch(…) is not shown in the diagram yet.',
       'DemoStateMachine: WhenLeave(…) is not shown in the diagram yet.',
     ]);
     // `Then` is said once, at its first place; the others where they are.
-    expect(result.warnings.map((w) => w.line)).toEqual([15, 17, 18, 20]);
+    expect(result.warnings.map((w) => w.line)).toEqual([15, 17, 19]);
     expect(edgesOf(only(result))).toEqual(['Initial -Start-> Working']);
   });
 
   it('says so for declarations in the constructor that are not drawn, instead of dropping them', () => {
     const result = importSagas(
-      saga(`Schedule(() => Reminder, x => x.TimeoutId, s => s.Delay = TimeSpan.FromMinutes(1));
-        Fault<Start>(Start);
+      saga(`Fault<Start>(Start);
         OnUnhandledEvent(x => x.Ignore());
         Initially(When(Start).TransitionTo(Working));`),
       parser,
     );
     expect(messages(result)).toEqual([
-      'DemoStateMachine: Schedule(…) is not shown in the diagram yet.',
       'DemoStateMachine: Fault(…) is not shown in the diagram yet.',
       'DemoStateMachine: OnUnhandledEvent(…) is not shown in the diagram yet.',
     ]);
@@ -447,6 +443,45 @@ describe('importSagas on small sagas', () => {
     );
     expect(messages(result)).toEqual([
       'DemoStateMachine: Ask on the way to the final state cannot be shown: nothing happens in a final state.',
+    ]);
+  });
+
+  it('reads a timeout: the declaration, Schedule and Unschedule in order, and Received as the event', () => {
+    const result = importSagas(
+      saga(`Schedule(() => Reminder, x => x.TimeoutId, s =>
+          { s.Delay = TimeSpan.FromMinutes(5); s.Received = e => e.CorrelateById(c => c.Message.CorrelationId); });
+        Initially(When(Start).Schedule(Reminder, ctx => new Remind()).TransitionTo(Working));
+        During(Working,
+          When(Reminder.Received).Unschedule(Reminder).TransitionTo(Waiting),
+          When(Next).Unschedule(Reminder).TransitionTo(Waiting));`),
+      parser,
+    );
+    const d = only(result);
+    expect(messages(result)).toEqual([]);
+    expect(d.nodes.find((n) => n.name === 'Working')?.timers).toEqual([
+      { action: 'schedule', name: 'Reminder', delay: '5m' },
+    ]);
+    expect(d.nodes.find((n) => n.name === 'Waiting')?.timers).toEqual([
+      { action: 'unschedule', name: 'Reminder' },
+    ]);
+    expect(edgesOf(d)).toEqual([
+      'Initial -Start-> Working',
+      'Working -Reminder-> Waiting',
+      'Working -Next-> Waiting',
+    ]);
+  });
+
+  it('reads a timeout set in WhenEnter, with a delay that is not a plain duration', () => {
+    const d = only(
+      importSagas(
+        saga(`Schedule(() => Reminder, x => x.TimeoutId, s => s.Delay = Settings.ReminderDelay);
+          Initially(When(Start).TransitionTo(Working));
+          WhenEnter(Working, b => b.Schedule(Reminder, ctx => new Remind()).Publish(ctx => new B()));`),
+        parser,
+      ),
+    );
+    expect(d.nodes.find((n) => n.name === 'Working')?.timers).toEqual([
+      { action: 'schedule', name: 'Reminder', delay: 'Settings.ReminderDelay' },
     ]);
   });
 

@@ -5,7 +5,7 @@ namespace Acme.Accounts;
 // Events from the web site, the identity provider, the account service and the scheduler.
 public record SignUpReceived(Guid CorrelationId, string Email);
 public record EmailVerified(Guid CorrelationId);
-// The scheduler sends these 24 hours and 7 days after the sign-up.
+// The scheduler delivers these 24 hours and 7 days after the sign-up, unless the saga cancelled them.
 public record ReminderDue(Guid CorrelationId);
 public record VerificationExpired(Guid CorrelationId);
 public record AccountActivated(Guid CorrelationId);

@@ -26,12 +26,6 @@ public record FlightRejected
     // TODO: add the properties of the message
 }
 
-public record FlightHoldExpired
-{
-    public Guid CorrelationId { get; init; }
-    // TODO: add the properties of the message
-}
-
 public record PaymentDeclined
 {
     public Guid CorrelationId { get; init; }
@@ -135,6 +129,12 @@ public record CheckAvailabilityRequest
 }
 
 public record CheckAvailabilityResponse
+{
+    public Guid CorrelationId { get; init; }
+    // TODO: add the properties of the message
+}
+
+public record FlightHoldExpiredMessage
 {
     public Guid CorrelationId { get; init; }
     // TODO: add the properties of the message
