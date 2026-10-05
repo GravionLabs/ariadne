@@ -184,6 +184,42 @@
             }
           }
         },
+        "routingSlips": {
+          "type": "array",
+          "description": "Routing slips the state starts on entry (ADR 0023). The outcomes are the events `<Name>.Completed` and `<Name>.Faulted`. Only on `state` nodes.",
+          "items": {
+            "type": "object",
+            "required": ["routingSlip", "activities"],
+            "additionalProperties": false,
+            "properties": {
+              "routingSlip": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The routing slip, e.g. `FulfilOrder`."
+              },
+              "activities": {
+                "type": "array",
+                "description": "The itinerary: the activities in the order they run.",
+                "items": {
+                  "type": "object",
+                  "required": ["activity"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "activity": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The activity, e.g. `ReserveStock`."
+                    },
+                    "compensates": {
+                      "type": "boolean",
+                      "description": "It is undone (compensated) when a later activity faults."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "timers": {
           "type": "array",
           "description": "Timeouts the state schedules or cancels on entry, in order. Only on `state` nodes.",
@@ -257,6 +293,7 @@
           "activities": false,
           "ignores": false,
           "requests": false,
+          "routingSlips": false,
           "timers": false
         }
       }

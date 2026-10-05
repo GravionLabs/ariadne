@@ -36,6 +36,8 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
           reply: 'reply',
           fault: 'fault',
           composite: 'join',
+          slipCompleted: 'routing slip',
+          slipFaulted: 'routing slip',
         }[kind]
       : '';
   const name = (id: string) => nodes.get(id)?.name ?? id;
@@ -165,6 +167,8 @@ export function diagramToMarkdown(diagram: Diagram, options: MarkdownOptions = {
               reply: 'Reply',
               fault: 'Fault',
               composite: 'Composite',
+              slipCompleted: 'Routing slip completed',
+              slipFaulted: 'Routing slip faulted',
             }[kindOf({ event: ev })!],
             (publishedBy.get(ev) ?? []).join(', '),
             (reactions.get(ev) ?? []).join('\n'),

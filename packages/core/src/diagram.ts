@@ -83,6 +83,38 @@ export type RequestOutcome = (typeof REQUEST_OUTCOMES)[number];
 /** The event raised when request `name` ends as `outcome`, e.g. `ValidateAddress.Completed`. */
 export const requestEvent = (name: string, outcome: RequestOutcome): string => `${name}.${outcome}`;
 
+/**
+ * A routing slip (MassTransit Courier) a state starts when the saga enters it (ADR 0023): an
+ * itinerary of activities that run in order. When one faults, the compensating activities that ran
+ * are undone in reverse order. The outcomes come back as `<name>.Completed` and `<name>.Faulted`;
+ * transitions on those events are the paths out of the slip.
+ */
+export interface RoutingSlip {
+  /** The slip, e.g. `FulfilOrder`. */
+  name: string;
+  /** The activities in the order they run. */
+  activities: SlipActivity[];
+}
+
+/** One step of a routing slip's itinerary. */
+export interface SlipActivity {
+  /** The activity, e.g. `ReserveStock`. */
+  name: string;
+  /** It can be undone (a Courier `IActivity`): compensated when a later activity faults. */
+  compensates?: boolean;
+}
+
+/** How a routing slip ends: every activity ran, or one faulted and the rest was compensated. */
+export const SLIP_OUTCOMES = ['Completed', 'Faulted'] as const;
+export type SlipOutcome = (typeof SLIP_OUTCOMES)[number];
+
+/** The event raised when routing slip `name` ends as `outcome`, e.g. `FulfilOrder.Completed`. */
+export const slipEvent = (name: string, outcome: SlipOutcome): string => `${name}.${outcome}`;
+
+/** The compensating activities of a slip in the order they would be undone: the reverse of the itinerary. */
+export const compensationOrder = (slip: RoutingSlip): SlipActivity[] =>
+  slip.activities.filter((a) => a.compensates).reverse();
+
 /** Undo action that runs when a later part of the saga fails. Only states can have one. */
 export interface Compensation {
   name: string;
@@ -121,6 +153,8 @@ export interface DiagramNode {
   compensation?: Compensation;
   /** Requests the state makes on entry, in order. Only on states. */
   requests?: Request[];
+  /** Routing slips the state starts on entry, in order. Only on states (ADR 0023). */
+  routingSlips?: RoutingSlip[];
   /** Timeouts the state schedules or cancels on entry, in order. Only on states. */
   timers?: Timer[];
   /** Events the state ignores instead of failing on them (`Ignore(E)`). Only on states. */
@@ -214,6 +248,9 @@ export const hasActivities = (type: NodeType): boolean => type === 'state';
 /** Only plain states can make {@link DiagramNode.requests requests}. */
 export const hasRequests = (type: NodeType): boolean => type === 'state';
 
+/** Only plain states can start {@link DiagramNode.routingSlips routing slips}. */
+export const hasRoutingSlips = (type: NodeType): boolean => type === 'state';
+
 /** Only plain states can schedule {@link DiagramNode.timers timeouts}. */
 export const hasTimers = (type: NodeType): boolean => type === 'state';
 
@@ -270,11 +307,20 @@ export function nextId(prefix: string, existing: readonly { id: string }[]): str
 
 /**
  * What kind of event a transition reacts to. `timeout` is a scheduled timeout firing or a request
- * running out of time; `reply` and `fault` are the two answers to a request; `internal` is
+ * running out of time; `reply` and `fault` are the two answers to a request; `slipCompleted` and
+ * `slipFaulted` the two outcomes of a routing slip; `internal` is
  * the composite event of a `join`; `internal` is published by a state of the saga; everything else
  * comes from `external`. Derived, never stored.
  */
-export type EventKind = 'internal' | 'external' | 'timeout' | 'reply' | 'fault' | 'composite';
+export type EventKind =
+  | 'internal'
+  | 'external'
+  | 'timeout'
+  | 'reply'
+  | 'fault'
+  | 'composite'
+  | 'slipCompleted'
+  | 'slipFaulted';
 
 /** Classifies events of `diagram`; `undefined` for a transition without an event. */
 export function eventKindOf(
@@ -295,6 +341,12 @@ export function eventKindOf(
       ]),
     ),
   );
+  for (const n of diagram.nodes) {
+    for (const slip of n.routingSlips ?? []) {
+      outcomes.set(slipEvent(slip.name, 'Completed'), 'slipCompleted');
+      outcomes.set(slipEvent(slip.name, 'Faulted'), 'slipFaulted');
+    }
+  }
   const composites = new Set(diagram.nodes.filter((n) => n.type === 'join').map((n) => n.name));
   return ({ event }) => {
     if (!event) return undefined;

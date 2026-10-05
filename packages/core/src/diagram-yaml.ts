@@ -23,6 +23,9 @@ import {
   DIRECTIONS,
   SPACINGS,
   Spacing,
+  RoutingSlip,
+  SlipActivity,
+  hasRoutingSlips,
 } from './diagram';
 
 /** Current version of the file format; see docs/specs/diagram-format.md. */
@@ -146,6 +149,14 @@ function serializeNode(node: DiagramNode): Record<string, unknown> {
     ignores: node.ignores?.length ? node.ignores : undefined,
     requests: node.requests?.length
       ? node.requests.map(({ name, timeout }) => withoutUndefined({ request: name, timeout }))
+      : undefined,
+    routingSlips: node.routingSlips?.length
+      ? node.routingSlips.map(({ name, activities }) => ({
+          routingSlip: name,
+          activities: activities.map(({ name: activity, compensates }) =>
+            withoutUndefined({ activity, compensates: compensates ? true : undefined }),
+          ),
+        }))
       : undefined,
     timers: node.timers?.length
       ? node.timers.map(({ action, name, delay }) => withoutUndefined({ [action]: name, delay }))
@@ -375,6 +386,15 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
       : asArray(node['requests'], `${at}.requests`).map((r, i) =>
           parseRequest(r, `${at}.requests[${i}]`),
         );
+  if (node['routingSlips'] !== undefined && !hasRoutingSlips(type as NodeType)) {
+    throw new DiagramFormatError(`${at}.routingSlips is only allowed on states`);
+  }
+  const routingSlips =
+    node['routingSlips'] === undefined
+      ? undefined
+      : asArray(node['routingSlips'], `${at}.routingSlips`).map((r, i) =>
+          parseRoutingSlip(r, `${at}.routingSlips[${i}]`),
+        );
   if (node['timers'] !== undefined && !hasTimers(type as NodeType)) {
     throw new DiagramFormatError(`${at}.timers is only allowed on states`);
   }
@@ -397,6 +417,7 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
     activities: activities?.length ? activities : undefined,
     ignores: ignores?.length ? ignores : undefined,
     requests: requests?.length ? requests : undefined,
+    routingSlips: routingSlips?.length ? routingSlips : undefined,
     timers: timers?.length ? timers : undefined,
     retry: optionalString(node['retry'], `${at}.retry`),
     timeout: optionalString(node['timeout'], `${at}.timeout`),
@@ -407,6 +428,28 @@ function parseNode(value: unknown, index: number, version: number): DiagramNode 
         description: optionalString(compensation['description'], `${at}.compensation.description`),
       }),
   }) as DiagramNode;
+}
+
+function parseRoutingSlip(value: unknown, at: string): RoutingSlip {
+  const entry = asRecord(value, at);
+  if (entry['routingSlip'] === undefined)
+    throw new DiagramFormatError(`${at} must be "routingSlip: <Name>"`);
+  const activities = asArray(entry['activities'] ?? [], `${at}.activities`).map(
+    (a, i): SlipActivity => {
+      const where = `${at}.activities[${i}]`;
+      const item = asRecord(a, where);
+      if (item['activity'] === undefined)
+        throw new DiagramFormatError(`${where} must be "activity: <Name>"`);
+      const compensates = item['compensates'];
+      if (compensates !== undefined && typeof compensates !== 'boolean')
+        throw new DiagramFormatError(`${where}.compensates must be true or false`);
+      return withoutUndefined({
+        name: asString(item['activity'], `${where}.activity`),
+        compensates: compensates === true ? true : undefined,
+      });
+    },
+  );
+  return { name: asString(entry['routingSlip'], `${at}.routingSlip`), activities };
 }
 
 function parseRequest(value: unknown, at: string): Request {

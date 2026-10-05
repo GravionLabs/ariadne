@@ -49,6 +49,9 @@ export const COLORS = {
   composite: '#4f46e5',
   join: '#4f46e5',
   fault: '#dc2626',
+  // The outcomes of a routing slip (ADR 0023): done like a reply, faulted like a fault.
+  slipCompleted: '#059669',
+  slipFaulted: '#dc2626',
   end: '#f43f5e',
   compensation: '#ce8408',
   command: '#2563eb',

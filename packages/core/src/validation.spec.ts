@@ -259,3 +259,84 @@ describe('helpers', () => {
     expect(byElement.get('a')).toHaveLength(2);
   });
 });
+
+describe('routing slips (ADR 0023)', () => {
+  const slip = (name: string, activities = [{ name: 'Reserve', compensates: true }]) => ({
+    name,
+    activities,
+  });
+  /** start → a (starts the slip) → done on Completed, failed on Faulted. */
+  const withSlip = (extra: Partial<DiagramNode> = {}, more: DiagramEdge[] = []): Diagram =>
+    saga(
+      [
+        node('start', 'start'),
+        node('a', 'state', { routingSlips: [slip('Fulfil')], ...extra }),
+        node('done', 'end'),
+        node('failed', 'end'),
+      ],
+      [
+        edge('e1', 'start', 'a', { event: 'OrderPlaced', eventSource: 'Shop' }),
+        edge('e2', 'a', 'done', { event: 'Fulfil.Completed' }),
+        edge('e3', 'a', 'failed', { event: 'Fulfil.Faulted' }),
+        ...more,
+      ],
+    );
+  const slipCodes = (d: Diagram) =>
+    codes(validate(d)).filter((c) =>
+      [
+        'empty-routing-slip',
+        'duplicate-routing-slip',
+        'unhandled-slip-outcome',
+        'slip-outcome-elsewhere',
+      ].includes(c),
+    );
+
+  it('finds nothing in a slip whose outcomes are both handled, and does not call them external', () => {
+    const findings = validate(withSlip());
+    expect(slipCodes(withSlip())).toEqual([]);
+    expect(findings.filter((f) => f.elementId === 'e2' || f.elementId === 'e3')).toEqual([]);
+  });
+
+  it('is an error for a slip without activities', () => {
+    const findings = only(
+      validate(withSlip({ routingSlips: [slip('Fulfil', [])] })),
+      'empty-routing-slip',
+    );
+    expect(findings.map((f) => [f.severity, f.message])).toEqual([
+      ['error', 'The routing slip “Fulfil” of “a” has no activities.'],
+    ]);
+  });
+
+  it('is an error for two slips with one name, or a slip named like a request', () => {
+    expect(
+      only(
+        validate(withSlip({ routingSlips: [slip('Fulfil'), slip('Fulfil')] })),
+        'duplicate-routing-slip',
+      ),
+    ).toHaveLength(1);
+    const clash = validate(withSlip({ requests: [{ name: 'Fulfil' }] }));
+    expect(only(clash, 'duplicate-routing-slip').map((f) => f.message)).toEqual([
+      'The routing slip “Fulfil” has the name of a request: their outcomes would be the same events.',
+    ]);
+  });
+
+  it('warns about an outcome nothing reacts to, unless the Any state does', () => {
+    const d = withSlip();
+    d.edges = d.edges.filter((e) => e.id !== 'e3');
+    expect(only(validate(d), 'unhandled-slip-outcome').map((f) => f.message)).toEqual([
+      '“a” starts the routing slip “Fulfil” but nothing reacts to Fulfil.Faulted.',
+    ]);
+    d.nodes.push(node('any', 'any'));
+    d.edges.push(edge('e9', 'any', 'failed', { event: 'Fulfil.Faulted' }));
+    expect(only(validate(d), 'unhandled-slip-outcome')).toEqual([]);
+  });
+
+  it('warns about a transition on an outcome its state does not start', () => {
+    const d = withSlip({}, [edge('e4', 'b', 'done', { event: 'Fulfil.Completed' })]);
+    d.nodes.push(node('b'));
+    d.edges.push(edge('e5', 'a', 'b', { event: 'Detour', eventSource: 'Shop' }));
+    expect(
+      only(validate(d), 'slip-outcome-elsewhere').map((f) => [f.elementId, f.message]),
+    ).toEqual([['e4', '“b” reacts to Fulfil.Completed, but it does not start that routing slip.']]);
+  });
+});

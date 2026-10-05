@@ -837,3 +837,79 @@ describe('YAML syntax errors', () => {
     }
   });
 });
+
+describe('routing slips', () => {
+  const slips: Diagram = {
+    ...sample,
+    nodes: sample.nodes.map((n) =>
+      n.id === 'state-1'
+        ? {
+            ...n,
+            routingSlips: [
+              {
+                name: 'FulfilOrder',
+                activities: [
+                  { name: 'ReserveStock', compensates: true },
+                  { name: 'ChargeCard', compensates: true },
+                  { name: 'NotifyCustomer' },
+                ],
+              },
+            ],
+          }
+        : n,
+    ),
+  };
+
+  it('round-trips, with "routingSlip:" and "activity:" as the keys and compensates only when true', () => {
+    const text = serializeDiagram(slips);
+    expect(text).toContain(
+      [
+        '    routingSlips:',
+        '      - routingSlip: FulfilOrder',
+        '        activities:',
+        '          - activity: ReserveStock',
+        '            compensates: true',
+        '          - activity: ChargeCard',
+        '            compensates: true',
+        '          - activity: NotifyCustomer',
+        '',
+      ].join('\n'),
+    );
+    expect(parseDiagram(text)).toEqual(slips);
+  });
+
+  it('reads a slip without activities (the checks say so), and drops compensates: false', () => {
+    const parsed = parseDiagram(
+      'version: 3\nnodes:\n  - id: a\n    type: state\n    name: A\n    routingSlips:\n      - routingSlip: S\n      - routingSlip: T\n        activities: [{ activity: X, compensates: false }]',
+    );
+    expect(parsed.nodes[0].routingSlips).toEqual([
+      { name: 'S', activities: [] },
+      { name: 'T', activities: [{ name: 'X' }] },
+    ]);
+  });
+
+  it.each([
+    [
+      'only on states',
+      'version: 3\nnodes:\n  - { id: s, type: start, name: S, routingSlips: [] }',
+      /routingSlips is only allowed on states/,
+    ],
+    [
+      'a name',
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A, routingSlips: [{ activities: [] }] }',
+      /must be "routingSlip: <Name>"/,
+    ],
+    [
+      'an activity name',
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A, routingSlips: [{ routingSlip: S, activities: [{ compensates: true }] }] }',
+      /must be "activity: <Name>"/,
+    ],
+    [
+      'compensates as true or false',
+      'version: 3\nnodes:\n  - { id: a, type: state, name: A, routingSlips: [{ routingSlip: S, activities: [{ activity: X, compensates: yes please }] }] }',
+      /compensates must be true or false/,
+    ],
+  ])('needs %s', (_what, text, error) => {
+    expect(() => parseDiagram(text)).toThrow(error);
+  });
+});
