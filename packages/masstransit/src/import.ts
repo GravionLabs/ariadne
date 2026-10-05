@@ -319,7 +319,6 @@ class SagaReader {
           break;
         case 'SetCompletedWhenFinalized':
         case 'SetCompleted':
-        case 'OnUnhandledEvent':
           break;
         case 'WhenLeave':
         case 'WhenEnterAny':
@@ -328,6 +327,10 @@ class SagaReader {
         case 'AfterLeave':
         case 'Finally':
         case 'CompositeEvent':
+        case 'Request':
+        case 'Schedule':
+        case 'Fault':
+        case 'OnUnhandledEvent':
           this.warn(at, `${call.name}(…) is not shown in the diagram yet.`);
           break;
         default:

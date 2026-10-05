@@ -13,7 +13,8 @@ guard); `TransitionTo`, `Finalize` and `Ignore`; `Send` and `Publish` (shown as 
 helper methods of the same class; partial classes spread over several files; `Event(() => E, x => x.CorrelateById(...))`.
 
 What is not drawn is listed as a **warning with file and line**: code that runs in `Then(...)`, `Request`,
-`Schedule`, `If`, or a base class that cannot be resolved. The diagram is a view of the structure, not of every
+`Schedule`, `If`, `Fault`, `OnUnhandledEvent` and their declarations in the constructor, or a base class that
+cannot be resolved. The diagram is a view of the structure, not of every
 line of code.
 
 The result opens as a new, unsaved diagram. Import never changes your code.

@@ -347,6 +347,23 @@ describe('importSagas on small sagas', () => {
     expect(edgesOf(only(result))).toEqual(['Initial -Start-> Working']);
   });
 
+  it('says so for declarations in the constructor that are not drawn, instead of dropping them', () => {
+    const result = importSagas(
+      saga(`Request(() => Ask, x => x.RequestId);
+        Schedule(() => Reminder, x => x.TimeoutId, s => s.Delay = TimeSpan.FromMinutes(1));
+        Fault<Start>(Start);
+        OnUnhandledEvent(x => x.Ignore());
+        Initially(When(Start).TransitionTo(Working));`),
+      parser,
+    );
+    expect(messages(result)).toEqual([
+      'DemoStateMachine: Request(…) is not shown in the diagram yet.',
+      'DemoStateMachine: Schedule(…) is not shown in the diagram yet.',
+      'DemoStateMachine: Fault(…) is not shown in the diagram yet.',
+      'DemoStateMachine: OnUnhandledEvent(…) is not shown in the diagram yet.',
+    ]);
+  });
+
   it('does not draw what cannot be drawn, and says so', () => {
     const result = importSagas(
       saga(`
