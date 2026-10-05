@@ -100,6 +100,10 @@ Work is tracked in GitHub issues as **Epic → Feature → PBI → Task** (a **B
 native **sub-issues**, not markdown checklists. Closing a child updates its parent. The templates
 come from `GravionLabs/.github`. Start from an issue; if there is none, open one.
 
+The title of an issue starts with its level: `[Epic]`, `[Feature]`, `[PBI]`, `[Task]` or `[Bug]`, then the
+summary (`[PBI] feat: short summary`). The `Issue title` workflow checks it when an issue is opened or edited.
+Every issue and pull request is also an item of the project board; set its **Level** there too.
+
 ## Branches and commits
 
 - Branches: `feature/<issue>-<slug>` (and `fix/<slug>` for fixes).
