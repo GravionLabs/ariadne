@@ -1,4 +1,4 @@
-import { diagramAlternative, diagramTitle } from './describe';
+import { describeTimeline, diagramAlternative, diagramTitle } from './describe';
 import {
   ACTIVITY_VERBS,
   backEdgeIds,
@@ -22,6 +22,8 @@ import {
   nodeSize,
   Point,
   Size,
+  TimelineEntry,
+  TimelineState,
 } from '@ariadne/core';
 
 /**
@@ -270,6 +272,215 @@ function renderSvg(diagram: Diagram, options: SvgOptions): SvgExport {
   ].join('\n');
   return { svg, width, height };
 }
+
+export interface TimelineSvgOptions extends SvgOptions {
+  /** The title of the picture; "Path of the instance" without. */
+  title?: string;
+}
+
+const TIMELINE_CARD = 52;
+
+/**
+ * The path of an instance as a standalone SVG, left to right (#376): the states it went through as
+ * cards, the step that moved it on each arrow (number, event and its kind, guard, time, note), the
+ * state it is in now emphasised, and where the path stopped. One row, as wide as the path is long: the
+ * host scrolls. `entries` come from `pathTimeline` in `@ariadne/core`.
+ */
+export function renderTimelineSvg(
+  diagram: Diagram,
+  entries: readonly TimelineEntry[],
+  options: TimelineSvgOptions = {},
+): SvgExport {
+  paint = options.cssVariables ? THEMABLE : COLORS;
+  try {
+    return timelineSvg(diagram, entries, options);
+  } finally {
+    paint = COLORS;
+  }
+}
+
+function timelineSvg(
+  diagram: Diagram,
+  entries: readonly TimelineEntry[],
+  options: TimelineSvgOptions,
+): SvgExport {
+  const prefix = options.idPrefix ?? '';
+  const nodes = new Map(diagram.nodes.map((node) => [node.id, node]));
+  const decisions = decisionIds(diagram);
+  const addressed = (index: number, attrs: string, inner: string) =>
+    options.addressable ? `<g data-timeline-index="${index}" ${attrs}>${inner}</g>` : inner;
+  const cy = MARGIN + TIMELINE_CARD / 2;
+  const parts: string[] = [];
+  let x = MARGIN;
+  let previousRight: number | undefined;
+
+  entries.forEach((entry, index) => {
+    if (entry.kind === 'state') {
+      const node = nodes.get(entry.nodeId);
+      const width = Math.min(220, Math.max(120, Math.ceil(68 + [...entry.name].length * 7.4)));
+      if (previousRight !== undefined && x === previousRight) x += 40;
+      parts.push(
+        addressed(
+          index,
+          `data-node-id="${esc(entry.nodeId)}" data-kind="${esc(entry.type)}" data-status="${entry.status}"`,
+          timelineState(entry, node, decisions.has(entry.nodeId), x, width),
+        ),
+      );
+      x += width;
+      previousRight = x;
+    } else if (entry.kind === 'step') {
+      const kind = entry.eventKind;
+      const color = kind === 'internal' || !kind ? paint.event : paint[kind];
+      const glyph =
+        { timeout: '◷', reply: '↩', fault: '⚠', composite: '▬' }[kind as string] ?? '⚡';
+      const event = entry.event ?? 'no event';
+      const meta = [entry.at, entry.note].filter(Boolean).join(' · ');
+      const longest = Math.max(
+        [...`${entry.number}. ${event}`].length + 2,
+        entry.guard ? [...entry.guard].length + 2 : 0,
+        [...meta].length,
+      );
+      const width = Math.min(240, Math.max(96, Math.ceil(28 + longest * 6.4)));
+      const textWidth = width - 20;
+      const inner = [
+        `<path d="M${n(x)} ${n(cy)}H${n(x + width - 2)}" fill="none" stroke="${paint.line}" stroke-width="1.5" marker-end="url(#${prefix}arrow-timeline)"/>`,
+        text(`${entry.number}.`, x + 10, cy - 12, {
+          size: 11,
+          weight: 600,
+          fill: paint.textSubtle,
+        }),
+        text(glyph, x + 10 + (String(entry.number).length + 1) * 7, cy - 12, {
+          size: 11,
+          fill: color,
+        }),
+        text(
+          fit(event, textWidth - (String(entry.number).length + 3) * 7, 11),
+          x + 10 + (String(entry.number).length + 3) * 7,
+          cy - 12,
+          { size: 11, fill: mix(color, paint.text, 0.75) },
+        ),
+      ];
+      if (entry.guard) {
+        inner.push(
+          text(fit(`[${entry.guard}]`, textWidth, 10), x + 10, cy + 11, {
+            size: 10,
+            fill: paint.textSubtle,
+          }),
+        );
+      }
+      if (meta) {
+        inner.push(
+          text(fit(meta, textWidth, 10), x + 10, cy + (entry.guard ? 23 : 11), {
+            size: 10,
+            fill: paint.textSubtle,
+          }),
+        );
+      }
+      parts.push(
+        addressed(
+          index,
+          `data-edge-id="${esc(entry.edgeId)}" data-kind="step" data-step="${entry.number}"`,
+          `<g>${inner.join('')}</g>`,
+        ),
+      );
+      x += width;
+    } else {
+      const width = Math.min(360, Math.max(140, Math.ceil(44 + [...entry.message].length * 6.4)));
+      const lead = previousRight !== undefined ? 32 : 0;
+      const box = x + lead;
+      const inner = [
+        `<title>${esc(entry.message)}</title>`,
+        lead
+          ? `<path d="M${n(x)} ${n(cy)}H${n(box)}" fill="none" stroke="${paint.fault}" stroke-width="1.5" stroke-dasharray="4 3"/>`
+          : '',
+        `<rect x="${n(box)}" y="${n(cy - 16)}" width="${width}" height="32" rx="8" fill="${mix(paint.fault, paint.surface, 0.08)}" stroke="${paint.fault}"/>`,
+        text('⚠', box + 12, cy, { size: 12, fill: paint.fault }),
+        text(fit(entry.message, width - 40, 11), box + 30, cy, {
+          size: 11,
+          fill: mix(paint.fault, paint.text, 0.6),
+        }),
+      ];
+      parts.push(
+        addressed(
+          index,
+          `data-kind="problem" data-step="${entry.number}"`,
+          `<g>${inner.join('')}</g>`,
+        ),
+      );
+      x = box + width;
+    }
+  });
+
+  const width = Math.ceil(Math.max(x, MARGIN + 120) + MARGIN);
+  const height = TIMELINE_CARD + 2 * MARGIN;
+  const title = options.title ?? 'Path of the instance';
+  const svg = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${esc(FONT)}" role="img" aria-labelledby="${prefix}timeline-title ${prefix}timeline-desc">`,
+    `<title id="${prefix}timeline-title">${esc(title)}</title>`,
+    `<desc id="${prefix}timeline-desc">${esc(describeTimeline(entries))}</desc>`,
+    '<defs>',
+    marker(prefix, 'timeline', paint.line),
+    '</defs>',
+    ...(entries.length
+      ? parts
+      : [text('No path.', MARGIN, cy, { size: 12, fill: paint.textSubtle })]),
+    '</svg>',
+  ].join('\n');
+  return { svg, width, height };
+}
+
+/** A state of the timeline: a smaller card than on the diagram, with how often and whether it is now. */
+function timelineState(
+  entry: TimelineState,
+  node: DiagramNode | undefined,
+  decision: boolean,
+  x: number,
+  width: number,
+): string {
+  const y = MARGIN;
+  const color = node ? accent(node, decision) : paint.step;
+  const emphasis =
+    entry.status === 'current'
+      ? `stroke="${color}" stroke-width="2"`
+      : entry.status === 'finished'
+        ? `stroke="${paint.end}" stroke-width="2"`
+        : `stroke="${paint.border}"`;
+  const fill = entry.status === 'current' ? mix(color, paint.surface, 0.08) : paint.surface;
+  const note = [
+    entry.status === 'current' ? 'now' : entry.status === 'finished' ? 'finished' : '',
+    entry.visit > 1 ? `${ordinal(entry.visit)} time` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const textX = x + 42;
+  const textWidth = width - 54;
+  return [
+    '<g>',
+    `<rect x="${n(x)}" y="${n(y)}" width="${width}" height="${TIMELINE_CARD}" rx="10" fill="${fill}" ${emphasis}/>`,
+    `<circle cx="${n(x + 22)}" cy="${n(y + TIMELINE_CARD / 2)}" r="13" fill="${mix(color, paint.surface, 0.12)}"/>`,
+    node
+      ? badgeGlyph(node, decision, x + 22, y + TIMELINE_CARD / 2, color)
+      : `<circle cx="${n(x + 22)}" cy="${n(y + TIMELINE_CARD / 2)}" r="5" fill="${color}"/>`,
+    text(fit(entry.name, textWidth, 13, true), textX, y + (note ? 19 : TIMELINE_CARD / 2), {
+      size: 13,
+      weight: 600,
+      fill: paint.text,
+    }),
+    note
+      ? text(fit(note, textWidth, 10), textX, y + 36, {
+          size: 10,
+          fill: entry.status === 'visited' ? paint.textSubtle : color,
+        })
+      : '',
+    '</g>',
+  ].join('');
+}
+
+const ordinal = (k: number): string => {
+  const tens = k % 100;
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[k % 10] ?? 'th');
+  return `${k}${suffix}`;
+};
 
 function marker(prefix: string, kind: string, color: string): string {
   return `<marker id="${prefix}arrow-${kind}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 L9 5 L1 9 z" fill="${color}"/></marker>`;
