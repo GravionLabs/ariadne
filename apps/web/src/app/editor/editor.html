@@ -8,16 +8,21 @@
     <span class="topbar-divider" aria-hidden="true"></span>
 
     <nav class="file-actions" aria-label="File">
-      <button type="button" class="menu-button" (click)="newDiagram()" title="New diagram">
-        <app-icon name="newFile" /><span>New</span>
+      <button
+        type="button"
+        class="menu-button collapse-b"
+        (click)="newDiagram()"
+        title="New diagram"
+      >
+        <app-icon name="newFile" /><span class="label">New</span>
       </button>
       <button
         type="button"
-        class="menu-button"
+        class="menu-button collapse-b"
         (click)="open()"
         title="Open a YAML diagram (Ctrl+O)"
       >
-        <app-icon name="open" /><span>Open…</span>
+        <app-icon name="open" /><span class="label">Open…</span>
       </button>
       <button
         type="button"
@@ -25,7 +30,7 @@
         (click)="importCsharp()"
         title="Build a diagram from MassTransit saga state machines in C# files"
       >
-        <app-icon name="code" /><span>Import C#…</span>
+        <app-icon name="code" /><span class="label">Import<span class="more"> C#…</span></span>
       </button>
       <button
         type="button"
@@ -33,7 +38,7 @@
         (click)="generateCsharp()"
         title="Generate a MassTransit saga state machine in C# from this diagram"
       >
-        <app-icon name="code" /><span>Generate C#…</span>
+        <app-icon name="code" /><span class="label">Generate<span class="more"> C#…</span></span>
       </button>
       <button
         type="button"
@@ -42,15 +47,15 @@
         (click)="file.save()"
         title="Save (Ctrl+S)"
       >
-        <app-icon name="save" /><span>Save</span>
+        <app-icon name="save" /><span class="label">Save</span>
       </button>
       <button
         type="button"
-        class="menu-button"
+        class="menu-button collapse-b"
         (click)="file.saveAs()"
         title="Save as (Ctrl+Shift+S)"
       >
-        <app-icon name="saveAs" /><span>Save as…</span>
+        <app-icon name="saveAs" /><span class="label">Save as…</span>
       </button>
     </nav>
 
@@ -72,51 +77,51 @@
       </span>
       <button
         type="button"
-        class="menu-button theme-toggle"
+        class="menu-button collapse-a theme-toggle"
         (click)="theme.toggle()"
         [title]="theme.isDark() ? 'Switch to the light theme' : 'Switch to the dark theme'"
       >
-        <app-icon name="theme" /><span>{{ theme.isDark() ? 'Light' : 'Dark' }}</span>
+        <app-icon name="theme" /><span class="label">{{ theme.isDark() ? 'Light' : 'Dark' }}</span>
       </button>
       <button
         type="button"
-        class="menu-button"
+        class="menu-button collapse-a"
         [class.active]="leftPanel() === 'walkthrough'"
         [attr.aria-pressed]="leftPanel() === 'walkthrough'"
         (click)="toggleWalkthrough()"
         title="Step through the saga event by event"
       >
-        <app-icon name="trigger" /><span>Walkthrough</span>
+        <app-icon name="play" /><span class="label">Walkthrough</span>
       </button>
       <button
         type="button"
-        class="menu-button"
+        class="menu-button collapse-a"
         [class.active]="leftPanel() === 'path'"
         [attr.aria-pressed]="leftPanel() === 'path'"
         (click)="togglePath()"
         title="Show the path a saga instance took"
       >
-        <app-icon name="trigger" /><span>Path</span>
+        <app-icon name="path" /><span class="label">Path</span>
       </button>
       <button
         type="button"
-        class="menu-button"
+        class="menu-button collapse-a"
         [class.active]="leftPanel() === 'messages'"
         [attr.aria-pressed]="leftPanel() === 'messages'"
         (click)="toggleMessages()"
         title="List the commands and events of the saga and where they are used"
       >
-        <app-icon name="event" /><span>Messages</span>
+        <app-icon name="event" /><span class="label">Messages</span>
       </button>
       <button
         type="button"
-        class="menu-button source-toggle"
+        class="menu-button collapse-a source-toggle"
         [class.active]="sourceOpen()"
         [attr.aria-pressed]="sourceOpen()"
         (click)="toggleSource()"
         title="Show or hide the diagram as YAML, next to the canvas"
       >
-        <app-icon name="code" /><span>Source</span>
+        <app-icon name="code" /><span class="label">Source</span>
       </button>
     </div>
   </header>
