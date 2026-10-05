@@ -1,5 +1,5 @@
 import { parse } from 'yaml';
-import { Diagram, DiagramEdge, DiagramNode } from './diagram';
+import { Diagram, DiagramEdge, DiagramNode, EventKind, NodeType, eventKindOf } from './diagram';
 import { optionsAt, startOf } from './walkthrough';
 
 /**
@@ -153,6 +153,94 @@ export function resolvePath(diagram: Diagram, steps: readonly PathStep[]): Resol
   }
   result.finished = !result.problems.length && nodes.get(result.current!)?.type === 'end';
   return result;
+}
+
+/** A state the instance went through, as the timeline shows it. */
+export interface TimelineState {
+  kind: 'state';
+  nodeId: string;
+  name: string;
+  type: NodeType;
+  /** `current`: where the instance is now; `finished`: the final state it ended in. */
+  status: 'visited' | 'current' | 'finished';
+  /** The how-manieth time the instance is in this state (1 the first time): loops are unrolled. */
+  visit: number;
+}
+
+/** A transition the instance took, between the states before and after it. */
+export interface TimelineStep {
+  kind: 'step';
+  /** As the steps were numbered (1-based), the same numbers the diagram shows. */
+  number: number;
+  edgeId: string;
+  event?: string;
+  guard?: string;
+  /** Where the event came from: a reply, a timeout, a join… (`eventKindOf`). */
+  eventKind?: EventKind;
+  at?: string;
+  note?: string;
+}
+
+/** Where the path could not be followed any further. */
+export interface TimelineProblem {
+  kind: 'problem';
+  /** The step that could not be followed (1-based); 0 for a problem of the diagram. */
+  number: number;
+  problem: PathProblemKind;
+  message: string;
+}
+
+export type TimelineEntry = TimelineState | TimelineStep | TimelineProblem;
+
+/**
+ * The path of an instance as a timeline, left to right: the states it went through, with the
+ * transition it took between each two, in order. A loop is unrolled (a state taken three times is
+ * there three times); the last state is `current`, or `finished` when the instance ended in a final
+ * state; where the path stopped, a problem says why. The editor, the viewer and the exports draw this.
+ */
+export function pathTimeline(diagram: Diagram, resolved: ResolvedPath): TimelineEntry[] {
+  const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
+  const edges = new Map(diagram.edges.map((e) => [e.id, e]));
+  const kindOf = eventKindOf(diagram);
+  const visits = new Map<string, number>();
+  const entries: TimelineEntry[] = [];
+  const state = (nodeId: string): TimelineState | undefined => {
+    const node = nodes.get(nodeId);
+    if (!node) return undefined;
+    const visit = (visits.get(nodeId) ?? 0) + 1;
+    visits.set(nodeId, visit);
+    return { kind: 'state', nodeId, name: node.name, type: node.type, status: 'visited', visit };
+  };
+
+  const first = resolved.nodes[0] && state(resolved.nodes[0]);
+  if (first) entries.push(first);
+  for (const taken of resolved.transitions) {
+    const edge = edges.get(taken.edgeId);
+    const eventKind = edge ? kindOf(edge) : undefined;
+    entries.push({
+      kind: 'step',
+      number: taken.index + 1,
+      edgeId: taken.edgeId,
+      ...(edge?.event ? { event: edge.event } : {}),
+      ...(edge?.guard ? { guard: edge.guard } : {}),
+      ...(eventKind ? { eventKind } : {}),
+      ...(taken.step.at ? { at: taken.step.at } : {}),
+      ...(taken.step.note ? { note: taken.step.note } : {}),
+    });
+    const next = state(taken.to);
+    if (next) entries.push(next);
+  }
+  const last = [...entries].reverse().find((e): e is TimelineState => e.kind === 'state');
+  if (last) last.status = resolved.finished ? 'finished' : 'current';
+  for (const problem of resolved.problems) {
+    entries.push({
+      kind: 'problem',
+      number: problem.index + 1,
+      problem: problem.kind,
+      message: problem.message,
+    });
+  }
+  return entries;
 }
 
 /** A pasted path longer than this is refused: no saga instance goes through that many transitions. */
