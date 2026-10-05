@@ -240,6 +240,7 @@ edges:
       } catch (e) {
         return e;
       }
+      return undefined;
     })();
     expect(newer).toBeInstanceOf(DiagramVersionError);
     expect(newer).toBeInstanceOf(DiagramFormatError);

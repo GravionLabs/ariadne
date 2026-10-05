@@ -3,9 +3,3 @@ declare module '*.yaml?raw' {
   const text: string;
   export default text;
 }
-
-// …and the C# samples: `import code from '…StateMachine.cs?raw'`.
-declare module '*.cs?raw' {
-  const text: string;
-  export default text;
-}

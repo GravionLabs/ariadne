@@ -40,13 +40,14 @@ The [README](README.md#project-layout) describes each of them. The rules that ke
 
 Run these from the root; they run across the workspace.
 
-| Command       | What it does                                   |
-| ------------- | ---------------------------------------------- |
-| `pnpm build`  | builds every package and app                   |
-| `pnpm test`   | unit tests of every package and app            |
-| `pnpm lint`   | ESLint                                         |
-| `pnpm format` | Prettier, fixing files (`format:check` checks) |
-| `pnpm start`  | the web app on http://localhost:4200           |
+| Command          | What it does                                   |
+| ---------------- | ---------------------------------------------- |
+| `pnpm build`     | builds every package and app                   |
+| `pnpm test`      | unit tests of every package and app            |
+| `pnpm lint`      | ESLint, then `pnpm typecheck`                  |
+| `pnpm typecheck` | TypeScript in every package, specs included    |
+| `pnpm format`    | Prettier, fixing files (`format:check` checks) |
+| `pnpm start`     | the web app on http://localhost:4200           |
 
 One package: `pnpm --filter <name> <script>`, e.g. `pnpm --filter @ariadne/core test`.
 
@@ -124,7 +125,7 @@ new dependency that shapes the code, a change to the file format or to a protoco
 
 ## Code style
 
-Prettier and ESLint run in CI (`pnpm format:check`, `pnpm lint`). Beyond that, write code that
+Prettier, ESLint and the type check of every package, specs included, run in CI (`pnpm format:check`, `pnpm lint`). Beyond that, write code that
 reads like the code around it: same naming, same comment density, same idioms.
 
 ## Dependencies

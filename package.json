@@ -10,9 +10,10 @@
     "test": "pnpm -r --if-present run test",
     "perf": "pnpm -r --workspace-concurrency=1 --if-present run perf",
     "test:ci": "pnpm -r --if-present run test:ci",
-    "lint": "eslint .",
+    "lint": "eslint . && pnpm typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r --if-present run typecheck"
   },
   "devDependencies": {
     "angular-eslint": "^22.5.0",

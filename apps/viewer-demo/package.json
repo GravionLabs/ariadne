@@ -10,7 +10,8 @@
     "prebuild": "node scripts/copy-sample.mjs",
     "build": "ng build",
     "test": "ng test --no-watch",
-    "test:ci": "ng test --no-watch --configuration=ci"
+    "test:ci": "ng test --no-watch --configuration=ci",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.spec.json"
   },
   "dependencies": {
     "@angular/common": "^22.2.0",
