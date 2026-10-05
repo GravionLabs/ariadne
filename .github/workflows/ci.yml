@@ -143,12 +143,40 @@ jobs:
           path: packages/viewer/npm/*.tgz
           if-no-files-found: error
 
+  # The ariadne command as a tarball for the GitHub release (apps/cli/scripts/package.mjs): built with
+  # the version of the release, then installed into an empty project and run, as a user would.
+  cli-package:
+    name: CLI package
+    runs-on: ubuntu-latest
+    outputs:
+      tag: v${{ steps.version.outputs.semver }}
+      version: ${{ steps.version.outputs.semver }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - id: version
+        uses: GravionLabs/ci/versioning/determine-version@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
+        with:
+          gitversion-config-file: GitVersion.yml
+      - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
+        with:
+          package-manager: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ariadne/cli package ${{ steps.version.outputs.semver }}
+      - run: pnpm --filter @ariadne/cli test:package
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cli-package
+          path: apps/cli/npm/*.tgz
+          if-no-files-found: error
+
   # Every merge to main that passes the checks is a release (GravionLabs/ci docker-package):
   # GitVersion gives the version, the image is published to GHCR with the tags latest, 1, 1.0 and
   # 1.0.0, and a GitHub release v1.0.0 is created with notes from the Conventional Commits.
   release:
     name: Release
-    needs: [ci, format, generated-csharp, perf, vscode-extension, vsix, viewer-package]
+    needs: [ci, format, generated-csharp, perf, vscode-extension, vsix, viewer-package, cli-package]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: GravionLabs/ci/.github/workflows/docker-package.yml@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
     with:
@@ -178,6 +206,27 @@ jobs:
           name: vsix
           path: vsix
       - run: gh release upload "${{ needs.vsix.outputs.tag }}" vsix/*.vsix --clobber --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The command goes onto the release too, twice: with its version, and as ariadne-cli.tgz, so that
+  # https://github.com/<repository>/releases/latest/download/ariadne-cli.tgz is always the newest
+  # (npm install -g <that address>). The agent skill (plugins/ariadne) points there.
+  cli-release:
+    name: Attach the CLI to the release
+    needs: [release, cli-package]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: cli-package
+          path: cli
+      - run: |
+          cp cli/ariadne-cli-*.tgz cli/ariadne-cli.tgz
+          gh release upload "${{ needs.cli-package.outputs.tag }}" cli/*.tgz --clobber --repo "${{ github.repository }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

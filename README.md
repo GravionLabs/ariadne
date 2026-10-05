@@ -85,17 +85,20 @@ Every release carries the extension as `ariadne-vscode-<version>.vsix`: download
 
 ## Command line
 
-`apps/cli` builds the `ariadne` command (Node 22 or later) for local use and CI:
+The `ariadne` command (Node 22 or later) is attached to every [release](https://github.com/GravionLabs/ariadne/releases):
 
 ```sh
-pnpm --filter @ariadne/cli build
-node apps/cli/dist/ariadne.mjs lint docs/examples/*.saga.yaml      # exit 1 on errors
-node apps/cli/dist/ariadne.mjs lint --max-warnings 0 --format json order.saga.yaml
-node apps/cli/dist/ariadne.mjs export order.saga.yaml --format svg -o order.svg   # mermaid | svg | png | md
-node apps/cli/dist/ariadne.mjs generate order.saga.yaml -o src/Orders    # diagram -> C#
-node apps/cli/dist/ariadne.mjs import src/Orders/*.cs -o docs            # C# -> diagram
-node apps/cli/dist/ariadne.mjs diff docs/order.saga.yaml src/Orders/*.cs   # exit 1 when they differ
+npm install -g https://github.com/GravionLabs/ariadne/releases/latest/download/ariadne-cli.tgz
+
+ariadne lint docs/examples/*.saga.yaml      # exit 1 on errors
+ariadne lint --max-warnings 0 --format json order.saga.yaml
+ariadne export order.saga.yaml --format svg -o order.svg   # mermaid | svg | png | md
+ariadne generate order.saga.yaml -o src/Orders    # diagram -> C#
+ariadne import src/Orders/*.cs -o docs            # C# -> diagram
+ariadne diff docs/order.saga.yaml src/Orders/*.cs   # exit 1 when they differ
 ```
+
+From a clone: `pnpm --filter @ariadne/cli build`, then `node apps/cli/dist/ariadne.mjs …`. See [apps/cli/README.md](apps/cli/README.md).
 
 `lint` reports the same findings as the editor's Problems list.
 
