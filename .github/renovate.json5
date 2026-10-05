@@ -10,6 +10,8 @@
     'helpers:pinGitHubActionDigests',
   ],
   // `chore(deps): …` keeps dependency updates out of the release notes (ADR 0015).
+  // The issue titles of the repository start with their level (CONTRIBUTING.md): the dashboard is a PBI.
+  dependencyDashboardTitle: '[PBI] chore: Dependency Dashboard',
   semanticCommitType: 'chore',
   semanticCommitScope: 'deps',
   timezone: 'Europe/Zurich',
