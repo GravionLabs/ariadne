@@ -14,7 +14,11 @@ Choose **New** and, under "Start with a tour", the _Order saga_ (under "Real-wor
 anywhere yet. Click a state or a transition: the inspector on the right shows what it is. **Walkthrough** steps
 through the saga event by event, **Messages** lists its commands and events and where they are used, and **Path**
 draws the path a saga instance took: paste the events it received (a JSON or YAML list, e.g. `- OrderReceived`) and the
-diagram shows the states visited, the transitions taken with their step numbers, and where the instance stands.
+diagram shows the states visited, the transitions taken with their step numbers, and where the instance stands. A
+**timeline** under the canvas lists the same path left to right: only the states it went through and the event of each
+step, a loop as often as it was taken, the state it is in now emphasised. Click a state or a step to find it on the
+diagram. The panel chooses between **On the diagram**, **Timeline** and **Both**. To see it at once, open the
+[order sample with an example path](https://gravionlabs.github.io/ariadne/app/?sample=order&path=example) in the demo.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../images/guide/new-dialog-dark.png">
@@ -30,7 +34,12 @@ diagram shows the states visited, the transitions taken with their step numbers,
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../images/guide/path-panel-dark.png">
-  <img alt="The Path panel with the events a saga instance received pasted in. The diagram shows the states it visited, the transitions it took with their step numbers, and the panel says it finished in Completed after 5 steps" src="../images/guide/path-panel-light.png">
+  <img alt="The Path panel with the events a saga instance received pasted in. The diagram shows the states it visited, the transitions it took with their step numbers, the panel says it finished in Completed after 5 steps, and the timeline under the canvas lists the same states and events left to right" src="../images/guide/path-panel-light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/path-timeline-dark.png">
+  <img alt="The timeline of a path: Initial, then OrderReceived to Reserving stock, StockReserved to Charging payment, PaymentFailed with the note “card declined” back to Charging payment for the 2nd and 3rd time, and PaymentCharged to Shipping, where the instance is now" src="../images/guide/path-timeline-light.png">
 </picture>
 
 ## Draw your own

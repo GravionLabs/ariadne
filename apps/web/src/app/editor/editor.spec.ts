@@ -1531,6 +1531,33 @@ describe('Editor', () => {
         expect(location.search).toBe('');
       });
 
+      it('opens the example path of a sample with path=example: the panel, the timeline and both views', async () => {
+        visit('?sample=order&path=example');
+        const { el, store, settle } = await setup();
+        await vi.waitFor(() => expect(store.diagram().name).toBe('OrderSaga'));
+        await vi.waitFor(() => expect(el.querySelector('app-path-timeline')).toBeTruthy());
+        await settle();
+        expect(el.querySelector<HTMLTextAreaElement>('app-path-panel textarea')!.value).toContain(
+          'OrderReceived',
+        );
+        expect(el.querySelector('app-path-panel .result')?.textContent).toContain(
+          'Now in Shipping',
+        );
+        expect(el.querySelector('app-node-card[data-highlight="on"]')).toBeTruthy();
+        expect(location.search).toBe('');
+      });
+
+      it('says so for a path it cannot show, and still opens the sample', async () => {
+        visit('?sample=order&path=yesterday');
+        const { store } = await setup();
+        await vi.waitFor(() => expect(store.diagram().name).toBe('OrderSaga'));
+        await vi.waitFor(() =>
+          expect(TestBed.inject(AppErrors).current()?.message).toBe(
+            'There is no path “yesterday”: use path=example.',
+          ),
+        );
+      });
+
       it('does nothing in VS Code, which owns the document, and leaves the address as it is', async () => {
         visit('?sample=order');
         const { store, settle } = await setup({ embedded: true });

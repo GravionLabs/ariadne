@@ -203,11 +203,25 @@ test('path-panel', async ({ page }) => {
   await box.fill(
     '- OrderReceived\n- StockReserved\n- event: PaymentFailed\n  to: Charging payment\n- PaymentCharged\n- OrderShipped',
   );
-  // The path moves the view to where it ends: show the whole saga.
+  // The path moves the view to where it ends: show the whole saga (fitting leaves room for the timeline).
   await page.locator('[aria-label="Fit to screen"]').click();
   await unhover(page);
   await settle(page);
   await shots(page, 'path-panel');
+});
+
+test('path-timeline', async ({ page }) => {
+  await openApp(page);
+  await openSample(page, 'order');
+  await page.getByRole('button', { name: 'Path', exact: true }).click();
+  await page
+    .locator('app-path-panel textarea')
+    .fill(
+      '- OrderReceived\n- StockReserved\n- event: PaymentFailed\n  to: Charging payment\n  note: card declined\n- event: PaymentFailed\n  to: Charging payment\n- PaymentCharged',
+    );
+  await unhover(page);
+  await settle(page);
+  await shots(page, 'path-timeline', { of: page.locator('app-path-timeline') });
 });
 
 // ---- import-and-generate.md

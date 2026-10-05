@@ -42,7 +42,7 @@ import { Inspector } from './inspector';
 import { SagaImport } from '../import/saga-import';
 import { CatalogPanel } from './catalog-panel';
 import { AppErrors } from '../error-handler';
-import { takeSampleParam } from '../sample-link';
+import { takeStartParams } from '../sample-link';
 import { findSample, sampleDiagram } from '../samples';
 import { GenerateDialog } from './generate-dialog';
 import { ImportDialog } from './import-dialog';
@@ -328,9 +328,12 @@ export class Editor {
     this.afterReplace();
   }
 
-  /** `?sample=<id>` in the address: opens that sample like New → sample; an unknown id is said so. */
+  /**
+   * `?sample=<id>` in the address: opens that sample like New → sample; `&path=example` also shows the
+   * path of its example instance, on the diagram and as a timeline. What cannot be opened is said so.
+   */
   private async openSampleFromUrl(): Promise<void> {
-    const id = takeSampleParam();
+    const { sample: id, path } = takeStartParams();
     if (!id) return;
     const sample = await findSample(id);
     if (!sample) {
@@ -339,6 +342,18 @@ export class Editor {
     }
     this.file.openImported(sampleDiagram(sample));
     this.afterReplace();
+    if (!path) return;
+    if (path !== 'example' || !sample.path) {
+      this.errors.report(
+        path === 'example'
+          ? `The sample ${id} has no example path.`
+          : `There is no path “${path}”: use path=example.`,
+      );
+      return;
+    }
+    if (this.leftPanel() !== 'path') this.togglePath();
+    this.path.setView('both');
+    this.path.setText(sample.path);
   }
 
   protected async open(): Promise<void> {

@@ -1,4 +1,4 @@
-import { parseDiagram } from '@ariadne/core';
+import { parseDiagram, parsePathSteps, resolvePath } from '@ariadne/core';
 import {
   SAMPLE_GROUPS,
   Sample,
@@ -14,6 +14,18 @@ import { listFolders, readSource } from './testing/read-source';
 const SAMPLES: readonly Sample[] = await loadSamples();
 
 describe('the samples', () => {
+  it('has an example path for every tour sample, which resolves without a problem', () => {
+    for (const sample of TOUR_SAMPLES) {
+      expect(sample.path, sample.id).toBeTruthy();
+      const parsed = parsePathSteps(sample.path!);
+      if (!('steps' in parsed)) throw new Error(`${sample.id}: ${parsed.error}`);
+      expect(parsed.steps.length, sample.id).toBeGreaterThanOrEqual(2);
+      const resolved = resolvePath(parseDiagram(sample.yaml), parsed.steps);
+      expect(resolved.problems, sample.id).toEqual([]);
+      expect(resolved.transitions).toHaveLength(parsed.steps.length);
+    }
+  });
+
   it('has the tour at once, and loads the library as a chunk of its own', async () => {
     expect(TOUR_SAMPLES.map((s) => s.id)).toEqual(['order', 'booking', 'travel-booking']);
     const library = await loadLibrarySamples();

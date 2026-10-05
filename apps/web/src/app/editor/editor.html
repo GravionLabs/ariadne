@@ -160,7 +160,12 @@
       </button>
     </div>
   }
-  <div class="workspace" [attr.data-direction]="store.direction()" [class.walking]="walking()">
+  <div
+    class="workspace"
+    [attr.data-direction]="store.direction()"
+    [class.walking]="walking()"
+    [class.with-timeline]="!!path.timeline()"
+  >
     <f-flow
       fDraggable
       class="editor-flow"

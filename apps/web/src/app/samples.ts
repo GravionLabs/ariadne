@@ -15,6 +15,11 @@ export interface Sample {
   description: string;
   /** The diagram as a `*.saga.yaml` file. */
   yaml: string;
+  /**
+   * The history of an example instance (a YAML list of steps, as the Path panel takes them): opened
+   * with the sample by `?sample=<id>&path=example`, to show its path and timeline.
+   */
+  path?: string;
 }
 
 /** The tour: three small sagas, one for each thing the app draws, first in the list. */
@@ -25,6 +30,12 @@ export const TOUR_SAMPLES: readonly Sample[] = [
     title: 'Order saga',
     description: 'Stock and payment, a payment retried and timed out. The simplest tour.',
     yaml: order,
+    path: [
+      '- { event: OrderReceived, at: "09:58", note: from the shop }',
+      '- StockReserved',
+      '- { event: PaymentFailed, to: Charging payment, at: "10:01", note: card declined }',
+      '- PaymentCharged',
+    ].join('\n'),
   },
   {
     id: 'booking',
@@ -32,6 +43,7 @@ export const TOUR_SAMPLES: readonly Sample[] = [
     title: 'Booking saga',
     description: 'Branches on events from outside, read from C#.',
     yaml: booking,
+    path: ['- BookingRequested', '- { event: PaymentReceived, note: paid by card }'].join('\n'),
   },
   {
     id: 'travel-booking',
@@ -39,6 +51,14 @@ export const TOUR_SAMPLES: readonly Sample[] = [
     title: 'Travel booking',
     description: 'Requests, a join, timeouts and compensation: flight, hotel and payment.',
     yaml: travel,
+    path: [
+      '- TravellerSubmitted',
+      '- { event: ValidateTraveller.TimeoutExpired, to: Validating traveller, note: validation service slow }',
+      '- ValidateTraveller.Completed',
+      '- PaymentMethodConfirmed',
+      '- PaymentAuthorized',
+      '- BookingReady',
+    ].join('\n'),
   },
 ];
 

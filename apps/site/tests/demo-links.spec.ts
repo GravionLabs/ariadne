@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createMarkdownRenderer } from 'vitepress';
 import { describe, expect, it } from 'vitest';
-import { demoLinksPlugin, sampleIdOf } from '../.vitepress/demo-links';
+import { SAMPLES_WITH_PATH, demoLinksPlugin, sampleIdOf } from '../.vitepress/demo-links';
 import { repoLinksPlugin } from '../.vitepress/repo-links';
 
 const repoRoot = resolve(import.meta.dirname, '../../..');
@@ -28,6 +28,13 @@ describe('the ids the guide links to are samples of the app', () => {
   const library = readdirSync(resolve(repoRoot, 'samples/library'), { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name);
+
+  it('offers "with a path" exactly for the samples that have an example path in the app', () => {
+    const withPath = [...samplesSource.matchAll(/\bid: '([^']+)'[\s\S]*?(?=\bid: '|$)/g)]
+      .filter((m) => /\bpath: \[/.test(m[0]))
+      .map((m) => m[1]);
+    expect([...SAMPLES_WITH_PATH].sort()).toEqual(withPath.sort());
+  });
 
   it('finds the samples of the app', () => {
     expect(tour).toEqual(expect.arrayContaining(['order', 'booking', 'travel-booking']));
@@ -79,6 +86,11 @@ describe('the markdown-it plugin', () => {
     );
     expect(html).toContain('href="/ariadne/app/?sample=order-fulfilment"');
     expect(html.match(/Open in the demo/g)).toHaveLength(2);
+    // A tour sample has an example instance, a library sample not.
+    expect(html).toContain(
+      '<a href="/ariadne/app/?sample=order&amp;path=example" target="_self">with a path</a>',
+    );
+    expect(html.match(/with a path/g)).toHaveLength(1);
     // The sample link itself still goes to the repository.
     expect(html).toContain(
       'href="https://github.com/GravionLabs/ariadne/blob/main/docs/examples/order.saga.yaml"',

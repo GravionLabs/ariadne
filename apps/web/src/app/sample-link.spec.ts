@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { takeSampleParam } from './sample-link';
+import { takeSampleParam, takeStartParams } from './sample-link';
 
 describe('takeSampleParam', () => {
   const original = location.href;
@@ -36,5 +36,16 @@ describe('takeSampleParam', () => {
   it('decodes the id', () => {
     at('?sample=travel%2Dbooking');
     expect(takeSampleParam()).toBe('travel-booking');
+  });
+
+  it('reads the example path with the sample, and takes both out of the address', () => {
+    at('?sample=order&path=example&x=1');
+    expect(takeStartParams()).toEqual({ sample: 'order', path: 'example' });
+    expect(location.search).toBe('?x=1');
+    at('?path=example');
+    expect(takeStartParams()).toEqual({ sample: null, path: 'example' });
+    expect(location.search).toBe('');
+    at('?x=1');
+    expect(takeStartParams()).toEqual({ sample: null, path: null });
   });
 });

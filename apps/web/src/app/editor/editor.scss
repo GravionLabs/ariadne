@@ -331,6 +331,11 @@ app-export-menu ::ng-deep .menu-button {
   width: min(360px, calc(100% - 32px));
 }
 
+// With the timeline of a path, the canvas ends above it: fitting and centring use the part that shows.
+.with-timeline .editor-flow {
+  height: calc(100% - 150px);
+}
+
 // The timeline of a path: along the bottom, right of the Path panel, above the toolbox.
 .path-timeline {
   position: absolute;
