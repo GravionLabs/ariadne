@@ -40,7 +40,9 @@ import { Icon } from './icon';
 import { Inspector } from './inspector';
 import { SagaImport } from '../import/saga-import';
 import { CatalogPanel } from './catalog-panel';
-import { sampleDiagram } from '../samples';
+import { AppErrors } from '../error-handler';
+import { takeSampleParam } from '../sample-link';
+import { findSample, sampleDiagram } from '../samples';
 import { GenerateDialog } from './generate-dialog';
 import { ImportDialog } from './import-dialog';
 import { NewDiagramDialog } from './new-diagram-dialog';
@@ -130,6 +132,7 @@ export class Editor {
   /** Inside a host (VS Code): it owns files, saving and undo; those controls are not shown. */
   protected readonly embedded = inject(EditorHost).embedded;
   protected readonly sync = inject(EmbeddedSync);
+  private readonly errors = inject(AppErrors);
   protected readonly appendTypes = APPEND_TYPES;
   protected readonly slotSize = SLOT_SIZE;
   protected readonly inputId = inputId;
@@ -269,6 +272,8 @@ export class Editor {
     effect(() => {
       if (this.sync.opened() > 0) untracked(() => this.afterReplace());
     });
+    // A link such as `?sample=order` opens that sample (not in a host, which owns the document).
+    if (!this.embedded) void this.openSampleFromUrl();
     // The text was edited while walking and the path no longer holds: the walk is over.
     effect(() => {
       if (!this.walk.valid()) untracked(() => this.closeLeftPanel());
@@ -317,6 +322,19 @@ export class Editor {
     // A sample opens like an import: a copy that is not saved anywhere yet.
     if (details.sample) this.file.openImported(sampleDiagram(details.sample));
     else this.file.newDiagram(details);
+    this.afterReplace();
+  }
+
+  /** `?sample=<id>` in the address: opens that sample like New → sample; an unknown id is said so. */
+  private async openSampleFromUrl(): Promise<void> {
+    const id = takeSampleParam();
+    if (!id) return;
+    const sample = await findSample(id);
+    if (!sample) {
+      this.errors.report(`There is no sample ${id}.`);
+      return;
+    }
+    this.file.openImported(sampleDiagram(sample));
     this.afterReplace();
   }
 

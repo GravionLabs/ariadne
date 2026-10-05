@@ -1,0 +1,18 @@
+{
+  "name": "@ariadne/site",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The documentation site: docs/guide as a website (VitePress), published with the editor demo on GitHub Pages.",
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=../../test-results/junit-site.xml"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4",
+    "vitest": "^5.0.0"
+  }
+}

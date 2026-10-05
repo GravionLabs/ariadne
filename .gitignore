@@ -53,3 +53,6 @@ apps/web/capture/report
 
 # Failed VS Code captures (apps/vscode/capture)
 apps/vscode/capture/failures
+
+# VitePress (apps/site)
+.vitepress/cache

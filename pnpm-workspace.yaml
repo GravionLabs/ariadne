@@ -8,6 +8,11 @@ packages:
 # See CONTRIBUTING.md and docs/adr/0019-dependency-updates-and-supply-chain.md.
 strictDepBuilds: true
 
+# The pages of the documentation site are the files of `docs/`, outside any package, and VitePress
+# compiles them to code that imports `vue`: it must be found from the top folder (apps/site).
+publicHoistPattern:
+  - vue
+
 allowBuilds:
   # File watching of the Angular builds (`ng serve`, `ng build --watch`); the script selects the prebuilt binary.
   '@parcel/watcher': true
