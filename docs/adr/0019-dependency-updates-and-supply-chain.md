@@ -79,8 +79,9 @@ so a typo does not silently stop the updates.
 
 ## Consequences
 
-- The Renovate GitHub app has to be installed for the repository (an owner action); the configuration can be merged
-  before that.
+- Renovate runs from `.github/workflows/renovate.yml` (weekly, or by hand) instead of the Renovate GitHub app, which
+  the owner did not want to install. It needs the repository secret `RENOVATE_TOKEN` (a token that may write
+  contents, pull requests and workflows): pull requests opened with `GITHUB_TOKEN` would not start CI.
 - A new package family needs a line in a group, or it gets a pull request of its own.
 - Every week there are a handful of pull requests instead of dozens. The Dependency Dashboard issue lists what is
   waiting.
