@@ -1,0 +1,12 @@
+@if (visible()) {
+  <div class="notice" role="status">
+    <span class="text">
+      This is a demo. Your diagrams stay in this browser: nothing is uploaded. Save to keep a file
+      on your computer.
+      <a href="../guide/">Read the guide</a>.
+    </span>
+    <button type="button" class="dismiss" aria-label="Dismiss the demo notice" (click)="dismiss()">
+      <app-icon name="close" />
+    </button>
+  </div>
+}

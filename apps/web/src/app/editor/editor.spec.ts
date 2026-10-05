@@ -18,6 +18,7 @@ import type { Mock } from 'vitest';
 import { CODE_EDITOR_FACTORY, CodeEditor, CodeEditorOptions } from './code-editor';
 import { Editor } from './editor';
 import { EditorHost } from '../host/editor-host';
+import { AppErrors } from '../error-handler';
 import './native-dialog.testing';
 import { parseDiagram, serializeDiagram } from '@ariadne/core';
 import { axeFindings } from '../testing/axe';
@@ -1372,6 +1373,41 @@ describe('Editor', () => {
       expect(store.diagram().name).toBe('OrderSaga');
       expect(store.nodes().length).toBeGreaterThan(4);
       expect(el.querySelector('[aria-label="Unsaved changes"]')).toBeTruthy();
+    });
+
+    describe('from the address (?sample=)', () => {
+      const original = location.href;
+      afterEach(() => history.replaceState(null, '', original));
+      const visit = (search: string) => history.replaceState(null, '', `/app/${search}`);
+
+      it('opens the sample, as an unsaved copy, and takes the parameter out of the address', async () => {
+        visit('?sample=order&x=1');
+        const { store, el, settle } = await setup();
+        await vi.waitFor(() => expect(store.diagram().name).toBe('OrderSaga'));
+        await settle();
+        expect(el.querySelector('[aria-label="Unsaved changes"]')).toBeTruthy();
+        expect(location.search).toBe('?x=1');
+      });
+
+      it('says so for an id that is no sample, and leaves the diagram alone', async () => {
+        visit('?sample=nope');
+        const { store, settle } = await setup();
+        const before = store.diagram().name;
+        await vi.waitFor(() =>
+          expect(TestBed.inject(AppErrors).current()?.message).toBe('There is no sample nope.'),
+        );
+        await settle();
+        expect(store.diagram().name).toBe(before);
+        expect(location.search).toBe('');
+      });
+
+      it('does nothing in VS Code, which owns the document, and leaves the address as it is', async () => {
+        visit('?sample=order');
+        const { store, settle } = await setup({ embedded: true });
+        await settle();
+        expect(store.diagram().name).not.toBe('OrderSaga');
+        expect(location.search).toBe('?sample=order');
+      });
     });
   });
 
