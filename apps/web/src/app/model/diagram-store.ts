@@ -6,6 +6,7 @@ import {
   DetailsPatch,
   Diagram,
   Direction,
+  Spacing,
   EdgeKind,
   EdgePatch,
   EventInfoPatch,
@@ -33,6 +34,7 @@ export const DiagramStore = signalStore(
     nodes: computed(() => diagram().nodes),
     edges: computed(() => diagram().edges),
     direction: computed(() => diagram().direction),
+    spacing: computed((): Spacing => diagram().spacing ?? 'normal'),
   })),
   withMethods((store) => {
     /** Applies an edit that creates something as one undo step; `null` leaves the store alone. */
@@ -136,6 +138,16 @@ export const DiagramStore = signalStore(
       setDirection(direction: Direction): void {
         if (direction === store.diagram().direction) return;
         store._commit((d) => ({ ...d, direction }));
+      },
+
+      /** Room between states and layers; `normal` is stored as no value (#113). */
+      setSpacing(spacing: Spacing): void {
+        if (spacing === (store.diagram().spacing ?? 'normal')) return;
+        store._commit((d) => {
+          const next: Diagram = { ...d, spacing };
+          if (spacing === 'normal') delete next.spacing;
+          return next;
+        });
       },
 
       /** Connects two nodes; returns the new edge id, or `null` if the connection is not allowed. */

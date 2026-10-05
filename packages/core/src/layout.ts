@@ -5,8 +5,11 @@ import {
   DiagramNode,
   Direction,
   Point,
+  Spacing,
   eventLabel,
   hasOutput,
+  isHorizontal,
+  isReversed,
 } from './diagram';
 
 export interface Size {
@@ -52,9 +55,24 @@ const DESCRIPTION_PADDING = 8;
 const DESCRIPTION_LINE = 17;
 const DESCRIPTION_LINE_CHARS = 32;
 const DESCRIPTION_MAX_LINES = 8;
-const NODE_GAP = 80;
-// dagre puts edge labels in their own rank, so this is the gap node → label → node.
-const LAYER_GAP = 60;
+/**
+ * Room between states side by side (`node`) and between layers (`layer`), per spacing preset (#113).
+ * dagre puts edge labels in their own rank, so `layer` is the gap node → label → node: a label and
+ * its "+" always fit, whatever the preset.
+ */
+export const SPACING_GAPS: Readonly<Record<Spacing, { node: number; layer: number }>> = {
+  compact: { node: 48, layer: 36 },
+  normal: { node: 80, layer: 60 },
+  spacious: { node: 128, layer: 96 },
+};
+
+/** dagre's `rankdir` for each direction. */
+const RANKDIR: Readonly<Record<Direction, 'TB' | 'BT' | 'LR' | 'RL'>> = {
+  'top-bottom': 'TB',
+  'bottom-top': 'BT',
+  'left-right': 'LR',
+  'right-left': 'RL',
+};
 
 /** Transition label metrics; the label component draws to the same numbers. */
 export const LABEL_ROW = 22;
@@ -126,9 +144,22 @@ export function labelSize(edge: DiagramEdge, direction: Direction): Size {
     Math.max(LABEL_MIN_WIDTH, Math.ceil(44 + longest * LABEL_CHAR_WIDTH)),
   );
   const height = rows * LABEL_ROW + 2 * LABEL_PADDING;
-  return direction === 'left-right'
+  return isHorizontal(direction)
     ? { width: width + INSERT_OVERHANG, height }
     : { width, height: height + INSERT_OVERHANG };
+}
+
+/**
+ * Where the card of a transition label sits in its box: the "+" overhangs on the downstream side
+ * (below it top-bottom, above it bottom-top, right of it left-right, left of it right-left), and the
+ * card is the rest. `box` is the label's position and size from the layout.
+ */
+export function labelCard(box: Point & Size, direction: Direction): Point & Size {
+  const horizontal = isHorizontal(direction);
+  const shift = isReversed(direction) ? INSERT_OVERHANG : 0;
+  return horizontal
+    ? { x: box.x + shift, y: box.y, width: box.width - INSERT_OVERHANG, height: box.height }
+    : { x: box.x, y: box.y + shift, width: box.width, height: box.height - INSERT_OVERHANG };
 }
 
 /** Number of forward transitions leaving each state. */
@@ -205,9 +236,9 @@ export function layoutDiagram(
   // A multigraph: several transitions between the same two states are separate edges.
   const graph = new dagre.graphlib.Graph({ multigraph: true });
   graph.setGraph({
-    rankdir: diagram.direction === 'left-right' ? 'LR' : 'TB',
-    nodesep: NODE_GAP,
-    ranksep: LAYER_GAP,
+    rankdir: RANKDIR[diagram.direction] ?? 'TB',
+    nodesep: SPACING_GAPS[diagram.spacing ?? 'normal'].node,
+    ranksep: SPACING_GAPS[diagram.spacing ?? 'normal'].layer,
     ranker: 'network-simplex',
   });
   graph.setDefaultEdgeLabel(() => ({}));
@@ -267,11 +298,24 @@ function routeTransitions(
   sizes: ReadonlyMap<string, Size>,
   slots: readonly AddSlot[],
 ): Map<string, Point[]> {
-  const lr = diagram.direction === 'left-right';
+  const horizontal = isHorizontal(diagram.direction);
+  /** +1 when the flow runs down or right, -1 when it runs up or left. */
+  const sense = isReversed(diagram.direction) ? -1 : 1;
   const rect = (id: string) => ({ ...positions.get(id)!, ...sizes.get(id)! });
+  type Box = Point & Size;
+  /** A point from its place along the flow and across it. */
+  const pt = (along: number, across: number): Point =>
+    horizontal ? { x: along, y: across } : { x: across, y: along };
+  const start = (b: Box) => (horizontal ? b.x : b.y);
+  const length = (b: Box) => (horizontal ? b.width : b.height);
+  const side = (b: Box) => (horizontal ? b.y : b.x);
+  const breadth = (b: Box) => (horizontal ? b.height : b.width);
+  /** Where the flow leaves a box (its downstream side) and where it enters one (upstream). */
+  const exit = (b: Box) => (sense > 0 ? start(b) + length(b) : start(b));
+  const entry = (b: Box) => (sense > 0 ? start(b) : start(b) + length(b));
   const routes = new Map<string, Point[]>();
 
-  // Parallel transitions (same two states): each line goes through its own label.
+  // Parallel transitions (same two states): each line goes through its own label's card.
   const parallel = new Map<string, TransitionLabel[]>();
   for (const label of labels) {
     const e = diagram.edges.find((x) => x.id === label.edgeId)!;
@@ -281,29 +325,23 @@ function routeTransitions(
   for (const group of parallel.values()) {
     if (group.length < 2) continue;
     for (const { edgeId, position, size } of group) {
-      // The label box ends in the overhang of the "+"; the card is the rest.
-      routes.set(edgeId, [
-        lr
-          ? { x: position.x + (size.width - INSERT_OVERHANG) / 2, y: position.y + size.height / 2 }
-          : { x: position.x + size.width / 2, y: position.y + (size.height - INSERT_OVERHANG) / 2 },
-      ]);
+      const card = labelCard({ ...position, ...size }, diagram.direction);
+      routes.set(edgeId, [{ x: card.x + card.width / 2, y: card.y + card.height / 2 }]);
     }
   }
 
-  // Everything else outside the layout runs around the diagram, in lanes beyond its edge.
-  const boxes = [
+  // Everything else outside the layout runs around the diagram, in lanes beyond its far side.
+  const boxes: Box[] = [
     ...diagram.nodes.map((n) => rect(n.id)),
     ...labels.map((l) => ({ ...l.position, ...l.size })),
     ...slots.map((s) => ({ ...s.position, ...SLOT_SIZE })),
   ];
-  const edgeOfDiagram = lr
-    ? Math.max(...boxes.map((b) => b.y + b.height))
-    : Math.max(...boxes.map((b) => b.x + b.width));
+  const edgeOfDiagram = Math.max(...boxes.map((b) => side(b) + breadth(b)));
   /** Room the line needs beside its state or the diagram: half its label, which rides on it. */
   const room = (e: DiagramEdge, least: number): number => {
     if (!e.event) return least;
     const size = labelSize(e, diagram.direction);
-    return Math.max(least, (lr ? size.height : size.width) / 2 + 16);
+    return Math.max(least, (horizontal ? size.height : size.width) / 2 + 16);
   };
   let lane = 0;
   for (const e of diagram.edges) {
@@ -311,35 +349,16 @@ function routeTransitions(
     if (!outside || !positions.has(e.source) || !positions.has(e.target)) continue;
     const from = rect(e.source);
     const to = rect(e.target);
+    // Out of the source on its downstream side, a stub on, then round to the target's upstream side.
+    const out = exit(from) + sense * STUB;
+    const into = entry(to) - sense * STUB;
     if (e.source === e.target) {
-      const gap = room(e, LOOP_GAP);
-      routes.set(
-        e.id,
-        lr
-          ? [
-              { x: from.x + from.width + STUB, y: from.y + from.height + gap },
-              { x: from.x - STUB, y: from.y + from.height + gap },
-            ]
-          : [
-              { x: from.x + from.width + gap, y: from.y + from.height + STUB },
-              { x: from.x + from.width + gap, y: from.y - STUB },
-            ],
-      );
+      const beside = side(from) + breadth(from) + room(e, LOOP_GAP);
+      routes.set(e.id, [pt(out, beside), pt(into, beside)]);
       continue;
     }
     const far = edgeOfDiagram + room(e, LANE_GAP) + lane++ * LANE_STEP;
-    routes.set(
-      e.id,
-      lr
-        ? [
-            { x: from.x + from.width + STUB, y: far },
-            { x: to.x - STUB, y: far },
-          ]
-        : [
-            { x: far, y: from.y + from.height + STUB },
-            { x: far, y: to.y - STUB },
-          ],
-    );
+    routes.set(e.id, [pt(out, far), pt(into, far)]);
   }
   return routes;
 }

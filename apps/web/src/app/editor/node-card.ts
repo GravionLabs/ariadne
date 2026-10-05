@@ -20,6 +20,15 @@ import {
  * A state on the canvas. The host carries `fNode` (sized with `fNodeSize`, as f-flow owns the
  * host's inline style); this draws the card and its two connectors.
  */
+/** Where a state's connectors sit: in on the upstream side, out on the downstream side. */
+export const SIDES: Readonly<Record<Direction, { in: EFConnectableSide; out: EFConnectableSide }>> =
+  {
+    'top-bottom': { in: EFConnectableSide.TOP, out: EFConnectableSide.BOTTOM },
+    'bottom-top': { in: EFConnectableSide.BOTTOM, out: EFConnectableSide.TOP },
+    'left-right': { in: EFConnectableSide.LEFT, out: EFConnectableSide.RIGHT },
+    'right-left': { in: EFConnectableSide.RIGHT, out: EFConnectableSide.LEFT },
+  };
+
 @Component({
   selector: 'app-node-card',
   imports: [FFlowModule, Icon],
@@ -74,10 +83,7 @@ export class NodeCard {
   protected readonly hasOutput = computed(() => hasOutput(this.node().type));
   protected readonly inputId = computed(() => inputId(this.node().id));
   protected readonly outputId = computed(() => outputId(this.node().id));
-  protected readonly inSide = computed(() =>
-    this.direction() === 'left-right' ? EFConnectableSide.LEFT : EFConnectableSide.TOP,
-  );
-  protected readonly outSide = computed(() =>
-    this.direction() === 'left-right' ? EFConnectableSide.RIGHT : EFConnectableSide.BOTTOM,
-  );
+  /** In on the upstream side, out on the downstream side, in all four directions (#113). */
+  protected readonly inSide = computed(() => SIDES[this.direction()].in);
+  protected readonly outSide = computed(() => SIDES[this.direction()].out);
 }

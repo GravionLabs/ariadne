@@ -1,0 +1,83 @@
+// The button looks like the toolbox's other buttons (`.icon-button` in editor.scss); only the menu
+// is styled here. It lives in the CDK overlay container; emulated encapsulation still scopes it.
+:host {
+  display: inline-flex;
+}
+
+.menu {
+  display: grid;
+  gap: 2px;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  font-family: system-ui, sans-serif;
+
+  .group {
+    display: grid;
+    gap: 2px;
+  }
+
+  .group + .group {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--c-border);
+  }
+
+  header {
+    padding: 6px 8px 4px;
+    color: var(--c-text-subtle);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  color: var(--c-text);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+
+  app-icon,
+  .no-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--c-text-subtle);
+  }
+
+  span:not(.no-icon) {
+    flex: 1;
+  }
+
+  .check {
+    color: var(--c-primary);
+  }
+
+  &[aria-checked='true'] {
+    color: var(--c-primary);
+    font-weight: 600;
+
+    app-icon:not(.check) {
+      color: var(--c-primary);
+    }
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--c-surface-3);
+    outline: none;
+  }
+}

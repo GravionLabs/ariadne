@@ -80,7 +80,6 @@ describe('locateSourceError', () => {
 
   it('places top-level problems at their key', () => {
     expect(locate('version: 9\n').at).toEqual({ line: 1, column: 10 });
-    expect(locate('version: 3\ndirection: diagonal\n').at).toEqual({ line: 2, column: 12 });
     expect(locate('version: 3\nnodes: {}\n').at).toEqual({ line: 2, column: 8 });
   });
 

@@ -382,6 +382,18 @@
   left: calc(50% - 5px);
 }
 
+:host-context([data-direction='bottom-top']) {
+  .in {
+    top: auto;
+    bottom: -5px;
+  }
+
+  .out {
+    top: -5px;
+    bottom: auto;
+  }
+}
+
 :host-context([data-direction='left-right']) {
   .in {
     top: calc(50% - 5px);
@@ -393,6 +405,20 @@
     right: -5px;
     bottom: auto;
     left: auto;
+  }
+}
+
+:host-context([data-direction='right-left']) {
+  .in {
+    top: calc(50% - 5px);
+    right: -5px;
+    left: auto;
+  }
+
+  .out {
+    top: calc(50% - 5px);
+    bottom: auto;
+    left: -5px;
   }
 }
 

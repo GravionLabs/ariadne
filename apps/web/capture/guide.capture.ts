@@ -50,7 +50,7 @@ test('new-dialog', async ({ page }) => {
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await page.locator('#samples-library').waitFor();
   // Taller than the usual window: the dialog scrolls there, and the last sample would be cut in two.
-  await withViewport(page, { width: 1600, height: 1150 }, async () => {
+  await withViewport(page, { width: 1720, height: 1150 }, async () => {
     await unhover(page);
     await shots(page, 'new-dialog', { of: page.locator('dialog[open] .dialog') });
   });
@@ -108,7 +108,7 @@ test('state-activities', async ({ page }) => {
   await openApp(page);
   await openSample(page, 'order');
   await selectState(page, 'Charging payment');
-  await withViewport(page, { width: 1600, height: 1200 }, async () => {
+  await withViewport(page, { width: 1720, height: 1200 }, async () => {
     await unhover(page);
     await shots(page, 'state-activities', { of: page.locator('app-inspector') });
   });
@@ -135,7 +135,7 @@ test('compensation', async ({ page }) => {
   // Open the section "Recovery" (it is open already when the state has a compensation: leave it).
   const recovery = page.locator('app-inspector [aria-label="Recovery"] .group-toggle');
   if ((await recovery.getAttribute('aria-expanded')) === 'false') await recovery.click();
-  await withViewport(page, { width: 1600, height: 1200 }, async () => {
+  await withViewport(page, { width: 1720, height: 1200 }, async () => {
     await unhover(page);
     await shots(page, 'compensation');
   });
@@ -163,10 +163,10 @@ test('source-error', async ({ page }) => {
   await page.locator('.source-toggle').click();
   const text = page.locator('app-source-panel .cm-content');
   await text.waitFor();
-  // Break the YAML near the top, where it shows: a direction that is not one.
-  await page.locator('app-source-panel .cm-line', { hasText: 'direction:' }).click();
+  // Break the YAML near the top, where it shows: a node type that is not one.
+  await page.locator('app-source-panel .cm-line', { hasText: 'type: start' }).first().click();
   await page.keyboard.press('End');
-  await page.keyboard.type('wards');
+  await page.keyboard.type('ing');
   // Back to the start of the line: the editor scrolls sideways to follow the cursor.
   await page.keyboard.press('Home');
   await page.locator('app-source-panel .status[data-kind="error"]').waitFor();

@@ -1,5 +1,6 @@
 // Sizes follow labelSize() in diagram-layout.ts: the card, then the "+" overhanging it by half
-// along the line (below it top-bottom, right of it left-right).
+// along the line, on its downstream side: below it top-bottom, above it bottom-top, right of it
+// left-right, left of it right-left (`labelCard()` in @ariadne/core, which the export uses too).
 :host {
   position: relative;
   display: flex;
@@ -9,7 +10,12 @@
   height: 100%;
 }
 
-:host([data-direction='left-right']) {
+:host([data-direction='bottom-top']) {
+  justify-content: flex-end;
+}
+
+:host([data-direction='left-right']),
+:host([data-direction='right-left']) {
   flex-direction: row;
   align-items: center;
 }
@@ -71,6 +77,11 @@
   :host([data-direction='left-right']) & {
     flex: 1;
     margin-right: 13px;
+  }
+
+  :host([data-direction='right-left']) & {
+    flex: 1;
+    margin-left: 13px;
   }
 
   &:hover {
@@ -158,11 +169,22 @@
   bottom: 0;
   left: calc(50% - 13px);
 
+  :host([data-direction='bottom-top']) & {
+    top: 0;
+    bottom: auto;
+  }
+
   :host([data-direction='left-right']) & {
     top: calc(50% - 13px);
     right: 0;
     bottom: auto;
     left: auto;
+  }
+
+  :host([data-direction='right-left']) & {
+    top: calc(50% - 13px);
+    bottom: auto;
+    left: 0;
   }
 
   :host(.empty) & {

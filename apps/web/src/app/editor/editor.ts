@@ -32,6 +32,7 @@ import { DiagramDetails } from './diagram-details';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
 import { PathPanel } from './path-panel';
+import { LayoutMenu } from './layout-menu';
 import { PathTimeline } from './path-timeline';
 import { PathStore } from './path-store';
 import { WalkthroughPanel } from './walkthrough-panel';
@@ -56,7 +57,6 @@ import {
   backEdgeIds,
   DiagramEdge,
   DiagramNode,
-  Direction,
   eventKindOf,
   eventLabel,
   Finding,
@@ -85,6 +85,7 @@ const OBSCURING =
     CatalogPanel,
     PathPanel,
     PathTimeline,
+    LayoutMenu,
     WalkthroughPanel,
     DiagramDetails,
     ExportMenu,
@@ -154,7 +155,7 @@ export class Editor {
    * edges is deliberately not part of it, so adding a state never moves the user's viewport.
    * New layout options (spacing, ranker) belong here.
    */
-  private readonly layoutKey = computed(() => this.store.direction());
+  private readonly layoutKey = computed(() => `${this.store.direction()} ${this.store.spacing()}`);
 
   /** The source panel (the diagram as YAML) next to the canvas; open state and width are remembered. */
   protected readonly sourceOpen = signal(remembered('source-open') === '1');
@@ -312,11 +313,6 @@ export class Editor {
   protected addAny(): void {
     if (this.walking()) return;
     this.ui.selectNode(this.store.addNode('any'));
-  }
-
-  protected setDirection(direction: Direction): void {
-    if (this.walking()) return;
-    this.store.setDirection(direction);
   }
 
   /** Asks for the saga's name (and description) first, so a new diagram never starts unnamed. */

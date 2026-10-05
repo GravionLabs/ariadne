@@ -51,8 +51,9 @@ diagram. The panel chooses between **On the diagram**, **Timeline** and **Both**
 5. Select a transition and give it an **event**, e.g. `PaymentCharged`. Select a state and add **activities**: the
    commands it sends and the events it publishes when the saga enters it.
 
-Nothing is positioned by hand; the layout follows the structure. **Top to bottom** and **Left to right** switch the
-direction.
+Nothing is positioned by hand; the layout follows the structure. The **layout** button in the toolbox (its arrow shows
+the direction) chooses which way the flow runs (top to bottom, bottom to top, left to right or right to left) and how
+much room it gets (compact, normal or spacious). Both are saved with the diagram and undone like any edit.
 
 ![Drawing a saga from scratch: a new saga is named, a state is added with the plus button and named, a second state follows, and the transition between them gets its event](../images/guide/draw-a-saga.gif)
 
@@ -72,7 +73,7 @@ with its line and column and the diagram keeps its last valid state.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../images/guide/source-error-dark.png">
-  <img alt="The Source panel beside the diagram. A mistake in the YAML, a direction that is not top-bottom or left-right, is underlined on line 4, and the panel under the text names it while the diagram keeps its last valid state" src="../images/guide/source-error-light.png">
+  <img alt="The Source panel beside the diagram. A mistake in the YAML, a node type that is not one (starting), is underlined where it is, and the panel under the text names it while the diagram keeps its last valid state" src="../images/guide/source-error-light.png">
 </picture>
 
 ## Next

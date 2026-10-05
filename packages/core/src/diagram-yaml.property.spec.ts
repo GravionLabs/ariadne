@@ -9,6 +9,7 @@ import {
   NodeType,
   SagaInfo,
   EventInfo,
+  DIRECTIONS,
 } from './diagram';
 import { DiagramFormatError, parseDiagram, serializeDiagram } from './diagram-yaml';
 import { parsePathSteps } from './path';
@@ -206,7 +207,9 @@ const diagrams: fc.Arbitrary<Diagram> = fc
         description: optionalTrimmed,
         saga: sagaInfo,
         events: eventInfos,
-        direction: fc.constantFrom('top-bottom' as const, 'left-right' as const),
+        direction: fc.constantFrom(...DIRECTIONS),
+        // `normal` is the default and reads back as absent, like an unset spacing.
+        spacing: fc.constantFrom('compact' as const, 'spacious' as const),
         nodes: fc
           .tuple(...ids.map((id, i) => nodeOf(id, nodeTypes[i])))
           .map((n) => n as DiagramNode[]),

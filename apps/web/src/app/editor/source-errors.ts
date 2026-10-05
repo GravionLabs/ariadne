@@ -42,7 +42,7 @@ function toPosition(lineCounter: LineCounter, offset: number): SourcePosition {
 /** `nodes[2].activities[0]` → `['nodes', 2, 'activities', 0]`, from the start of a message. */
 function pathOf(message: string): (string | number)[] | null {
   if (message.startsWith('Unsupported format version')) return ['version'];
-  const prefix = /^(?:nodes|edges|direction|file)(?:\[\d+\]|\.[A-Za-z_]\w*)*/.exec(message)?.[0];
+  const prefix = /^(?:nodes|edges|file)(?:\[\d+\]|\.[A-Za-z_]\w*)*/.exec(message)?.[0];
   if (!prefix || prefix === 'file') return null;
   return [...prefix.matchAll(/([A-Za-z_]\w*)|\[(\d+)\]/g)].map((m) =>
     m[2] !== undefined ? Number(m[2]) : m[1],

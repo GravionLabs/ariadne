@@ -440,7 +440,9 @@ app-export-menu ::ng-deep .menu-button {
   gap: 2px;
 }
 
-.icon-button {
+// Also the button of <app-layout-menu>, which has its own encapsulation.
+.icon-button,
+app-layout-menu ::ng-deep .icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -510,9 +512,20 @@ app-export-menu ::ng-deep .menu-button {
   height: 10px;
   opacity: 0;
 
+  [data-direction='bottom-top'] & {
+    top: auto;
+    bottom: -5px;
+  }
+
   [data-direction='left-right'] & {
     top: calc(50% - 5px);
     left: -5px;
+  }
+
+  [data-direction='right-left'] & {
+    top: calc(50% - 5px);
+    right: -5px;
+    left: auto;
   }
 }
 
@@ -569,7 +582,8 @@ f-connection[data-finding='warning'] {
   white-space: nowrap;
 }
 
-@container topbar (max-width: 1519px) {
+// 1600 px leaves room for fonts wider than the system font (the guide's screenshots use DejaVu).
+@container topbar (max-width: 1599px) {
   .collapse-a .label,
   .menu-button .more {
     @include visually-hidden;

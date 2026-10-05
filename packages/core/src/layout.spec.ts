@@ -3,10 +3,12 @@ import {
   backEdgeIds,
   decisionIds,
   isCompact,
+  labelCard,
   labelSize,
   layoutDiagram,
   nodeSize,
   slotSources,
+  SPACING_GAPS,
 } from './layout';
 
 const saga: Diagram = {
@@ -329,5 +331,116 @@ describe('diagram layout', () => {
       );
       expect(lr.routes.get('back')![0].y).toBeGreaterThan(bottom);
     });
+  });
+});
+
+describe('four directions and spacing presets', () => {
+  type Box = { x: number; y: number; width: number; height: number };
+  const centre = (b: Box) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+  const layoutOf = (diagram: Diagram) => {
+    const result = layoutDiagram(diagram);
+    const box = (id: string): Box => {
+      const node = diagram.nodes.find((n) => n.id === id)!;
+      return { ...result.positions.get(id)!, ...nodeSize(node) };
+    };
+    return { ...result, box };
+  };
+  /** How far b is from a along the flow: positive when b comes after a. */
+  const downstream = {
+    'top-bottom': (a: Box, b: Box) => centre(b).y - centre(a).y,
+    'bottom-top': (a: Box, b: Box) => centre(a).y - centre(b).y,
+    'left-right': (a: Box, b: Box) => centre(b).x - centre(a).x,
+    'right-left': (a: Box, b: Box) => centre(a).x - centre(b).x,
+  } as const;
+
+  it.each(Object.keys(downstream) as (keyof typeof downstream)[])(
+    'runs %s: every state after the one it follows, the "+" slot after its state',
+    (direction) => {
+      const { box, slots } = layoutOf({ ...saga, direction });
+      const after = downstream[direction];
+      expect(after(box('start-1'), box('state-1'))).toBeGreaterThan(0);
+      expect(after(box('state-1'), box('state-2'))).toBeGreaterThan(0);
+      expect(after(box('state-2'), box('state-3'))).toBeGreaterThan(0);
+      for (const slot of slots) {
+        expect(
+          after(box(slot.sourceId), { ...slot.position, width: 40, height: 40 }),
+        ).toBeGreaterThan(0);
+      }
+    },
+  );
+
+  it.each(['bottom-top', 'right-left'] as const)(
+    'mirrors %s: the same picture as its forward direction, turned around',
+    (direction) => {
+      const forward = direction === 'bottom-top' ? 'top-bottom' : 'left-right';
+      const a = layoutOf({ ...saga, direction: forward });
+      const b = layoutOf({ ...saga, direction });
+      const axis = direction === 'bottom-top' ? 'y' : 'x';
+      const across = axis === 'y' ? 'x' : 'y';
+      const gaps = (l: typeof a) =>
+        ['state-1', 'state-2', 'state-3'].map((id) =>
+          Math.round(Math.abs(centre(l.box(id))[axis] - centre(l.box('start-1'))[axis])),
+        );
+      expect(gaps(b)).toEqual(gaps(a));
+      expect(centre(b.box('state-2'))[across]).toBeCloseTo(centre(a.box('state-2'))[across], 0);
+    },
+  );
+
+  it('puts the card of a label upstream of its "+", in every direction', () => {
+    const box = { x: 100, y: 200, width: 150, height: 60 };
+    expect(labelCard(box, 'top-bottom')).toEqual({ x: 100, y: 200, width: 150, height: 47 });
+    expect(labelCard(box, 'bottom-top')).toEqual({ x: 100, y: 213, width: 150, height: 47 });
+    expect(labelCard(box, 'left-right')).toEqual({ x: 100, y: 200, width: 137, height: 60 });
+    expect(labelCard(box, 'right-left')).toEqual({ x: 113, y: 200, width: 137, height: 60 });
+  });
+
+  it('routes a loop and a compensation out of the downstream side and into the upstream side', () => {
+    const looped: Diagram = {
+      ...saga,
+      edges: [
+        ...saga.edges,
+        { id: 'loop', source: 'state-2', target: 'state-2', kind: 'forward', event: 'Retry' },
+      ],
+    };
+    for (const direction of ['top-bottom', 'bottom-top', 'left-right', 'right-left'] as const) {
+      const { routes, box } = layoutOf({ ...looped, direction });
+      const s2 = box('state-2');
+      const [out, into] = routes.get('loop')!;
+      const ok = {
+        'top-bottom': out.y > s2.y + s2.height && into.y < s2.y,
+        'bottom-top': out.y < s2.y && into.y > s2.y + s2.height,
+        'left-right': out.x > s2.x + s2.width && into.x < s2.x,
+        'right-left': out.x < s2.x && into.x > s2.x + s2.width,
+      }[direction];
+      expect(ok, direction).toBe(true);
+      expect(routes.get('edge-5'), direction).toHaveLength(2);
+    }
+  });
+
+  it('spreads the states by the spacing preset, keeping labels and slots clear of the states', () => {
+    const extent = (spacing: Diagram['spacing']) => {
+      const { box } = layoutOf({ ...saga, spacing });
+      return box('state-3').y - box('start-1').y;
+    };
+    expect(extent('compact')).toBeLessThan(extent('normal'));
+    expect(extent('normal')).toBeLessThan(extent('spacious'));
+    expect(SPACING_GAPS.normal).toEqual({ node: 80, layer: 60 });
+    for (const spacing of ['compact', 'normal', 'spacious'] as const) {
+      for (const direction of ['top-bottom', 'bottom-top', 'left-right', 'right-left'] as const) {
+        const { box, labels, slots } = layoutOf({ ...saga, spacing, direction });
+        const states = saga.nodes.map((n) => box(n.id));
+        const others: Box[] = [
+          ...labels.map((l) => ({ ...l.position, ...l.size })),
+          ...slots.map((s) => ({ ...s.position, width: 40, height: 40 })),
+        ];
+        const overlap = (a: Box, b: Box) =>
+          a.x < b.x + b.width - 0.5 &&
+          b.x < a.x + a.width - 0.5 &&
+          a.y < b.y + b.height - 0.5 &&
+          b.y < a.y + a.height - 0.5;
+        for (const s of states)
+          for (const o of others) expect(overlap(s, o), `${spacing} ${direction}`).toBe(false);
+      }
+    }
   });
 });
