@@ -1,0 +1,41 @@
+name: Renovate
+
+# Runs Renovate from here instead of through the Renovate GitHub app (ADR 0019). It needs the
+# repository secret RENOVATE_TOKEN: pull requests opened with the default GITHUB_TOKEN do not start CI.
+on:
+  schedule:
+    # Weekly, ahead of the "before 6am on monday" schedule of the configuration (Zurich time);
+    # hourly on Mondays so a pull request that was held back is not missed by much.
+    - cron: '0 3-4 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Only log what Renovate would do'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    name: Run Renovate
+    if: github.repository == 'GravionLabs/ariadne'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: renovatebot/github-action@v46.3.7
+        with:
+          token: ${{ secrets.RENOVATE_TOKEN }}
+          configurationFile: .github/renovate.json5
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ONBOARDING: 'false'
+          RENOVATE_REQUIRE_CONFIG: 'required'
+          RENOVATE_DRY_RUN: ${{ inputs.dry-run && 'full' || '' }}
+          LOG_LEVEL: info
