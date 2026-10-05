@@ -28,6 +28,20 @@ describe('Document sync', () => {
     return until('the editor', () => extension.openEditors().find((e) => !before.has(e)));
   }
 
+  /**
+   * Opens the diagram and waits until the real editor in the webview has started: it said `ready`
+   * and got `init`. A test that edits before then races the webview's own start (#333): on the first
+   * webview of a profile the start is slow, and its handshake interleaves with the test's edit.
+   */
+  async function openReady(column?: vscode.ViewColumn): Promise<OpenEditor> {
+    const editor = await openAndFind(column);
+    await until('the webview to start', () => editor.posted.some((m) => m.type === 'init'), {
+      timeoutMs: 30_000,
+    });
+    await editor.session.idle();
+    return editor;
+  }
+
   it('loads the real editor, which says ready and gets the document', async () => {
     const editor = await openAndFind();
     // Nothing is sent from the test: the Angular editor in the webview starts, says `ready`, and
@@ -46,7 +60,7 @@ describe('Document sync', () => {
   });
 
   it('turns an edit of the webview into a document change: dirty, saved, not echoed', async () => {
-    const editor = await openAndFind();
+    const editor = await openReady();
     editor.session.receive({ v: 1, type: 'edit', text: sample('Renamed') });
     await editor.session.idle();
     const document = await vscode.workspace.openTextDocument(file);
@@ -54,8 +68,8 @@ describe('Document sync', () => {
     assert.strictEqual(document.isDirty, true);
     assert.ok(!editor.posted.some((m) => m.type === 'documentChanged'), 'no echo');
 
-    await document.save();
-    assert.strictEqual(document.isDirty, false);
+    assert.strictEqual(await document.save(), true);
+    await until('the document to be saved', () => !document.isDirty);
     assert.strictEqual(fs.readFileSync(file.fsPath, 'utf8'), sample('Renamed'));
   });
 
@@ -72,7 +86,7 @@ describe('Document sync', () => {
   });
 
   it('tells the webview about an undo in VS Code', async () => {
-    const editor = await openAndFind();
+    const editor = await openReady();
     editor.session.receive({ v: 1, type: 'edit', text: sample('Renamed') });
     await editor.session.idle();
     editor.posted.length = 0;
@@ -94,7 +108,7 @@ describe('Document sync', () => {
   });
 
   it('tells the webview about a revert', async () => {
-    const editor = await openAndFind();
+    const editor = await openReady();
     editor.session.receive({ v: 1, type: 'edit', text: sample('Renamed') });
     await editor.session.idle();
     editor.posted.length = 0;
@@ -106,8 +120,8 @@ describe('Document sync', () => {
   });
 
   it('keeps two editors of the same file in sync', async () => {
-    const first = await openAndFind(vscode.ViewColumn.One);
-    const second = await openAndFind(vscode.ViewColumn.Two);
+    const first = await openReady(vscode.ViewColumn.One);
+    const second = await openReady(vscode.ViewColumn.Two);
     assert.notStrictEqual(first, second);
 
     first.session.receive({ v: 1, type: 'edit', text: sample('FromFirst') });
