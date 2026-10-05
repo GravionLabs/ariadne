@@ -1,0 +1,119 @@
+version: 3
+name: Customer Onboarding
+saga:
+  class: CustomerOnboardingStateMachine
+  namespace: Acme.Accounts
+  instance: CustomerOnboardingState
+  stateProperty: CurrentState
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-awaiting-verification
+    type: state
+    name: AwaitingVerification
+    activities:
+      - command: SendVerificationEmail
+  - id: state-reminded
+    type: state
+    name: Reminded
+    activities:
+      - command: SendReminderEmail
+  - id: state-checking-identity
+    type: state
+    name: CheckingIdentity
+    activities:
+      - command: StartKycCheck
+  - id: state-activating
+    type: state
+    name: Activating
+    activities:
+      - command: ActivateAccount
+  - id: state-welcoming
+    type: state
+    name: Welcoming
+    activities:
+      - event: CustomerOnboarded
+      - command: StartWelcomeSequence
+  - id: state-abandoning
+    type: state
+    name: Abandoning
+    activities:
+      - event: SignUpAbandoned
+      - command: CleanUpSignUp
+  - id: state-declined
+    type: state
+    name: Declined
+    activities:
+      - event: CustomerDeclined
+      - command: SendDeclineNotice
+  - id: end-1
+    type: end
+    name: Final
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-awaiting-verification
+    kind: forward
+    event: SignUpReceived
+  - id: edge-2
+    source: state-awaiting-verification
+    target: state-checking-identity
+    kind: forward
+    event: EmailVerified
+  - id: edge-3
+    source: state-awaiting-verification
+    target: state-reminded
+    kind: forward
+    event: ReminderDue
+  - id: edge-4
+    source: state-awaiting-verification
+    target: state-abandoning
+    kind: forward
+    event: VerificationExpired
+  - id: edge-5
+    source: state-reminded
+    target: state-checking-identity
+    kind: forward
+    event: EmailVerified
+  - id: edge-6
+    source: state-reminded
+    target: state-abandoning
+    kind: forward
+    event: VerificationExpired
+  - id: edge-7
+    source: state-checking-identity
+    target: state-activating
+    kind: forward
+    event: KycApproved
+  - id: edge-8
+    source: state-checking-identity
+    target: state-declined
+    kind: forward
+    event: KycRejected
+  - id: edge-9
+    source: state-checking-identity
+    target: state-declined
+    kind: forward
+    event: KycTimedOut
+  - id: edge-10
+    source: state-activating
+    target: state-welcoming
+    kind: forward
+    event: AccountActivated
+  - id: edge-11
+    source: state-welcoming
+    target: end-1
+    kind: forward
+    event: WelcomeSequenceCompleted
+  - id: edge-12
+    source: state-abandoning
+    target: end-1
+    kind: forward
+    event: CleanupCompleted
+  - id: edge-13
+    source: state-declined
+    target: end-1
+    kind: forward
+    event: DeclineNoticeSent

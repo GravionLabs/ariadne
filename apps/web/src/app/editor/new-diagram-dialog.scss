@@ -12,7 +12,10 @@ dialog {
   display: grid;
   gap: 12px;
   width: min(380px, calc(100vw - 32px));
+  // Eight samples are taller than a small window: the dialog scrolls instead of running off it.
+  max-height: calc(100vh - 32px);
   padding: 16px;
+  overflow-y: auto;
   color: var(--c-text);
   background: var(--c-surface-1);
   border: 1px solid var(--c-border);

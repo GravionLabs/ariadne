@@ -83,17 +83,78 @@ describe('NewDiagramDialog', () => {
     expect(submit().disabled).toBe(true);
   });
 
-  it('offers the samples, and returns the one that is picked', async () => {
-    const promise = open();
-    const buttons = [...el.querySelectorAll<HTMLButtonElement>('.sample')];
-    expect(buttons.map((b) => b.querySelector('.title')?.textContent)).toEqual([
-      'Order saga',
-      'Booking saga',
-      'Travel booking',
+  /** The library is a chunk of its own, loaded when the dialog opens: waits until its group is shown. */
+  const libraryLoaded = async () => {
+    for (let i = 0; i < 200 && !el.querySelector('#samples-library'); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      fixture.detectChanges();
+    }
+    expect(el.querySelector('#samples-library'), 'the library was not loaded').not.toBeNull();
+  };
+
+  it('shows the tour at once, and the library when it has been loaded', async () => {
+    open();
+    expect([...el.querySelectorAll('section.samples h3')].map((h) => h.textContent)).toEqual([
+      'Start with a tour',
     ]);
-    buttons[2].click();
-    const result = await promise;
-    expect(result?.sample?.id).toBe('travel-booking');
-    expect(sampleDiagram(result!.sample!).nodes.length).toBeGreaterThan(5);
+    await libraryLoaded();
+    expect([...el.querySelectorAll('section.samples h3')].map((h) => h.textContent)).toEqual([
+      'Start with a tour',
+      'Real-world sagas',
+    ]);
+  });
+
+  it('offers the samples in two groups, each a list with a heading', async () => {
+    open();
+    await libraryLoaded();
+    const groups = [...el.querySelectorAll<HTMLElement>('section.samples')];
+    expect(groups.map((g) => g.querySelector('h3')?.textContent)).toEqual([
+      'Start with a tour',
+      'Real-world sagas',
+    ]);
+    // Each group is named by its heading, so a screen reader announces it when entering it.
+    for (const group of groups) {
+      const heading = group.querySelector('h3')!;
+      expect(group.getAttribute('aria-labelledby')).toBe(heading.id);
+    }
+    const titles = (group: HTMLElement) =>
+      [...group.querySelectorAll('.sample .title')].map((t) => t.textContent);
+    expect(titles(groups[0])).toEqual(['Order saga', 'Booking saga', 'Travel booking']);
+    expect(titles(groups[1])).toEqual([
+      'Order fulfilment',
+      'Payment with retries',
+      'Customer onboarding',
+      'Trip booking',
+      'Loan application',
+    ]);
+  });
+
+  it('shows each sample as a button with its title and its description', async () => {
+    open();
+    await libraryLoaded();
+    for (const button of el.querySelectorAll<HTMLButtonElement>('.sample')) {
+      expect(button.type).toBe('button');
+      expect(button.querySelector('.title')?.textContent).toMatch(/\S/);
+      expect(button.querySelector('.about')?.textContent).toMatch(/\S/);
+    }
+  });
+
+  it('returns the sample that is picked, from either group', async () => {
+    const tour = open();
+    el.querySelectorAll<HTMLButtonElement>('.sample')[2].click();
+    const first = await tour;
+    expect(first?.sample?.id).toBe('travel-booking');
+    expect(sampleDiagram(first!.sample!).nodes.length).toBeGreaterThan(5);
+
+    const library = open();
+    await libraryLoaded();
+    const button = [...el.querySelectorAll<HTMLButtonElement>('.sample')].find(
+      (b) => b.querySelector('.title')?.textContent === 'Loan application',
+    )!;
+    button.click();
+    const second = await library;
+    expect(second?.name).toBe('Loan application');
+    expect(second?.sample).toMatchObject({ id: 'loan-application', group: 'library' });
+    expect(sampleDiagram(second!.sample!).nodes.length).toBeGreaterThan(5);
   });
 });

@@ -1,0 +1,126 @@
+version: 3
+name: Order Fulfilment
+saga:
+  class: OrderFulfilmentStateMachine
+  namespace: Acme.Orders
+  instance: OrderFulfilmentState
+  stateProperty: CurrentState
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-reserving-stock
+    type: state
+    name: ReservingStock
+    activities:
+      - command: ReserveStock
+  - id: state-awaiting-payment
+    type: state
+    name: AwaitingPayment
+    activities:
+      - command: CapturePayment
+  - id: state-releasing-stock
+    type: state
+    name: ReleasingStock
+    activities:
+      - command: ReleaseStock
+  - id: state-rejected
+    type: state
+    name: Rejected
+    activities:
+      - event: OrderRejected
+      - command: NotifyCustomer
+  - id: state-shipping
+    type: state
+    name: Shipping
+    activities:
+      - command: DispatchShipment
+  - id: state-delayed
+    type: state
+    name: Delayed
+    activities:
+      - command: ChaseCarrier
+  - id: state-delivered
+    type: state
+    name: Delivered
+    activities:
+      - event: OrderCompleted
+  - id: state-cancelling
+    type: state
+    name: Cancelling
+    activities:
+      - event: OrderWasCancelled
+      - command: CancelInWarehouse
+  - id: end-1
+    type: end
+    name: Final
+  - id: any-1
+    type: any
+    name: Any state
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-reserving-stock
+    kind: forward
+    event: OrderSubmitted
+  - id: edge-2
+    source: state-reserving-stock
+    target: state-awaiting-payment
+    kind: forward
+    event: StockReserved
+  - id: edge-3
+    source: state-reserving-stock
+    target: state-rejected
+    kind: forward
+    event: StockReservationFailed
+  - id: edge-4
+    source: state-awaiting-payment
+    target: state-shipping
+    kind: forward
+    event: PaymentCaptured
+  - id: edge-5
+    source: state-awaiting-payment
+    target: state-releasing-stock
+    kind: forward
+    event: PaymentDeclined
+  - id: edge-6
+    source: state-releasing-stock
+    target: state-rejected
+    kind: forward
+    event: StockReleased
+  - id: edge-7
+    source: state-rejected
+    target: end-1
+    kind: forward
+    event: CustomerNotified
+  - id: edge-8
+    source: state-shipping
+    target: state-delivered
+    kind: forward
+    event: ShipmentDelivered
+  - id: edge-9
+    source: state-shipping
+    target: state-delayed
+    kind: forward
+    event: ShipmentTimedOut
+  - id: edge-10
+    source: state-delayed
+    target: state-delivered
+    kind: forward
+    event: ShipmentDelivered
+  - id: edge-11
+    source: state-delivered
+    target: end-1
+    kind: forward
+    event: ReturnWindowClosed
+  - id: edge-12
+    source: state-cancelling
+    target: end-1
+    kind: forward
+    event: CancellationConfirmed
+  - id: edge-13
+    source: any-1
+    target: state-cancelling
+    kind: forward
+    event: OrderCancelled

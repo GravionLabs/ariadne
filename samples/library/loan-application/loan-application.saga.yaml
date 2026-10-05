@@ -1,0 +1,153 @@
+version: 3
+name: Loan Application
+saga:
+  class: LoanApplicationStateMachine
+  namespace: Acme.Lending
+  instance: LoanApplicationState
+  stateProperty: CurrentState
+direction: top-bottom
+nodes:
+  - id: start-1
+    type: start
+    name: Initial
+  - id: state-awaiting-credit-check
+    type: state
+    name: AwaitingCreditCheck
+    activities:
+      - command: RunCreditCheck
+  - id: state-awaiting-identity-check
+    type: state
+    name: AwaitingIdentityCheck
+    activities:
+      - command: VerifyIdentity
+  - id: state-awaiting-income-check
+    type: state
+    name: AwaitingIncomeCheck
+    activities:
+      - command: VerifyIncome
+  - id: state-scoring
+    type: state
+    name: Scoring
+    activities:
+      - command: ScoreApplication
+  - id: state-in-manual-review
+    type: state
+    name: InManualReview
+    activities:
+      - command: AssignReviewer
+  - id: state-offer-made
+    type: state
+    name: OfferMade
+    activities:
+      - command: PrepareOffer
+  - id: state-disbursing
+    type: state
+    name: Disbursing
+    activities:
+      - command: DisburseFunds
+  - id: state-declined
+    type: state
+    name: Declined
+    activities:
+      - event: ApplicationDeclined
+      - command: NotifyApplicant
+  - id: state-withdrawn
+    type: state
+    name: Withdrawn
+    activities:
+      - event: ApplicationWithdrawn
+      - command: NotifyApplicant
+  - id: end-1
+    type: end
+    name: Final
+edges:
+  - id: edge-1
+    source: start-1
+    target: state-awaiting-credit-check
+    kind: forward
+    event: ApplicationSubmitted
+  - id: edge-2
+    source: state-awaiting-credit-check
+    target: state-awaiting-identity-check
+    kind: forward
+    event: CreditCheckCompleted
+  - id: edge-3
+    source: state-awaiting-credit-check
+    target: state-withdrawn
+    kind: forward
+    event: CreditCheckTimedOut
+  - id: edge-4
+    source: state-awaiting-identity-check
+    target: state-awaiting-income-check
+    kind: forward
+    event: IdentityVerified
+  - id: edge-5
+    source: state-awaiting-identity-check
+    target: state-withdrawn
+    kind: forward
+    event: IdentityCheckTimedOut
+  - id: edge-6
+    source: state-awaiting-income-check
+    target: state-scoring
+    kind: forward
+    event: IncomeVerified
+  - id: edge-7
+    source: state-awaiting-income-check
+    target: state-withdrawn
+    kind: forward
+    event: IncomeCheckTimedOut
+  - id: edge-8
+    source: state-scoring
+    target: state-offer-made
+    kind: forward
+    event: ScoringCompleted
+    guard: context.Message.Outcome == "Approved"
+  - id: edge-9
+    source: state-scoring
+    target: state-in-manual-review
+    kind: forward
+    event: ScoringCompleted
+    guard: context.Message.Outcome == "Referred"
+  - id: edge-10
+    source: state-scoring
+    target: state-declined
+    kind: forward
+    event: ScoringCompleted
+    guard: context.Message.Outcome == "Declined"
+  - id: edge-11
+    source: state-in-manual-review
+    target: state-offer-made
+    kind: forward
+    event: ReviewCompleted
+    guard: context.Message.Approved
+  - id: edge-12
+    source: state-in-manual-review
+    target: state-declined
+    kind: forward
+    event: ReviewCompleted
+    guard: "!context.Message.Approved"
+  - id: edge-13
+    source: state-offer-made
+    target: state-disbursing
+    kind: forward
+    event: OfferAccepted
+  - id: edge-14
+    source: state-offer-made
+    target: state-withdrawn
+    kind: forward
+    event: OfferExpired
+  - id: edge-15
+    source: state-disbursing
+    target: end-1
+    kind: forward
+    event: FundsDisbursed
+  - id: edge-16
+    source: state-declined
+    target: end-1
+    kind: forward
+    event: ApplicantNotified
+  - id: edge-17
+    source: state-withdrawn
+    target: end-1
+    kind: forward
+    event: ApplicantNotified

@@ -5,3 +5,7 @@ pnpm-lock.yaml
 dist-test
 .vscode-test
 vsix
+# What the tools write in the sample library (see samples/library/README.md): not formatted by hand.
+samples/library/*/*.saga.yaml
+samples/library/*/*.docs.md
+samples/library/*/generated

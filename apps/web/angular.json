@@ -23,7 +23,7 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "loader": { ".yaml": "text", ".cs": "text", ".wasm": "binary" },
+            "loader": { ".yaml": "text", ".cs": "text", ".md": "text", ".wasm": "binary" },
             "assets": [
               {
                 "glob": "**/*",

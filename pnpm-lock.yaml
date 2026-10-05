@@ -370,6 +370,9 @@ importers:
         specifier: ^2.9.1
         version: 2.9.1
     devDependencies:
+      '@ariadne/export':
+        specifier: workspace:*
+        version: link:../export
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.1
