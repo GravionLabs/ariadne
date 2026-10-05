@@ -31,7 +31,17 @@ export function repoFilesOnDisk(repoRoot: string): RepoFiles {
   };
 }
 
-const EXTERNAL = /^([a-z][a-z0-9+.-]*:|\/\/|#)/i;
+/** The path in the repository that a relative link of the page `relativePath` (under `docs`) points to. */
+export function repoPathOf(href: string, relativePath: string): string | null {
+  if (EXTERNAL.test(href)) return null;
+  const target = href.split(/[?#]/)[0];
+  if (!target) return null;
+  const repoPath = posix.normalize(posix.join('docs', posix.dirname(relativePath), target));
+  return repoPath.startsWith('../') ? null : repoPath.replace(/\/$/, '');
+}
+
+/** Not a path of the repository: another site, an anchor, or an address on this site (`/app/`). */
+const EXTERNAL = /^([a-z][a-z0-9+.-]*:|\/|#)/i;
 
 /**
  * The address a link of a page should have. A link to another page of the site stays as it is. A link

@@ -1,40 +1,73 @@
 name: Pages
 
-# Publishes the static build of the web app from main. Off until the repository variable
-# DEPLOY_PAGES is set to "true" (and Settings → Pages → Source is "GitHub Actions"): a public
-# site is the owner's decision.
+# One public site on GitHub Pages (docs/adr/0020-documentation-site.md):
+#   /          the documentation site: docs/guide as a website (apps/site, VitePress)
+#   /app/      the editor as a live demo (apps/web, configuration "demo")
+#   /viewer/   the viewer's HTML demo and its Angular demo
+# Pull requests that touch the site or its documents build all of it, so a broken link or a broken demo
+# is found before the merge; only main deploys, and only while the repository variable DEPLOY_PAGES
+# is "true" (Settings → Pages → Source must be "GitHub Actions").
 on:
   push:
     branches: [main]
+  pull_request:
+    paths:
+      - 'apps/site/**'
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  # Deployments queue up behind each other and the last one wins; a pull request replaces its own earlier run.
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  deploy:
-    if: vars.DEPLOY_PAGES == 'true'
-    name: Build and deploy
+  build:
+    name: Build the site
+    if: github.event_name == 'pull_request' || vars.DEPLOY_PAGES == 'true'
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      # Every piece knows where it lives: https://<owner>.github.io/<repository>/…
+      BASE: /${{ github.event.repository.name }}/
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @ariadne/web exec ng build --base-href /${{ github.event.repository.name }}/
-      - run: cp apps/web/dist/ariadne/browser/index.html apps/web/dist/ariadne/browser/404.html
-      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+      # Dead links in the guide fail this step.
+      - name: Build the documentation site
+        run: SITE_BASE="$BASE" pnpm --filter @ariadne/site build
+      - name: Build the editor demo
+        run: pnpm --filter @ariadne/web exec ng build --configuration production,demo --base-href "${BASE}app/"
+      - name: Build the viewer and its demos
+        run: |
+          pnpm --filter @ariadne/viewer build
+          pnpm --filter @ariadne/viewer-demo exec node scripts/copy-sample.mjs
+          pnpm --filter @ariadne/viewer-demo exec ng build --base-href "${BASE}viewer/angular/"
+      - name: Put the pieces together
+        run: pnpm --filter @ariadne/site exec node scripts/assemble.mjs "$RUNNER_TEMP/pages"
+      - name: Upload the site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
-          path: apps/web/dist/ariadne/browser
+          path: ${{ runner.temp }}/pages
+
+  deploy:
+    name: Deploy
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

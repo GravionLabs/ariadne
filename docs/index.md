@@ -10,11 +10,12 @@ hero:
     alt: The Ariadne logo
   actions:
     - theme: brand
+      text: Try the editor
+      link: /app/
+      target: _self
+    - theme: alt
       text: Read the guide
       link: /guide/
-    - theme: alt
-      text: Getting started
-      link: /guide/getting-started
 features:
   - title: Draw a saga
     details: States, transitions, events, activities, requests, timeouts and joins, the way MassTransit state machines are written.

@@ -36,10 +36,26 @@ Markdown in the repository has to stay the single source.
   the visitor's system setting (`prefers-color-scheme`), not the site's own theme toggle.
 - The logo is the favicon of the web app, served from where it is (`.vitepress/assets.ts`).
 
-### Where it is published
+### Where it is published (#322, #323)
 
-On GitHub Pages, from the repository, as a public site (the repository is public). A later decision (#323)
-puts the editor demo and the viewer demo next to it in one Pages artifact.
+On GitHub Pages, at `https://gravionlabs.github.io/ariadne/`, as one artifact that `.github/workflows/pages.yml`
+puts together (`apps/site/scripts/assemble.mjs`, which refuses to publish a half-built site):
+
+| Address    | What                                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------------------- |
+| `/`        | the documentation site (VitePress, `SITE_BASE=/<repository>/`)                                          |
+| `/app/`    | the editor, built with the `demo` configuration (`production,demo`, `--base-href …/app/`)               |
+| `/viewer/` | a page linking the viewer's plain HTML demo (`/viewer/demo/`) and the Angular demo (`/viewer/angular/`) |
+
+- The `demo` configuration replaces `app.config.ts` like `embedded` does and provides `DEMO_MODE`: a notice says that
+  diagrams stay in the browser, and can be dismissed (remembered in `localStorage`, if the browser allows it).
+- `/app/?sample=<id>` opens a sample, as **New → sample** does, and takes the parameter out of the address. The
+  sample tables of the guide get an "Open in the demo" link on the site only (`.vitepress/demo-links.ts`), so the
+  Markdown stays plain on GitHub.
+- A pull request that touches `apps/site`, `docs` or the workflow builds all of it (check "Build the site") without
+  deploying; only `main` deploys, and only while the repository variable `DEPLOY_PAGES` is `true`, with Settings →
+  Pages → Source set to "GitHub Actions".
+- There is no analytics and no custom domain.
 
 ## Consequences
 

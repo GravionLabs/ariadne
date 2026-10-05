@@ -2,6 +2,8 @@
 
 ## Open the editor
 
+- **In your browser, nothing to install:** the [demo](https://gravionlabs.github.io/ariadne/app/). Your diagrams stay in
+  the browser; **Save** writes a file on your computer.
 - **Hosted by your team:** open the address they gave you. See [self-hosting](../self-hosting.md) to run it
   yourself with one `docker run`.
 - **From the repository:** `pnpm install`, then `pnpm start`, and open <http://localhost:4200>.

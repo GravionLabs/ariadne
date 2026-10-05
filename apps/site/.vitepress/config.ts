@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitepress';
 import { assetsPlugin, copyAssets } from './assets';
+import { demoLinksPlugin } from './demo-links';
 import { repoFilesOnDisk, repoLinksPlugin, REPO_URL } from './repo-links';
 import { sidebarOf } from './sidebar';
 
@@ -30,7 +31,11 @@ export default defineConfig({
   ignoreDeadLinks: [/^https?:\/\/localhost(:\d+)?(\/|$)/],
   head: [['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}logo.svg` }]],
   markdown: {
-    config: (md) => repoLinksPlugin(md as never, files),
+    config: (md) => {
+      // First: it reads the addresses as they are written, before the other one rewrites them.
+      demoLinksPlugin(md as never, base);
+      repoLinksPlugin(md as never, files);
+    },
   },
   vite: { plugins: [assetsPlugin(repoRoot)] },
   buildEnd: (site) => copyAssets(repoRoot, site.outDir),
@@ -39,6 +44,9 @@ export default defineConfig({
     siteTitle: 'Ariadne',
     nav: [
       { text: 'Guide', link: '/guide/' },
+      // Not pages of this site (the workflow adds them next to it): a full page load.
+      { text: 'Try the editor', link: '/app/', target: '_self' },
+      { text: 'Viewer demo', link: '/viewer/', target: '_self' },
       { text: 'File format', link: '/specs/diagram-format' },
       { text: 'GitHub', link: REPO_URL },
     ],

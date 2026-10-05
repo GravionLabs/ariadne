@@ -49,6 +49,7 @@ describe('repoLink', () => {
     expect(link('https://example.org/x')).toBe('https://example.org/x');
     expect(link('//example.org/x')).toBe('//example.org/x');
     expect(link('#top')).toBe('#top');
+    expect(link('/ariadne/app/?sample=order')).toBe('/ariadne/app/?sample=order');
     expect(link('mailto:a@b.c')).toBe('mailto:a@b.c');
   });
 

@@ -1,5 +1,7 @@
 # Ariadne
 
+**[Documentation and live demo](https://gravionlabs.github.io/ariadne/)** · [Try the editor](https://gravionlabs.github.io/ariadne/app/)
+
 Diagrams for [MassTransit saga state machines](https://masstransit.massient.com/guides/saga-state-machines). Build a saga as a picture, keep it in git as a small YAML file, and read it side by side with the code.
 
 Ariadne is a web app (Angular + [Foblex f-flow](https://github.com/Foblex/f-flow)) and a [VS Code extension](#vs-code-extension) that opens the same diagrams next to the code. Diagrams are plain local files, so they diff and review like code. It is **documentation only**: diagrams are never executed.
