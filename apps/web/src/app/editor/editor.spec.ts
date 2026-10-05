@@ -480,7 +480,7 @@ describe('Editor', () => {
     ]);
     expect(el.querySelector('app-inspector .undo-order')?.textContent).toContain('Reserve.');
     expect(el.querySelector('app-node-card .chip-slip')?.textContent).toContain(
-      'Routing slip Fulfil · 2 activities',
+      'Routing slip Fulfil · 2 steps',
     );
     expect(await axeFindings(el)).toEqual([]);
 
