@@ -5,6 +5,9 @@
     // The .NET SDK for the generated-C# check (the `generated-csharp` job in CI).
     "ghcr.io/devcontainers/features/dotnet:2": { "version": "8.0" }
   },
+  // Docker gives a container 64 MB of /dev/shm; Chromium (VS Code in the integration tests, the
+  // browsers of the screenshots) runs out of it and its renderer crashes, e.g. as VS Code closes.
+  "runArgs": ["--shm-size=1g"],
   "workspaceFolder": "/workspaces/ariadne",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/ariadne,type=bind",
   // The dependencies live in volumes: much faster than a bind mount on macOS and Windows, and the
