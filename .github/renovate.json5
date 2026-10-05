@@ -2,7 +2,13 @@
 // by CI, merged by a person (no automerge). See docs/adr/0019-dependency-updates-and-supply-chain.md.
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
-  extends: ['config:recommended', ':semanticCommits', ':dependencyDashboard'],
+  extends: [
+    'config:recommended',
+    ':semanticCommits',
+    ':dependencyDashboard',
+    // Every action in .github/workflows is pinned to a commit SHA; Renovate moves SHA and comment together.
+    'helpers:pinGitHubActionDigests',
+  ],
   // `chore(deps): …` keeps dependency updates out of the release notes (ADR 0015).
   semanticCommitType: 'chore',
   semanticCommitScope: 'deps',

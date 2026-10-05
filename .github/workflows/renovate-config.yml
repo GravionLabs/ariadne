@@ -15,8 +15,8 @@ jobs:
     name: Validate the configuration
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: GravionLabs/ci/node/setup@main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
       # No install of the repository: the validator is a one-off tool.

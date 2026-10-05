@@ -22,7 +22,7 @@ jobs:
     steps:
       # Lint, build and test with one install and the pnpm store cached
       # (GravionLabs/ci: node/ci runs `pnpm run lint`, `build` and `test:ci`).
-      - uses: GravionLabs/ci/node/ci@main
+      - uses: GravionLabs/ci/node/ci@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
 
@@ -30,8 +30,8 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: GravionLabs/ci/node/setup@main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
@@ -42,11 +42,11 @@ jobs:
     name: Compile generated C#
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: GravionLabs/ci/node/setup@main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 8.0.x
       - run: pnpm install --frozen-lockfile
@@ -59,8 +59,8 @@ jobs:
     name: Performance budgets
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: GravionLabs/ci/node/setup@main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
@@ -71,14 +71,14 @@ jobs:
     name: VS Code extension
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: GravionLabs/ci/node/setup@main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter ariadne-vscode test:integration:ci
       # Tests that passed only after a retry (see apps/vscode/DEVELOPING.md, "Flaky tests").
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: vscode-retries
@@ -93,21 +93,21 @@ jobs:
     outputs:
       tag: v${{ steps.version.outputs.semver }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - id: version
-        uses: GravionLabs/ci/versioning/determine-version@main
+        uses: GravionLabs/ci/versioning/determine-version@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           gitversion-config-file: GitVersion.yml
-      - uses: GravionLabs/ci/node/setup@main
+      - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
       # The marketplace takes major.minor.patch only; a pre-release suffix of a branch build is dropped.
       - run: pnpm --filter ariadne-vscode package ${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}
       - run: pnpm --filter ariadne-vscode test:vsix:ci
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: vsix
           path: apps/vscode/vsix/*.vsix
@@ -122,14 +122,14 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.semver }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - id: version
-        uses: GravionLabs/ci/versioning/determine-version@main
+        uses: GravionLabs/ci/versioning/determine-version@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           gitversion-config-file: GitVersion.yml
-      - uses: GravionLabs/ci/node/setup@main
+      - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
@@ -137,7 +137,7 @@ jobs:
       # The files of the package against their size budgets (docs/specs/performance-budgets.md).
       - run: pnpm --filter @ariadne/viewer size
       - run: pnpm --filter @ariadne/viewer test:package
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: viewer-package
           path: packages/viewer/npm/*.tgz
@@ -150,7 +150,7 @@ jobs:
     name: Release
     needs: [ci, format, generated-csharp, perf, vscode-extension, vsix, viewer-package]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: GravionLabs/ci/.github/workflows/docker-package.yml@main
+    uses: GravionLabs/ci/.github/workflows/docker-package.yml@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
     with:
       # Lowercase: a registry rejects capitals, and `github.repository` (GravionLabs/ariadne) has them.
       image-name: gravionlabs/ariadne
@@ -173,7 +173,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: vsix
           path: vsix
@@ -197,12 +197,12 @@ jobs:
       - if: env.NPM_TOKEN == ''
         run: echo "::notice::NPM_TOKEN is not set, so @ariadne/viewer ${{ needs.viewer-package.outputs.version }} was not published."
       - if: env.NPM_TOKEN != ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: viewer-package
           path: viewer-package
       - if: env.NPM_TOKEN != ''
-        uses: GravionLabs/ci/node/setup@main
+        uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
         with:
           package-manager: pnpm
       - if: env.NPM_TOKEN != ''

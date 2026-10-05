@@ -72,6 +72,14 @@ A package that runs a script when it is installed runs code on every developer m
 - A finding is fixed, filed as a bug under #285 when it is not small, or dismissed in the Security tab with a reason
   when it is a false positive.
 
+### Actions are pinned to commit SHAs (#367)
+
+A tag (`actions/checkout@v4`) or a branch (`GravionLabs/ci/node/setup@main`) can be moved by whoever owns the
+repository of the action, and the next run of a workflow would run the new code with the repository's token.
+Every `uses:` in `.github/workflows` is therefore a full commit SHA with the version in a comment
+(`actions/checkout@<sha> # v4`), which CodeQL's `actions/unpinned-tag` query checks. `helpers:pinGitHubActionDigests`
+makes Renovate update the SHA and the comment together, so pinning costs a reviewed pull request, not a manual step.
+
 ### The configuration is checked
 
 `renovate-config-validator --strict` runs in CI when the configuration changes (`.github/workflows/renovate-config.yml`),
