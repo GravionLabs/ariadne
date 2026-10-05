@@ -41,6 +41,57 @@ describe('generate → import', () => {
     expect(validate(again).filter((f) => f.severity === 'error')).toEqual([]);
   });
 
+  it('keeps guards: one guarded edge as When(E, filter), a pair as IfElse', async () => {
+    const diagram: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'start', name: 'Initial' },
+        { id: 'b', type: 'state', name: 'Big' },
+        { id: 'c', type: 'state', name: 'Small' },
+        { id: 'z', type: 'end', name: 'Final' },
+      ],
+      edges: [
+        {
+          id: 'e1',
+          source: 'a',
+          target: 'b',
+          kind: 'forward',
+          event: 'Placed',
+          guard: 'amount > 100',
+        },
+        {
+          id: 'e2',
+          source: 'a',
+          target: 'c',
+          kind: 'forward',
+          event: 'Placed',
+          guard: '!(amount > 100)',
+        },
+        { id: 'e3', source: 'b', target: 'z', kind: 'forward', event: 'Done', guard: 'paid' },
+        { id: 'e4', source: 'c', target: 'z', kind: 'forward', event: 'Done' },
+      ],
+    };
+    const code = generateSaga(diagram).files.find((f) => f.path === 'SagaStateMachine.cs')!.content;
+    expect(code).toContain('.IfElse(context => true /* TODO guard: amount > 100 */,');
+    const again = await roundTrip(diagram);
+    expect(again.edges.map((e) => [e.source, e.target, e.event, e.guard])).toEqual(
+      [
+        ['a', 'b', 'Placed', 'amount > 100'],
+        ['a', 'c', 'Placed', '!(amount > 100)'],
+        ['b', 'z', 'Done', 'paid'],
+        ['c', 'z', 'Done', undefined],
+      ].map(([s, t, ...rest]) => [
+        again.nodes.find(
+          (n) => n.name === { a: 'Initial', b: 'Big', c: 'Small', z: 'Final' }[s as string],
+        )!.id,
+        again.nodes.find(
+          (n) => n.name === { a: 'Initial', b: 'Big', c: 'Small', z: 'Final' }[t as string],
+        )!.id,
+        ...rest,
+      ]),
+    );
+  });
+
   it('keeps the saga metadata of the diagram', async () => {
     const diagram = parseDiagram(readFileSync(goldens[0].path, 'utf8'));
     const again = await roundTrip(diagram);

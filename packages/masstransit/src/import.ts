@@ -192,6 +192,13 @@ function warnForUnknownBase(name: string, parts: readonly ClassPart[], warnings:
 
 // ---- reading one saga
 
+/** One way out of an `If`/`IfElse`: its condition, where it leads, what it sends. */
+interface Branch {
+  guard?: string;
+  target: string | undefined;
+  activities: Activity[];
+}
+
 interface Chain {
   /** The calls of `When(E).A().B()`, outermost last. */
   calls: Call[];
@@ -207,9 +214,26 @@ interface Transition {
 }
 
 /** Calls that change the flow and are not mapped yet. */
+/**
+ * The text of a guard: the body of its lambda. A guard that Ariadne generated (`true` and a TODO comment
+ * "guard: X") gives X back, so that a round trip keeps what the diagram said.
+ */
+function guardText(lambda: SyntaxNode): string {
+  const body = lambdaBody(lambda) ?? lambda;
+  const text = body.text.replace(/\s+/g, ' ');
+  if (text !== 'true') return text;
+  const comments: string[] = [];
+  for (let n: SyntaxNode | null = body; n && comments.length < 2; n = n.parent) {
+    for (let next = n.nextSibling; next?.type === 'comment'; next = next.nextSibling) {
+      comments.push(next.text);
+    }
+    if (comments.length || n.type === 'argument_list') break;
+  }
+  const found = comments.join(' ').match(/^\/\*\s*TODO guard:\s*(.*?)\s*\*\/$/);
+  return found ? found[1].replace(/\* \//g, '*/') : text;
+}
+
 const UNSUPPORTED = new Set([
-  'If',
-  'IfElse',
   'IfAsync',
   'IfElseAsync',
   'Schedule',
@@ -438,14 +462,16 @@ class SagaReader {
     let guard: string | undefined;
     const filter = when.args[1];
     if (filter) {
-      const body = lambdaBody(filter);
-      guard = (body ?? filter).text.replace(/\s+/g, ' ');
+      guard = guardText(filter);
     }
     let target: string | undefined;
     const activities: Activity[] = [];
+    const branches: Branch[] = [];
     for (const call of calls) {
       const place = { path: at.path, line: callLine(call) };
-      if (call.name === 'TransitionTo') {
+      if (call.name === 'If' || call.name === 'IfElse') {
+        branches.push(...this.readIf(call, place));
+      } else if (call.name === 'TransitionTo') {
         target = lastName(call.args[0] ?? null) ?? undefined;
         if (!target) this.warn(place, 'TransitionTo(…) names no state that could be read.');
       } else if (call.name === 'Finalize') {
@@ -459,17 +485,69 @@ class SagaReader {
         this.warnOnce(place, `${call.name}(…) runs code; it is left out of the diagram.`);
       }
     }
-    if (target === FINAL) this.usesFinal = true;
-    for (const source of sources) {
-      this.transitions.push({
-        source,
-        target,
-        event,
-        ...(guard ? { guard } : {}),
-        activities,
-        at: { path: at.path, line: callLine(when) },
-      });
+    // `If(c, then…)` and `IfElse(c, then…, else…)`: a transition per branch, each with its guard.
+    // What follows an `If` (`.TransitionTo(B)`) is the way out when no condition holds.
+    const ways: Branch[] = [...branches];
+    if (branches.length > 0) {
+      const guard = branches.length === 1 ? `!(${branches[0].guard})` : 'otherwise';
+      if (target) ways.push({ guard, target, activities: [] });
+    } else {
+      ways.push({ guard, target, activities: [] });
     }
+    for (const way of ways) {
+      if (way.target === FINAL) this.usesFinal = true;
+      for (const source of sources) {
+        this.transitions.push({
+          source,
+          target: way.target,
+          event,
+          ...(way.guard ? { guard: way.guard } : {}),
+          activities: [...activities, ...way.activities],
+          at: { path: at.path, line: callLine(when) },
+        });
+      }
+    }
+  }
+
+  /** `If(c, then => …)` / `IfElse(c, then => …, otherwise => …)`: one branch per lambda. */
+  private readIf(call: Call, place: SourceLocation): Branch[] {
+    const isElse = call.name === 'IfElse';
+    const condition = call.args[0];
+    const lambdas = call.args.slice(1, isElse ? 3 : 2);
+    if (!condition || lambdas.length < (isElse ? 2 : 1)) {
+      this.warn(place, `${call.name}(…) could not be read.`);
+      return [];
+    }
+    const text = guardText(condition);
+    const branches = lambdas.map((lambda, index): Branch => {
+      const branch: Branch = {
+        guard: index === 0 ? text : `!(${text})`,
+        target: undefined,
+        activities: [],
+      };
+      const inner = this.flatten(
+        lambda.type === 'lambda_expression' ? lambdaBody(lambda) : null,
+        0,
+      );
+      for (const step of inner?.calls ?? []) {
+        const at = { path: place.path, line: callLine(step) };
+        if (step.name === 'TransitionTo') {
+          branch.target = lastName(step.args[0] ?? null) ?? undefined;
+          if (!branch.target) this.warn(at, 'TransitionTo(…) names no state that could be read.');
+        } else if (step.name === 'Finalize') {
+          branch.target = FINAL;
+        } else if (['Send', 'SendAsync', 'Publish', 'PublishAsync'].includes(step.name)) {
+          const activity = this.activityOf(step, at);
+          if (activity) branch.activities.push(activity);
+        } else if (UNSUPPORTED.has(step.name) || step.name === 'If' || step.name === 'IfElse') {
+          this.warn(at, `${step.name}(…) is not shown in the diagram yet.`);
+        } else {
+          this.warnOnce(at, `${step.name}(…) runs code; it is left out of the diagram.`);
+        }
+      }
+      return branch;
+    });
+    return branches;
   }
 
   private readWhenEnter(call: Call, at: SourceLocation): void {

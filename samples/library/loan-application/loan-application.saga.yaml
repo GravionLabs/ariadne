@@ -125,7 +125,7 @@ edges:
     target: state-declined
     kind: forward
     event: ReviewCompleted
-    guard: "!context.Message.Approved"
+    guard: "!(context.Message.Approved)"
   - id: edge-13
     source: state-offer-made
     target: state-disbursing

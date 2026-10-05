@@ -143,18 +143,18 @@ An **activity** is a mapping with exactly one key, the kind of message, followin
 How the constructs relate to a MassTransit `MassTransitStateMachine<T>`. The importer (#83) and the
 generator (#93) follow this table.
 
-| Diagram                                                        | MassTransit                                                                                                                                                  |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `join` named `X`, reached by transitions on `A` and `B`        | `CompositeEvent(() => X, x => x.Status, A, B)`; the transition leaving the join is `When(X)`                                                                 |
-| `requests` `request: R`, `timeout: D`                          | `Request(() => R, x => x.RequestId, r => r.Timeout = D)`, then `.Request(R, ctx => new RMsg(..))` on entry                                                   |
-| transition on `R.Completed` / `R.Faulted` / `R.TimeoutExpired` | `When(R.Completed)` / `When(R.Faulted)` / `When(R.TimeoutExpired)`                                                                                           |
-| `timers` `schedule: T`, `delay: D`                             | `Schedule(() => T, x => x.TimeoutTokenId, s => { s.Delay = D; s.Received = e => e.CorrelateById(...); })`, then `.Schedule(T, ctx => new TMsg(..))` on entry |
-| `timers` `unschedule: T`                                       | `.Unschedule(T)`                                                                                                                                             |
-| transition on a scheduled timeout's name                       | `When(T.Received)`                                                                                                                                           |
-| `ignores` of a state                                           | `During(State, Ignore(E))`                                                                                                                                   |
-| transitions leaving the `any` node                             | `DuringAny(When(E).TransitionTo(S))`                                                                                                                         |
-| transition with `guard`                                        | `When(E).If(ctx => <guard>, then => then.TransitionTo(A)).TransitionTo(B)`                                                                                   |
-| transitions on one event, other guards                         | `When(E).IfElse(ctx => <guard>, then => then.TransitionTo(A), else => else.TransitionTo(B))`                                                                 |
+| Diagram                                                            | MassTransit                                                                                                                                                                        |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `join` named `X`, reached by transitions on `A` and `B`            | `CompositeEvent(() => X, x => x.Status, A, B)`; the transition leaving the join is `When(X)`                                                                                       |
+| `requests` `request: R`, `timeout: D`                              | `Request(() => R, x => x.RequestId, r => r.Timeout = D)`, then `.Request(R, ctx => new RMsg(..))` on entry                                                                         |
+| transition on `R.Completed` / `R.Faulted` / `R.TimeoutExpired`     | `When(R.Completed)` / `When(R.Faulted)` / `When(R.TimeoutExpired)`                                                                                                                 |
+| `timers` `schedule: T`, `delay: D`                                 | `Schedule(() => T, x => x.TimeoutTokenId, s => { s.Delay = D; s.Received = e => e.CorrelateById(...); })`, then `.Schedule(T, ctx => new TMsg(..))` on entry                       |
+| `timers` `unschedule: T`                                           | `.Unschedule(T)`                                                                                                                                                                   |
+| transition on a scheduled timeout's name                           | `When(T.Received)`                                                                                                                                                                 |
+| `ignores` of a state                                               | `During(State, Ignore(E))`                                                                                                                                                         |
+| transitions leaving the `any` node                                 | `DuringAny(When(E).TransitionTo(S))`                                                                                                                                               |
+| transition with `guard`                                            | `When(E, ctx => <guard>)`, or, read only, `When(E).If(ctx => <guard>, then => then.TransitionTo(A)).TransitionTo(B)` (an edge with the guard to A, and one with `!(<guard>)` to B) |
+| two transitions on one event, the second the opposite of the first | `When(E).IfElse(ctx => <guard>, then => then.TransitionTo(A), otherwise => otherwise.TransitionTo(B))`                                                                             |
 
 ## Version 1
 

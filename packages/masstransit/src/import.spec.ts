@@ -331,7 +331,7 @@ describe('importSagas on small sagas', () => {
           .Then(ctx => { })
           .Then(ctx => { })
           .Schedule(Reminder, ctx => new Remind())
-          .IfElse(ctx => true, a => a.TransitionTo(Working), b => b.TransitionTo(Waiting))
+          .Unschedule(Reminder)
           .TransitionTo(Working));
         WhenLeave(Working, b => b.Then(c => { }));`),
       parser,
@@ -339,7 +339,7 @@ describe('importSagas on small sagas', () => {
     expect(messages(result)).toEqual([
       'DemoStateMachine: Then(…) runs code; it is left out of the diagram.',
       'DemoStateMachine: Schedule(…) is not shown in the diagram yet.',
-      'DemoStateMachine: IfElse(…) is not shown in the diagram yet.',
+      'DemoStateMachine: Unschedule(…) is not shown in the diagram yet.',
       'DemoStateMachine: WhenLeave(…) is not shown in the diagram yet.',
     ]);
     // `Then` is said once, at its first place; the others where they are.
@@ -361,6 +361,44 @@ describe('importSagas on small sagas', () => {
       'DemoStateMachine: Schedule(…) is not shown in the diagram yet.',
       'DemoStateMachine: Fault(…) is not shown in the diagram yet.',
       'DemoStateMachine: OnUnhandledEvent(…) is not shown in the diagram yet.',
+    ]);
+  });
+
+  it('reads If and IfElse as guarded transitions, the rest being the way out', () => {
+    const d = only(
+      importSagas(
+        saga(`Initially(When(Start)
+            .Publish(ctx => new B())
+            .If(ctx => ctx.Message.Big, then => then.Send(ctx => new A()).TransitionTo(Working))
+            .TransitionTo(Waiting));
+          During(Working,
+            When(Next).IfElse(ctx => ctx.Message.Fast,
+              yes => yes.TransitionTo(Waiting),
+              no => no.Finalize()));`),
+        parser,
+      ),
+    );
+    expect(edgesOf(d)).toEqual([
+      'Initial -Start [ctx.Message.Big]-> Working',
+      'Initial -Start [!(ctx.Message.Big)]-> Waiting',
+      'Working -Next [ctx.Message.Fast]-> Waiting',
+      'Working -Next [!(ctx.Message.Fast)]-> Final',
+    ]);
+    expect(d.nodes.find((n) => n.name === 'Working')?.activities).toEqual([
+      { kind: 'event', name: 'B' },
+      { kind: 'command', name: 'A' },
+    ]);
+  });
+
+  it('warns about an If that cannot be read or is nested, and about code in a branch', () => {
+    const result = importSagas(
+      saga(`Initially(When(Start)
+          .If(ctx => true, then => then.Then(c => { }).If(c => true, t => t.TransitionTo(Waiting)).TransitionTo(Working)));`),
+      parser,
+    );
+    expect(messages(result)).toEqual([
+      'DemoStateMachine: Then(…) runs code; it is left out of the diagram.',
+      'DemoStateMachine: If(…) is not shown in the diagram yet.',
     ]);
   });
 

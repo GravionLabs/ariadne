@@ -21,7 +21,7 @@ stateDiagram-v2
   Scoring --> InManualReview : ScoringCompleted [context.Message.Outcome == #quot;Referred#quot;] / Send AssignReviewer
   Scoring --> Declined : ScoringCompleted [context.Message.Outcome == #quot;Declined#quot;] / Publish ApplicationDeclined, Send NotifyApplicant
   InManualReview --> OfferMade : ReviewCompleted [context.Message.Approved] / Send PrepareOffer
-  InManualReview --> Declined : ReviewCompleted [!context.Message.Approved] / Publish ApplicationDeclined, Send NotifyApplicant
+  InManualReview --> Declined : ReviewCompleted [!(context.Message.Approved)] / Publish ApplicationDeclined, Send NotifyApplicant
   OfferMade --> Disbursing : OfferAccepted / Send DisburseFunds
   OfferMade --> Withdrawn : OfferExpired / Publish ApplicationWithdrawn, Send NotifyApplicant
   Disbursing --> Final : FundsDisbursed
@@ -61,7 +61,7 @@ stateDiagram-v2
 | Scoring | ScoringCompleted | context.Message.Outcome == "Referred" | external | InManualReview | Forward |
 | Scoring | ScoringCompleted | context.Message.Outcome == "Declined" | external | Declined | Forward |
 | InManualReview | ReviewCompleted | context.Message.Approved | external | OfferMade | Forward |
-| InManualReview | ReviewCompleted | !context.Message.Approved | external | Declined | Forward |
+| InManualReview | ReviewCompleted | !(context.Message.Approved) | external | Declined | Forward |
 | OfferMade | OfferAccepted |  | external | Disbursing | Forward |
 | OfferMade | OfferExpired |  | external | Withdrawn | Forward |
 | Disbursing | FundsDisbursed |  | external | Final | Forward |

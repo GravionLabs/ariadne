@@ -152,22 +152,53 @@ export function generateSaga(diagram: Diagram): GenerateResult {
   }
   if (eventNames.length) body.push('');
 
-  const transition = (edge: DiagramEdge, depth: number): string => {
+  const endOf = (edge: DiagramEdge): string => {
     const target = nodes.get(edge.target)!;
+    return target.type === 'end'
+      ? '.Finalize()'
+      : target.type === 'state'
+        ? `.TransitionTo(${stateName.get(target.id)})`
+        : '';
+  };
+  const todoGuard = (guard: string): string => `true /* TODO guard: ${comment(guard)} */`;
+  const transition = (edge: DiagramEdge, depth: number): string => {
     const when = edge.guard
-      ? `When(${eventProperty.get(edge.event!)}, context => true /* TODO guard: ${comment(edge.guard)} */)`
+      ? `When(${eventProperty.get(edge.event!)}, context => ${todoGuard(edge.guard)})`
       : `When(${eventProperty.get(edge.event!)})`;
-    const end =
-      target.type === 'end'
-        ? '.Finalize()'
-        : target.type === 'state'
-          ? `.TransitionTo(${stateName.get(target.id)})`
-          : '';
+    const end = endOf(edge);
     return `${indent(depth)}${when}${end ? `\n${indent(depth + 1)}${end}` : ''}`;
+  };
+  /** Two edges on one event, the first guarded and the second its opposite: one `IfElse`. */
+  const ifElse = (first: DiagramEdge, second: DiagramEdge, depth: number): string =>
+    [
+      `${indent(depth)}When(${eventProperty.get(first.event!)})`,
+      `${indent(depth + 1)}.IfElse(context => ${todoGuard(first.guard!)},`,
+      `${indent(depth + 2)}then => then${endOf(first)},`,
+      `${indent(depth + 2)}otherwise => otherwise${endOf(second)})`,
+    ].join('\n');
+  const transitions = (edges: DiagramEdge[], depth: number): string[] => {
+    const items: string[] = [];
+    const done = new Set<DiagramEdge>();
+    for (const edge of edges) {
+      if (done.has(edge)) continue;
+      const same = edges.filter((o) => o.event === edge.event);
+      const [, second] = same;
+      if (
+        same.length === 2 &&
+        edge.guard &&
+        (!second.guard || second.guard === `!(${edge.guard})`)
+      ) {
+        same.forEach((o) => done.add(o));
+        items.push(ifElse(edge, second, depth));
+      } else {
+        items.push(transition(edge, depth));
+      }
+    }
+    return items;
   };
   const block = (head: string, edges: DiagramEdge[]): void => {
     if (!edges.length) return;
-    const items = edges.map((e) => transition(e, 3));
+    const items = transitions(edges, 3);
     body.push(`${ctor}${head}(`);
     items.forEach((item, i) => {
       body.push(item.replace(/$/, i === items.length - 1 ? ');' : ','));
@@ -186,7 +217,7 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     if (!edges.length && !ignores.length) continue;
     const head = `During(${stateName.get(state.id)}`;
     const items = [
-      ...edges.map((e) => transition(e, 3)),
+      ...transitions(edges, 3),
       ...ignores.map((e) => `${indent(3)}Ignore(${eventProperty.get(e)})`),
     ];
     body.push(`${ctor}${head},`);

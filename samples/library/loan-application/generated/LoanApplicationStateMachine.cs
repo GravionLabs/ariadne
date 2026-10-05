@@ -56,10 +56,10 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
                 .TransitionTo(Declined));
 
         During(InManualReview,
-            When(ReviewCompleted, context => true /* TODO guard: context.Message.Approved */)
-                .TransitionTo(OfferMade),
-            When(ReviewCompleted, context => true /* TODO guard: !context.Message.Approved */)
-                .TransitionTo(Declined));
+            When(ReviewCompleted)
+                .IfElse(context => true /* TODO guard: context.Message.Approved */,
+                    then => then.TransitionTo(OfferMade),
+                    otherwise => otherwise.TransitionTo(Declined)));
 
         During(OfferMade,
             When(OfferAccepted)

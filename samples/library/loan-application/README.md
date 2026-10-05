@@ -17,6 +17,7 @@ An **offer** waits for the applicant. If it is accepted the funds are **disburse
 ## What it shows
 
 - **Guards on one event:** `When(ScoringCompleted, context => context.Message.Outcome == "Approved")` and two more, which the diagram shows as three conditional transitions.
+- **`IfElse` for a decision with two outcomes:** after the review, `IfElse(context => context.Message.Approved, …)` shows as two conditional transitions, the second with the opposite guard.
 - **A time limit on each wait,** as events from the scheduler.
 - A decision that goes to a person, and comes back.
 - Declined and withdrawn applications each publish what happened and tell the applicant before they end.

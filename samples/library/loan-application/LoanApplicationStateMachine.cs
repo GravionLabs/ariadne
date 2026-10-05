@@ -68,11 +68,13 @@ public class LoanApplicationStateMachine : MassTransitStateMachine<LoanApplicati
                 .TransitionTo(Declined));
 
         During(InManualReview,
-            When(ReviewCompleted, context => context.Message.Approved)
-                .Send(context => new PrepareOffer(context.Saga.CorrelationId))
-                .TransitionTo(OfferMade),
-            When(ReviewCompleted, context => !context.Message.Approved)
-                .TransitionTo(Declined));
+            When(ReviewCompleted)
+                .IfElse(context => context.Message.Approved,
+                    approved => approved
+                        .Send(context => new PrepareOffer(context.Saga.CorrelationId))
+                        .TransitionTo(OfferMade),
+                    declined => declined
+                        .TransitionTo(Declined)));
 
         During(OfferMade,
             When(OfferAccepted)
