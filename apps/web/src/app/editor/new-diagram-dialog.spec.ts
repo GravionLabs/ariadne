@@ -126,6 +126,7 @@ describe('NewDiagramDialog', () => {
       'Customer onboarding',
       'Trip booking',
       'Loan application',
+      'Tenant provisioning',
     ]);
   });
 

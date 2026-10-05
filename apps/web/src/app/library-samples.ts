@@ -8,6 +8,8 @@ import trip_booking_yaml from '../../../../samples/library/trip-booking/trip-boo
 import trip_booking_readme from '../../../../samples/library/trip-booking/README.md';
 import loan_application_yaml from '../../../../samples/library/loan-application/loan-application.saga.yaml';
 import loan_application_readme from '../../../../samples/library/loan-application/README.md';
+import tenant_provisioning_yaml from '../../../../samples/library/tenant-provisioning/tenant-provisioning.saga.yaml';
+import tenant_provisioning_readme from '../../../../samples/library/tenant-provisioning/README.md';
 import { describeSample } from './sample-readme';
 import type { Sample } from './samples';
 
@@ -33,4 +35,5 @@ export const LIBRARY_SAMPLES: readonly Sample[] = [
   sample('customer-onboarding', customer_onboarding_readme, customer_onboarding_yaml),
   sample('trip-booking', trip_booking_readme, trip_booking_yaml),
   sample('loan-application', loan_application_readme, loan_application_yaml),
+  sample('tenant-provisioning', tenant_provisioning_readme, tenant_provisioning_yaml),
 ];

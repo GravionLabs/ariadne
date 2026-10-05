@@ -1,9 +1,9 @@
-import { DEFAULT_CORRELATION, Diagram } from '@ariadne/core';
+import { DEFAULT_CORRELATION, Diagram, SLIP_OUTCOMES, slipEvent } from '@ariadne/core';
 import { identifier } from './generate';
 
 /** What differs between a diagram and the code that is meant to implement it. */
 export interface Difference {
-  kind: 'state' | 'transition' | 'event' | 'activity' | 'ignore';
+  kind: 'state' | 'transition' | 'event' | 'activity' | 'ignore' | 'routingSlip';
   /** `missing`: in the diagram, not in the code. `extra`: in the code, not in the diagram. */
   change: 'missing' | 'extra' | 'changed';
   /** One sentence, e.g. `Transition ReservingStock → ChargingPayment on StockReserved is not in the code.` */
@@ -16,6 +16,8 @@ interface Facts {
   transitions: Map<string, string>;
   events: Map<string, string>;
   activities: Map<string, string>;
+  /** `State: routing slip Name` → its itinerary, e.g. `CreateTenant (compensates) → SendMail`. */
+  slips: Map<string, string>;
   ignores: Map<string, string>;
 }
 
@@ -41,6 +43,7 @@ function factsOf(diagram: Diagram): Facts {
     transitions: new Map(),
     events: new Map(),
     activities: new Map(),
+    slips: new Map(),
     ignores: new Map(),
   };
   const info = new Map((diagram.events ?? []).map((e) => [e.name, e]));
@@ -71,13 +74,30 @@ function factsOf(diagram: Diagram): Facts {
         `State ${state} ${a.kind === 'command' ? 'sends' : 'publishes'} ${identifier(a.name, 'Message')}`,
       );
     }
+    for (const slip of n.routingSlips ?? []) {
+      facts.slips.set(
+        `${state}: routing slip ${identifier(slip.name, 'RoutingSlip')}`,
+        slip.activities
+          .map((a) => identifier(a.name, 'Activity') + (a.compensates ? ' (compensates)' : ''))
+          .join(' → '),
+      );
+    }
     for (const ignored of n.ignores ?? []) {
       const event = identifier(ignored, 'Event');
       usedEvents.add(event);
       facts.ignores.set(`${state}: ${event}`, `State ${state} ignores ${event}`);
     }
   }
+  // The outcomes of a routing slip are Courier's messages, correlated by the tracking number.
+  const outcomes = new Set(
+    diagram.nodes.flatMap((n) =>
+      (n.routingSlips ?? []).flatMap((s) =>
+        SLIP_OUTCOMES.map((o) => identifier(slipEvent(s.name, o), 'Event')),
+      ),
+    ),
+  );
   for (const name of usedEvents) {
+    if (outcomes.has(name)) continue;
     const original = [...info.keys()].find((k) => identifier(k, 'Event') === name);
     const meta = original ? info.get(original) : undefined;
     const type = identifier(meta?.messageType ?? name, 'Message');
@@ -89,7 +109,8 @@ function factsOf(diagram: Diagram): Facts {
 
 /**
  * Compares a diagram with the diagram read from its code (`importSagas`): states, transitions
- * (source, target and event), what states send and publish, ignored events, and the message type and
+ * (source, target and event), what states send and publish, the routing slips they start and their
+ * itineraries, ignored events, and the message type and
  * correlation of each event. Names are compared as the identifiers generated code would have, so
  * `Charging payment` and `ChargingPayment` are the same state. Guards are free text and are not
  * compared; layout, colors, descriptions and notes never reach the code and are left out.
@@ -132,6 +153,26 @@ export function diffDiagrams(diagram: Diagram, code: Diagram): Difference[] {
   compareKeys('transition', expected.transitions, actual.transitions, (t) => t);
   compareKeys('activity', expected.activities, actual.activities, (t) => t);
   compareKeys('ignore', expected.ignores, actual.ignores, (t) => t);
+  const slipText = (key: string): string => {
+    const [state, slip] = key.split(': routing slip ');
+    return `State ${state} starts routing slip ${slip}`;
+  };
+  compareKeys(
+    'routingSlip',
+    new Map([...expected.slips.keys()].map((k) => [k, slipText(k)])),
+    new Map([...actual.slips.keys()].map((k) => [k, slipText(k)])),
+    (t) => t,
+  );
+  for (const [key, itinerary] of expected.slips) {
+    const found = actual.slips.get(key);
+    if (found !== undefined && found !== itinerary) {
+      out.push({
+        kind: 'routingSlip',
+        change: 'changed',
+        message: `${slipText(key)}: ${itinerary || 'no activity'} in the diagram, ${found || 'no activity'} in the code.`,
+      });
+    }
+  }
   for (const [name, text] of expected.events) {
     const found = actual.events.get(name);
     if (found !== undefined && found !== text) {

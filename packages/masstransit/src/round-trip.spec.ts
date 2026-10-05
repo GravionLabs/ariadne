@@ -292,6 +292,41 @@ describe('generate → import', () => {
   });
 });
 
+describe('generate → import with routing slips', () => {
+  it('gives back the slips, their itineraries and their outcomes', async () => {
+    const diagram: Diagram = {
+      direction: 'top-bottom',
+      nodes: [
+        { id: 'a', type: 'start', name: 'Initial' },
+        {
+          id: 'p',
+          type: 'state',
+          name: 'Provisioning',
+          routingSlips: [
+            {
+              name: 'Provision',
+              activities: [{ name: 'CreateTenant', compensates: true }, { name: 'SendMail' }],
+            },
+          ],
+        },
+        { id: 'b', type: 'state', name: 'Active' },
+        { id: 'z', type: 'end', name: 'Final' },
+      ],
+      edges: [
+        { id: '1', source: 'a', target: 'p', kind: 'forward', event: 'Requested' },
+        { id: '2', source: 'p', target: 'b', kind: 'forward', event: 'Provision.Completed' },
+        { id: '3', source: 'p', target: 'z', kind: 'forward', event: 'Provision.Faulted' },
+      ],
+    };
+    const again = await roundTrip(diagram);
+    expect(diffDiagrams(diagram, again)).toEqual([]);
+    expect(again.nodes.find((n) => n.name === 'Provisioning')?.routingSlips).toEqual(
+      diagram.nodes[1].routingSlips,
+    );
+    expect(validate(again).filter((f) => f.code.includes('slip'))).toEqual([]);
+  });
+});
+
 describe('diffDiagrams', () => {
   const base = (): Diagram => ({
     direction: 'top-bottom',
@@ -337,6 +372,30 @@ describe('diffDiagrams', () => {
       'activity missing: State Working sends DoIt is in the diagram, not in the code.',
       'activity extra: State Busy publishes Started is in the code, not in the diagram.',
     ]);
+  });
+
+  it('lists missing, extra and changed routing slips', () => {
+    const withSlip = (activities: { name: string; compensates?: boolean }[]): Diagram => {
+      const d = base();
+      d.nodes[1].routingSlips = [{ name: 'Fulfil', activities }];
+      return d;
+    };
+    const diagram = withSlip([{ name: 'Reserve', compensates: true }, { name: 'Ship' }]);
+    expect(
+      diffDiagrams(diagram, withSlip([{ name: 'reserve', compensates: true }, { name: 'ship' }])),
+    ).toEqual([]);
+    expect(diffDiagrams(diagram, withSlip([{ name: 'Reserve' }, { name: 'Ship' }]))).toEqual([
+      {
+        kind: 'routingSlip',
+        change: 'changed',
+        message:
+          'State Working starts routing slip Fulfil: Reserve (compensates) → Ship in the diagram, Reserve → Ship in the code.',
+      },
+    ]);
+    expect(diffDiagrams(diagram, base()).map((d) => d.message)).toEqual([
+      'State Working starts routing slip Fulfil is in the diagram, not in the code.',
+    ]);
+    expect(diffDiagrams(base(), diagram).map((d) => d.change)).toEqual(['extra']);
   });
 
   it('reports a changed message type or correlation of an event', () => {

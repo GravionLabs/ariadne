@@ -36,6 +36,7 @@ generates back, and a documentation page. Read the story of each in its README.
 | [Customer onboarding](../../samples/library/customer-onboarding/README.md) | A reminder after a day and giving up after a week, an outside identity check, abandoned and declined sign-ups   | [hand-written](../../samples/library/customer-onboarding) · [generated](../../samples/library/customer-onboarding/generated) |
 | [Trip booking](../../samples/library/trip-booking/README.md)               | Flight, hotel and car one after the other; the bookings already made are cancelled in reverse order             | [hand-written](../../samples/library/trip-booking) · [generated](../../samples/library/trip-booking/generated)               |
 | [Loan application](../../samples/library/loan-application/README.md)       | Three checks with a time limit each, a decision with three ways on, a manual review, an offer that lapses       | [hand-written](../../samples/library/loan-application) · [generated](../../samples/library/loan-application/generated)       |
+| [Tenant provisioning](../../samples/library/tenant-provisioning/README.md) | Two routing slips: setting up a tenant, undone step by step on a fault, and taking it down                      | [hand-written](../../samples/library/tenant-provisioning) · [generated](../../samples/library/tenant-provisioning/generated) |
 
 In the app: **New** → "Start with a tour" or "Real-world sagas". To add one, see the
 [sample library](../../samples/library/README.md).

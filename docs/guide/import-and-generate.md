@@ -12,12 +12,15 @@ What is read: `Initially`, `During`, `DuringAny` and `WhenEnter`; `When(Event)` 
 guard); `If` and `IfElse` (a transition for each branch, each with its guard); `TransitionTo`, `Finalize` and
 `Ignore`; `Send` and `Publish` (shown as activities of the target state); `Request` with its answers
 `Name.Completed`, `.Faulted` and `.TimeoutExpired`; `Schedule` and `Unschedule` with `Name.Received`;
-`CompositeEvent` (a join); helper methods of the same class; partial classes spread over several files;
+`CompositeEvent` (a join); a routing slip built with `RoutingSlipBuilder` in `Then`/`ThenAsync`, with Courier's
+`RoutingSlipCompleted` and `RoutingSlipFaulted` shown as `Name.Completed` and `Name.Faulted` of the slip the state
+started (the name is a `// Routing slip: Name` comment, else the builder's variable; an activity compensates when its
+line ends in `// compensates`); helper methods of the same class; partial classes spread over several files;
 `Event(() => E, x => x.CorrelateById(...))`.
 
 What is not drawn is listed as a **warning with file and line**:
 
-- code that runs in `Then(...)`, `Catch` and the like;
+- code that runs in `Then(...)`, `Catch` and the like, except a routing slip;
 - `Fault`, `OnUnhandledEvent`, `Switch`, and `WhenLeave`, `WhenEnterAny`, `WhenLeaveAny`, `BeforeEnter`, `AfterLeave`
   and `Finally`;
 - anything sent, published, requested or scheduled on the way into the final state, because nothing happens in a
@@ -47,6 +50,9 @@ The generated code is a starting point:
 - what a diagram cannot say, such as a transition without an event, is not generated and is listed in the dialog;
 - C# has no marker for a compensation: a compensation transition is written as an ordinary one, the undo action
   of a state is not generated, and the dialog says so. Importing the code gives ordinary transitions back;
+- a routing slip is built and executed when its state is entered, with the saga's `CorrelationId` as tracking
+  number, one `AddActivity` per activity (the `queue:<name>_execute` addresses are guesses to check) and a
+  `// compensates` comment where it applies; a state that waits for the outcomes of two slips is not generated;
 - names are turned into C# identifiers (`Charging payment` → `ChargingPayment`), and a clash gets a number.
 
 Save generated files where you want them; Ariadne never overwrites a project.
