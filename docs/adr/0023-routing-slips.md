@@ -44,5 +44,8 @@ come back as events that transitions react to.
 - The format gets a new optional field; files without it are unchanged (version 3).
 - A state starts at most what its card can show; a saga with many slips per state is better split into states.
 - Whether an activity compensates is documentation in the diagram: in Courier it is a property of the activity's
-  type (`IActivity` rather than `IExecuteActivity`), so the importer reads it where the code says so and warns
-  otherwise.
+  type (`IActivity` rather than `IExecuteActivity`), not of the itinerary. The importer reads it from a
+  `// compensates` comment at the end of the `AddActivity` line, which Ariadne writes when it generates the code,
+  and reads every other activity as execute-only, without a warning (a warning on each activity of every slip would
+  only be noise). Likewise, a slip's name is read from a `// Routing slip: Name` comment, else from the builder's
+  variable.

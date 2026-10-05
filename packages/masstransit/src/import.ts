@@ -9,6 +9,7 @@ import {
   bytesOver,
   formatMegabytes,
   nextId,
+  RoutingSlip,
 } from '@ariadne/core';
 import {
   Call,
@@ -215,8 +216,16 @@ interface Transition {
   requests: string[];
   /** The timeouts scheduled or cancelled on entering the target, in order. */
   timers: Pick<Timer, 'action' | 'name'>[];
+  /** The routing slips started on entering the target (ADR 0023). */
+  slips: RoutingSlip[];
   at: SourceLocation;
 }
+
+/** The message types Courier answers a routing slip's subscriber with, by outcome. */
+const SLIP_OUTCOME_TYPES: Readonly<Record<string, 'Completed' | 'Faulted'>> = {
+  RoutingSlipCompleted: 'Completed',
+  RoutingSlipFaulted: 'Faulted',
+};
 
 /**
  * The text of a TODO comment ("TODO guard: X" or "TODO timeout: X" in a block comment) right after `node`. Ariadne writes the text of a
@@ -289,6 +298,7 @@ class SagaReader {
   private readonly enterActivities = new Map<string, Activity[]>();
   private readonly enterRequests = new Map<string, string[]>();
   private readonly enterTimers = new Map<string, Pick<Timer, 'action' | 'name'>[]>();
+  private readonly enterSlips = new Map<string, RoutingSlip[]>();
   private readonly requests = new Map<string, { timeout?: string }>();
   private readonly schedules = new Map<string, { delay?: string }>();
   /** `CompositeEvent(() => X, …, A, B)`: X, the events it waits for, and where it is declared. */
@@ -604,10 +614,14 @@ class SagaReader {
     const activities: Activity[] = [];
     const requests: string[] = [];
     const timers: Pick<Timer, 'action' | 'name'>[] = [];
+    const slips: RoutingSlip[] = [];
     const branches: Branch[] = [];
     for (const call of calls) {
       const place = { path: at.path, line: callLine(call) };
-      if (call.name === 'If' || call.name === 'IfElse') {
+      const slip = this.slipIn(call);
+      if (slip) {
+        slips.push(slip);
+      } else if (call.name === 'If' || call.name === 'IfElse') {
         branches.push(...this.readIf(call, place));
       } else if (call.name === 'TransitionTo') {
         target = lastName(call.args[0] ?? null) ?? undefined;
@@ -649,6 +663,7 @@ class SagaReader {
           activities: [...activities, ...way.activities],
           requests,
           timers,
+          slips,
           at: { path: at.path, line: callLine(when) },
         });
       }
@@ -714,7 +729,10 @@ class SagaReader {
     const chain = this.flatten(body, 0);
     for (const inner of chain?.calls ?? []) {
       const place = { path: at.path, line: callLine(inner) };
-      if (['Send', 'SendAsync', 'Publish', 'PublishAsync'].includes(inner.name)) {
+      const slip = this.slipIn(inner);
+      if (slip) {
+        this.enterSlips.set(state, [...(this.enterSlips.get(state) ?? []), slip]);
+      } else if (['Send', 'SendAsync', 'Publish', 'PublishAsync'].includes(inner.name)) {
         const activity = this.activityOf(inner, place);
         if (activity) {
           this.enterActivities.set(state, [...(this.enterActivities.get(state) ?? []), activity]);
@@ -730,6 +748,63 @@ class SagaReader {
         this.warnOnce(place, `${inner.name}(…) runs code; it is left out of the diagram.`);
       }
     }
+  }
+
+  /**
+   * A routing slip built and executed in `Then(…)` / `ThenAsync(…)` (ADR 0023):
+   * `new RoutingSlipBuilder(…)` and its `AddActivity("Name", …)` calls, in order. The name is a
+   * `// Routing slip: Name` comment (Ariadne writes one), else the builder's variable, else
+   * `RoutingSlip`; an activity compensates when its line ends in a `// compensates` comment, since
+   * the itinerary itself does not say (it is a property of the activity's type in Courier).
+   */
+  private slipIn(call: Call): RoutingSlip | null {
+    if (call.name !== 'Then' && call.name !== 'ThenAsync') return null;
+    const lambda = call.args.find((a) => a.type === 'lambda_expression');
+    if (!lambda) return null;
+    const nodes = [lambda, ...descendants(lambda)];
+    const creation = nodes.find(
+      (n) =>
+        n.type === 'object_creation_expression' &&
+        lastName(n.childForFieldName('type')) === 'RoutingSlipBuilder',
+    );
+    if (!creation) return null;
+    const comments = nodes.filter((n) => n.type === 'comment');
+    let name = comments
+      .map((c) => /routing slip:\s*([A-Za-z_]\w*)/i.exec(c.text)?.[1])
+      .find((n): n is string => !!n);
+    if (!name) {
+      let declarator: SyntaxNode | null = creation.parent;
+      for (let up = 0; declarator && declarator.type !== 'variable_declarator' && up < 3; up++) {
+        declarator = declarator.parent;
+      }
+      const variable =
+        declarator?.type === 'variable_declarator'
+          ? (declarator.childForFieldName('name') ?? declarator.namedChildren[0])?.text
+          : undefined;
+      if (variable && !/^(builder|slip|routingSlip|b)$/i.test(variable)) {
+        name = variable[0].toUpperCase() + variable.slice(1);
+      }
+    }
+    const activities = nodes
+      .map((n) => callOf(n))
+      .filter((c): c is Call => c?.name === 'AddActivity')
+      .map((c) => {
+        const first = c.args[0];
+        const named =
+          first?.type === 'string_literal'
+            ? first.text.replace(/^@?"|"$/g, '')
+            : first && callOf(first)?.name === 'nameof'
+              ? lastName(callOf(first)!.args[0] ?? null)
+              : first
+                ? (lastName(first) ?? first.text)
+                : null;
+        const end = c.node.endPosition.row;
+        const compensates = comments.some(
+          (k) => k.startPosition.row === end && /\bcompensates\b/i.test(k.text),
+        );
+        return { name: named || 'Activity', ...(compensates ? { compensates: true } : {}) };
+      });
+    return { name: name ?? 'RoutingSlip', activities };
   }
 
   // ---- chains and helper methods
@@ -849,8 +924,41 @@ class SagaReader {
       ids.set(`${JOIN}${name}`, id);
     }
 
+    // The routing slips each state starts (ADR 0023): on the transitions into it, and in WhenEnter.
+    const slipsOf = new Map<string, RoutingSlip[]>();
+    const addSlips = (state: string, slips: readonly RoutingSlip[]) => {
+      const known = slipsOf.get(state) ?? [];
+      for (const slip of slips) if (!known.some((k) => k.name === slip.name)) known.push(slip);
+      if (known.length) slipsOf.set(state, known);
+    };
+    for (const [state, slips] of this.enterSlips) addSlips(state, slips);
+    for (const t of flow) {
+      const into = t.target === undefined ? t.source : t.target;
+      if (t.slips.length && ![INITIAL, FINAL, '*'].includes(into) && !into.startsWith(JOIN)) {
+        addSlips(into, t.slips);
+      }
+    }
+    // `When(RoutingSlipCompleted)` in a state is the outcome of the slip that state starts.
+    const renamed = new Set<string>();
+    const eventOf = (t: Transition): string => {
+      const type = this.events.get(t.event)?.messageType ?? t.event;
+      const outcome = SLIP_OUTCOME_TYPES[type];
+      if (!outcome) return t.event;
+      const slips = slipsOf.get(t.source) ?? [];
+      if (slips.length !== 1) {
+        this.warn(
+          t.at,
+          `${t.event} is the outcome of a routing slip, but ${t.source} starts ${slips.length ? 'several' : 'none'}: shown as it is.`,
+        );
+        return t.event;
+      }
+      renamed.add(t.event);
+      return `${slips[0].name}.${outcome}`;
+    };
+
     // Activities belong to the state a transition leads into; WhenEnter ones to their state.
     const entering = new Map<string, Activity[][]>();
+    const slipping = new Map<string, string[][]>();
     const requesting = new Map<string, string[][]>();
     const timing = new Map<string, string[][]>();
     const edges: DiagramEdge[] = [];
@@ -873,7 +981,7 @@ class SagaReader {
         source,
         target: targetId,
         kind: 'forward',
-        event: t.event,
+        event: eventOf(t),
         ...(t.guard ? { guard: t.guard } : {}),
       });
       locations.transitions[id] = t.at;
@@ -881,6 +989,7 @@ class SagaReader {
         ...t.activities.map((a) => a.name),
         ...t.requests,
         ...t.timers.map((x) => `${x.action} ${x.name}`),
+        ...t.slips.map((s) => `routing slip ${s.name}`),
       ];
       if (target.startsWith(JOIN)) {
         if (things.length) {
@@ -899,6 +1008,7 @@ class SagaReader {
       } else {
         entering.set(target, [...(entering.get(target) ?? []), t.activities]);
         requesting.set(target, [...(requesting.get(target) ?? []), t.requests]);
+        slipping.set(target, [...(slipping.get(target) ?? []), t.slips.map((s) => s.name)]);
         timing.set(target, [
           ...(timing.get(target) ?? []),
           t.timers.map((x) => `${x.action}:${x.name}`),
@@ -929,6 +1039,9 @@ class SagaReader {
             : {}),
         }));
       }
+      const slips = slipsOf.get(name);
+      if (slips?.length) node.routingSlips = slips;
+      const slipped = slipping.get(name) ?? [];
       const timed = timing.get(name) ?? [];
       const timers = dedupe([
         ...(this.enterTimers.get(name) ?? []).map((x) => `${x.action}:${x.name}`),
@@ -945,7 +1058,7 @@ class SagaReader {
         lists.map(
           (l, i) =>
             l.map((a) => `${a.kind}:${a.name}`).join(',') +
-            `|${(asked[i] ?? []).join(',')}|${(timed[i] ?? []).join(',')}`,
+            `|${(asked[i] ?? []).join(',')}|${(timed[i] ?? []).join(',')}|${(slipped[i] ?? []).join(',')}`,
         ),
       );
       if (distinct.size > 1) {
@@ -966,6 +1079,8 @@ class SagaReader {
     };
     const events: EventInfo[] = [];
     for (const [name, info] of this.events) {
+      // A slip's outcome is named after the slip in the diagram; its correlation is Courier's.
+      if (renamed.has(name)) continue;
       const entry: EventInfo = {
         name,
         ...(info.messageType !== name ? { messageType: info.messageType } : {}),
