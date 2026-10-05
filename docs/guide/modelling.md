@@ -33,6 +33,11 @@ A state has a name, an optional description and colour, and optionally:
 
 Only plain states can have these; the initial and final states cannot.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/state-activities-dark.png">
+  <img alt="The inspector of the state “Charging payment”: its name and description, the command it sends, and the timeout it schedules" src="../images/guide/state-activities-light.png">
+</picture>
+
 ## Transitions
 
 A transition says: while the saga is in the source state, this **event** moves it to the target. Several transitions
@@ -41,6 +46,16 @@ branch on a condition.
 
 A transition back to the same state is a loop (a retry). A **compensation** transition is drawn differently and is not
 laid out; use it for the path back after a failure.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/external-event-dark.png">
+  <img alt="The transition “PaymentCharged” selected: the inspector shows its event and where it comes from, the Payment service, so the diagram says that it is an external event" src="../images/guide/external-event-light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/compensation-dark.png">
+  <img alt="The state “Reserving stock” selected, with its Recovery section open: the compensation “ReleaseStock” that undoes its work, and the transitions of the state" src="../images/guide/compensation-light.png">
+</picture>
 
 ## Events: internal and external
 
@@ -55,6 +70,11 @@ events of a join.
   at most one.
 - A **join** waits until the events of all its incoming transitions have arrived, then continues.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/any-and-join-dark.png">
+  <img alt="Part of the travel booking saga: the Any state, whose transitions apply in every state, and a join, drawn as a bar, that waits for several events before the saga goes on" src="../images/guide/any-and-join-light.png">
+</picture>
+
 ## Code details
 
 For the C# round trip, the **Code** section of the saga's details holds the state machine class, namespace, saga instance type
@@ -65,3 +85,8 @@ generator derives names from the diagram. See [Import and generate C#](import-an
 
 The **Problems** menu lists what looks wrong: a state that cannot be reached or has no way to a final state, an
 event that leaves a state twice without a guard, a transition without an event, an external event without a source. Select an entry to jump to it. `ariadne lint` reports the same in CI.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/problems-menu-dark.png">
+  <img alt="The Problems menu open over the order sample: one hint, that an event name is not in the past tense, with a button to jump to it" src="../images/guide/problems-menu-light.png">
+</picture>

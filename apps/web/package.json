@@ -10,6 +10,8 @@
     "test": "ng test --no-watch",
     "perf": "ng test --no-watch --configuration=perf",
     "build:embedded": "ng build --configuration production,embedded",
+    "capture": "ng build && playwright test --config capture/playwright.config.ts",
+    "capture:install": "playwright install --with-deps chromium",
     "test:ci": "ng test --no-watch --configuration=ci"
   },
   "dependencies": {
@@ -47,8 +49,11 @@
     "@angular/build": "^22.2.0",
     "@angular/cli": "^22.2.0",
     "@angular/compiler-cli": "^22.2.0",
+    "@playwright/test": "^1.63.0",
     "axe-core": "^4.13.0",
     "jsdom": "^30.0.0",
+    "markdown-it": "^15.0.2",
+    "sharp": "^0.35.5",
     "typescript": "~6.0.2",
     "vitest": "^5.0.0"
   }

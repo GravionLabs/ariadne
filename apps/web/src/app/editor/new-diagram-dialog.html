@@ -29,7 +29,12 @@
       <section class="samples" [attr.aria-labelledby]="'samples-' + group.id">
         <h3 [id]="'samples-' + group.id">{{ group.title }}</h3>
         @for (sample of group.samples; track sample.id) {
-          <button type="button" class="sample" (click)="pickSample(sample)">
+          <button
+            type="button"
+            class="sample"
+            [attr.data-sample-id]="sample.id"
+            (click)="pickSample(sample)"
+          >
             <span class="title">{{ sample.title }}</span>
             <span class="about">{{ sample.description }}</span>
           </button>

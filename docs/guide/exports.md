@@ -9,6 +9,15 @@ The **Export** menu in the top bar:
 | Mermaid, Mermaid in Markdown | `.mmd` text, or a fenced block in a `.md` file, for READMEs and wikis.                                       |
 | Markdown page                | A page about the saga: states, transitions, messages (`.docs.md`).                                           |
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/export-menu-dark.png">
+  <img alt="The Export menu open: Image (SVG, PNG), Mermaid (copy, text, in Markdown) and Documentation (a Markdown page)" src="../images/guide/export-menu-light.png">
+</picture>
+
+![An exported SVG opened in a browser: the order saga with its states, transitions, events and activities](../images/guide/exported-svg.png)
+
+![The Markdown page of the order saga as a document: its title and description, the diagram as Mermaid text, and a table of its states](../images/guide/exported-markdown.png)
+
 In VS Code, **Ariadne: Export Diagram…** (a button in the diagram editor's title bar, or the Command Palette) saves the
 SVG, PNG, Mermaid or Markdown page next to the diagram, or in the folder of `ariadne.export.folder`, and copies Mermaid or
 Markdown to the clipboard. The Markdown preview draws a saga from a fenced block, or from a file:

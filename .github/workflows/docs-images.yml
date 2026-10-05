@@ -1,0 +1,94 @@
+name: Docs images
+
+# Re-captures the screenshots and GIFs of the user guide (docs/images/guide) from the current app and
+# extension, and opens a pull request when any of them changed. Weekly, and by hand. There is no
+# pixel comparison on pull requests: it would fail on every font or browser update. A capture that
+# cannot find what the interface no longer has fails the run instead, and that is the signal that
+# the guide needs a look (the Playwright report is attached).
+on:
+  workflow_dispatch:
+  schedule:
+    # Sunday night.
+    - cron: '17 2 * * 0'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: docs-images
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    name: Re-capture the images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: GravionLabs/ci/node/setup@main
+        with:
+          package-manager: pnpm
+      # ffmpeg makes the GIFs, DejaVu is the one font every picture is drawn in, xvfb is the display
+      # that the VS Code captures need.
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu xvfb
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ariadne/web capture:install
+      # Builds the web app, serves it, and writes docs/images/guide.
+      - run: pnpm --filter @ariadne/web capture
+      # Builds the extension, downloads the pinned VS Code and drives it.
+      - run: xvfb-run -a pnpm --filter ariadne-vscode capture
+
+      # What to look at when a capture fails: the report and traces of the web captures, and the
+      # picture of the VS Code window at the moment the capture stopped.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: capture-report
+          path: |
+            apps/web/capture/report
+            apps/web/capture/test-results
+            apps/vscode/capture/failures
+          if-no-files-found: ignore
+
+      - name: List what changed
+        id: changes
+        run: |
+          changed="$(git status --porcelain -- docs/images)"
+          if [ -z "$changed" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No image changed."
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "The images of the user guide, captured again from \`${GITHUB_SHA::7}\` by the workflow \"Docs images\"."
+            echo
+            echo "| File | Change | Size |"
+            echo "| --- | --- | --- |"
+            git status --porcelain -- docs/images | while read -r flag file; do
+              case "$flag" in
+                '??'|A) kind=new ;;
+                D) kind=removed ;;
+                *) kind=changed ;;
+              esac
+              size="$( [ -f "$file" ] && stat -c %s "$file" || echo 0 )"
+              echo "| \`$file\` | $kind | $((size / 1024)) kB |"
+            done
+            echo
+            echo "Look at the pictures before merging: a change can be the interface, or only the way the browser draws it."
+            echo
+            echo "**Checks do not start on a pull request that a workflow opens with the default token.** Close and reopen this pull request to run them (or give the workflow a \`DOCS_IMAGES_TOKEN\` secret, a fine-grained token with contents and pull requests write access, which it uses when it is set)."
+          } > "$RUNNER_TEMP/pull-request-body.md"
+
+      # A pull request made with the default GITHUB_TOKEN does not start other workflows (a GitHub
+      # rule against loops), so its checks do not run. A token of the owner's own does.
+      - uses: peter-evans/create-pull-request@v7
+        if: steps.changes.outputs.changed == 'true'
+        with:
+          token: ${{ secrets.DOCS_IMAGES_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: chore/docs-images
+          delete-branch: true
+          add-paths: docs/images
+          commit-message: "docs: re-capture the guide's images"
+          title: "docs: re-capture the guide's images"
+          body-path: ${{ runner.temp }}/pull-request-body.md

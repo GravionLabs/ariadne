@@ -25,6 +25,23 @@ contributors. See
 speed). The container is Linux, so the tests run exactly as they do on the CI runner, whatever the
 host is. The first run builds the image and downloads VS Code; later ones reuse both.
 
+## Screenshots for the guide
+
+`pnpm --filter ariadne-vscode capture` re-captures the pictures of the extension in `docs/images/guide`
+(`vscode-*-light.png` and `-dark.png`, used by [the guide](../../docs/guide/vscode.md) and later by the marketplace
+page). It builds the extension, downloads a pinned VS Code (`VSCODE_VERSION` in `capture/capture.mjs`), and drives it
+with Playwright's Electron support in a fresh profile: a 1440 × 900 window, the _Default Light Modern_ and _Default
+Dark Modern_ themes, no welcome page, chat or sticky scroll, a copy of `samples/sagas/order` in a temporary folder.
+
+```sh
+xvfb-run -a pnpm --filter ariadne-vscode capture              # Linux without a display; elsewhere, no xvfb-run
+node capture/capture.mjs problems drift-quick-fix            # only some (the extension must be built)
+```
+
+Each capture is a function in `capture/capture.mjs` that puts the window in the state to show; a capture that
+cannot find what it expects fails and leaves a picture of the window in `capture/failures/`. The fonts are the
+machine's, so install `fonts-dejavu` (CI does) for the same pictures everywhere. Not part of `pnpm test`.
+
 ## Installing a `.vsix`
 
 Every release of Ariadne on GitHub carries the extension as `ariadne-vscode-<version>.vsix`.

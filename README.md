@@ -4,7 +4,10 @@ Diagrams for [MassTransit saga state machines](https://masstransit.massient.com/
 
 Ariadne is a web app (Angular + [Foblex f-flow](https://github.com/Foblex/f-flow)) and a [VS Code extension](#vs-code-extension) that opens the same diagrams next to the code. Diagrams are plain local files, so they diff and review like code. It is **documentation only**: diagrams are never executed.
 
-![The order saga from docs/examples/order.saga.yaml](docs/images/order-saga.jpg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/guide/hero-dark.png">
+  <img alt="The Ariadne editor with the order saga open: the states and transitions as cards and arrows, the toolbar at the top and the minimap in the corner" src="docs/images/guide/hero-light.png">
+</picture>
 
 ## The model
 

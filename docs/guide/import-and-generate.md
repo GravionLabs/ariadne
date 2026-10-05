@@ -18,6 +18,11 @@ line of code.
 
 The result opens as a new, unsaved diagram. Import never changes your code.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/import-dialog-dark.png">
+  <img alt="The import dialog after picking a C# file: it found one saga, OrderStateMachine, with 3 states and 6 transitions, and lists three warnings with their file and line" src="../images/guide/import-dialog-light.png">
+</picture>
+
 ## Generate C#
 
 **Generate C#…** writes a MassTransit state machine, a saga instance and the message contracts. The dialog shows
@@ -31,6 +36,11 @@ The generated code is a starting point:
 - names are turned into C# identifiers (`Charging payment` → `ChargingPayment`), and a clash gets a number.
 
 Save generated files where you want them; Ariadne never overwrites a project.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/generate-dialog-dark.png">
+  <img alt="The generate dialog: a note about what was not generated, tabs for the three files, the C# of the state machine, and the buttons Close, Copy file and Save all" src="../images/guide/generate-dialog-light.png">
+</picture>
 
 ## In VS Code
 

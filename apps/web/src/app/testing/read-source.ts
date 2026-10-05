@@ -7,6 +7,7 @@ interface NodeProcess {
       path: string,
       options: { withFileTypes: true },
     ): { name: string; isDirectory(): boolean }[];
+    statSync(path: string): { size: number };
   };
 }
 
@@ -40,6 +41,24 @@ export function listFolders(path: string): string[] {
         .filter((e) => e.isDirectory())
         .map((e) => e.name)
         .sort();
+    } catch {
+      // Try the next place.
+    }
+  }
+  throw new Error(`Cannot find ${path} from ${node.cwd()}`);
+}
+
+/** The files in a folder of the repository (given from `apps/web`), with their sizes in bytes. */
+export function listFiles(path: string): { name: string; size: number }[] {
+  const node = (globalThis as unknown as { process: NodeProcess }).process;
+  const fs = node.getBuiltinModule('node:fs');
+  for (const base of [node.cwd(), `${node.cwd()}/apps/web`]) {
+    try {
+      return fs
+        .readdirSync(`${base}/${path}`, { withFileTypes: true })
+        .filter((e) => !e.isDirectory())
+        .map((e) => ({ name: e.name, size: fs.statSync(`${base}/${path}/${e.name}`).size }))
+        .sort((a, b) => a.name.localeCompare(b.name));
     } catch {
       // Try the next place.
     }
