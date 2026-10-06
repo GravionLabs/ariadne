@@ -106,12 +106,12 @@ const VIEWS: View[] = [
     },
   },
   {
-    name: 'a selected state with the "Add behaviour…" menu open',
-    shown: 'app-inspector .behaviour-list',
+    name: 'a selected state with the "Add behavior…" menu open',
+    shown: 'app-inspector .behavior-list',
     show: async (e) => {
       await loadOrder(e);
       await e.select([e.store.nodes().find((n) => n.type === 'state')!.id]);
-      await e.click(e.el.querySelector<HTMLButtonElement>('app-inspector .behaviours > button')!);
+      await e.click(e.el.querySelector<HTMLButtonElement>('app-inspector .behaviors > button')!);
     },
   },
   {

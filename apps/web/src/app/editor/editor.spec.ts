@@ -154,12 +154,12 @@ describe('Editor', () => {
       if (toggle.getAttribute('aria-expanded') === 'false') toggle.click();
       await settle();
     };
-    /** Reveals a hidden section of the state inspector from "Add behaviour…" (e.g. "Request"). */
+    /** Reveals a hidden section of the state inspector from "Add behavior…" (e.g. "Request"). */
     const behave = async (label: string) => {
-      const menu = el.querySelector<HTMLButtonElement>('app-inspector .behaviours > button')!;
+      const menu = el.querySelector<HTMLButtonElement>('app-inspector .behaviors > button')!;
       if (menu.getAttribute('aria-expanded') !== 'true') menu.click();
       await settle();
-      [...el.querySelectorAll<HTMLButtonElement>('app-inspector .behaviour-list button')]
+      [...el.querySelectorAll<HTMLButtonElement>('app-inspector .behavior-list button')]
         .find((b) => b.textContent?.trim() === label)!
         .click();
       await settle();
@@ -724,7 +724,7 @@ describe('Editor', () => {
     );
   });
 
-  it('shows the optional sections only when they have entries; the rest are in "Add behaviour…"', async () => {
+  it('shows the optional sections only when they have entries; the rest are in "Add behavior…"', async () => {
     const { el, store, select, settle, behave } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'state');
@@ -735,9 +735,9 @@ describe('Editor', () => {
     const toggle = (name: string) =>
       section(name)!.querySelector<HTMLButtonElement>('.group-toggle')!;
     const expanded = (name: string) => toggle(name).getAttribute('aria-expanded');
-    const menu = () => el.querySelector<HTMLButtonElement>('app-inspector .behaviours > button')!;
+    const menu = () => el.querySelector<HTMLButtonElement>('app-inspector .behaviors > button')!;
     const listed = () =>
-      [...el.querySelectorAll('app-inspector .behaviour-list button')].map((b) =>
+      [...el.querySelectorAll('app-inspector .behavior-list button')].map((b) =>
         b.textContent?.trim(),
       );
 
@@ -786,12 +786,12 @@ describe('Editor', () => {
     expect(expanded('Timers')).toBe('true');
   });
 
-  it('offers "Add behaviour…" only for what a kind of state supports, and not when all is shown', async () => {
+  it('offers "Add behavior…" only for what a kind of state supports, and not when all is shown', async () => {
     const { el, store, select, settle, behave } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'end');
     store.appendNode('state-1', 'join');
-    const menu = () => el.querySelector('app-inspector .behaviours');
+    const menu = () => el.querySelector('app-inspector .behaviors');
     await select(['start-1']);
     expect(menu()).toBeNull();
     await select(['end-1']);

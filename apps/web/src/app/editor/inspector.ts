@@ -55,10 +55,10 @@ import {
 /** Inspector sections that start expanded even when empty. */
 const ALWAYS_OPEN = ['details', 'activities', 'transitions'];
 
-type BehaviourKey = 'requests' | 'slips' | 'timers' | 'ignores' | 'recovery';
+type BehaviorKey = 'requests' | 'slips' | 'timers' | 'ignores' | 'recovery';
 
-/** The optional sections of a state, as "Add behaviour…" names them. */
-const BEHAVIOURS: readonly { key: BehaviourKey; label: string; icon: IconName }[] = [
+/** The optional sections of a state, as "Add behavior…" names them. */
+const BEHAVIORS: readonly { key: BehaviorKey; label: string; icon: IconName }[] = [
   { key: 'requests', label: 'Request', icon: 'command' },
   { key: 'slips', label: 'Routing slip', icon: 'route' },
   { key: 'timers', label: 'Timer', icon: 'clock' },
@@ -248,8 +248,8 @@ export class Inspector {
       );
   }
 
-  /** Behaviours of a state that have a section of their own once it has any. */
-  protected readonly behaviours = BEHAVIOURS;
+  /** Behaviors of a state that have a section of their own once it has any. */
+  protected readonly behaviors = BEHAVIORS;
 
   /** Recovery has no list to be empty: asking for it from the menu is what shows it while it has nothing. */
   private readonly revealed = signal(false);
@@ -258,7 +258,7 @@ export class Inspector {
   /** The optional sections the selected state shows: those with content, and Recovery once asked for. */
   protected readonly shown = computed(() => {
     const node = this.node();
-    const shown = new Set<BehaviourKey>();
+    const shown = new Set<BehaviorKey>();
     if (!node) return shown;
     if (node.requests?.length) shown.add('requests');
     if (node.routingSlips?.length) shown.add('slips');
@@ -268,11 +268,11 @@ export class Inspector {
     return shown;
   });
 
-  /** What "Add behaviour…" lists: the hidden sections this kind of node supports. */
-  protected readonly hiddenBehaviours = computed(() => {
+  /** What "Add behavior…" lists: the hidden sections this kind of node supports. */
+  protected readonly hiddenBehaviors = computed(() => {
     const node = this.node();
     if (!node) return [];
-    const supported: Record<BehaviourKey, boolean> = {
+    const supported: Record<BehaviorKey, boolean> = {
       requests: hasRequests(node.type),
       slips: hasRoutingSlips(node.type),
       timers: hasTimers(node.type),
@@ -280,11 +280,11 @@ export class Inspector {
       recovery: node.type === 'state',
     };
     const shown = this.shown();
-    return BEHAVIOURS.filter((b) => supported[b.key] && !shown.has(b.key));
+    return BEHAVIORS.filter((b) => supported[b.key] && !shown.has(b.key));
   });
 
   /** Shows a hidden section with a new entry in it, focused. */
-  protected addBehaviour(key: BehaviourKey): void {
+  protected addBehavior(key: BehaviorKey): void {
     this.menuOpen.set(false);
     switch (key) {
       case 'requests':

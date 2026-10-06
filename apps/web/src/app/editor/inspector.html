@@ -626,37 +626,6 @@
       </section>
     }
 
-    @if (hiddenBehaviours().length) {
-      <div class="behaviours">
-        <button
-          type="button"
-          class="ghost"
-          aria-controls="add-behaviour-list"
-          [attr.aria-expanded]="menuOpen()"
-          (click)="menuOpen.set(!menuOpen())"
-          (keydown.escape)="closeMenu($event)"
-        >
-          <app-icon name="add" /> Add behaviour…
-        </button>
-        @if (menuOpen()) {
-          <ul id="add-behaviour-list" class="behaviour-list" aria-label="Behaviours to add">
-            @for (behaviour of hiddenBehaviours(); track behaviour.key) {
-              <li>
-                <button
-                  type="button"
-                  class="ghost"
-                  (click)="addBehaviour(behaviour.key)"
-                  (keydown.escape)="closeMenu($event)"
-                >
-                  <app-icon [name]="behaviour.icon" /> {{ behaviour.label }}
-                </button>
-              </li>
-            }
-          </ul>
-        }
-      </div>
-    }
-
     @if (node.type !== 'end') {
       <section class="group" aria-label="Transitions">
         <button
@@ -770,6 +739,37 @@
           }
         }
       </section>
+    }
+
+    @if (hiddenBehaviors().length) {
+      <div class="behaviors">
+        <button
+          type="button"
+          class="ghost"
+          aria-controls="add-behavior-list"
+          [attr.aria-expanded]="menuOpen()"
+          (click)="menuOpen.set(!menuOpen())"
+          (keydown.escape)="closeMenu($event)"
+        >
+          <app-icon name="add" /> Add behavior…
+        </button>
+        @if (menuOpen()) {
+          <ul id="add-behavior-list" class="behavior-list" aria-label="Behaviors to add">
+            @for (behavior of hiddenBehaviors(); track behavior.key) {
+              <li>
+                <button
+                  type="button"
+                  class="ghost"
+                  (click)="addBehavior(behavior.key)"
+                  (keydown.escape)="closeMenu($event)"
+                >
+                  <app-icon [name]="behavior.icon" /> {{ behavior.label }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
     }
   } @else if (edge(); as edge) {
     <label class="field">

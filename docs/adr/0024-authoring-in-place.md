@@ -36,7 +36,7 @@ keyboard could move around and delete but not add.
   adds one transition to a new state per outcome the state does not react to yet, with the event filled in, as one
   undo step (`addOutcomeTransitions`). (#399 only suggested the events of routing slips.)
 - **The state inspector shows what has content.** Details, Activities and Transitions are always shown; requests,
-  routing slips, timers, ignored events and recovery appear when the state has entries, and "Add behaviour…" lists the
+  routing slips, timers, ignored events and recovery appear when the state has entries, and "Add behavior…" lists the
   hidden ones and shows the picked one with a new entry focused.
 - **Keys:** with a state selected `N` adds a state after it (through the prompt), `F` a final state; f-flow's `C`
   connects to an existing state; with a transition selected `E` edits its event. They do nothing in a field, while

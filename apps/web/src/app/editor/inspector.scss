@@ -515,13 +515,13 @@ textarea {
   color: var(--c-compensation);
 }
 
-// "Add behaviour…": the optional sections of a state that have nothing in them yet.
-.behaviours {
+// "Add behavior…": the optional sections of a state that have nothing in them yet.
+.behaviors {
   display: grid;
   gap: 4px;
 }
 
-.behaviour-list {
+.behavior-list {
   display: grid;
   gap: 2px;
   margin: 0;
