@@ -650,13 +650,43 @@
             </label>
           }
           <div class="add-row">
-            <button type="button" class="ghost" (click)="transitionAdded.emit('state')">
+            <button
+              #newState="cdkOverlayOrigin"
+              cdkOverlayOrigin
+              type="button"
+              class="ghost"
+              (click)="prompting.set({ type: 'state', origin: newState })"
+            >
               <app-icon name="step" /> To a new state
             </button>
-            <button type="button" class="ghost" (click)="transitionAdded.emit('end')">
+            <button
+              #finalState="cdkOverlayOrigin"
+              cdkOverlayOrigin
+              type="button"
+              class="ghost"
+              (click)="prompting.set({ type: 'end', origin: finalState })"
+            >
               <app-icon name="end" /> To a final state
             </button>
           </div>
+          @if (prompting(); as prompt) {
+            <ng-template
+              cdkConnectedOverlay
+              cdkConnectedOverlayHasBackdrop
+              cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+              [cdkConnectedOverlayOrigin]="prompt.origin"
+              [cdkConnectedOverlayOpen]="true"
+              (backdropClick)="prompting.set(null)"
+              (detach)="prompting.set(null)"
+            >
+              <app-state-prompt
+                [type]="prompt.type"
+                [suggestions]="eventSuggestions()"
+                (committed)="addTransition({ type: prompt.type, init: $event })"
+                (cancelled)="addTransition({ type: prompt.type })"
+              />
+            </ng-template>
+          }
         }
       </section>
     }

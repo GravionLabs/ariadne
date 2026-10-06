@@ -162,6 +162,19 @@ const VIEWS: View[] = [
     },
   },
   {
+    name: 'the prompt for a new state',
+    shown: '.cdk-overlay-pane app-state-prompt',
+    show: async (e) => {
+      await loadOrder(e);
+      await e.click(
+        e.el.querySelector<HTMLButtonElement>('.slot [aria-label="Add the next state"]')!,
+      );
+      await e.click(
+        document.querySelector<HTMLButtonElement>('.cdk-overlay-pane .option[data-type="state"]')!,
+      );
+    },
+  },
+  {
     name: 'the export menu',
     shown: '.cdk-overlay-pane [role=menuitem]',
     show: async (e) => {

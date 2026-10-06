@@ -49,6 +49,22 @@ describe('diagram edits', () => {
     });
   });
 
+  it('names the appended state and gives its transition an event', () => {
+    const { diagram, id } = appendNode(path(), 'state-1', 'state', {
+      name: ' Charged ',
+      event: ' PaymentCharged ',
+    })!;
+    expect(diagram.nodes.at(-1)).toMatchObject({ id, name: 'Charged' });
+    expect(diagram.edges.at(-1)).toMatchObject({ target: id, event: 'PaymentCharged' });
+  });
+
+  it('keeps the default name and no event for blank fields', () => {
+    const plain = appendNode(path(), 'state-1', 'state')!;
+    const blank = appendNode(path(), 'state-1', 'state', { name: ' ', event: '' })!;
+    expect(blank.diagram).toEqual(plain.diagram);
+    expect(blank.diagram.edges.at(-1)!.event).toBeUndefined();
+  });
+
   it('refuses to append after an end or to a start', () => {
     expect(appendNode(path(), 'end-1', 'state')).toBeNull();
     expect(appendNode(path(), 'state-1', 'start')).toBeNull();
@@ -65,6 +81,19 @@ describe('diagram edits', () => {
     const second = diagram.edges.find((e) => e.source === id)!;
     expect(second).toMatchObject({ target: 'state-1', kind: 'forward' });
     expect(second.event).toBeUndefined();
+  });
+
+  it('gives the second half of a split edge the event, and the first half keeps its own', () => {
+    const { diagram, id } = insertOnEdge(path(), 'edge-1', 'state', {
+      name: 'Charged',
+      event: 'PaymentCharged',
+    })!;
+    expect(diagram.nodes.find((n) => n.id === id)!.name).toBe('Charged');
+    expect(diagram.edges.find((e) => e.id === 'edge-1')).toMatchObject({ event: 'Go' });
+    expect(diagram.edges.find((e) => e.source === id)).toMatchObject({
+      target: 'state-1',
+      event: 'PaymentCharged',
+    });
   });
 
   it('refuses to split an edge with a start or an end', () => {

@@ -13,6 +13,7 @@ import {
   edits,
   emptyDiagram,
   MessageKind,
+  NewStateInit,
   NodePatch,
   SagaPatch,
   NodeType,
@@ -20,7 +21,7 @@ import {
   serializeDiagram,
 } from '@ariadne/core';
 
-export type { DetailsPatch, EdgePatch, EventInfoPatch, NodePatch, SagaPatch };
+export type { DetailsPatch, EdgePatch, EventInfoPatch, NewStateInit, NodePatch, SagaPatch };
 
 /** App-owned diagram state (f-flow's "classic" mode): all edits go through this store. */
 export const DiagramStore = signalStore(
@@ -70,17 +71,18 @@ export const DiagramStore = signalStore(
       /**
        * Adds a node that follows `source`, connected by a forward edge, as a single undo step.
        * Returns the new node id, or `null` if `source` is unknown or the connection is not allowed.
+       * `init` names the node and gives the new transition its event, in the same undo step.
        */
-      appendNode(source: string, type: NodeType): string | null {
-        return create(edits.appendNode(store.diagram(), source, type));
+      appendNode(source: string, type: NodeType, init?: NewStateInit): string | null {
+        return create(edits.appendNode(store.diagram(), source, type, init));
       },
 
       /**
        * Splits edge A→B into A→X→B with a new state X (see `insertOnEdge` in `diagram-edits`).
        * Returns the new node id, or `null` if the edge is unknown or `type` cannot sit on a path.
        */
-      insertOnEdge(edgeId: string, type: NodeType): string | null {
-        return create(edits.insertOnEdge(store.diagram(), edgeId, type));
+      insertOnEdge(edgeId: string, type: NodeType, init?: NewStateInit): string | null {
+        return create(edits.insertOnEdge(store.diagram(), edgeId, type, init));
       },
 
       updateNode(id: string, patch: NodePatch): void {

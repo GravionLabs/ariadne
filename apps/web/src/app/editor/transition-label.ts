@@ -1,5 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
-import { AddStepButton } from './add-step-button';
+import { AddStepButton, NewStep } from './add-step-button';
 import { Icon, IconName } from './icon';
 import { INSERT_TYPES } from './node-types';
 import {
@@ -10,7 +10,6 @@ import {
   LABEL_PADDING,
   LABEL_ROW,
   labelRows,
-  NodeType,
   Severity,
 } from '@ariadne/core';
 
@@ -47,7 +46,7 @@ export class TransitionLabel {
   /** Compensation transitions are not laid out and get no "+". */
   readonly insertable = input(true);
   readonly selectRequested = output<void>();
-  readonly inserted = output<NodeType>();
+  readonly inserted = output<NewStep>();
 
   protected readonly insertTypes = INSERT_TYPES;
   protected readonly icon = computed<IconName>(() => {

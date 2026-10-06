@@ -10,11 +10,14 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { EmbeddedSync } from '../host/embedded-sync';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
+import { NewStep } from './add-step-button';
 import { Icon } from './icon';
+import { StatePrompt } from './state-prompt';
 import { DECISION, NODE_TYPES } from './node-types';
 import {
   Activity,
@@ -42,6 +45,7 @@ import {
   SLIP_OUTCOMES,
   compensationOrder,
   hasRoutingSlips,
+  suggestEvents,
   slipEvent,
 } from '@ariadne/core';
 
@@ -59,7 +63,7 @@ const NEW_MESSAGE: Record<MessageKind, string> = {
  */
 @Component({
   selector: 'app-inspector',
-  imports: [Icon],
+  imports: [CdkConnectedOverlay, CdkOverlayOrigin, Icon, StatePrompt],
   host: { role: 'complementary', '[attr.aria-label]': 'title()' },
   templateUrl: './inspector.html',
   styleUrl: './inspector.scss',
@@ -96,7 +100,15 @@ export class Inspector {
   readonly closed = output<void>();
   readonly deleted = output<void>();
   /** "Add transition": a new state of this type should follow the selected one. */
-  readonly transitionAdded = output<NodeType>();
+  readonly transitionAdded = output<NewStep>();
+
+  /** The "To a new state" / "To a final state" button whose prompt is open. */
+  protected readonly prompting = signal<{ type: NodeType; origin: CdkOverlayOrigin } | null>(null);
+
+  protected addTransition({ type, init }: NewStep): void {
+    this.prompting.set(null);
+    this.transitionAdded.emit({ type, init });
+  }
 
   private readonly selected = computed(() => this.node()?.id ?? this.edge()?.id);
 
@@ -406,16 +418,7 @@ export class Inspector {
   });
 
   /** Events worth offering for a transition: the outcomes of requests, and scheduled timeouts. */
-  protected readonly eventSuggestions = computed(() =>
-    this.store
-      .nodes()
-      .flatMap((n) => [
-        ...(n.requests ?? []).flatMap((r) => REQUEST_OUTCOMES.map((o) => requestEvent(r.name, o))),
-        ...(n.routingSlips ?? []).flatMap((s) => SLIP_OUTCOMES.map((o) => slipEvent(s.name, o))),
-        ...(n.timers ?? []).filter((t) => t.action === 'schedule').map((t) => t.name),
-        ...(n.type === 'join' ? [n.name] : []),
-      ]),
-  );
+  protected readonly eventSuggestions = computed(() => suggestEvents(this.store.diagram()));
 
   protected eventEnds(outcome: string): boolean {
     return !!this.edge()?.event?.endsWith(`.${outcome}`);

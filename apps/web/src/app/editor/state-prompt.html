@@ -1,0 +1,31 @@
+<form
+  class="prompt"
+  role="group"
+  [attr.aria-label]="'New ' + info[type()].label.toLowerCase()"
+  (submit)="commit($event)"
+  (keydown)="onKeydown($event)"
+>
+  <header>New {{ info[type()].label.toLowerCase() }}</header>
+  <label>
+    <span>{{ eventLabel() }}</span>
+    <input
+      #firstField
+      type="text"
+      name="event"
+      autocomplete="off"
+      placeholder="e.g. PaymentCharged"
+      [attr.list]="uid + '-events'"
+    />
+  </label>
+  <datalist [id]="uid + '-events'">
+    @for (suggestion of suggestions(); track suggestion) {
+      <option [value]="suggestion"></option>
+    }
+  </datalist>
+  <label>
+    <span>Name</span>
+    <input type="text" name="name" autocomplete="off" [placeholder]="info[type()].label" />
+  </label>
+  <small>Enter adds it; leave a field empty for the default.</small>
+  <button type="submit" class="primary">Add</button>
+</form>

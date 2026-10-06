@@ -27,7 +27,7 @@ import { EmbeddedSync } from '../host/embedded-sync';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
-import { AddStepButton } from './add-step-button';
+import { AddStepButton, NewStep } from './add-step-button';
 import { DiagramDetails } from './diagram-details';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
@@ -65,7 +65,6 @@ import {
   labelId,
   nodeIdOfConnector,
   nodeSize,
-  NodeType,
   outputId,
   Point,
   SLOT_SIZE,
@@ -291,16 +290,16 @@ export class Editor {
   }
 
   /** "+" after a state: the picked state follows it. */
-  protected append(sourceId: string, type: NodeType): void {
+  protected append(sourceId: string, { type, init }: NewStep): void {
     if (this.walking()) return;
-    const id = this.store.appendNode(sourceId, type);
+    const id = this.store.appendNode(sourceId, type, init);
     if (id) this.ui.selectNode(id);
   }
 
   /** "+" on a transition: the picked state goes between its two ends. */
-  protected insert(edgeId: string, type: NodeType): void {
+  protected insert(edgeId: string, { type, init }: NewStep): void {
     if (this.walking()) return;
-    const id = this.store.insertOnEdge(edgeId, type);
+    const id = this.store.insertOnEdge(edgeId, type, init);
     if (id) this.ui.selectNode(id);
   }
 
@@ -494,7 +493,7 @@ export class Editor {
       this.store.connect(source, nodeIdOfConnector(event.targetId));
       return;
     }
-    this.append(source, 'state');
+    this.append(source, { type: 'state' });
   }
 
   protected deleteSelection(): void {
@@ -675,9 +674,9 @@ export class Editor {
   }
 
   /** The inspector's "Add transition": a new state follows the selected one. */
-  protected appendToSelected(type: NodeType): void {
+  protected appendToSelected(step: NewStep): void {
     const node = this.ui.selectedNode();
-    if (node) this.append(node.id, type);
+    if (node) this.append(node.id, step);
   }
 
   protected onDelete(event: FDeleteSelectedEvent): void {

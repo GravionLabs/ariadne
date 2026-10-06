@@ -113,6 +113,21 @@ describe('Editor', () => {
       );
       option!.click();
       await settle();
+      // The popover now asks for the event and the name: Enter with empty fields adds the defaults.
+      document
+        .querySelector<HTMLFormElement>('.cdk-overlay-container app-state-prompt form')!
+        .requestSubmit();
+      await settle();
+    };
+    const promptForm = () =>
+      document.querySelector<HTMLFormElement>('.cdk-overlay-container app-state-prompt form');
+    /** Types into the prompt for a new state and presses Enter. */
+    const submitPrompt = async (event: string, name: string) => {
+      const form = promptForm()!;
+      form.querySelector<HTMLInputElement>('[name=event]')!.value = event;
+      form.querySelector<HTMLInputElement>('[name=name]')!.value = name;
+      form.requestSubmit();
+      await settle();
     };
     const select = async (nodeIds: string[], edgeIds: string[] = []) => {
       draggable().fSelectionChange.emit(new FSelectionChangeEvent(nodeIds, [], edgeIds));
@@ -133,7 +148,21 @@ describe('Editor', () => {
       if (toggle.getAttribute('aria-expanded') === 'false') toggle.click();
       await settle();
     };
-    return { fixture, el, store, storage, editors, settle, draggable, pick, select, fill, expand };
+    return {
+      fixture,
+      el,
+      store,
+      storage,
+      editors,
+      settle,
+      draggable,
+      pick,
+      promptForm,
+      submitPrompt,
+      select,
+      fill,
+      expand,
+    };
   }
 
   const slotButton = (el: HTMLElement) =>
@@ -197,7 +226,7 @@ describe('Editor', () => {
   });
 
   it('edits a state in the inspector and adds transitions from it', async () => {
-    const { el, store, select, fill, settle, expand } = await setup();
+    const { el, store, select, fill, settle, expand, submitPrompt } = await setup();
     store.appendNode('start-1', 'state');
     await select(['state-1']);
 
@@ -218,7 +247,72 @@ describe('Editor', () => {
 
     inspectorButton(el, 'To a final state').click();
     await settle();
+    await submitPrompt('', '');
     expect(store.edges().at(-1)).toMatchObject({ source: 'state-1', target: 'end-1' });
+  });
+
+  it('asks for the event and the name when a state is added with "+"', async () => {
+    const { el, store, settle, promptForm, submitPrompt } = await setup();
+    store.appendNode('start-1', 'state');
+    await settle();
+
+    slotButton(el).click();
+    await settle();
+    document
+      .querySelector<HTMLButtonElement>('.cdk-overlay-container .option[data-type="state"]')!
+      .click();
+    await settle();
+    expect(document.activeElement).toBe(promptForm()!.querySelector('[name=event]'));
+    await submitPrompt('PaymentCharged', 'Charged');
+
+    expect(store.nodes().at(-1)).toMatchObject({ type: 'state', name: 'Charged' });
+    expect(store.edges().at(-1)).toMatchObject({ source: 'state-1', event: 'PaymentCharged' });
+    // One undo step for the state, its name and the event.
+    store.undo();
+    expect(store.nodes()).toHaveLength(2);
+    expect(store.edges()).toHaveLength(1);
+  });
+
+  it('adds the default state when the prompt is left with Escape', async () => {
+    const { el, store, settle, promptForm } = await setup();
+    store.appendNode('start-1', 'state');
+    await settle();
+
+    slotButton(el).click();
+    await settle();
+    document
+      .querySelector<HTMLButtonElement>('.cdk-overlay-container .option[data-type="state"]')!
+      .click();
+    await settle();
+    promptForm()!
+      .querySelector('[name=event]')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+
+    expect(store.nodes()).toHaveLength(3);
+    expect(store.nodes().at(-1)!.name).toBe('State');
+    expect(store.edges().at(-1)!.event).toBeUndefined();
+    expect(promptForm()).toBeNull();
+  });
+
+  it('puts the asked-for event on the transition out of a state inserted into a transition', async () => {
+    const { el, store, settle, submitPrompt } = await setup();
+    store.appendNode('start-1', 'state');
+    store.updateEdge('edge-1', { event: 'Go' });
+    await settle();
+
+    const insert = el.querySelector<HTMLButtonElement>('[aria-label="Insert a state here"]')!;
+    insert.click();
+    await settle();
+    document
+      .querySelector<HTMLButtonElement>('.cdk-overlay-container .option[data-type="state"]')!
+      .click();
+    await settle();
+    await submitPrompt('Done', 'Middle');
+
+    expect(store.edges().find((e) => e.id === 'edge-1')!.event).toBe('Go');
+    expect(store.edges().at(-1)).toMatchObject({ event: 'Done' });
+    expect(store.nodes().at(-1)!.name).toBe('Middle');
   });
 
   it('edits a transition: event, source and kind, but no activities', async () => {
