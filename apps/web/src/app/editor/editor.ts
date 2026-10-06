@@ -322,8 +322,9 @@ export class Editor {
    */
   protected startEditing(kind: 'node' | 'edge', id: string): void {
     if (this.walking()) return;
-    if (kind === 'edge' && !this.edgesById().get(id)?.event) {
-      // No card to edit in: the Event field of the inspector takes over.
+    const laidOut = this.layout.labels().some((l) => l.edgeId === id);
+    if (kind === 'edge' && !this.edgesById().get(id)?.event && !(laidOut && this.insertShown())) {
+      // No card or chip to edit in: the Event field of the inspector takes over.
       this.focusInspectorEvent();
       return;
     }

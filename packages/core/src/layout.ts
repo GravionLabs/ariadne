@@ -79,7 +79,6 @@ export const LABEL_ROW = 22;
 export const LABEL_PADDING = 6;
 /** The insert "+" overhangs the card by half its size, along the line. */
 export const INSERT_OVERHANG = 13;
-const INSERT_SIZE = 26;
 const LABEL_CHAR_WIDTH = 6.6;
 const LABEL_MIN_WIDTH = 110;
 const LABEL_MAX_WIDTH = 240;
@@ -132,12 +131,12 @@ export const labelRows = (edge: DiagramEdge): number =>
   (edge.event ? 1 : 0) + (edge.event && edge.eventSource ? 1 : 0);
 
 /**
- * Size of a transition label: a card with its rows plus the overhanging "+", or just the "+"
- * when the transition has no event.
+ * Size of a transition label: a card with its rows plus the overhanging "+". A transition without
+ * an event reserves the room of a one-row card (the editor draws a "+ event" chip there), so giving
+ * it an event does not move the diagram.
  */
 export function labelSize(edge: DiagramEdge, direction: Direction): Size {
-  const rows = labelRows(edge);
-  if (rows === 0) return { width: INSERT_SIZE, height: INSERT_SIZE };
+  const rows = Math.max(1, labelRows(edge));
   const texts = [eventLabel(edge), edge.eventSource ? `from ${edge.eventSource}` : ''];
   const longest = Math.max(...texts.map((t) => t.length));
   const width = Math.min(

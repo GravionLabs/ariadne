@@ -96,6 +96,27 @@
   }
 }
 
+// "+ event": faint, so a missing event shows without drawing the eye (and not in exports).
+.card.chip {
+  align-items: center;
+  color: var(--c-text-subtle);
+  background: transparent;
+  border-style: dashed;
+  box-shadow: none;
+  opacity: 0.7;
+
+  .row {
+    --row-color: var(--c-text-subtle);
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: var(--c-text);
+    background: var(--c-surface-1);
+    opacity: 1;
+  }
+}
+
 // A problem with the transition: a coloured edge on the card.
 .card[data-finding='error'] {
   border-color: var(--c-error);

@@ -24,7 +24,7 @@ import {
   imports: [AddStepButton, Icon, InlineEdit],
   host: {
     '[attr.data-direction]': 'direction()',
-    '[class.empty]': 'rows() === 0',
+    '[class.empty]': 'rows() === 0 && !chip()',
     '[class.inline]': '!insertable()',
     '[attr.data-highlight]': 'highlight() ?? null',
     '[attr.data-badge]': 'badge() ?? null',
@@ -99,7 +99,17 @@ export class TransitionLabel {
   });
   protected readonly label = computed(() => eventLabel(this.edge()));
   protected readonly rows = computed(() => labelRows(this.edge()));
-  protected readonly cardHeight = computed(() => this.rows() * LABEL_ROW + 2 * LABEL_PADDING);
+  /** A transition without an event offers "+ event" where its label would be. */
+  protected readonly chip = computed(() => this.rows() === 0 && this.insertable());
+  /** The card, or the chip, takes the room that the layout reserves: at least one row. */
+  protected readonly cardHeight = computed(
+    () => Math.max(1, this.rows()) * LABEL_ROW + 2 * LABEL_PADDING,
+  );
+
+  protected chipClicked(): void {
+    this.selectRequested.emit();
+    this.editRequested.emit();
+  }
 
   protected commitEvent(event: string): void {
     this.eventCommitted.emit(event);

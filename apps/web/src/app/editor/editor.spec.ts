@@ -910,6 +910,45 @@ describe('Editor', () => {
       expect(store.edges()[0].event).toBe('Go');
     });
 
+    it('offers a "+ event" chip on a transition without an event; clicking it edits the event in place', async () => {
+      const { el, store, settle } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      const chip = () => el.querySelector<HTMLButtonElement>('app-transition-label .chip');
+      expect(chip()).toBeTruthy();
+      expect(chip()!.textContent).toContain('event');
+
+      chip()!.click();
+      await settle();
+      expect(document.activeElement).toBe(field());
+      field()!.value = 'Start';
+      key(field()!, 'Enter');
+      await settle();
+      expect(store.edges()[0].event).toBe('Start');
+      // An event: the chip gives way to the card.
+      expect(chip()).toBeNull();
+    });
+
+    it('hides the chip in view mode and while a path is shown', async () => {
+      const { el, store, settle } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      expect(el.querySelector('.chip')).toBeTruthy();
+
+      el.querySelector<HTMLButtonElement>('button[aria-label*="view mode" i]')?.click();
+      await settle();
+      expect(el.querySelector('.chip')).toBeNull();
+      el.querySelector<HTMLButtonElement>('button[aria-label*="view mode" i]')?.click();
+      await settle();
+      expect(el.querySelector('.chip')).toBeTruthy();
+
+      [...el.querySelectorAll<HTMLButtonElement>('.menu-button')]
+        .find((b) => b.textContent?.trim() === 'Path')!
+        .click();
+      await settle();
+      expect(el.querySelector('.chip')).toBeNull();
+    });
+
     it('does not edit while a path is shown', async () => {
       const { el, store, settle, select } = await setup();
       store.appendNode('start-1', 'state');

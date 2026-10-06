@@ -27,9 +27,13 @@ final state" in the inspector ask the same way. On a transition A → B the even
 the new state to B; the one into it keeps its own.
 
 **Editing in place:** double-click a state, or select it and press `F2`, to turn its name into a text field; a
-transition's event works the same way (on its label; a transition without an event has none yet, so `F2` puts the
-cursor in the inspector's Event field). `Enter` or leaving the field commits as one undo step, `Esc` cancels, and an
-empty state name puts the old one back. It is not available while walking through the saga or viewing a path.
+transition's event works the same way, on its label. `Enter` or leaving the field commits as one undo step, `Esc`
+cancels, and an empty state name puts the old one back. Editing is not available while walking through the saga or
+viewing a path.
+
+A transition without an event shows a faint "+ event" chip where its label would be; click it, or select the
+transition and press `F2`, to type the event. The chip is not shown in view mode, the walkthrough or the path view, nor
+in the exports and the viewer, but its room is reserved, so adding the event does not move the diagram.
 
 ## States
 

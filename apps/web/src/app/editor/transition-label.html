@@ -1,4 +1,4 @@
-@if (editing() && rows() > 0) {
+@if (editing() && (rows() > 0 || chip())) {
   <!-- An input cannot sit inside a button. -->
   <div class="card selected" [style.height.px]="cardHeight()">
     <app-inline-edit
@@ -42,6 +42,16 @@
         </span>
       }
     }
+  </button>
+} @else if (chip()) {
+  <button
+    type="button"
+    class="card chip"
+    [style.height.px]="cardHeight()"
+    [attr.aria-label]="'Add an event to this transition'"
+    (click)="chipClicked()"
+  >
+    <span class="row"><app-icon name="add" /><span class="text">event</span></span>
   </button>
 }
 @if (insertable()) {
