@@ -464,12 +464,13 @@ textarea {
   align-items: center;
   font-size: 12px;
 
-  .transition-event {
-    overflow: hidden;
-    color: var(--c-text);
+  input,
+  select {
+    min-width: 0;
+  }
+
+  input {
     font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .arrow {

@@ -634,6 +634,12 @@ export class Inspector {
     if (!this.store.setEdgeTarget(edge.id, select.value)) select.value = edge.target;
   }
 
+  /** Sets the event of a row of the Transitions list; puts the old one back if it would be a duplicate. */
+  protected setRowEvent(edge: DiagramEdge, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!this.store.setEdgeEvent(edge.id, input.value)) input.value = edge.event ?? '';
+  }
+
   /** Forward transitions leaving the selected state. */
   protected readonly outgoing = computed(() => {
     const id = this.node()?.id;
@@ -661,6 +667,10 @@ export class Inspector {
     const select = event.target as HTMLSelectElement;
     if (node && select.value) this.store.connect(node.id, select.value);
     select.value = '';
+  }
+
+  protected nameOf(id: string): string {
+    return this.store.nodes().find((n) => n.id === id)?.name ?? id;
   }
 
   protected eventOf(edge: DiagramEdge): string {

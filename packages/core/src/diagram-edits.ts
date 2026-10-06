@@ -145,6 +145,29 @@ export function retargetEdge(d: Diagram, edgeId: string, target: string): Diagra
   return { ...d, edges: d.edges.map((e) => (e.id === edgeId ? { ...e, target } : e)) };
 }
 
+/**
+ * Sets the event of a transition; an empty text removes it. `null` if the transition is unknown or
+ * it would then duplicate another one (same states, kind, event and guard).
+ */
+export function setEdgeEvent(
+  d: Diagram,
+  edgeId: string,
+  event: string | undefined,
+): Diagram | null {
+  const edge = d.edges.find((e) => e.id === edgeId);
+  if (!edge) return null;
+  const value = event?.trim() || undefined;
+  if (value === edge.event) return d;
+  const duplicate = d.edges.some(
+    (e) => e.id !== edgeId && sameTransition(e, { ...edge, event: value }),
+  );
+  if (duplicate) return null;
+  return {
+    ...d,
+    edges: d.edges.map((e) => (e.id === edgeId ? withoutUndefined({ ...e, event: value }) : e)),
+  };
+}
+
 /** Sets the saga's name and/or description; an empty text removes it. */
 export function updateDetails(d: Diagram, patch: DetailsPatch): Diagram {
   const text = (value: string | undefined) => value?.trim() || undefined;

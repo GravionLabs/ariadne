@@ -93,6 +93,17 @@ export const DiagramStore = signalStore(
         store._commit((d) => edits.updateEdge(d, id, patch));
       },
 
+      /**
+       * Sets (or, empty, removes) a transition's event as one undo step. Returns `false`, recording
+       * nothing, if that would duplicate another transition (see `setEdgeEvent`).
+       */
+      setEdgeEvent(edgeId: string, event: string | undefined): boolean {
+        const next = edits.setEdgeEvent(store.diagram(), edgeId, event);
+        if (!next) return false;
+        if (next !== store.diagram()) store._commit(() => next);
+        return true;
+      },
+
       /** Sets the saga's name and/or description as one undo step; no change, no step. */
       setDetails(patch: DetailsPatch): void {
         const next = edits.updateDetails(store.diagram(), patch);

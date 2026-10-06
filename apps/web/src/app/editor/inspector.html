@@ -618,8 +618,17 @@
             the state is a decision.
           </small>
           @for (edge of outgoing(); track edge.id) {
-            <label class="transition-row">
-              <span class="transition-event" [title]="eventOf(edge)">{{ eventOf(edge) }}</span>
+            <div class="transition-row">
+              <input
+                type="text"
+                list="row-event-suggestions"
+                placeholder="no event yet"
+                autocomplete="off"
+                [attr.aria-label]="'Event of the transition to ' + nameOf(edge.target)"
+                [title]="eventOf(edge)"
+                [value]="edge.event ?? ''"
+                (change)="setRowEvent(edge, $event)"
+              />
               <span class="arrow" aria-hidden="true">→</span>
               <select
                 [attr.aria-label]="'To, for ' + eventOf(edge)"
@@ -635,8 +644,21 @@
                   </option>
                 }
               </select>
-            </label>
+            </div>
+            @if (
+              edge.event &&
+                !eventSuggestions().includes(edge.event) &&
+                namingHint('event', edge.event);
+              as hint
+            ) {
+              <p class="hint">{{ hint }}</p>
+            }
           }
+          <datalist id="row-event-suggestions">
+            @for (suggestion of eventSuggestions(); track suggestion) {
+              <option [value]="suggestion"></option>
+            }
+          </datalist>
           @if (existingTargets().length) {
             <label class="field">
               <span>To an existing state</span>

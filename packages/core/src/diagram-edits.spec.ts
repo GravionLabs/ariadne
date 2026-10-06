@@ -7,6 +7,7 @@ import {
   insertOnEdge,
   removeElements,
   retargetEdge,
+  setEdgeEvent,
   updateDetails,
   updateEventInfo,
   updateSaga,
@@ -282,5 +283,26 @@ describe('diagram edits', () => {
       updateEventInfo(d, 'Go', { messageType: 'Y' });
       expect(JSON.stringify(d)).toBe(before);
     });
+  });
+});
+
+describe('setEdgeEvent', () => {
+  it('sets, trims and clears the event', () => {
+    const set = setEdgeEvent(path(), 'edge-2', ' Done ')!;
+    expect(set.edges.find((e) => e.id === 'edge-2')!.event).toBe('Done');
+    const cleared = setEdgeEvent(set, 'edge-2', '  ')!;
+    expect('event' in cleared.edges.find((e) => e.id === 'edge-2')!).toBe(false);
+  });
+
+  it('changes nothing when the event is the same', () => {
+    const d = path();
+    expect(setEdgeEvent(d, 'edge-1', 'Go')).toBe(d);
+  });
+
+  it('refuses an event that would duplicate another transition', () => {
+    const d = path();
+    d.edges.push({ id: 'edge-3', source: 'start-1', target: 'state-1', kind: 'forward' });
+    expect(setEdgeEvent(d, 'edge-3', 'Go')).toBeNull();
+    expect(setEdgeEvent(d, 'missing', 'Go')).toBeNull();
   });
 });

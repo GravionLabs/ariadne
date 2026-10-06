@@ -772,9 +772,7 @@ describe('Editor', () => {
       el.querySelector('app-inspector [aria-label="Transitions"] .count')?.textContent?.trim();
 
     // state-2 leaves through edge-3 (no event yet) only.
-    expect(rows().map((r) => r.querySelector('.transition-event')?.textContent?.trim())).toEqual([
-      'no event yet',
-    ]);
+    expect(rows().map((r) => r.querySelector('input')!.value)).toEqual(['']);
     expect(toggleCount()).toBe('1');
 
     // Loop back: state-2 → state-1 through the existing-state select.
@@ -799,6 +797,40 @@ describe('Editor', () => {
     expect(store.edges().find((e) => e.id === 'edge-2')?.target).toBe('end-1');
     store.undo();
     expect(store.edges().find((e) => e.id === 'edge-2')?.target).toBe('state-2');
+  });
+
+  it("edits the events of a state's transitions in the Transitions list", async () => {
+    const { el, store, select, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'state');
+    store.appendNode('state-1', 'end');
+    store.updateEdge('edge-2', { event: 'Paid' });
+    await select(['state-1']);
+    const inputs = () => [
+      ...el.querySelectorAll<HTMLInputElement>('app-inspector .transition-row input'),
+    ];
+    const type = async (input: HTMLInputElement, value: string) => {
+      input.value = value;
+      input.dispatchEvent(new Event('change'));
+      await settle();
+    };
+    expect(inputs().map((i) => i.value)).toEqual(['Paid', '']);
+
+    // One undo step per edit.
+    await type(inputs()[1], 'Refunded');
+    expect(store.edges().find((e) => e.id === 'edge-3')?.event).toBe('Refunded');
+    store.undo();
+    expect(store.edges().find((e) => e.id === 'edge-3')?.event).toBeUndefined();
+    store.redo();
+    await settle();
+
+    // Same states, kind, event and guard as another transition: refused, the old value is back.
+    store.connect('state-1', 'state-2');
+    await settle();
+    const added = store.edges().at(-1)!;
+    await type(inputs()[2], 'Paid');
+    expect(store.edges().find((e) => e.id === added.id)?.event).toBeUndefined();
+    expect(inputs()[2].value).toBe('');
   });
 
   it('draws parallel transitions with a label each, and a state that leads to itself', async () => {

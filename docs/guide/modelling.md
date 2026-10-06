@@ -57,6 +57,11 @@ A transition says: while the saga is in the source state, this **event** moves i
 from one state make a **decision**. Give transitions of the same event different **guards** (`amount > 100`) to
 branch on a condition.
 
+The **Transitions** list of a state shows each outgoing transition with an editable event (with the same suggestions
+as the transition's own Event field) and its target; to give the branches of a decision their events, there is no
+need to select each transition in turn. An event that would duplicate another transition of the same states is
+refused and the old one put back.
+
 A transition back to the same state is a loop (a retry). A **compensation** transition is drawn differently and is not
 laid out; use it for the path back after a failure.
 
