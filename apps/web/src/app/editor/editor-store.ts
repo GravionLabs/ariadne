@@ -12,6 +12,8 @@ interface EditorState {
   pendingSelect: string | null;
   /** States and transitions to emphasise (a message of the catalog, a step of the walkthrough). */
   highlight: { nodeIds: string[]; edgeIds: string[] } | null;
+  /** The state name or transition event being edited in place on the canvas. */
+  editing: { kind: 'node' | 'edge'; id: string } | null;
 }
 
 const initialState: EditorState = {
@@ -20,6 +22,7 @@ const initialState: EditorState = {
   fitPending: false,
   pendingSelect: null,
   highlight: null,
+  editing: null,
 };
 
 /**
@@ -93,6 +96,15 @@ export const EditorStore = signalStore(
     /** The canvas reported a new selection (or it was replaced from code). */
     setSelection(nodeIds: string[], edgeIds: string[]): void {
       patchState(store, { nodeIds, edgeIds });
+    },
+
+    /** Turns the name of a state, or the event of a transition, into a text field. */
+    startEditing(kind: 'node' | 'edge', id: string): void {
+      patchState(store, { editing: { kind, id } });
+    },
+
+    stopEditing(): void {
+      patchState(store, { editing: null });
     },
 
     clearSelection(): void {

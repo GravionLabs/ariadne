@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { Diagram, emptyDiagram } from './diagram';
 import {
   addNode,
+  addOutcomeTransitions,
+  missingOutcomes,
   appendNode,
   connect,
   insertOnEdge,
   removeElements,
   retargetEdge,
+  setEdgeEvent,
   updateDetails,
   updateEventInfo,
   updateSaga,
@@ -49,6 +52,22 @@ describe('diagram edits', () => {
     });
   });
 
+  it('names the appended state and gives its transition an event', () => {
+    const { diagram, id } = appendNode(path(), 'state-1', 'state', {
+      name: ' Charged ',
+      event: ' PaymentCharged ',
+    })!;
+    expect(diagram.nodes.at(-1)).toMatchObject({ id, name: 'Charged' });
+    expect(diagram.edges.at(-1)).toMatchObject({ target: id, event: 'PaymentCharged' });
+  });
+
+  it('keeps the default name and no event for blank fields', () => {
+    const plain = appendNode(path(), 'state-1', 'state')!;
+    const blank = appendNode(path(), 'state-1', 'state', { name: ' ', event: '' })!;
+    expect(blank.diagram).toEqual(plain.diagram);
+    expect(blank.diagram.edges.at(-1)!.event).toBeUndefined();
+  });
+
   it('refuses to append after an end or to a start', () => {
     expect(appendNode(path(), 'end-1', 'state')).toBeNull();
     expect(appendNode(path(), 'state-1', 'start')).toBeNull();
@@ -65,6 +84,19 @@ describe('diagram edits', () => {
     const second = diagram.edges.find((e) => e.source === id)!;
     expect(second).toMatchObject({ target: 'state-1', kind: 'forward' });
     expect(second.event).toBeUndefined();
+  });
+
+  it('gives the second half of a split edge the event, and the first half keeps its own', () => {
+    const { diagram, id } = insertOnEdge(path(), 'edge-1', 'state', {
+      name: 'Charged',
+      event: 'PaymentCharged',
+    })!;
+    expect(diagram.nodes.find((n) => n.id === id)!.name).toBe('Charged');
+    expect(diagram.edges.find((e) => e.id === 'edge-1')).toMatchObject({ event: 'Go' });
+    expect(diagram.edges.find((e) => e.source === id)).toMatchObject({
+      target: 'state-1',
+      event: 'PaymentCharged',
+    });
   });
 
   it('refuses to split an edge with a start or an end', () => {
@@ -253,5 +285,97 @@ describe('diagram edits', () => {
       updateEventInfo(d, 'Go', { messageType: 'Y' });
       expect(JSON.stringify(d)).toBe(before);
     });
+  });
+});
+
+describe('setEdgeEvent', () => {
+  it('sets, trims and clears the event', () => {
+    const set = setEdgeEvent(path(), 'edge-2', ' Done ')!;
+    expect(set.edges.find((e) => e.id === 'edge-2')!.event).toBe('Done');
+    const cleared = setEdgeEvent(set, 'edge-2', '  ')!;
+    expect('event' in cleared.edges.find((e) => e.id === 'edge-2')!).toBe(false);
+  });
+
+  it('drops the source of the event together with the event', () => {
+    const d = path();
+    d.edges[0] = { ...d.edges[0], eventSource: 'Shop' };
+    const renamed = setEdgeEvent(d, 'edge-1', 'Start')!;
+    expect(renamed.edges[0]).toMatchObject({ event: 'Start', eventSource: 'Shop' });
+    const cleared = setEdgeEvent(d, 'edge-1', '')!;
+    expect('event' in cleared.edges[0]).toBe(false);
+    expect('eventSource' in cleared.edges[0]).toBe(false);
+  });
+
+  it('changes nothing when the event is the same', () => {
+    const d = path();
+    expect(setEdgeEvent(d, 'edge-1', 'Go')).toBe(d);
+  });
+
+  it('refuses an event that would duplicate another transition', () => {
+    const d = path();
+    d.edges.push({ id: 'edge-3', source: 'start-1', target: 'state-1', kind: 'forward' });
+    expect(setEdgeEvent(d, 'edge-3', 'Go')).toBeNull();
+    expect(setEdgeEvent(d, 'missing', 'Go')).toBeNull();
+  });
+});
+
+describe('outcome transitions', () => {
+  const withRequest = (): Diagram => {
+    const d = path();
+    d.nodes[1] = {
+      ...d.nodes[1],
+      requests: [{ name: 'ChargeCard' }],
+      routingSlips: [{ name: 'Ship', activities: [{ name: 'Pack' }] }],
+      timers: [
+        { name: 'PaymentExpired', action: 'schedule' },
+        { name: 'PaymentExpired', action: 'unschedule' },
+      ],
+    };
+    return d;
+  };
+
+  it('adds a transition to a new state for each outcome of a request, with its event', () => {
+    const next = addOutcomeTransitions(withRequest(), 'state-1', { kind: 'request', index: 0 })!;
+    const added = next.edges.slice(2);
+    expect(added.map((e) => e.event)).toEqual([
+      'ChargeCard.Completed',
+      'ChargeCard.Faulted',
+      'ChargeCard.TimeoutExpired',
+    ]);
+    expect(added.every((e) => e.source === 'state-1' && e.kind === 'forward')).toBe(true);
+    expect(new Set(added.map((e) => e.target)).size).toBe(3);
+    expect(next.nodes).toHaveLength(6);
+  });
+
+  it('does the same for the two outcomes of a routing slip and the one of a scheduled timeout', () => {
+    const d = withRequest();
+    const slip = addOutcomeTransitions(d, 'state-1', { kind: 'routingSlip', index: 0 })!;
+    expect(slip.edges.slice(2).map((e) => e.event)).toEqual(['Ship.Completed', 'Ship.Faulted']);
+    const timer = addOutcomeTransitions(d, 'state-1', { kind: 'timer', index: 0 })!;
+    expect(timer.edges.slice(2).map((e) => e.event)).toEqual(['PaymentExpired']);
+  });
+
+  it('skips the outcomes that already have a transition from the state', () => {
+    const d = withRequest();
+    d.edges[1] = { ...d.edges[1], event: 'ChargeCard.Faulted' };
+    const source = { kind: 'request', index: 0 } as const;
+    expect(missingOutcomes(d, 'state-1', source)).toEqual([
+      'ChargeCard.Completed',
+      'ChargeCard.TimeoutExpired',
+    ]);
+    const next = addOutcomeTransitions(d, 'state-1', source)!;
+    expect(next.edges.slice(2).map((e) => e.event)).toEqual([
+      'ChargeCard.Completed',
+      'ChargeCard.TimeoutExpired',
+    ]);
+    // With none missing there is nothing to add.
+    expect(addOutcomeTransitions(next, 'state-1', source)).toBeNull();
+  });
+
+  it('has nothing to add for an unschedule, an unknown source or a state that cannot be left', () => {
+    const d = withRequest();
+    expect(addOutcomeTransitions(d, 'state-1', { kind: 'timer', index: 1 })).toBeNull();
+    expect(addOutcomeTransitions(d, 'state-1', { kind: 'request', index: 5 })).toBeNull();
+    expect(addOutcomeTransitions(d, 'end-1', { kind: 'request', index: 0 })).toBeNull();
   });
 });

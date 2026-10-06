@@ -11,7 +11,16 @@
 @if (bar()) {
   <div class="bar"></div>
   <div class="bar-text">
-    <strong class="name">{{ node().name }}</strong>
+    @if (editing()) {
+      <app-inline-edit
+        [value]="node().name"
+        label="Name"
+        (committed)="commitName($event)"
+        (cancelled)="editEnded.emit()"
+      />
+    } @else {
+      <strong class="name">{{ node().name }}</strong>
+    }
     <span class="combines">{{ events().join(' + ') || 'no events yet' }}</span>
   </div>
 } @else {
@@ -21,7 +30,16 @@
       @if (!compact()) {
         <span class="type">{{ info().label }}</span>
       }
-      <strong class="name">{{ node().name }}</strong>
+      @if (editing()) {
+        <app-inline-edit
+          [value]="node().name"
+          label="Name"
+          (committed)="commitName($event)"
+          (cancelled)="editEnded.emit()"
+        />
+      } @else {
+        <strong class="name">{{ node().name }}</strong>
+      }
     </div>
     @if (canExpand()) {
       <button

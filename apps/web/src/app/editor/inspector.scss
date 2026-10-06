@@ -464,12 +464,13 @@ textarea {
   align-items: center;
   font-size: 12px;
 
-  .transition-event {
-    overflow: hidden;
-    color: var(--c-text);
+  input,
+  select {
+    min-width: 0;
+  }
+
+  input {
     font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .arrow {
@@ -512,4 +513,23 @@ textarea {
 
 .undo-order {
   color: var(--c-compensation);
+}
+
+// "Add behavior…": the optional sections of a state that have nothing in them yet.
+.behaviors {
+  display: grid;
+  gap: 4px;
+}
+
+.behavior-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  button {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }

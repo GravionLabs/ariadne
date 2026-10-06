@@ -13,6 +13,8 @@ import {
   edits,
   emptyDiagram,
   MessageKind,
+  NewStateInit,
+  OutcomeSource,
   NodePatch,
   SagaPatch,
   NodeType,
@@ -20,7 +22,15 @@ import {
   serializeDiagram,
 } from '@ariadne/core';
 
-export type { DetailsPatch, EdgePatch, EventInfoPatch, NodePatch, SagaPatch };
+export type {
+  DetailsPatch,
+  EdgePatch,
+  EventInfoPatch,
+  NewStateInit,
+  NodePatch,
+  OutcomeSource,
+  SagaPatch,
+};
 
 /** App-owned diagram state (f-flow's "classic" mode): all edits go through this store. */
 export const DiagramStore = signalStore(
@@ -70,17 +80,30 @@ export const DiagramStore = signalStore(
       /**
        * Adds a node that follows `source`, connected by a forward edge, as a single undo step.
        * Returns the new node id, or `null` if `source` is unknown or the connection is not allowed.
+       * `init` names the node and gives the new transition its event, in the same undo step.
        */
-      appendNode(source: string, type: NodeType): string | null {
-        return create(edits.appendNode(store.diagram(), source, type));
+      appendNode(source: string, type: NodeType, init?: NewStateInit): string | null {
+        return create(edits.appendNode(store.diagram(), source, type, init));
       },
 
       /**
        * Splits edge A→B into A→X→B with a new state X (see `insertOnEdge` in `diagram-edits`).
        * Returns the new node id, or `null` if the edge is unknown or `type` cannot sit on a path.
        */
-      insertOnEdge(edgeId: string, type: NodeType): string | null {
-        return create(edits.insertOnEdge(store.diagram(), edgeId, type));
+      insertOnEdge(edgeId: string, type: NodeType, init?: NewStateInit): string | null {
+        return create(edits.insertOnEdge(store.diagram(), edgeId, type, init));
+      },
+
+      /**
+       * Adds a transition to a new state for each outcome of a request, routing slip or scheduled
+       * timeout that the state does not react to yet, as one undo step. Returns how many were added.
+       */
+      addOutcomeTransitions(nodeId: string, source: OutcomeSource): number {
+        const next = edits.addOutcomeTransitions(store.diagram(), nodeId, source);
+        if (!next) return 0;
+        const added = next.edges.length - store.diagram().edges.length;
+        store._commit(() => next);
+        return added;
       },
 
       updateNode(id: string, patch: NodePatch): void {
@@ -89,6 +112,17 @@ export const DiagramStore = signalStore(
 
       updateEdge(id: string, patch: EdgePatch): void {
         store._commit((d) => edits.updateEdge(d, id, patch));
+      },
+
+      /**
+       * Sets (or, empty, removes) a transition's event as one undo step. Returns `false`, recording
+       * nothing, if that would duplicate another transition (see `setEdgeEvent`).
+       */
+      setEdgeEvent(edgeId: string, event: string | undefined): boolean {
+        const next = edits.setEdgeEvent(store.diagram(), edgeId, event);
+        if (!next) return false;
+        if (next !== store.diagram()) store._commit(() => next);
+        return true;
       },
 
       /** Sets the saga's name and/or description as one undo step; no change, no step. */

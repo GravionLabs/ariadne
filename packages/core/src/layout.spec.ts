@@ -85,14 +85,18 @@ describe('diagram layout', () => {
   });
 
   it('sizes transition labels by their rows, leaving room for the "+" along the line', () => {
-    const empty = labelSize(saga.edges[1], 'top-bottom');
-    expect(empty).toEqual({ width: 26, height: 26 });
     const one = labelSize(saga.edges[0], 'top-bottom');
     const two = labelSize({ ...saga.edges[3], eventSource: 'Shop API' }, 'top-bottom');
     expect(two.height).toBeGreaterThan(one.height);
     const sideways = labelSize({ ...saga.edges[3], eventSource: 'Shop API' }, 'left-right');
     expect(sideways.width).toBeGreaterThan(two.width);
     expect(sideways.height).toBeLessThan(two.height);
+  });
+
+  it('reserves the room of a one-row card for a transition without an event', () => {
+    const empty = labelSize(saga.edges[1], 'top-bottom');
+    expect(empty.height).toBe(labelSize({ ...saga.edges[1], event: 'Go' }, 'top-bottom').height);
+    expect(empty.width).toBe(labelSize({ ...saga.edges[1], event: 'Go' }, 'top-bottom').width);
   });
 
   it('gives the source of an event its own label row', () => {

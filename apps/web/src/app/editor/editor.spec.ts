@@ -104,14 +104,35 @@ describe('Editor', () => {
       fixture.debugElement
         .query(By.directive(FDraggableDirective))
         .injector.get(FDraggableDirective);
-    /** Opens an add button's picker and picks `type`. */
-    const pick = async (button: HTMLButtonElement, type: string) => {
+    /** Opens an add button's popover and switches it to `type`. */
+    const open = async (button: HTMLButtonElement, type = 'state') => {
       button.click();
       await settle();
-      const option = document.querySelector<HTMLButtonElement>(
-        `.cdk-overlay-container .option[data-type="${type}"]`,
-      );
-      option!.click();
+      if (type !== 'state') {
+        document
+          .querySelector<HTMLInputElement>(
+            `.cdk-overlay-container app-state-prompt [data-type="${type}"] input`,
+          )!
+          .click();
+        await settle();
+      }
+    };
+    /** Adds a state with an add button: opens its popover, switches the type, Enter with empty fields. */
+    const pick = async (button: HTMLButtonElement, type: string) => {
+      await open(button, type);
+      document
+        .querySelector<HTMLFormElement>('.cdk-overlay-container app-state-prompt form')!
+        .requestSubmit();
+      await settle();
+    };
+    const promptForm = () =>
+      document.querySelector<HTMLFormElement>('.cdk-overlay-container app-state-prompt form');
+    /** Types into the prompt for a new state and presses Enter. */
+    const submitPrompt = async (event: string, name: string) => {
+      const form = promptForm()!;
+      form.querySelector<HTMLInputElement>('[name=event]')!.value = event;
+      form.querySelector<HTMLInputElement>('[name=name]')!.value = name;
+      form.requestSubmit();
       await settle();
     };
     const select = async (nodeIds: string[], edgeIds: string[] = []) => {
@@ -133,7 +154,33 @@ describe('Editor', () => {
       if (toggle.getAttribute('aria-expanded') === 'false') toggle.click();
       await settle();
     };
-    return { fixture, el, store, storage, editors, settle, draggable, pick, select, fill, expand };
+    /** Reveals a hidden section of the state inspector from "Add behavior…" (e.g. "Request"). */
+    const behave = async (label: string) => {
+      const menu = el.querySelector<HTMLButtonElement>('app-inspector .behaviors > button')!;
+      if (menu.getAttribute('aria-expanded') !== 'true') menu.click();
+      await settle();
+      [...el.querySelectorAll<HTMLButtonElement>('app-inspector .behavior-list button')]
+        .find((b) => b.textContent?.trim() === label)!
+        .click();
+      await settle();
+    };
+    return {
+      fixture,
+      el,
+      store,
+      behave,
+      storage,
+      editors,
+      settle,
+      draggable,
+      pick,
+      open,
+      promptForm,
+      submitPrompt,
+      select,
+      fill,
+      expand,
+    };
   }
 
   const slotButton = (el: HTMLElement) =>
@@ -197,13 +244,13 @@ describe('Editor', () => {
   });
 
   it('edits a state in the inspector and adds transitions from it', async () => {
-    const { el, store, select, fill, settle, expand } = await setup();
+    const { el, store, select, fill, settle, behave, submitPrompt } = await setup();
     store.appendNode('start-1', 'state');
     await select(['state-1']);
 
     await fill('input[type=text]', 'Charging payment');
     await fill('input[type=text]', '   '); // an empty name reverts
-    await expand('Recovery');
+    await behave('Recovery');
     await fill('input[placeholder="e.g. RefundPayment"]', 'RefundPayment');
     expect(store.nodes()[1]).toEqual({
       id: 'state-1',
@@ -218,7 +265,80 @@ describe('Editor', () => {
 
     inspectorButton(el, 'To a final state').click();
     await settle();
+    await submitPrompt('', '');
     expect(store.edges().at(-1)).toMatchObject({ source: 'state-1', target: 'end-1' });
+  });
+
+  it('asks for the event and the name when a state is added with "+"', async () => {
+    const { el, store, settle, open, promptForm, submitPrompt } = await setup();
+    store.appendNode('start-1', 'state');
+    await settle();
+
+    await open(slotButton(el));
+    expect(document.activeElement).toBe(promptForm()!.querySelector('[name=event]'));
+    await submitPrompt('PaymentCharged', 'Charged');
+
+    expect(store.nodes().at(-1)).toMatchObject({ type: 'state', name: 'Charged' });
+    expect(store.edges().at(-1)).toMatchObject({ source: 'state-1', event: 'PaymentCharged' });
+    // One undo step for the state, its name and the event.
+    store.undo();
+    expect(store.nodes()).toHaveLength(2);
+    expect(store.edges()).toHaveLength(1);
+  });
+
+  it('opens the prompt for a state directly and switches to a join or a final state in it', async () => {
+    const { el, store, settle, open, promptForm, submitPrompt } = await setup();
+    store.appendNode('start-1', 'state');
+    await settle();
+
+    await open(slotButton(el));
+    // No picker: the prompt is for a state, with a switch for the other types.
+    expect(document.querySelector('.cdk-overlay-container [role=menu]')).toBeNull();
+    const types = [...promptForm()!.querySelectorAll<HTMLElement>('.type')].map(
+      (t) => t.dataset['type'],
+    );
+    expect(types).toEqual(['state', 'join', 'end']);
+    expect(promptForm()!.querySelector<HTMLInputElement>('[data-type=state] input')!.checked).toBe(
+      true,
+    );
+
+    promptForm()!.querySelector<HTMLInputElement>('[data-type=end] input')!.click();
+    await settle();
+    await submitPrompt('Done', '');
+    expect(store.nodes().at(-1)).toMatchObject({ type: 'end' });
+    expect(store.edges().at(-1)).toMatchObject({ event: 'Done' });
+  });
+
+  it('adds the default state when the prompt is left with Escape', async () => {
+    const { el, store, settle, open, promptForm } = await setup();
+    store.appendNode('start-1', 'state');
+    await settle();
+
+    await open(slotButton(el));
+    promptForm()!
+      .querySelector('[name=event]')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+
+    expect(store.nodes()).toHaveLength(3);
+    expect(store.nodes().at(-1)!.name).toBe('State');
+    expect(store.edges().at(-1)!.event).toBeUndefined();
+    expect(promptForm()).toBeNull();
+  });
+
+  it('puts the asked-for event on the transition out of a state inserted into a transition', async () => {
+    const { el, store, settle, open, submitPrompt } = await setup();
+    store.appendNode('start-1', 'state');
+    store.updateEdge('edge-1', { event: 'Go' });
+    await settle();
+
+    const insert = el.querySelector<HTMLButtonElement>('[aria-label="Insert a state here"]')!;
+    await open(insert);
+    await submitPrompt('Done', 'Middle');
+
+    expect(store.edges().find((e) => e.id === 'edge-1')!.event).toBe('Go');
+    expect(store.edges().at(-1)).toMatchObject({ event: 'Done' });
+    expect(store.nodes().at(-1)!.name).toBe('Middle');
   });
 
   it('edits a transition: event, source and kind, but no activities', async () => {
@@ -342,13 +462,11 @@ describe('Editor', () => {
   });
 
   it('lists ignored events of a state as struck-through chips and edits them in the inspector', async () => {
-    const { el, store, select, settle, expand } = await setup();
+    const { el, store, select, settle, behave } = await setup();
     store.appendNode('start-1', 'state');
     await select(['state-1']);
     const ignoreInputs = () => el.querySelectorAll<HTMLInputElement>('app-inspector .ignore input');
-    await expand('Ignored events');
-    inspectorButton(el, 'Ignore an event').click();
-    await settle();
+    await behave('Ignored event');
     expect(store.nodes()[1].ignores).toEqual(['SomethingHappened']);
 
     const field = ignoreInputs()[0];
@@ -369,13 +487,11 @@ describe('Editor', () => {
   });
 
   it('schedules a timeout on a state; the event of that name is a timeout transition', async () => {
-    const { el, store, select, settle, fill, expand } = await setup();
+    const { el, store, select, settle, fill, behave } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'end');
     await select(['state-1']);
-    await expand('Timers');
-    inspectorButton(el, 'Schedule a timeout').click();
-    await settle();
+    await behave('Timer');
     expect(store.nodes()[1].timers).toEqual([
       { action: 'schedule', name: 'SomethingTimedOut', delay: '30s' },
     ]);
@@ -408,14 +524,54 @@ describe('Editor', () => {
     expect(store.nodes()[1].timers).toBeUndefined();
   });
 
+  it('adds the transitions for the outcomes of a request, a routing slip and a timeout, as one undo step each', async () => {
+    const { el, store, select, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    store.updateNode('state-1', {
+      requests: [{ name: 'CheckStock' }],
+      routingSlips: [{ name: 'Ship', activities: [{ name: 'Pack' }] }],
+      timers: [{ action: 'schedule', name: 'StockTimeout' }],
+    });
+    await select(['state-1']);
+    const button = (name: string) =>
+      el.querySelector<HTMLButtonElement>(
+        `app-inspector button[aria-label="Add transitions for the outcomes of ${name}"]`,
+      );
+    const leaving = () =>
+      store
+        .edges()
+        .filter((e) => e.source === 'state-1')
+        .map((e) => e.event);
+    expect(leaving()).toEqual([]);
+
+    button('CheckStock')!.click();
+    await settle();
+    expect(leaving()).toEqual([
+      'CheckStock.Completed',
+      'CheckStock.Faulted',
+      'CheckStock.TimeoutExpired',
+    ]);
+    // Done: not offered again for that request.
+    expect(button('CheckStock')).toBeNull();
+    store.undo();
+    expect(leaving()).toEqual([]);
+    store.redo();
+    await settle();
+
+    button('Ship')!.click();
+    await settle();
+    button('StockTimeout')!.click();
+    await settle();
+    expect(leaving().slice(3)).toEqual(['Ship.Completed', 'Ship.Faulted', 'StockTimeout']);
+    expect(el.querySelector('app-inspector .outcomes')).toBeNull();
+  });
+
   it('makes a request on a state; its three answers are recognised as transitions', async () => {
-    const { el, store, select, settle, fill, expand } = await setup();
+    const { el, store, select, settle, fill, behave } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'end');
     await select(['state-1']);
-    await expand('Requests');
-    inspectorButton(el, 'Make a request').click();
-    await settle();
+    await behave('Request');
     expect(store.nodes()[1].requests).toEqual([{ name: 'DoSomething', timeout: '30s' }]);
 
     const name = el.querySelector<HTMLInputElement>('app-inspector .request .name')!;
@@ -444,14 +600,35 @@ describe('Editor', () => {
     expect(el.querySelector('app-inspector .origin')?.textContent).toContain('State');
   });
 
+  it("suggests the source state's own events first, then the events of the diagram, without taken ones", async () => {
+    const { el, store, select } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'state');
+    store.appendNode('state-1', 'end');
+    store.updateNode('state-1', {
+      requests: [{ name: 'CheckStock' }],
+      activities: [{ kind: 'event', name: 'StockChecked' }],
+    });
+    store.updateEdge('edge-2', { event: 'CheckStock.Completed' });
+    store.updateEdge('edge-1', { event: 'OrderPlaced' });
+    await select([], ['edge-3']);
+    const options = () =>
+      [...el.querySelectorAll<HTMLOptionElement>('#event-suggestions option')].map((o) => o.value);
+
+    // CheckStock.Completed is taken by the other transition leaving state-1.
+    expect(options().slice(0, 2)).toEqual(['CheckStock.Faulted', 'CheckStock.TimeoutExpired']);
+    expect(options()).not.toContain('CheckStock.Completed');
+    // Published by the saga, or used by a transition elsewhere: also offered, once.
+    expect(options()).toEqual(expect.arrayContaining(['StockChecked', 'OrderPlaced']));
+    expect(new Set(options()).size).toBe(options().length);
+  });
+
   it('starts a routing slip on a state: its itinerary, compensation order and outcomes (#399)', async () => {
-    const { el, store, select, settle, fill, expand } = await setup();
+    const { el, store, select, settle, fill, behave } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'end');
     await select(['state-1']);
-    await expand('Routing slips');
-    inspectorButton(el, 'Start a routing slip').click();
-    await settle();
+    await behave('Routing slip');
     expect(store.nodes()[1].routingSlips).toEqual([
       { name: 'DoTheWork', activities: [{ name: 'FirstActivity', compensates: true }] },
     ]);
@@ -547,28 +724,56 @@ describe('Editor', () => {
     );
   });
 
-  it('collapses the inspector sections: entries open them, empty ones start closed', async () => {
-    const { el, store, select, settle, expand } = await setup();
+  it('shows the optional sections only when they have entries; the rest are in "Add behavior…"', async () => {
+    const { el, store, select, settle, behave } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'state');
     store.updateNode('state-1', { timers: [{ action: 'schedule', name: 'T' }] });
     await select(['state-1']);
-    const toggle = (section: string) =>
-      el.querySelector<HTMLButtonElement>(`app-inspector [aria-label="${section}"] .group-toggle`)!;
-    const expanded = (section: string) => toggle(section).getAttribute('aria-expanded');
+    const section = (name: string) =>
+      el.querySelector<HTMLElement>(`app-inspector [aria-label="${name}"]`);
+    const toggle = (name: string) =>
+      section(name)!.querySelector<HTMLButtonElement>('.group-toggle')!;
+    const expanded = (name: string) => toggle(name).getAttribute('aria-expanded');
+    const menu = () => el.querySelector<HTMLButtonElement>('app-inspector .behaviors > button')!;
+    const listed = () =>
+      [...el.querySelectorAll('app-inspector .behavior-list button')].map((b) =>
+        b.textContent?.trim(),
+      );
 
-    // Activities and Transitions always start open; Timers has an entry; the rest are empty.
+    // Details, Activities and Transitions are always there; Timers has an entry (and so is open).
+    expect(['Details', 'Activities', 'Transitions'].map((n) => !!section(n))).toEqual([
+      true,
+      true,
+      true,
+    ]);
     expect(expanded('Activities')).toBe('true');
     expect(expanded('Transitions')).toBe('true');
     expect(expanded('Timers')).toBe('true');
     expect(toggle('Timers').querySelector('.count')?.textContent?.trim()).toBe('1');
-    expect(expanded('Requests')).toBe('false');
-    expect(expanded('Ignored events')).toBe('false');
-    expect(inspectorButton(el, 'Make a request')).toBeUndefined();
+    // The others are hidden and offered by the menu.
+    for (const hidden of ['Requests', 'Routing slips', 'Ignored events', 'Recovery'])
+      expect(section(hidden)).toBeNull();
+    expect(menu().getAttribute('aria-expanded')).toBe('false');
+    menu().click();
+    await settle();
+    expect(menu().getAttribute('aria-expanded')).toBe('true');
+    expect(listed()).toEqual(['Request', 'Routing slip', 'Ignored event', 'Recovery']);
 
-    await expand('Requests');
-    expect(expanded('Requests')).toBe('true');
-    expect(inspectorButton(el, 'Make a request')).toBeTruthy();
+    // Picking one shows its section, with a new entry focused, and takes it off the menu.
+    await behave('Request');
+    expect(section('Requests')).toBeTruthy();
+    expect(document.activeElement).toBe(el.querySelector('app-inspector .request .name'));
+    expect(listed()).toEqual([]); // the menu closed
+    menu().click();
+    await settle();
+    expect(listed()).toEqual(['Routing slip', 'Ignored event', 'Recovery']);
+
+    // Removing the last entry takes the section away again, back into the menu.
+    el.querySelector<HTMLButtonElement>('app-inspector .request .icon-button')!.click();
+    await settle();
+    expect(section('Requests')).toBeNull();
+    expect(listed()).toEqual(['Request', 'Routing slip', 'Ignored event', 'Recovery']);
 
     // By hand: close Timers, then another state brings the defaults back.
     toggle('Timers').click();
@@ -576,9 +781,29 @@ describe('Editor', () => {
     expect(expanded('Timers')).toBe('false');
     expect(inspectorButton(el, 'Schedule a timeout')).toBeUndefined();
     await select(['state-2']);
-    expect(expanded('Requests')).toBe('false');
+    expect(section('Timers')).toBeNull();
     await select(['state-1']);
     expect(expanded('Timers')).toBe('true');
+  });
+
+  it('offers "Add behavior…" only for what a kind of state supports, and not when all is shown', async () => {
+    const { el, store, select, settle, behave } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    store.appendNode('state-1', 'join');
+    const menu = () => el.querySelector('app-inspector .behaviors');
+    await select(['start-1']);
+    expect(menu()).toBeNull();
+    await select(['end-1']);
+    expect(menu()).toBeNull();
+    await select(['join-1']);
+    expect(menu()).toBeNull();
+
+    await select(['state-1']);
+    for (const label of ['Request', 'Routing slip', 'Timer', 'Ignored event', 'Recovery'])
+      await behave(label);
+    await settle();
+    expect(menu()).toBeNull();
   });
 
   it('lets a transition point at another state; an earlier one makes a loop with its label on the line', async () => {
@@ -615,7 +840,7 @@ describe('Editor', () => {
   });
 
   it('groups name, description and colour in Details, and compensation, retry and timeout in Recovery', async () => {
-    const { el, store, select, settle, expand } = await setup();
+    const { el, store, select, settle, behave } = await setup();
     store.appendNode('start-1', 'state');
     await select(['state-1']);
     const section = (label: string) => el.querySelector(`app-inspector [aria-label="${label}"]`)!;
@@ -627,10 +852,10 @@ describe('Editor', () => {
     expect(section('Details').querySelector('input[type=text]')).toBeTruthy();
     expect(section('Details').querySelector('textarea')).toBeTruthy();
     expect(section('Details').querySelector('.swatches')).toBeTruthy();
-    expect(expanded('Recovery')).toBe('false');
-    expect(section('Recovery').querySelector('input')).toBeNull();
+    expect(el.querySelector('app-inspector [aria-label="Recovery"]')).toBeNull();
 
-    await expand('Recovery');
+    await behave('Recovery');
+    expect(document.activeElement).toBe(section('Recovery').querySelector('input'));
     const inputs = [...section('Recovery').querySelectorAll<HTMLInputElement>('input')];
     expect(inputs.map((i) => i.placeholder)).toEqual(['e.g. RefundPayment', '3 attempts', '30s']);
 
@@ -663,9 +888,7 @@ describe('Editor', () => {
       el.querySelector('app-inspector [aria-label="Transitions"] .count')?.textContent?.trim();
 
     // state-2 leaves through edge-3 (no event yet) only.
-    expect(rows().map((r) => r.querySelector('.transition-event')?.textContent?.trim())).toEqual([
-      'no event yet',
-    ]);
+    expect(rows().map((r) => r.querySelector('input')!.value)).toEqual(['']);
     expect(toggleCount()).toBe('1');
 
     // Loop back: state-2 → state-1 through the existing-state select.
@@ -690,6 +913,343 @@ describe('Editor', () => {
     expect(store.edges().find((e) => e.id === 'edge-2')?.target).toBe('end-1');
     store.undo();
     expect(store.edges().find((e) => e.id === 'edge-2')?.target).toBe('state-2');
+  });
+
+  it("edits the events of a state's transitions in the Transitions list", async () => {
+    const { el, store, select, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'state');
+    store.appendNode('state-1', 'end');
+    store.updateEdge('edge-2', { event: 'Paid' });
+    await select(['state-1']);
+    const inputs = () => [
+      ...el.querySelectorAll<HTMLInputElement>('app-inspector .transition-row input'),
+    ];
+    const type = async (input: HTMLInputElement, value: string) => {
+      input.value = value;
+      input.dispatchEvent(new Event('change'));
+      await settle();
+    };
+    expect(inputs().map((i) => i.value)).toEqual(['Paid', '']);
+
+    // One undo step per edit.
+    await type(inputs()[1], 'Refunded');
+    expect(store.edges().find((e) => e.id === 'edge-3')?.event).toBe('Refunded');
+    store.undo();
+    expect(store.edges().find((e) => e.id === 'edge-3')?.event).toBeUndefined();
+    store.redo();
+    await settle();
+
+    // Same states, kind, event and guard as another transition: refused, the old value is back.
+    store.connect('state-1', 'state-2');
+    await settle();
+    const added = store.edges().at(-1)!;
+    await type(inputs()[2], 'Paid');
+    expect(store.edges().find((e) => e.id === added.id)?.event).toBeUndefined();
+    expect(inputs()[2].value).toBe('');
+  });
+
+  describe('editing on the canvas', () => {
+    const field = () =>
+      document.querySelector<HTMLInputElement>('app-inline-edit input') as HTMLInputElement | null;
+    const key = (target: EventTarget, name: string) =>
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }));
+    const nameCard = (el: HTMLElement, text: string) =>
+      [...el.querySelectorAll<HTMLElement>('app-node-card')].find((c) =>
+        c.textContent?.includes(text),
+      )!;
+
+    it('turns the name of a state into a field on double-click; Enter commits as one undo step', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+
+      nameCard(el, 'State').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await settle();
+      expect(field()).toBeTruthy();
+      expect(field()!.value).toBe('State');
+      expect(document.activeElement).toBe(field());
+
+      field()!.value = 'Charging';
+      key(field()!, 'Enter');
+      await settle();
+      expect(field()).toBeNull();
+      expect(store.nodes()[1].name).toBe('Charging');
+      // The keyboard stays in the diagram, not on the page.
+      expect(document.activeElement?.tagName).toBe('F-FLOW');
+      store.undo();
+      expect(store.nodes()[1].name).toBe('State');
+    });
+
+    it('opens on F2 for the selected state; Escape cancels and an empty name puts the old one back', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+      await settle();
+      field()!.value = 'Typed';
+      key(field()!, 'Escape');
+      await settle();
+      expect(field()).toBeNull();
+      expect(store.nodes()[1].name).toBe('State');
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+      await settle();
+      field()!.value = '   ';
+      field()!.dispatchEvent(new Event('blur')); // leaving the field commits
+      await settle();
+      expect(store.nodes()[1].name).toBe('State');
+      expect(el.querySelector('app-inline-edit')).toBeNull();
+    });
+
+    it('edits the event of a transition in its label card', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      store.updateEdge('edge-1', { event: 'Go' });
+      await settle();
+      await select([], ['edge-1']);
+
+      el.querySelector('app-transition-label button.card')!.dispatchEvent(
+        new MouseEvent('dblclick', { bubbles: true }),
+      );
+      await settle();
+      expect(field()!.value).toBe('Go');
+      field()!.value = 'Start';
+      key(field()!, 'Enter');
+      await settle();
+      expect(store.edges()[0].event).toBe('Start');
+      expect(el.querySelector('app-transition-label .event .text')?.textContent?.trim()).toBe(
+        'Start',
+      );
+      store.undo();
+      expect(store.edges()[0].event).toBe('Go');
+    });
+
+    it('offers a "+ event" chip on a transition without an event; clicking it edits the event in place', async () => {
+      const { el, store, settle } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      const chip = () => el.querySelector<HTMLButtonElement>('app-transition-label .chip');
+      expect(chip()).toBeTruthy();
+      expect(chip()!.textContent).toContain('event');
+
+      chip()!.click();
+      await settle();
+      expect(document.activeElement).toBe(field());
+      field()!.value = 'Start';
+      key(field()!, 'Enter');
+      await settle();
+      expect(store.edges()[0].event).toBe('Start');
+      // An event: the chip gives way to the card.
+      expect(chip()).toBeNull();
+    });
+
+    it('hides the chip in view mode and while a path is shown', async () => {
+      const { el, store, settle } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      expect(el.querySelector('.chip')).toBeTruthy();
+
+      el.querySelector<HTMLButtonElement>('button[aria-label*="view mode" i]')?.click();
+      await settle();
+      expect(el.querySelector('.chip')).toBeNull();
+      el.querySelector<HTMLButtonElement>('button[aria-label*="view mode" i]')?.click();
+      await settle();
+      expect(el.querySelector('.chip')).toBeTruthy();
+
+      [...el.querySelectorAll<HTMLButtonElement>('.menu-button')]
+        .find((b) => b.textContent?.trim() === 'Path')!
+        .click();
+      await settle();
+      expect(el.querySelector('.chip')).toBeNull();
+    });
+
+    it('does not edit while a path is shown', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+      [...el.querySelectorAll<HTMLButtonElement>('.menu-button')]
+        .find((b) => b.textContent?.trim() === 'Path')!
+        .click();
+      await settle();
+      expect(el.querySelector('.workspace.walking')).toBeTruthy();
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+      nameCard(el, 'State').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await settle();
+      expect(field()).toBeNull();
+    });
+  });
+
+  describe('the shortcuts dialog', () => {
+    const dialog = (el: HTMLElement) =>
+      el.querySelector<HTMLDialogElement>('app-shortcuts-dialog dialog')!;
+
+    it('opens from the "?" button, lists the shortcuts and closes with the close button', async () => {
+      const { el, settle } = await setup();
+      const button = el.querySelector<HTMLButtonElement>(
+        'button[aria-label="Keyboard shortcuts"]',
+      )!;
+      expect(dialog(el).open).toBe(false);
+      button.click();
+      await settle();
+      expect(dialog(el).open).toBe(true);
+      expect(dialog(el).textContent).toContain('Ctrl+Z');
+      expect(dialog(el).textContent).toContain('Rename the selected state');
+      el.querySelector<HTMLButtonElement>(
+        'app-shortcuts-dialog button[aria-label="Close"]',
+      )!.click();
+      await settle();
+      expect(dialog(el).open).toBe(false);
+    });
+
+    it('closes on a click outside its content, not on a click inside', async () => {
+      const { el, settle } = await setup();
+      el.querySelector<HTMLButtonElement>('button[aria-label="Keyboard shortcuts"]')!.click();
+      await settle();
+      el.querySelector<HTMLElement>('app-shortcuts-dialog .dialog')!.click();
+      await settle();
+      expect(dialog(el).open).toBe(true);
+      dialog(el).click(); // the backdrop is the dialog element
+      await settle();
+      expect(dialog(el).open).toBe(false);
+    });
+
+    it('opens on the ? key, but not while typing in a field', async () => {
+      const { el, settle } = await setup();
+      const input = document.createElement('input');
+      document.body.append(input);
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true }));
+      await settle();
+      expect(dialog(el).open).toBe(false);
+      input.remove();
+
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: '?', shiftKey: true, bubbles: true }),
+      );
+      await settle();
+      expect(dialog(el).open).toBe(true);
+    });
+  });
+
+  describe('keyboard shortcuts for adding and editing', () => {
+    const press = (key: string, init: KeyboardEventInit = {}, target: EventTarget = window) =>
+      target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...init }));
+
+    it('N adds a state after the selected state through the same prompt; F adds a final state', async () => {
+      const { el, store, settle, select, promptForm, submitPrompt } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+
+      press('n');
+      await settle();
+      expect(promptForm()).toBeTruthy();
+      expect(
+        promptForm()!.querySelector<HTMLInputElement>('[data-type=state] input')!.checked,
+      ).toBe(true);
+      expect(document.activeElement).toBe(promptForm()!.querySelector('[name=event]'));
+      await submitPrompt('PaymentCharged', 'Charged');
+      expect(store.nodes().at(-1)).toMatchObject({ type: 'state', name: 'Charged' });
+      expect(store.edges().at(-1)).toMatchObject({ source: 'state-1', event: 'PaymentCharged' });
+      expect(promptForm()).toBeNull();
+
+      // The new state is selected, so the keys go on from there.
+      await settle();
+      press('f');
+      await settle();
+      expect(promptForm()!.querySelector<HTMLInputElement>('[data-type=end] input')!.checked).toBe(
+        true,
+      );
+      await submitPrompt('', '');
+      expect(store.nodes().at(-1)).toMatchObject({ type: 'end' });
+      expect(store.edges().at(-1)).toMatchObject({ source: store.nodes().at(-2)!.id });
+      expect(el.querySelector('app-state-prompt')).toBeNull();
+    });
+
+    it('E edits the event of the selected transition', async () => {
+      const { store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      store.updateEdge('edge-1', { event: 'Go' });
+      await settle();
+      await select([], ['edge-1']);
+
+      press('e');
+      await settle();
+      const field = document.querySelector<HTMLInputElement>('app-inline-edit input');
+      expect(field?.value).toBe('Go');
+    });
+
+    it('ignores a keydown that has no key (autofill)', async () => {
+      const { store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+      const event = new KeyboardEvent('keydown', { bubbles: true });
+      Object.defineProperty(event, 'key', { value: undefined });
+      expect(() => window.dispatchEvent(event)).not.toThrow();
+    });
+
+    it('does not take the focus from the field the user moved on to', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+      await settle();
+      const other = document.createElement('input');
+      document.body.append(other);
+      other.focus();
+      document.querySelector('app-inline-edit input')!.dispatchEvent(new Event('blur'));
+      await settle();
+      expect(document.activeElement).toBe(other);
+      expect(el.querySelector('app-inline-edit')).toBeNull();
+      other.remove();
+    });
+
+    it('does nothing in a field, with a modifier, on a final state, without a selection or while a path is shown', async () => {
+      const { el, store, settle, select, promptForm } = await setup();
+      store.appendNode('start-1', 'state');
+      store.appendNode('state-1', 'end');
+      await settle();
+
+      await select(['state-1']);
+      const input = document.createElement('input');
+      document.body.append(input);
+      press('n', {}, input);
+      press('n', { ctrlKey: true });
+      press('n', { metaKey: true });
+      press('n', { altKey: true });
+      // A focused button keeps its keys.
+      press('n', {}, el.querySelector('f-flow .add-trigger')!);
+      await settle();
+      expect(promptForm()).toBeNull();
+      input.remove();
+
+      await select(['end-1']);
+      press('n');
+      press('f');
+      await settle();
+      expect(promptForm()).toBeNull();
+
+      await select([]);
+      press('n');
+      await settle();
+      expect(promptForm()).toBeNull();
+
+      await select(['state-1']);
+      [...el.querySelectorAll<HTMLButtonElement>('.menu-button')]
+        .find((b) => b.textContent?.trim() === 'Path')!
+        .click();
+      await settle();
+      press('n');
+      await settle();
+      expect(promptForm()).toBeNull();
+    });
   });
 
   it('draws parallel transitions with a label each, and a state that leads to itself', async () => {

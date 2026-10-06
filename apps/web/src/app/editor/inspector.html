@@ -218,7 +218,7 @@
       </div>
     }
 
-    @if (hasRequests(node.type)) {
+    @if (hasRequests(node.type) && shown().has('requests')) {
       <section class="group" aria-label="Requests">
         <button
           type="button"
@@ -270,6 +270,16 @@
                 [value]="request.timeout ?? ''"
                 (change)="setRequestTimeout(i, $event)"
               />
+              @if (missing().request[i]?.length) {
+                <button
+                  type="button"
+                  class="ghost outcomes"
+                  [attr.aria-label]="'Add transitions for the outcomes of ' + request.name"
+                  (click)="addOutcomes('request', i)"
+                >
+                  <app-icon name="add" /> Add transitions for its outcomes
+                </button>
+              }
             </div>
           }
           <div class="add-row">
@@ -281,7 +291,7 @@
       </section>
     }
 
-    @if (hasRoutingSlips(node.type)) {
+    @if (hasRoutingSlips(node.type) && shown().has('slips')) {
       <section class="group" aria-label="Routing slips">
         <button
           type="button"
@@ -387,6 +397,16 @@
               <button type="button" class="ghost" (click)="addSlipActivity(i)">
                 <app-icon name="add" /> Add an activity
               </button>
+              @if (missing().routingSlip[i]?.length) {
+                <button
+                  type="button"
+                  class="ghost outcomes"
+                  [attr.aria-label]="'Add transitions for the outcomes of ' + slip.name"
+                  (click)="addOutcomes('routingSlip', i)"
+                >
+                  <app-icon name="add" /> Add transitions for its outcomes
+                </button>
+              }
             </div>
           }
           <div class="add-row">
@@ -398,7 +418,7 @@
       </section>
     }
 
-    @if (hasTimers(node.type)) {
+    @if (hasTimers(node.type) && shown().has('timers')) {
       <section class="group" aria-label="Timers">
         <button
           type="button"
@@ -454,6 +474,16 @@
                   (change)="setTimerDelay(i, $event)"
                 />
               }
+              @if (missing().timer[i]?.length) {
+                <button
+                  type="button"
+                  class="ghost outcomes"
+                  [attr.aria-label]="'Add transitions for the outcomes of ' + timer.name"
+                  (click)="addOutcomes('timer', i)"
+                >
+                  <app-icon name="add" /> Add transitions for its outcomes
+                </button>
+              }
             </div>
           }
           <div class="add-row">
@@ -468,7 +498,7 @@
       </section>
     }
 
-    @if (hasIgnores(node.type)) {
+    @if (hasIgnores(node.type) && shown().has('ignores')) {
       <section class="group" aria-label="Ignored events">
         <button
           type="button"
@@ -517,7 +547,7 @@
       </section>
     }
 
-    @if (node.type === 'state') {
+    @if (node.type === 'state' && shown().has('recovery')) {
       <section class="group" aria-label="Recovery">
         <button
           type="button"
@@ -618,8 +648,17 @@
             the state is a decision.
           </small>
           @for (edge of outgoing(); track edge.id) {
-            <label class="transition-row">
-              <span class="transition-event" [title]="eventOf(edge)">{{ eventOf(edge) }}</span>
+            <div class="transition-row">
+              <input
+                type="text"
+                list="row-event-suggestions"
+                placeholder="no event yet"
+                autocomplete="off"
+                [attr.aria-label]="'Event of the transition to ' + nameOf(edge.target)"
+                [title]="eventOf(edge)"
+                [value]="edge.event ?? ''"
+                (change)="setRowEvent(edge, $event)"
+              />
               <span class="arrow" aria-hidden="true">→</span>
               <select
                 [attr.aria-label]="'To, for ' + eventOf(edge)"
@@ -635,8 +674,19 @@
                   </option>
                 }
               </select>
-            </label>
+            </div>
+            @if (
+              edge.event && !outcomes().includes(edge.event) && namingHint('event', edge.event);
+              as hint
+            ) {
+              <p class="hint">{{ hint }}</p>
+            }
           }
+          <datalist id="row-event-suggestions">
+            @for (suggestion of eventSuggestions(); track suggestion) {
+              <option [value]="suggestion"></option>
+            }
+          </datalist>
           @if (existingTargets().length) {
             <label class="field">
               <span>To an existing state</span>
@@ -650,15 +700,76 @@
             </label>
           }
           <div class="add-row">
-            <button type="button" class="ghost" (click)="transitionAdded.emit('state')">
+            <button
+              #newState="cdkOverlayOrigin"
+              cdkOverlayOrigin
+              type="button"
+              class="ghost"
+              (click)="prompting.set({ type: 'state', origin: newState })"
+            >
               <app-icon name="step" /> To a new state
             </button>
-            <button type="button" class="ghost" (click)="transitionAdded.emit('end')">
+            <button
+              #finalState="cdkOverlayOrigin"
+              cdkOverlayOrigin
+              type="button"
+              class="ghost"
+              (click)="prompting.set({ type: 'end', origin: finalState })"
+            >
               <app-icon name="end" /> To a final state
             </button>
           </div>
+          @if (prompting(); as prompt) {
+            <ng-template
+              cdkConnectedOverlay
+              cdkConnectedOverlayHasBackdrop
+              cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+              [cdkConnectedOverlayOrigin]="prompt.origin"
+              [cdkConnectedOverlayOpen]="true"
+              (backdropClick)="prompting.set(null)"
+              (detach)="prompting.set(null)"
+            >
+              <app-state-prompt
+                [type]="prompt.type"
+                [suggestions]="eventSuggestions()"
+                (committed)="addTransition({ type: prompt.type, init: $event })"
+                (cancelled)="addTransition({ type: prompt.type })"
+              />
+            </ng-template>
+          }
         }
       </section>
+    }
+
+    @if (hiddenBehaviors().length) {
+      <div class="behaviors">
+        <button
+          type="button"
+          class="ghost"
+          aria-controls="add-behavior-list"
+          [attr.aria-expanded]="menuOpen()"
+          (click)="menuOpen.set(!menuOpen())"
+          (keydown.escape)="closeMenu($event)"
+        >
+          <app-icon name="add" /> Add behavior…
+        </button>
+        @if (menuOpen()) {
+          <ul id="add-behavior-list" class="behavior-list" aria-label="Behaviors to add">
+            @for (behavior of hiddenBehaviors(); track behavior.key) {
+              <li>
+                <button
+                  type="button"
+                  class="ghost"
+                  (click)="addBehavior(behavior.key)"
+                  (keydown.escape)="closeMenu($event)"
+                >
+                  <app-icon [name]="behavior.icon" /> {{ behavior.label }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
     }
   } @else if (edge(); as edge) {
     <label class="field">
@@ -693,7 +804,7 @@
       }
     </datalist>
     @if (
-      edge.event && !eventSuggestions().includes(edge.event) && namingHint('event', edge.event);
+      edge.event && !outcomes().includes(edge.event) && namingHint('event', edge.event);
       as hint
     ) {
       <p class="hint">{{ hint }}</p>

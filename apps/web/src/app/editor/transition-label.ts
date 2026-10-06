@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
-import { AddStepButton } from './add-step-button';
+import { AddStepButton, NewStep } from './add-step-button';
 import { Icon, IconName } from './icon';
+import { InlineEdit } from './inline-edit';
 import { INSERT_TYPES } from './node-types';
 import {
   DiagramEdge,
@@ -10,7 +11,6 @@ import {
   LABEL_PADDING,
   LABEL_ROW,
   labelRows,
-  NodeType,
   Severity,
 } from '@ariadne/core';
 
@@ -21,10 +21,10 @@ import {
  */
 @Component({
   selector: 'app-transition-label',
-  imports: [AddStepButton, Icon],
+  imports: [AddStepButton, Icon, InlineEdit],
   host: {
     '[attr.data-direction]': 'direction()',
-    '[class.empty]': 'rows() === 0',
+    '[class.empty]': 'rows() === 0 && !chip()',
     '[class.inline]': '!insertable()',
     '[attr.data-highlight]': 'highlight() ?? null',
     '[attr.data-badge]': 'badge() ?? null',
@@ -46,8 +46,16 @@ export class TransitionLabel {
   readonly kind = input<EventKind>();
   /** Compensation transitions are not laid out and get no "+". */
   readonly insertable = input(true);
+  /** The event is a text field. */
+  readonly editing = input(false);
+  /** The id of the datalist that suggests events while editing. */
+  readonly suggestionList = input<string>();
   readonly selectRequested = output<void>();
-  readonly inserted = output<NodeType>();
+  /** Double-click on the card: the event should become a text field. */
+  readonly editRequested = output<void>();
+  readonly eventCommitted = output<string>();
+  readonly editEnded = output<void>();
+  readonly inserted = output<NewStep>();
 
   protected readonly insertTypes = INSERT_TYPES;
   protected readonly icon = computed<IconName>(() => {
@@ -91,5 +99,20 @@ export class TransitionLabel {
   });
   protected readonly label = computed(() => eventLabel(this.edge()));
   protected readonly rows = computed(() => labelRows(this.edge()));
-  protected readonly cardHeight = computed(() => this.rows() * LABEL_ROW + 2 * LABEL_PADDING);
+  /** A transition without an event offers "+ event" where its label would be. */
+  protected readonly chip = computed(() => this.rows() === 0 && this.insertable());
+  /** The card, or the chip, takes the room that the layout reserves: at least one row. */
+  protected readonly cardHeight = computed(
+    () => Math.max(1, this.rows()) * LABEL_ROW + 2 * LABEL_PADDING,
+  );
+
+  protected chipClicked(): void {
+    this.selectRequested.emit();
+    this.editRequested.emit();
+  }
+
+  protected commitEvent(event: string): void {
+    this.eventCommitted.emit(event);
+    this.editEnded.emit();
+  }
 }

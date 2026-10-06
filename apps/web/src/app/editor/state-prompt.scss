@@ -1,0 +1,110 @@
+.prompt {
+  display: grid;
+  gap: 8px;
+  width: 280px;
+  padding: 12px;
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  font-family: system-ui, sans-serif;
+
+  header {
+    color: var(--c-text-subtle);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  label {
+    display: grid;
+    gap: 4px;
+    color: var(--c-text-subtle);
+    font-size: 12px;
+  }
+
+  input {
+    padding: 6px 8px;
+    color: var(--c-text);
+    background: var(--c-surface-0, var(--c-surface-1));
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    font: inherit;
+
+    &:focus-visible {
+      outline: 2px solid var(--c-focus);
+      outline-offset: 1px;
+    }
+  }
+
+  .types {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .type {
+    position: relative;
+    flex: 1;
+    color: var(--c-text);
+
+    input {
+      position: absolute;
+      opacity: 0;
+      inset: 0;
+    }
+
+    span {
+      display: block;
+      padding: 5px 6px;
+      font-size: 12px;
+      text-align: center;
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+    }
+
+    input:checked + span {
+      color: var(--c-on-primary);
+      background: var(--c-primary);
+      border-color: var(--c-primary);
+    }
+
+    input:focus-visible + span {
+      outline: 2px solid var(--c-focus);
+      outline-offset: 2px;
+    }
+  }
+
+  small {
+    color: var(--c-text-subtle);
+    font-size: 11px;
+  }
+
+  .primary {
+    justify-self: end;
+    padding: 6px 14px;
+    color: var(--c-on-primary);
+    background: var(--c-primary);
+    border: 0;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--c-focus);
+      outline-offset: 2px;
+    }
+  }
+}

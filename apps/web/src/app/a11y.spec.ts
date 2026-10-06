@@ -106,6 +106,15 @@ const VIEWS: View[] = [
     },
   },
   {
+    name: 'a selected state with the "Add behavior…" menu open',
+    shown: 'app-inspector .behavior-list',
+    show: async (e) => {
+      await loadOrder(e);
+      await e.select([e.store.nodes().find((n) => n.type === 'state')!.id]);
+      await e.click(e.el.querySelector<HTMLButtonElement>('app-inspector .behaviors > button')!);
+    },
+  },
+  {
     name: 'a selected transition',
     shown: "app-inspector[aria-label='Transition settings']",
     show: async (e) => {
@@ -159,6 +168,35 @@ const VIEWS: View[] = [
       e.store.addNode('state');
       await e.settle();
       await e.click(e.el.querySelector<HTMLButtonElement>('app-problems-menu button')!);
+    },
+  },
+  {
+    name: 'the prompt for a new state',
+    shown: '.cdk-overlay-pane app-state-prompt',
+    show: async (e) => {
+      await loadOrder(e);
+      await e.click(
+        e.el.querySelector<HTMLButtonElement>('.slot [aria-label="Add the next state"]')!,
+      );
+    },
+  },
+  {
+    name: 'a state name being edited',
+    shown: 'app-node-card app-inline-edit input',
+    show: async (e) => {
+      await loadOrder(e);
+      const card = e.el.querySelector<HTMLElement>('app-node-card[data-type=state]')!;
+      card.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await e.settle();
+    },
+  },
+  {
+    name: 'the keyboard shortcuts dialog',
+    shown: 'app-shortcuts-dialog dialog[open]',
+    show: async (e) => {
+      await e.click(
+        e.el.querySelector<HTMLButtonElement>('button[aria-label="Keyboard shortcuts"]')!,
+      );
     },
   },
   {

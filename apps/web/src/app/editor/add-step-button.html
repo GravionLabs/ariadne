@@ -5,7 +5,8 @@
   cdkOverlayOrigin
   fDragBlocker
   [attr.aria-label]="label()"
-  [attr.aria-expanded]="types().length > 1 ? isOpen() : null"
+  aria-haspopup="dialog"
+  [attr.aria-expanded]="isOpen()"
   [title]="label()"
   (pointerdown)="$event.stopPropagation()"
   (click)="toggle($event)"
@@ -26,22 +27,12 @@
   (detach)="close()"
   (overlayKeydown)="onOverlayKeydown($event)"
 >
-  <section class="picker" role="menu" [attr.aria-label]="label()">
-    <header>{{ label() }}</header>
-    @for (type of types(); track type) {
-      <button
-        type="button"
-        role="menuitem"
-        class="option"
-        [attr.data-type]="type"
-        (click)="pick(type)"
-      >
-        <span class="option-icon"><app-icon [name]="info[type].icon" /></span>
-        <span class="option-copy">
-          <strong>{{ info[type].label }}</strong>
-          <small>{{ info[type].description }}</small>
-        </span>
-      </button>
-    }
-  </section>
+  <app-state-prompt
+    [(type)]="chosen"
+    [types]="types()"
+    [suggestions]="suggestions()"
+    [eventLabel]="eventLabel()"
+    (committed)="add($event)"
+    (cancelled)="add()"
+  />
 </ng-template>

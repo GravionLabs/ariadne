@@ -10,11 +10,14 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { EmbeddedSync } from '../host/embedded-sync';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
-import { Icon } from './icon';
+import { NewStep } from './add-step-button';
+import { Icon, IconName } from './icon';
+import { StatePrompt } from './state-prompt';
 import { DECISION, NODE_TYPES } from './node-types';
 import {
   Activity,
@@ -42,11 +45,26 @@ import {
   SLIP_OUTCOMES,
   compensationOrder,
   hasRoutingSlips,
+  missingOutcomes,
+  OutcomeSource,
+  outcomeEvents,
+  suggestEvents,
   slipEvent,
 } from '@ariadne/core';
 
 /** Inspector sections that start expanded even when empty. */
 const ALWAYS_OPEN = ['details', 'activities', 'transitions'];
+
+type BehaviorKey = 'requests' | 'slips' | 'timers' | 'ignores' | 'recovery';
+
+/** The optional sections of a state, as "Add behavior…" names them. */
+const BEHAVIORS: readonly { key: BehaviorKey; label: string; icon: IconName }[] = [
+  { key: 'requests', label: 'Request', icon: 'command' },
+  { key: 'slips', label: 'Routing slip', icon: 'route' },
+  { key: 'timers', label: 'Timer', icon: 'clock' },
+  { key: 'ignores', label: 'Ignored event', icon: 'ignore' },
+  { key: 'recovery', label: 'Recovery', icon: 'compensation' },
+];
 
 const NEW_MESSAGE: Record<MessageKind, string> = {
   command: 'DoSomething',
@@ -59,7 +77,7 @@ const NEW_MESSAGE: Record<MessageKind, string> = {
  */
 @Component({
   selector: 'app-inspector',
-  imports: [Icon],
+  imports: [CdkConnectedOverlay, CdkOverlayOrigin, Icon, StatePrompt],
   host: { role: 'complementary', '[attr.aria-label]': 'title()' },
   templateUrl: './inspector.html',
   styleUrl: './inspector.scss',
@@ -96,7 +114,15 @@ export class Inspector {
   readonly closed = output<void>();
   readonly deleted = output<void>();
   /** "Add transition": a new state of this type should follow the selected one. */
-  readonly transitionAdded = output<NodeType>();
+  readonly transitionAdded = output<NewStep>();
+
+  /** The "To a new state" / "To a final state" button whose prompt is open. */
+  protected readonly prompting = signal<{ type: NodeType; origin: CdkOverlayOrigin } | null>(null);
+
+  protected addTransition({ type, init }: NewStep): void {
+    this.prompting.set(null);
+    this.transitionAdded.emit({ type, init });
+  }
 
   private readonly selected = computed(() => this.node()?.id ?? this.edge()?.id);
 
@@ -104,7 +130,11 @@ export class Inspector {
     // Another state or transition: sections go back to their defaults.
     effect(() => {
       this.selected();
-      untracked(() => this.toggled.set({}));
+      untracked(() => {
+        this.toggled.set({});
+        this.revealed.set(false);
+        this.menuOpen.set(false);
+      });
     });
   }
 
@@ -216,6 +246,67 @@ export class Inspector {
         node,
         (node.activities ?? []).filter((_, i) => i !== index),
       );
+  }
+
+  /** Behaviors of a state that have a section of their own once it has any. */
+  protected readonly behaviors = BEHAVIORS;
+
+  /** Recovery has no list to be empty: asking for it from the menu is what shows it while it has nothing. */
+  private readonly revealed = signal(false);
+  protected readonly menuOpen = signal(false);
+
+  /** The optional sections the selected state shows: those with content, and Recovery once asked for. */
+  protected readonly shown = computed(() => {
+    const node = this.node();
+    const shown = new Set<BehaviorKey>();
+    if (!node) return shown;
+    if (node.requests?.length) shown.add('requests');
+    if (node.routingSlips?.length) shown.add('slips');
+    if (node.timers?.length) shown.add('timers');
+    if (node.ignores?.length) shown.add('ignores');
+    if (node.compensation || node.retry || node.timeout || this.revealed()) shown.add('recovery');
+    return shown;
+  });
+
+  /** What "Add behavior…" lists: the hidden sections this kind of node supports. */
+  protected readonly hiddenBehaviors = computed(() => {
+    const node = this.node();
+    if (!node) return [];
+    const supported: Record<BehaviorKey, boolean> = {
+      requests: hasRequests(node.type),
+      slips: hasRoutingSlips(node.type),
+      timers: hasTimers(node.type),
+      ignores: hasIgnores(node.type),
+      recovery: node.type === 'state',
+    };
+    const shown = this.shown();
+    return BEHAVIORS.filter((b) => supported[b.key] && !shown.has(b.key));
+  });
+
+  /** Shows a hidden section with a new entry in it, focused. */
+  protected addBehavior(key: BehaviorKey): void {
+    this.menuOpen.set(false);
+    switch (key) {
+      case 'requests':
+        return this.addRequest();
+      case 'slips':
+        return this.addRoutingSlip();
+      case 'timers':
+        return this.addTimer('schedule');
+      case 'ignores':
+        return this.addIgnore();
+      case 'recovery':
+        this.revealed.set(true);
+        this.toggled.update((t) => ({ ...t, recovery: true }));
+        this.focusLast('[aria-label="Recovery"] input', 'first');
+    }
+  }
+
+  /** Escape closes the menu and nothing else (not the inspector). */
+  protected closeMenu(event: Event): void {
+    if (!this.menuOpen()) return;
+    event.stopPropagation();
+    this.menuOpen.set(false);
   }
 
   /** Sections the user opened or closed by hand; reset when another element is selected. */
@@ -381,13 +472,13 @@ export class Inspector {
     this.store.updateNode(node.id, { routingSlips: slips.length ? slips : undefined });
   }
 
-  private focusLast(selector: string): void {
+  private focusLast(selector: string, which: 'first' | 'last' = 'last'): void {
     afterNextRender(
       () => {
         const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>(selector);
-        const last = inputs[inputs.length - 1];
-        last?.focus();
-        last?.select();
+        const target = which === 'first' ? inputs[0] : inputs[inputs.length - 1];
+        target?.focus();
+        target?.select();
       },
       { injector: this.injector },
     );
@@ -405,17 +496,41 @@ export class Inspector {
       .map((n) => n.name);
   });
 
-  /** Events worth offering for a transition: the outcomes of requests, and scheduled timeouts. */
-  protected readonly eventSuggestions = computed(() =>
-    this.store
-      .nodes()
-      .flatMap((n) => [
-        ...(n.requests ?? []).flatMap((r) => REQUEST_OUTCOMES.map((o) => requestEvent(r.name, o))),
-        ...(n.routingSlips ?? []).flatMap((s) => SLIP_OUTCOMES.map((o) => slipEvent(s.name, o))),
-        ...(n.timers ?? []).filter((t) => t.action === 'schedule').map((t) => t.name),
-        ...(n.type === 'join' ? [n.name] : []),
-      ]),
-  );
+  /**
+   * Events worth offering for a transition of the selected state, or for the selected transition:
+   * what its source state makes possible first (see `suggestEvents`).
+   */
+  protected readonly eventSuggestions = computed(() => {
+    const edge = this.edge();
+    return suggestEvents(this.store.diagram(), {
+      from: edge?.source ?? this.node()?.id,
+      edge: edge?.id,
+    });
+  });
+
+  /** Names the diagram itself gives events: they need no naming hint. */
+  protected readonly outcomes = computed(() => outcomeEvents(this.store.diagram()));
+
+  /**
+   * The outcomes of the selected state's requests, routing slips and scheduled timeouts that have no
+   * transition yet, by row; a row with none gets no "Add transitions for its outcomes".
+   */
+  protected readonly missing = computed(() => {
+    const node = this.node();
+    const d = this.store.diagram();
+    const of = (kind: OutcomeSource['kind'], rows: readonly unknown[] | undefined) =>
+      (rows ?? []).map((_, index) => (node ? missingOutcomes(d, node.id, { kind, index }) : []));
+    return {
+      request: of('request', node?.requests),
+      routingSlip: of('routingSlip', node?.routingSlips),
+      timer: of('timer', node?.timers),
+    };
+  });
+
+  protected addOutcomes(kind: OutcomeSource['kind'], index: number): void {
+    const node = this.node();
+    if (node) this.store.addOutcomeTransitions(node.id, { kind, index });
+  }
 
   protected eventEnds(outcome: string): boolean {
     return !!this.edge()?.event?.endsWith(`.${outcome}`);
@@ -631,6 +746,12 @@ export class Inspector {
     if (!this.store.setEdgeTarget(edge.id, select.value)) select.value = edge.target;
   }
 
+  /** Sets the event of a row of the Transitions list; puts the old one back if it would be a duplicate. */
+  protected setRowEvent(edge: DiagramEdge, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!this.store.setEdgeEvent(edge.id, input.value)) input.value = edge.event ?? '';
+  }
+
   /** Forward transitions leaving the selected state. */
   protected readonly outgoing = computed(() => {
     const id = this.node()?.id;
@@ -658,6 +779,10 @@ export class Inspector {
     const select = event.target as HTMLSelectElement;
     if (node && select.value) this.store.connect(node.id, select.value);
     select.value = '';
+  }
+
+  protected nameOf(id: string): string {
+    return this.store.nodes().find((n) => n.id === id)?.name ?? id;
   }
 
   protected eventOf(edge: DiagramEdge): string {

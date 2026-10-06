@@ -1,3 +1,4 @@
+import { CdkConnectedOverlay } from '@angular/cdk/overlay';
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
@@ -27,7 +28,7 @@ import { EmbeddedSync } from '../host/embedded-sync';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
-import { AddStepButton } from './add-step-button';
+import { ADD_POSITIONS, AddStepButton, NewStep } from './add-step-button';
 import { DiagramDetails } from './diagram-details';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
@@ -39,6 +40,7 @@ import { WalkthroughPanel } from './walkthrough-panel';
 import { WalkthroughStore } from './walkthrough-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
+import { StatePrompt } from './state-prompt';
 import { Inspector } from './inspector';
 import { SagaImport } from '../import/saga-import';
 import { CatalogPanel } from './catalog-panel';
@@ -48,6 +50,7 @@ import { findSample, sampleDiagram } from '../samples';
 import { GenerateDialog } from './generate-dialog';
 import { ImportDialog } from './import-dialog';
 import { NewDiagramDialog } from './new-diagram-dialog';
+import { ShortcutsDialog } from './shortcuts-dialog';
 import { ProblemsMenu } from './problems-menu';
 import { SourcePanel } from './source-panel';
 import { NodeCard } from './node-card';
@@ -60,9 +63,12 @@ import {
   eventKindOf,
   eventLabel,
   Finding,
+  hasOutput,
   inputId,
   joinEventsOf,
   labelId,
+  suggestEvents,
+  NewStateInit,
   nodeIdOfConnector,
   nodeSize,
   NodeType,
@@ -82,6 +88,7 @@ const OBSCURING =
   imports: [
     NgTemplateOutlet,
     AddStepButton,
+    CdkConnectedOverlay,
     CatalogPanel,
     PathPanel,
     PathTimeline,
@@ -95,9 +102,11 @@ const OBSCURING =
     GenerateDialog,
     ImportDialog,
     NewDiagramDialog,
+    ShortcutsDialog,
     NodeCard,
     ProblemsMenu,
     SourcePanel,
+    StatePrompt,
     TransitionLabel,
   ],
   providers: [
@@ -127,6 +136,7 @@ export class Editor {
   /** Walking through the saga or looking at a path: the diagram is read-only. */
   protected readonly walking = computed(() => this.walk.active() || this.path.active());
   private readonly newDialog = viewChild.required(NewDiagramDialog);
+  protected readonly shortcutsDialog = viewChild.required(ShortcutsDialog);
   private readonly importDialog = viewChild.required(ImportDialog);
   private readonly generateDialog = viewChild.required(GenerateDialog);
   private readonly sagaImport = inject(SagaImport);
@@ -281,6 +291,10 @@ export class Editor {
     // A link such as `?sample=order` opens that sample (not in a host, which owns the document).
     if (!this.embedded) void this.openSampleFromUrl();
     // The text was edited while walking and the path no longer holds: the walk is over.
+    // Walking through or viewing a path makes the diagram read-only: an open field is dropped.
+    effect(() => {
+      if (this.walking()) untracked(() => this.ui.stopEditing());
+    });
     effect(() => {
       if (!this.walk.valid()) untracked(() => this.closeLeftPanel());
     });
@@ -291,17 +305,142 @@ export class Editor {
   }
 
   /** "+" after a state: the picked state follows it. */
-  protected append(sourceId: string, type: NodeType): void {
+  protected append(sourceId: string, { type, init }: NewStep): void {
     if (this.walking()) return;
-    const id = this.store.appendNode(sourceId, type);
+    const id = this.store.appendNode(sourceId, type, init);
     if (id) this.ui.selectNode(id);
   }
 
   /** "+" on a transition: the picked state goes between its two ends. */
-  protected insert(edgeId: string, type: NodeType): void {
+  protected insert(edgeId: string, { type, init }: NewStep): void {
     if (this.walking()) return;
-    const id = this.store.insertOnEdge(edgeId, type);
+    const id = this.store.insertOnEdge(edgeId, type, init);
     if (id) this.ui.selectNode(id);
+  }
+
+  /** The add popover opened from the keyboard: after which state, and next to which card. */
+  protected readonly keyboardAdd = signal<{ sourceId: string; origin: HTMLElement } | null>(null);
+  protected readonly addType = signal<NodeType>('state');
+  protected readonly addPositions = ADD_POSITIONS;
+  protected readonly addSuggestions = computed(() =>
+    suggestEvents(this.store.diagram(), { from: this.keyboardAdd()?.sourceId }),
+  );
+
+  protected closeKeyboardAdd(): void {
+    if (!this.keyboardAdd()) return;
+    this.keyboardAdd.set(null);
+    this.focusDiagram();
+  }
+
+  /** Enter in the popover: the state goes in as it would from its "+"; Escape adds the defaults. */
+  protected commitKeyboardAdd(sourceId: string, init?: NewStateInit): void {
+    this.closeKeyboardAdd();
+    this.append(sourceId, { type: this.addType(), init });
+  }
+
+  /**
+   * Plain keys on the selection, for the keyboard user who would otherwise tab to a "+":
+   * `N` adds a state after the selected state, `F` a final state, `E` edits the selected
+   * transition's event. `C` (f-flow's) connects to an existing state. They do nothing in a field,
+   * while walking through, with a modifier held, or from the panels and the toolbar.
+   */
+  private onShortcut(event: KeyboardEvent): boolean {
+    if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return false;
+    // Autofill and some input methods send a keydown without a key.
+    const key = event.key?.toLowerCase();
+    if (key !== 'n' && key !== 'f' && key !== 'e') return false;
+    if (isTextEntry(event.target) || this.walking() || this.keyboardAdd()) return false;
+    const target = event.target;
+    const flow = this.flow()?.hostElement as HTMLElement | undefined;
+    const inDiagram =
+      !(target instanceof Node) || target === document.body || (!!flow && flow.contains(target));
+    if (!inDiagram || !flow) return false;
+    // The "+" and expand buttons keep their own keys; a transition's label card is the selection.
+    if (target instanceof Element && target.closest('button:not(.card), a, summary')) return false;
+    if (key === 'e') {
+      const edge = this.ui.selectedEdge();
+      if (!edge) return false;
+      this.startEditing('edge', edge.id);
+      return true;
+    }
+    const node = this.ui.selectedNode();
+    if (!node || !hasOutput(node.type)) return false;
+    const card = flow.querySelector<HTMLElement>(attributeSelector('data-f-node-id', node.id));
+    if (!card) return false;
+    this.addType.set(key === 'f' ? 'end' : 'state');
+    this.keyboardAdd.set({ sourceId: node.id, origin: card });
+    return true;
+  }
+
+  /** Suggestions for the event being typed on the canvas. */
+  protected readonly eventSuggestions = computed(() => {
+    const editing = this.ui.editing();
+    const edge = editing?.kind === 'edge' ? this.edgesById().get(editing.id) : undefined;
+    return suggestEvents(this.store.diagram(), { from: edge?.source, edge: edge?.id });
+  });
+
+  protected isEditing(kind: 'node' | 'edge', id: string): boolean {
+    const editing = this.ui.editing();
+    return editing?.kind === kind && editing.id === id;
+  }
+
+  /**
+   * Double-click or `F2`: a state's name, or a transition's event, becomes a text field. Not while
+   * walking through or viewing a path (the diagram is read-only then).
+   */
+  protected startEditing(kind: 'node' | 'edge', id: string): void {
+    if (this.walking()) return;
+    const laidOut = this.layout.labels().some((l) => l.edgeId === id);
+    if (kind === 'edge' && !this.edgesById().get(id)?.event && !(laidOut && this.insertShown())) {
+      // No card or chip to edit in: the Event field of the inspector takes over.
+      this.focusInspectorEvent();
+      return;
+    }
+    this.ui.startEditing(kind, id);
+  }
+
+  /** Enter or blur in the field: an empty state name puts the old one back, as in the inspector. */
+  protected commitName(id: string, name: string): void {
+    if (this.walking()) return;
+    const trimmed = name.trim();
+    const node = this.store.nodes().find((n) => n.id === id);
+    if (node && trimmed && trimmed !== node.name) this.store.updateNode(id, { name: trimmed });
+  }
+
+  /** A transition that would duplicate another one keeps its old event. */
+  protected commitEvent(edgeId: string, event: string): void {
+    if (this.walking()) return;
+    this.store.setEdgeEvent(edgeId, event);
+  }
+
+  protected endEditing(kind: 'node' | 'edge', id: string): void {
+    if (!this.isEditing(kind, id)) return;
+    this.ui.stopEditing();
+    // The field is gone: the keyboard stays in the diagram (f-flow keeps the focus on its own host).
+    this.focusDiagram();
+  }
+
+  /** Gives the focus back to the diagram, e.g. after a field or the add popover went away. */
+  private focusDiagram(): void {
+    afterNextRender(
+      () => {
+        // Not when the user has already moved on to another field (a blur committed the edit).
+        const active = document.activeElement;
+        if (active && active !== document.body) return;
+        (this.flow()?.hostElement as HTMLElement | undefined)?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  private focusInspectorEvent(): void {
+    afterNextRender(
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLInputElement>('app-inspector input[list="event-suggestions"]')
+          ?.focus(),
+      { injector: this.injector },
+    );
   }
 
   protected addStart(): void {
@@ -452,9 +591,24 @@ export class Editor {
   }
 
   protected onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'F2') {
+      this.onRename(event);
+      return;
+    }
+    // `?` shows the shortcuts, from the diagram and the toolbar, not while typing in a field.
+    if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      if (isTextEntry(event.target)) return;
+      this.shortcutsDialog().open();
+      event.preventDefault();
+      return;
+    }
+    if (this.onShortcut(event)) {
+      event.preventDefault();
+      return;
+    }
     // The host handles save, open and undo itself, on the document.
     if (this.embedded || !(event.ctrlKey || event.metaKey)) return;
-    const key = event.key.toLowerCase();
+    const key = event.key?.toLowerCase();
     // Typing in a text field has its own undo history, and Ctrl+Z there must not undo the diagram.
     const typing = isTextEntry(event.target);
     if (key === 's' || key === 'o') {
@@ -468,6 +622,17 @@ export class Editor {
       return;
     } else if (key === 'z' && !event.shiftKey) this.store.undo();
     else if ((key === 'z' && event.shiftKey) || key === 'y') this.store.redo();
+    else return;
+    event.preventDefault();
+  }
+
+  /** `F2` on the selected state or transition: edit its name or event in place. */
+  private onRename(event: KeyboardEvent): void {
+    if (isTextEntry(event.target) || this.walking() || event.ctrlKey || event.metaKey) return;
+    const node = this.ui.selectedNode();
+    const edge = this.ui.selectedEdge();
+    if (node) this.startEditing('node', node.id);
+    else if (edge) this.startEditing('edge', edge.id);
     else return;
     event.preventDefault();
   }
@@ -494,7 +659,7 @@ export class Editor {
       this.store.connect(source, nodeIdOfConnector(event.targetId));
       return;
     }
-    this.append(source, 'state');
+    this.append(source, { type: 'state' });
   }
 
   protected deleteSelection(): void {
@@ -675,9 +840,9 @@ export class Editor {
   }
 
   /** The inspector's "Add transition": a new state follows the selected one. */
-  protected appendToSelected(type: NodeType): void {
+  protected appendToSelected(step: NewStep): void {
     const node = this.ui.selectedNode();
-    if (node) this.append(node.id, type);
+    if (node) this.append(node.id, step);
   }
 
   protected onDelete(event: FDeleteSelectedEvent): void {

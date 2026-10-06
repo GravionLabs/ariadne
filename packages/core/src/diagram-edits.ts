@@ -9,7 +9,11 @@ import {
   NodeType,
   hasInput,
   hasOutput,
+  REQUEST_OUTCOMES,
+  SLIP_OUTCOMES,
   nextId,
+  requestEvent,
+  slipEvent,
 } from './diagram';
 
 export type NodePatch = Partial<Omit<DiagramNode, 'id' | 'type'>>;
@@ -24,8 +28,14 @@ export interface Created {
   id: string;
 }
 
-function newNode(d: Diagram, type: NodeType): DiagramNode {
-  return { id: nextId(type, d.nodes), type, name: DEFAULT_NAMES[type] };
+/** What a new state can be given when it is added: a name, and the event of its transition. */
+export interface NewStateInit {
+  name?: string;
+  event?: string;
+}
+
+function newNode(d: Diagram, type: NodeType, name?: string): DiagramNode {
+  return { id: nextId(type, d.nodes), type, name: name?.trim() || DEFAULT_NAMES[type] };
 }
 
 /** Adds an unconnected node, e.g. the start of an empty diagram. */
@@ -41,15 +51,22 @@ export function addNode(d: Diagram, type: NodeType): Created {
  * Adds a node that follows `source`, connected by a forward edge. `null` if `source` is unknown or
  * the connection is not allowed.
  */
-export function appendNode(d: Diagram, source: string, type: NodeType): Created | null {
+export function appendNode(
+  d: Diagram,
+  source: string,
+  type: NodeType,
+  init: NewStateInit = {},
+): Created | null {
   const from = d.nodes.find((n) => n.id === source);
   if (!from || !hasOutput(from.type) || !hasInput(type)) return null;
-  const node = newNode(d, type);
+  const node = newNode(d, type, init.name);
+  const event = init.event?.trim();
   const edge: DiagramEdge = {
     id: nextId('edge', d.edges),
     source,
     target: node.id,
     kind: 'forward',
+    ...(event ? { event } : {}),
   };
   return {
     diagram: { ...d, nodes: [...d.nodes, node], edges: [...d.edges, edge] },
@@ -59,18 +76,25 @@ export function appendNode(d: Diagram, source: string, type: NodeType): Created 
 
 /**
  * Splits edge A→B into A→X→B with a new state X. A→X keeps the edge's id and event (with its
- * source), so the transition out of A still reacts to the same event; X→B has no event yet. `null`
- * if the edge is unknown or `type` cannot sit in the middle of a path (start, end).
+ * source), so the transition out of A still reacts to the same event; X→B has the event of `init`,
+ * if any. `null` if the edge is unknown or `type` cannot sit in the middle of a path (start, end).
  */
-export function insertOnEdge(d: Diagram, edgeId: string, type: NodeType): Created | null {
+export function insertOnEdge(
+  d: Diagram,
+  edgeId: string,
+  type: NodeType,
+  init: NewStateInit = {},
+): Created | null {
   const edge = d.edges.find((e) => e.id === edgeId);
   if (!edge || !hasInput(type) || !hasOutput(type)) return null;
-  const node = newNode(d, type);
+  const node = newNode(d, type, init.name);
+  const event = init.event?.trim();
   const next: DiagramEdge = {
     id: nextId('edge', d.edges),
     source: node.id,
     target: edge.target,
     kind: edge.kind,
+    ...(event ? { event } : {}),
   };
   return {
     diagram: {
@@ -80,6 +104,56 @@ export function insertOnEdge(d: Diagram, edgeId: string, type: NodeType): Create
     },
     id: node.id,
   };
+}
+
+/** Something a state does that ends in events: a request, a routing slip or a scheduled timeout. */
+export interface OutcomeSource {
+  kind: 'request' | 'routingSlip' | 'timer';
+  /** Its position in the state's `requests`, `routingSlips` or `timers`. */
+  index: number;
+}
+
+/**
+ * The events a request (`Name.Completed`, `.Faulted`, `.TimeoutExpired`), a routing slip
+ * (`.Completed`, `.Faulted`) or a scheduled timer (its name) ends in. None for an unknown source or
+ * an unschedule.
+ */
+export function outcomeEventsOf(node: DiagramNode, source: OutcomeSource): string[] {
+  if (source.kind === 'request') {
+    const request = node.requests?.[source.index];
+    return request ? REQUEST_OUTCOMES.map((o) => requestEvent(request.name, o)) : [];
+  }
+  if (source.kind === 'routingSlip') {
+    const slip = node.routingSlips?.[source.index];
+    return slip ? SLIP_OUTCOMES.map((o) => slipEvent(slip.name, o)) : [];
+  }
+  const timer = node.timers?.[source.index];
+  return timer?.action === 'schedule' && timer.name ? [timer.name] : [];
+}
+
+/** The outcomes of `source` that no transition leaving the state reacts to yet. */
+export function missingOutcomes(d: Diagram, nodeId: string, source: OutcomeSource): string[] {
+  const node = d.nodes.find((n) => n.id === nodeId);
+  if (!node || !hasOutput(node.type)) return [];
+  const handled = new Set(d.edges.filter((e) => e.source === nodeId).map((e) => e.event));
+  return outcomeEventsOf(node, source).filter((event) => !handled.has(event));
+}
+
+/**
+ * Adds a transition to a new state for each outcome of a request, routing slip or scheduled timeout
+ * that the state does not react to yet, with the event filled in. `null` if there is nothing to add.
+ */
+export function addOutcomeTransitions(
+  d: Diagram,
+  nodeId: string,
+  source: OutcomeSource,
+): Diagram | null {
+  const events = missingOutcomes(d, nodeId, source);
+  if (!events.length) return null;
+  return events.reduce<Diagram>(
+    (current, event) => appendNode(current, nodeId, 'state', { event })?.diagram ?? current,
+    d,
+  );
 }
 
 export function updateNode(d: Diagram, id: string, patch: NodePatch): Diagram {
@@ -123,6 +197,34 @@ export function retargetEdge(d: Diagram, edgeId: string, target: string): Diagra
   const duplicate = d.edges.some((e) => e.id !== edgeId && sameTransition(e, { ...edge, target }));
   if (duplicate) return null;
   return { ...d, edges: d.edges.map((e) => (e.id === edgeId ? { ...e, target } : e)) };
+}
+
+/**
+ * Sets the event of a transition; an empty text removes it. `null` if the transition is unknown or
+ * it would then duplicate another one (same states, kind, event and guard).
+ */
+export function setEdgeEvent(
+  d: Diagram,
+  edgeId: string,
+  event: string | undefined,
+): Diagram | null {
+  const edge = d.edges.find((e) => e.id === edgeId);
+  if (!edge) return null;
+  const value = event?.trim() || undefined;
+  if (value === edge.event) return d;
+  const duplicate = d.edges.some(
+    (e) => e.id !== edgeId && sameTransition(e, { ...edge, event: value }),
+  );
+  if (duplicate) return null;
+  return {
+    ...d,
+    edges: d.edges.map((e) =>
+      // Without an event there is nothing left for "from <source>" to describe.
+      e.id === edgeId
+        ? withoutUndefined({ ...e, event: value, ...(value ? {} : { eventSource: undefined }) })
+        : e,
+    ),
+  };
 }
 
 /** Sets the saga's name and/or description; an empty text removes it. */

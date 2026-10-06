@@ -220,6 +220,11 @@
                 [finding]="ui.severityOf(edge.id)"
                 [highlight]="ui.highlightOf(edge.id)"
                 [badge]="path.badges().get(edge.id)"
+                [editing]="isEditing('edge', edge.id)"
+                suggestionList="canvas-event-suggestions"
+                (editRequested)="startEditing('edge', edge.id)"
+                (eventCommitted)="commitEvent(edge.id, $event)"
+                (editEnded)="endEditing('edge', edge.id)"
                 (selectRequested)="selectEdge(edge.id)"
               />
             }
@@ -256,6 +261,10 @@
             [expanded]="layout.expanded().has(node.id)"
             (expandToggled)="layout.toggleExpanded(node.id)"
             [decision]="layout.decisions().has(node.id)"
+            [editing]="isEditing('node', node.id)"
+            (editRequested)="startEditing('node', node.id)"
+            (nameCommitted)="commitName(node.id, $event)"
+            (editEnded)="endEditing('node', node.id)"
             [direction]="store.direction()"
             [attr.aria-label]="nodeLabel(node)"
           />
@@ -281,6 +290,11 @@
                 [highlight]="ui.highlightOf(edge.id)"
                 [badge]="path.badges().get(edge.id)"
                 [insertable]="insertShown()"
+                [editing]="isEditing('edge', edge.id)"
+                suggestionList="canvas-event-suggestions"
+                (editRequested)="startEditing('edge', edge.id)"
+                (eventCommitted)="commitEvent(edge.id, $event)"
+                (editEnded)="endEditing('edge', edge.id)"
                 (selectRequested)="selectEdge(edge.id)"
                 (inserted)="insert(edge.id, $event)"
               />
@@ -307,6 +321,7 @@
             ></span>
             <app-add-step-button
               [types]="appendTypes"
+              [from]="slot.sourceId"
               label="Add the next state"
               (picked)="append(slot.sourceId, $event)"
             />
@@ -315,6 +330,35 @@
       </f-canvas>
       <f-minimap class="minimap" [fMinSize]="2000" />
     </f-flow>
+
+    @if (keyboardAdd(); as add) {
+      <ng-template
+        cdkConnectedOverlay
+        cdkConnectedOverlayHasBackdrop
+        cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+        [cdkConnectedOverlayOrigin]="add.origin"
+        [cdkConnectedOverlayOpen]="true"
+        [cdkConnectedOverlayPositions]="addPositions"
+        [cdkConnectedOverlayPush]="true"
+        (backdropClick)="closeKeyboardAdd()"
+        (detach)="closeKeyboardAdd()"
+      >
+        <app-state-prompt
+          [(type)]="addType"
+          [types]="appendTypes"
+          [suggestions]="addSuggestions()"
+          (committed)="commitKeyboardAdd(add.sourceId, $event)"
+          (cancelled)="commitKeyboardAdd(add.sourceId)"
+        />
+      </ng-template>
+    }
+
+    <!-- Outside the canvas, which scales and moves what is in it. -->
+    <datalist id="canvas-event-suggestions">
+      @for (suggestion of eventSuggestions(); track suggestion) {
+        <option [value]="suggestion"></option>
+      }
+    </datalist>
 
     @if (store.nodes().length === 0) {
       <div class="empty-state">
@@ -464,6 +508,17 @@
       >
         <app-icon name="oneToOne" />
       </button>
+      <div class="divider"></div>
+      <button
+        type="button"
+        class="icon-button"
+        (click)="shortcutsDialog().open()"
+        aria-haspopup="dialog"
+        aria-label="Keyboard shortcuts"
+        title="Keyboard shortcuts (?)"
+      >
+        <app-icon name="help" />
+      </button>
     </div>
   </div>
 
@@ -486,3 +541,4 @@
 <app-new-diagram-dialog />
 <app-import-dialog />
 <app-generate-dialog />
+<app-shortcuts-dialog />

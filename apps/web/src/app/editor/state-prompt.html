@@ -1,0 +1,54 @@
+<form
+  class="prompt"
+  role="group"
+  [attr.aria-label]="'New ' + info[type()].label.toLowerCase()"
+  (submit)="commit($event)"
+  (keydown)="onKeydown($event)"
+>
+  <header>New {{ info[type()].label.toLowerCase() }}</header>
+  @if (types().length > 1) {
+    <fieldset class="types">
+      <legend class="visually-hidden">Type</legend>
+      @for (option of types(); track option) {
+        <label class="type" [attr.data-type]="option" [title]="info[option].description">
+          <input
+            type="radio"
+            [name]="uid + '-type'"
+            [value]="option"
+            [checked]="option === type()"
+            (change)="type.set(option)"
+          />
+          <span>{{ info[option].label }}</span>
+        </label>
+      }
+    </fieldset>
+  }
+  <label>
+    <span>{{ eventLabel() }}</span>
+    <input
+      #firstField
+      type="text"
+      name="event"
+      autocomplete="off"
+      placeholder="e.g. PaymentCharged"
+      [attr.list]="uid + '-events'"
+    />
+  </label>
+  <datalist [id]="uid + '-events'">
+    @for (suggestion of suggestions(); track suggestion) {
+      <option [value]="suggestion"></option>
+    }
+  </datalist>
+  <label>
+    <span>Name</span>
+    <input
+      #nameField
+      type="text"
+      name="name"
+      autocomplete="off"
+      [placeholder]="info[type()].label"
+    />
+  </label>
+  <small>Enter adds it; leave a field empty for the default.</small>
+  <button type="submit" class="primary">Add</button>
+</form>
