@@ -6,6 +6,23 @@
   (keydown)="onKeydown($event)"
 >
   <header>New {{ info[type()].label.toLowerCase() }}</header>
+  @if (types().length > 1) {
+    <fieldset class="types">
+      <legend class="visually-hidden">Type</legend>
+      @for (option of types(); track option) {
+        <label class="type" [attr.data-type]="option" [title]="info[option].description">
+          <input
+            type="radio"
+            [name]="uid + '-type'"
+            [value]="option"
+            [checked]="option === type()"
+            (change)="type.set(option)"
+          />
+          <span>{{ info[option].label }}</span>
+        </label>
+      }
+    </fieldset>
+  }
   <label>
     <span>{{ eventLabel() }}</span>
     <input

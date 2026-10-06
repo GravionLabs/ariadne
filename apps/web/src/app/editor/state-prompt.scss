@@ -38,6 +38,56 @@
     }
   }
 
+  .types {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .type {
+    position: relative;
+    flex: 1;
+    color: var(--c-text);
+
+    input {
+      position: absolute;
+      opacity: 0;
+      inset: 0;
+    }
+
+    span {
+      display: block;
+      padding: 5px 6px;
+      font-size: 12px;
+      text-align: center;
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+    }
+
+    input:checked + span {
+      color: var(--c-on-primary);
+      background: var(--c-primary);
+      border-color: var(--c-primary);
+    }
+
+    input:focus-visible + span {
+      outline: 2px solid var(--c-focus);
+      outline-offset: 2px;
+    }
+  }
+
   small {
     color: var(--c-text-subtle);
     font-size: 11px;

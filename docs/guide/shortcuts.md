@@ -15,7 +15,7 @@
 | `Esc`                       | Clear the selection                                                                           |
 | `Delete`                    | Remove the selection                                                                          |
 | `+`, `-`, `0`               | Zoom in, out, reset                                                                           |
-| `Enter` on a "+" button     | Open the picker                                                                               |
+| `Enter` on a "+" button     | Open the add prompt                                                                           |
 | `Enter` in the add prompt   | Add the state with the event and name typed; `Esc` adds it with the defaults                  |
 
 On macOS, `Cmd` replaces `Ctrl`. Typing in a field keeps its own undo history, so `Ctrl+Z` there does not undo the

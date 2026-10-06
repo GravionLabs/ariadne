@@ -169,9 +169,6 @@ const VIEWS: View[] = [
       await e.click(
         e.el.querySelector<HTMLButtonElement>('.slot [aria-label="Add the next state"]')!,
       );
-      await e.click(
-        document.querySelector<HTMLButtonElement>('.cdk-overlay-pane .option[data-type="state"]')!,
-      );
     },
   },
   {

@@ -19,12 +19,12 @@ diagram or take a screenshot. Nothing else changes (you can still select, use th
 until you switch it off or close the editor: the editor always opens in edit mode. Exports never contain the "+"
 buttons.
 
-**Adding a state:** the "+" after a state (or on a transition) opens a picker; after you pick the type, the same
-popover asks for the **event** of the new transition (with the suggestions of the inspector's Event field) and the
-**name** of the new state. The event field has the focus; `Enter` adds everything as one undo step. `Esc`, or leaving
-the fields empty, adds the state with the default name and no event. "To a new state" and "To a final state" in the
-inspector ask the same way. On a transition A → B the event you give belongs to the transition from the new state to B;
-the one into it keeps its own.
+**Adding a state:** the "+" after a state (or on a transition) opens a popover for a new **state**, with a switch for
+a join or a final state. It asks for the **event** of the new transition (with the suggestions of the inspector's Event
+field) and the **name** of the new state. The event field has the focus; `Enter` adds everything as one undo step.
+`Esc`, or leaving the fields empty, adds the state with the default name and no event. "To a new state" and "To a
+final state" in the inspector ask the same way. On a transition A → B the event you give belongs to the transition from
+the new state to B; the one into it keeps its own.
 
 ## States
 

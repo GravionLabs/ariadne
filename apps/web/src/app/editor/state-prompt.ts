@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   input,
+  model,
   output,
   viewChild,
   inject,
@@ -15,7 +16,8 @@ let nextId = 0;
 /**
  * The two questions asked when a state is added: the event of its transition and its name. Enter
  * commits whatever is typed (empty fields give the default name and no event), Escape gives that
- * default result too; the parent decides what leaving the popover otherwise means.
+ * default result too; the parent decides what leaving the popover otherwise means. With more than one
+ * type to choose from, a switch at the top changes what is added.
  */
 @Component({
   selector: 'app-state-prompt',
@@ -23,7 +25,9 @@ let nextId = 0;
   styleUrl: './state-prompt.scss',
 })
 export class StatePrompt implements AfterViewInit {
-  readonly type = input.required<NodeType>();
+  readonly type = model.required<NodeType>();
+  /** The types to switch between; with fewer than two there is no switch. */
+  readonly types = input<readonly NodeType[]>([]);
   readonly suggestions = input<readonly string[]>([]);
   /** Label of the event field; it differs when the state is inserted into a transition. */
   readonly eventLabel = input('Event');

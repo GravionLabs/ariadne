@@ -2,7 +2,6 @@ import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angul
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { FFlowModule } from '@foblex/flow';
 import { Icon } from './icon';
-import { NODE_TYPES } from './node-types';
 import { NewStateInit, NodeType, suggestEvents } from '@ariadne/core';
 import { DiagramStore } from '../model/diagram-store';
 import { StatePrompt } from './state-prompt';
@@ -14,8 +13,8 @@ export interface NewStep {
 }
 
 /**
- * Round "+" that opens a picker of node types, then asks for the event and the name of the new
- * state in the same popover; used after states and on transitions.
+ * Round "+" that opens one popover asking for the event and the name of a new state, with a switch
+ * for the other types (join, final state); used after states and on transitions.
  */
 @Component({
   selector: 'app-add-step-button',
@@ -33,10 +32,9 @@ export class AddStepButton {
 
   private readonly diagram = inject(DiagramStore);
   protected readonly suggestions = computed(() => suggestEvents(this.diagram.diagram()));
-  /** The type picked, while the popover asks for the event and the name. */
-  protected readonly chosen = signal<NodeType | null>(null);
+  /** The type the popover will add: the first one until the switch says otherwise. */
+  protected readonly chosen = signal<NodeType>('state');
 
-  protected readonly info = NODE_TYPES;
   protected readonly isOpen = signal(false);
   protected readonly positions: ConnectedPosition[] = [
     { originX: 'center', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 10 },
@@ -54,28 +52,21 @@ export class AddStepButton {
       this.close();
       return;
     }
-    // With a single choice there is nothing to pick from.
-    const [only, ...rest] = this.types();
-    this.chosen.set(only && rest.length === 0 ? only : null);
+    this.chosen.set(this.types()[0] ?? 'state');
     this.isOpen.set(true);
   }
 
   protected close(): void {
     this.isOpen.set(false);
-    this.chosen.set(null);
-  }
-
-  protected pick(type: NodeType): void {
-    this.chosen.set(type);
   }
 
   /** Enter in the prompt, or Escape: Escape adds the state with the defaults. */
-  protected add(type: NodeType, init?: NewStateInit): void {
+  protected add(init?: NewStateInit): void {
     this.close();
-    this.picked.emit({ type, init });
+    this.picked.emit({ type: this.chosen(), init });
   }
 
   protected onOverlayKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && !this.chosen()) this.close();
+    if (event.key === 'Escape') this.close();
   }
 }
