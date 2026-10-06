@@ -1131,6 +1131,16 @@ describe('Editor', () => {
       expect(field?.value).toBe('Go');
     });
 
+    it('ignores a keydown that has no key (autofill)', async () => {
+      const { store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+      const event = new KeyboardEvent('keydown', { bubbles: true });
+      Object.defineProperty(event, 'key', { value: undefined });
+      expect(() => window.dispatchEvent(event)).not.toThrow();
+    });
+
     it('does nothing in a field, with a modifier, on a final state, without a selection or while a path is shown', async () => {
       const { el, store, settle, select, promptForm } = await setup();
       store.appendNode('start-1', 'state');

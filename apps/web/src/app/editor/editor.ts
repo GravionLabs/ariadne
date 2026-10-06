@@ -341,7 +341,8 @@ export class Editor {
    */
   private onShortcut(event: KeyboardEvent): boolean {
     if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return false;
-    const key = event.key.toLowerCase();
+    // Autofill and some input methods send a keydown without a key.
+    const key = event.key?.toLowerCase();
     if (key !== 'n' && key !== 'f' && key !== 'e') return false;
     if (isTextEntry(event.target) || this.walking() || this.keyboardAdd()) return false;
     const target = event.target;
@@ -586,7 +587,7 @@ export class Editor {
     }
     // The host handles save, open and undo itself, on the document.
     if (this.embedded || !(event.ctrlKey || event.metaKey)) return;
-    const key = event.key.toLowerCase();
+    const key = event.key?.toLowerCase();
     // Typing in a text field has its own undo history, and Ctrl+Z there must not undo the diagram.
     const typing = isTextEntry(event.target);
     if (key === 's' || key === 'o') {
