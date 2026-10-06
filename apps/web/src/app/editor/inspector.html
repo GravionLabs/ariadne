@@ -646,9 +646,7 @@
               </select>
             </div>
             @if (
-              edge.event &&
-                !eventSuggestions().includes(edge.event) &&
-                namingHint('event', edge.event);
+              edge.event && !outcomes().includes(edge.event) && namingHint('event', edge.event);
               as hint
             ) {
               <p class="hint">{{ hint }}</p>
@@ -745,7 +743,7 @@
       }
     </datalist>
     @if (
-      edge.event && !eventSuggestions().includes(edge.event) && namingHint('event', edge.event);
+      edge.event && !outcomes().includes(edge.event) && namingHint('event', edge.event);
       as hint
     ) {
       <p class="hint">{{ hint }}</p>

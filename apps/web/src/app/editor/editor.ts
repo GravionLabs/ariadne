@@ -308,8 +308,12 @@ export class Editor {
     if (id) this.ui.selectNode(id);
   }
 
-  /** Suggestions for an event typed on the canvas. */
-  protected readonly eventSuggestions = computed(() => suggestEvents(this.store.diagram()));
+  /** Suggestions for the event being typed on the canvas. */
+  protected readonly eventSuggestions = computed(() => {
+    const editing = this.ui.editing();
+    const edge = editing?.kind === 'edge' ? this.edgesById().get(editing.id) : undefined;
+    return suggestEvents(this.store.diagram(), { from: edge?.source, edge: edge?.id });
+  });
 
   protected isEditing(kind: 'node' | 'edge', id: string): boolean {
     const editing = this.ui.editing();

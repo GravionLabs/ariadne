@@ -45,6 +45,7 @@ import {
   SLIP_OUTCOMES,
   compensationOrder,
   hasRoutingSlips,
+  outcomeEvents,
   suggestEvents,
   slipEvent,
 } from '@ariadne/core';
@@ -417,8 +418,20 @@ export class Inspector {
       .map((n) => n.name);
   });
 
-  /** Events worth offering for a transition: the outcomes of requests, and scheduled timeouts. */
-  protected readonly eventSuggestions = computed(() => suggestEvents(this.store.diagram()));
+  /**
+   * Events worth offering for a transition of the selected state, or for the selected transition:
+   * what its source state makes possible first (see `suggestEvents`).
+   */
+  protected readonly eventSuggestions = computed(() => {
+    const edge = this.edge();
+    return suggestEvents(this.store.diagram(), {
+      from: edge?.source ?? this.node()?.id,
+      edge: edge?.id,
+    });
+  });
+
+  /** Names the diagram itself gives events: they need no naming hint. */
+  protected readonly outcomes = computed(() => outcomeEvents(this.store.diagram()));
 
   protected eventEnds(outcome: string): boolean {
     return !!this.edge()?.event?.endsWith(`.${outcome}`);

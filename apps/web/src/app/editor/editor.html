@@ -321,6 +321,7 @@
             ></span>
             <app-add-step-button
               [types]="appendTypes"
+              [from]="slot.sourceId"
               label="Add the next state"
               (picked)="append(slot.sourceId, $event)"
             />

@@ -71,6 +71,11 @@ as the transition's own Event field) and its target; to give the branches of a d
 need to select each transition in turn. An event that would duplicate another transition of the same states is
 refused and the old one put back.
 
+The Event field suggests, first, what the source state makes possible (the outcomes of its requests and routing slips,
+its scheduled timeouts), then the same for the other states, the events the saga publishes, the events of other
+transitions and the events known from code (a C# import). An event another transition leaving the same state already
+reacts to is left out.
+
 A transition back to the same state is a loop (a retry). A **compensation** transition is drawn differently and is not
 laid out; use it for the path back after a failure.
 

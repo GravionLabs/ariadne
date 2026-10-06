@@ -553,6 +553,29 @@ describe('Editor', () => {
     expect(el.querySelector('app-inspector .origin')?.textContent).toContain('State');
   });
 
+  it("suggests the source state's own events first, then the events of the diagram, without taken ones", async () => {
+    const { el, store, select } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'state');
+    store.appendNode('state-1', 'end');
+    store.updateNode('state-1', {
+      requests: [{ name: 'CheckStock' }],
+      activities: [{ kind: 'event', name: 'StockChecked' }],
+    });
+    store.updateEdge('edge-2', { event: 'CheckStock.Completed' });
+    store.updateEdge('edge-1', { event: 'OrderPlaced' });
+    await select([], ['edge-3']);
+    const options = () =>
+      [...el.querySelectorAll<HTMLOptionElement>('#event-suggestions option')].map((o) => o.value);
+
+    // CheckStock.Completed is taken by the other transition leaving state-1.
+    expect(options().slice(0, 2)).toEqual(['CheckStock.Faulted', 'CheckStock.TimeoutExpired']);
+    expect(options()).not.toContain('CheckStock.Completed');
+    // Published by the saga, or used by a transition elsewhere: also offered, once.
+    expect(options()).toEqual(expect.arrayContaining(['StockChecked', 'OrderPlaced']));
+    expect(new Set(options()).size).toBe(options().length);
+  });
+
   it('starts a routing slip on a state: its itinerary, compensation order and outcomes (#399)', async () => {
     const { el, store, select, settle, fill, expand } = await setup();
     store.appendNode('start-1', 'state');

@@ -28,10 +28,14 @@ export class AddStepButton {
   readonly label = input('Add a node');
   /** The event field asks for the transition into the next state, not the one into the new one. */
   readonly eventLabel = input('Event');
+  /** The state the new transition leaves, if it is known: its own events are suggested first. */
+  readonly from = input<string>();
   readonly picked = output<NewStep>();
 
   private readonly diagram = inject(DiagramStore);
-  protected readonly suggestions = computed(() => suggestEvents(this.diagram.diagram()));
+  protected readonly suggestions = computed(() =>
+    suggestEvents(this.diagram.diagram(), { from: this.from() }),
+  );
   /** The type the popover will add: the first one until the switch says otherwise. */
   protected readonly chosen = signal<NodeType>('state');
 

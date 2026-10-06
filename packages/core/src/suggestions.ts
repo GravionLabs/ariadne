@@ -1,11 +1,57 @@
-import { Diagram, REQUEST_OUTCOMES, SLIP_OUTCOMES, requestEvent, slipEvent } from './diagram';
+import {
+  Diagram,
+  DiagramNode,
+  REQUEST_OUTCOMES,
+  SLIP_OUTCOMES,
+  requestEvent,
+  slipEvent,
+} from './diagram';
 
-/** Events worth offering for a transition: the outcomes of requests and routing slips, scheduled timeouts, joins. */
-export function suggestEvents(d: Diagram): string[] {
-  return d.nodes.flatMap((n) => [
-    ...(n.requests ?? []).flatMap((r) => REQUEST_OUTCOMES.map((o) => requestEvent(r.name, o))),
-    ...(n.routingSlips ?? []).flatMap((s) => SLIP_OUTCOMES.map((o) => slipEvent(s.name, o))),
-    ...(n.timers ?? []).filter((t) => t.action === 'schedule').map((t) => t.name),
-    ...(n.type === 'join' ? [n.name] : []),
-  ]);
+export interface SuggestOptions {
+  /** The state the transition leaves: what it makes possible comes first. */
+  from?: string;
+  /** The transition being edited, whose own event does not count as taken. */
+  edge?: string;
+}
+
+/** What a state makes possible: the outcomes of its requests and routing slips, its scheduled timeouts. */
+const ownEvents = (n: DiagramNode): string[] => [
+  ...(n.requests ?? []).flatMap((r) => REQUEST_OUTCOMES.map((o) => requestEvent(r.name, o))),
+  ...(n.routingSlips ?? []).flatMap((s) => SLIP_OUTCOMES.map((o) => slipEvent(s.name, o))),
+  ...(n.timers ?? []).filter((t) => t.action === 'schedule').map((t) => t.name),
+];
+
+/**
+ * The events the diagram itself gives names to: the outcomes of requests and routing slips,
+ * scheduled timeouts and joins. They need no naming hint, whatever they are called.
+ */
+export const outcomeEvents = (d: Diagram): string[] => [
+  ...d.nodes.flatMap(ownEvents),
+  ...d.nodes.flatMap((n) => (n.type === 'join' ? [n.name] : [])),
+];
+
+/**
+ * Events worth offering for a transition, best first: what the source state makes possible, then the
+ * same of every other state and the events of joins, the events the saga publishes, the events of
+ * other transitions, and the events known from code (`events`, from a C# import). Without
+ * duplicates, and without an event another transition leaving the same state already reacts to.
+ */
+export function suggestEvents(d: Diagram, { from, edge }: SuggestOptions = {}): string[] {
+  const source = from ? d.nodes.find((n) => n.id === from) : undefined;
+  const taken = new Set(
+    from
+      ? d.edges.filter((e) => e.source === from && e.id !== edge).flatMap((e) => e.event ?? [])
+      : [],
+  );
+  const all = [
+    ...(source ? ownEvents(source) : []),
+    ...d.nodes.flatMap(ownEvents),
+    ...d.nodes.flatMap((n) => (n.type === 'join' ? [n.name] : [])),
+    ...d.nodes.flatMap((n) =>
+      (n.activities ?? []).filter((a) => a.kind === 'event').map((a) => a.name),
+    ),
+    ...d.edges.flatMap((e) => e.event ?? []),
+    ...(d.events ?? []).map((e) => e.name),
+  ];
+  return [...new Set(all)].filter((event) => event && !taken.has(event));
 }
