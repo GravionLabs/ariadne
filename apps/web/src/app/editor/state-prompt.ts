@@ -6,7 +6,6 @@ import {
   model,
   output,
   viewChild,
-  inject,
 } from '@angular/core';
 import { NewStateInit, NodeType, namingHint } from '@ariadne/core';
 import { NODE_TYPES } from './node-types';
@@ -38,7 +37,7 @@ export class StatePrompt implements AfterViewInit {
   protected readonly uid = `state-prompt-${nextId++}`;
   protected readonly namingHint = namingHint;
   private readonly firstField = viewChild.required<ElementRef<HTMLInputElement>>('firstField');
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly nameField = viewChild.required<ElementRef<HTMLInputElement>>('nameField');
 
   ngAfterViewInit(): void {
     this.firstField().nativeElement.focus();
@@ -46,9 +45,10 @@ export class StatePrompt implements AfterViewInit {
 
   protected commit(event: Event): void {
     event.preventDefault();
-    const field = (name: string): string =>
-      (this.host.nativeElement.querySelector(`[name=${name}]`) as HTMLInputElement).value;
-    this.committed.emit({ event: field('event'), name: field('name') });
+    this.committed.emit({
+      event: this.firstField().nativeElement.value,
+      name: this.nameField().nativeElement.value,
+    });
   }
 
   protected onKeydown(event: KeyboardEvent): void {

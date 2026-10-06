@@ -218,7 +218,12 @@ export function setEdgeEvent(
   if (duplicate) return null;
   return {
     ...d,
-    edges: d.edges.map((e) => (e.id === edgeId ? withoutUndefined({ ...e, event: value }) : e)),
+    edges: d.edges.map((e) =>
+      // Without an event there is nothing left for "from <source>" to describe.
+      e.id === edgeId
+        ? withoutUndefined({ ...e, event: value, ...(value ? {} : { eventSource: undefined }) })
+        : e,
+    ),
   };
 }
 

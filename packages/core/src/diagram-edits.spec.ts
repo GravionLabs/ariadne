@@ -296,6 +296,16 @@ describe('setEdgeEvent', () => {
     expect('event' in cleared.edges.find((e) => e.id === 'edge-2')!).toBe(false);
   });
 
+  it('drops the source of the event together with the event', () => {
+    const d = path();
+    d.edges[0] = { ...d.edges[0], eventSource: 'Shop' };
+    const renamed = setEdgeEvent(d, 'edge-1', 'Start')!;
+    expect(renamed.edges[0]).toMatchObject({ event: 'Start', eventSource: 'Shop' });
+    const cleared = setEdgeEvent(d, 'edge-1', '')!;
+    expect('event' in cleared.edges[0]).toBe(false);
+    expect('eventSource' in cleared.edges[0]).toBe(false);
+  });
+
   it('changes nothing when the event is the same', () => {
     const d = path();
     expect(setEdgeEvent(d, 'edge-1', 'Go')).toBe(d);

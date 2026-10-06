@@ -1,11 +1,5 @@
-import {
-  Diagram,
-  DiagramNode,
-  REQUEST_OUTCOMES,
-  SLIP_OUTCOMES,
-  requestEvent,
-  slipEvent,
-} from './diagram';
+import { Diagram, DiagramNode } from './diagram';
+import { outcomeEventsOf } from './diagram-edits';
 
 export interface SuggestOptions {
   /** The state the transition leaves: what it makes possible comes first. */
@@ -15,11 +9,16 @@ export interface SuggestOptions {
 }
 
 /** What a state makes possible: the outcomes of its requests and routing slips, its scheduled timeouts. */
-const ownEvents = (n: DiagramNode): string[] => [
-  ...(n.requests ?? []).flatMap((r) => REQUEST_OUTCOMES.map((o) => requestEvent(r.name, o))),
-  ...(n.routingSlips ?? []).flatMap((s) => SLIP_OUTCOMES.map((o) => slipEvent(s.name, o))),
-  ...(n.timers ?? []).filter((t) => t.action === 'schedule').map((t) => t.name),
-];
+const ownEvents = (n: DiagramNode): string[] =>
+  (
+    [
+      ['request', n.requests],
+      ['routingSlip', n.routingSlips],
+      ['timer', n.timers],
+    ] as const
+  ).flatMap(([kind, rows]) =>
+    (rows ?? []).flatMap((_, index) => outcomeEventsOf(n, { kind, index })),
+  );
 
 /**
  * The events the diagram itself gives names to: the outcomes of requests and routing slips,

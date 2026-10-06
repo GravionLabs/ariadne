@@ -41,7 +41,13 @@
   </datalist>
   <label>
     <span>Name</span>
-    <input type="text" name="name" autocomplete="off" [placeholder]="info[type()].label" />
+    <input
+      #nameField
+      type="text"
+      name="name"
+      autocomplete="off"
+      [placeholder]="info[type()].label"
+    />
   </label>
   <small>Enter adds it; leave a field empty for the default.</small>
   <button type="submit" class="primary">Add</button>

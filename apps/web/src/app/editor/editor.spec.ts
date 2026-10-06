@@ -1143,6 +1143,23 @@ describe('Editor', () => {
       expect(() => window.dispatchEvent(event)).not.toThrow();
     });
 
+    it('does not take the focus from the field the user moved on to', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+      await settle();
+      const other = document.createElement('input');
+      document.body.append(other);
+      other.focus();
+      document.querySelector('app-inline-edit input')!.dispatchEvent(new Event('blur'));
+      await settle();
+      expect(document.activeElement).toBe(other);
+      expect(el.querySelector('app-inline-edit')).toBeNull();
+      other.remove();
+    });
+
     it('does nothing in a field, with a modifier, on a final state, without a selection or while a path is shown', async () => {
       const { el, store, settle, select, promptForm } = await setup();
       store.appendNode('start-1', 'state');
@@ -1156,6 +1173,8 @@ describe('Editor', () => {
       press('n', { ctrlKey: true });
       press('n', { metaKey: true });
       press('n', { altKey: true });
+      // A focused button keeps its keys.
+      press('n', {}, el.querySelector('f-flow .add-trigger')!);
       await settle();
       expect(promptForm()).toBeNull();
       input.remove();

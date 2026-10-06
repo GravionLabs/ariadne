@@ -352,6 +352,8 @@ export class Editor {
     const inDiagram =
       !(target instanceof Node) || target === document.body || (!!flow && flow.contains(target));
     if (!inDiagram || !flow) return false;
+    // The "+" and expand buttons keep their own keys; a transition's label card is the selection.
+    if (target instanceof Element && target.closest('button:not(.card), a, summary')) return false;
     if (key === 'e') {
       const edge = this.ui.selectedEdge();
       if (!edge) return false;
@@ -396,6 +398,7 @@ export class Editor {
 
   /** Enter or blur in the field: an empty state name puts the old one back, as in the inspector. */
   protected commitName(id: string, name: string): void {
+    if (this.walking()) return;
     const trimmed = name.trim();
     const node = this.store.nodes().find((n) => n.id === id);
     if (node && trimmed && trimmed !== node.name) this.store.updateNode(id, { name: trimmed });
@@ -403,6 +406,7 @@ export class Editor {
 
   /** A transition that would duplicate another one keeps its old event. */
   protected commitEvent(edgeId: string, event: string): void {
+    if (this.walking()) return;
     this.store.setEdgeEvent(edgeId, event);
   }
 
@@ -415,9 +419,15 @@ export class Editor {
 
   /** Gives the focus back to the diagram, e.g. after a field or the add popover went away. */
   private focusDiagram(): void {
-    afterNextRender(() => (this.flow()?.hostElement as HTMLElement | undefined)?.focus(), {
-      injector: this.injector,
-    });
+    afterNextRender(
+      () => {
+        // Not when the user has already moved on to another field (a blur committed the edit).
+        const active = document.activeElement;
+        if (active && active !== document.body) return;
+        (this.flow()?.hostElement as HTMLElement | undefined)?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   private focusInspectorEvent(): void {
