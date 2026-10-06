@@ -1,5 +1,7 @@
 # Keyboard shortcuts
 
+The **?** button at the end of the toolbox, or the `?` key, shows this list in the editor.
+
 | Keys                        | Does                                                                                           |
 | --------------------------- | ---------------------------------------------------------------------------------------------- |
 | `Ctrl+O`                    | Open a diagram                                                                                 |
@@ -22,6 +24,7 @@
 | `+`, `-`, `0`               | Zoom in, out, reset                                                                            |
 | `Enter` on a "+" button     | Open the add prompt                                                                            |
 | `Enter` in the add prompt   | Add the state with the event and name typed; `Esc` adds it with the defaults                   |
+| `?`                         | Show these shortcuts                                                                           |
 
 `N`, `F`, `C` and `E` do nothing while you type in a field, while walking through the saga or viewing a path, or with a
 modifier key held.

@@ -191,6 +191,15 @@ const VIEWS: View[] = [
     },
   },
   {
+    name: 'the keyboard shortcuts dialog',
+    shown: 'app-shortcuts-dialog dialog[open]',
+    show: async (e) => {
+      await e.click(
+        e.el.querySelector<HTMLButtonElement>('button[aria-label="Keyboard shortcuts"]')!,
+      );
+    },
+  },
+  {
     name: 'the export menu',
     shown: '.cdk-overlay-pane [role=menuitem]',
     show: async (e) => {

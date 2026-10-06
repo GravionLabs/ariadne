@@ -50,6 +50,7 @@ import { findSample, sampleDiagram } from '../samples';
 import { GenerateDialog } from './generate-dialog';
 import { ImportDialog } from './import-dialog';
 import { NewDiagramDialog } from './new-diagram-dialog';
+import { ShortcutsDialog } from './shortcuts-dialog';
 import { ProblemsMenu } from './problems-menu';
 import { SourcePanel } from './source-panel';
 import { NodeCard } from './node-card';
@@ -101,6 +102,7 @@ const OBSCURING =
     GenerateDialog,
     ImportDialog,
     NewDiagramDialog,
+    ShortcutsDialog,
     NodeCard,
     ProblemsMenu,
     SourcePanel,
@@ -134,6 +136,7 @@ export class Editor {
   /** Walking through the saga or looking at a path: the diagram is read-only. */
   protected readonly walking = computed(() => this.walk.active() || this.path.active());
   private readonly newDialog = viewChild.required(NewDiagramDialog);
+  protected readonly shortcutsDialog = viewChild.required(ShortcutsDialog);
   private readonly importDialog = viewChild.required(ImportDialog);
   private readonly generateDialog = viewChild.required(GenerateDialog);
   private readonly sagaImport = inject(SagaImport);
@@ -590,6 +593,13 @@ export class Editor {
   protected onKeydown(event: KeyboardEvent): void {
     if (event.key === 'F2') {
       this.onRename(event);
+      return;
+    }
+    // `?` shows the shortcuts, from the diagram and the toolbar, not while typing in a field.
+    if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      if (isTextEntry(event.target)) return;
+      this.shortcutsDialog().open();
+      event.preventDefault();
       return;
     }
     if (this.onShortcut(event)) {

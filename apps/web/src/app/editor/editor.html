@@ -508,6 +508,17 @@
       >
         <app-icon name="oneToOne" />
       </button>
+      <div class="divider"></div>
+      <button
+        type="button"
+        class="icon-button"
+        (click)="shortcutsDialog().open()"
+        aria-haspopup="dialog"
+        aria-label="Keyboard shortcuts"
+        title="Keyboard shortcuts (?)"
+      >
+        <app-icon name="help" />
+      </button>
     </div>
   </div>
 
@@ -530,3 +541,4 @@
 <app-new-diagram-dialog />
 <app-import-dialog />
 <app-generate-dialog />
+<app-shortcuts-dialog />

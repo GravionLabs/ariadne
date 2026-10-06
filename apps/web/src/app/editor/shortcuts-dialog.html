@@ -1,0 +1,37 @@
+<dialog #dialog aria-labelledby="shortcuts-title">
+  <div class="dialog">
+    <header>
+      <h2 id="shortcuts-title">Keyboard shortcuts</h2>
+      <button type="button" class="close" aria-label="Close" (click)="close()">×</button>
+    </header>
+    @for (group of groups; track group.title) {
+      <table>
+        <caption>
+          {{
+            group.title
+          }}
+        </caption>
+        <tbody>
+          @for (shortcut of group.shortcuts; track shortcut.keys) {
+            <tr>
+              <th scope="row">
+                @for (part of keyParts(shortcut.keys); track $index; let last = $last) {
+                  @if (part.cap) {
+                    <kbd>{{ part.text }}</kbd>
+                  } @else {
+                    <span>{{ part.text }}</span>
+                  }
+                  @if (!last) {
+                    <span class="or">or</span>
+                  }
+                }
+              </th>
+              <td>{{ shortcut.does }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+    <p class="note">On macOS, Cmd replaces Ctrl. Typing in a field keeps its own shortcuts.</p>
+  </div>
+</dialog>

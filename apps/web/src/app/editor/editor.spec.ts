@@ -1085,6 +1085,45 @@ describe('Editor', () => {
     });
   });
 
+  describe('the shortcuts dialog', () => {
+    const dialog = (el: HTMLElement) =>
+      el.querySelector<HTMLDialogElement>('app-shortcuts-dialog dialog')!;
+
+    it('opens from the "?" button, lists the shortcuts and closes with the close button', async () => {
+      const { el, settle } = await setup();
+      const button = el.querySelector<HTMLButtonElement>(
+        'button[aria-label="Keyboard shortcuts"]',
+      )!;
+      expect(dialog(el).open).toBe(false);
+      button.click();
+      await settle();
+      expect(dialog(el).open).toBe(true);
+      expect(dialog(el).textContent).toContain('Ctrl+Z');
+      expect(dialog(el).textContent).toContain('Rename the selected state');
+      el.querySelector<HTMLButtonElement>(
+        'app-shortcuts-dialog button[aria-label="Close"]',
+      )!.click();
+      await settle();
+      expect(dialog(el).open).toBe(false);
+    });
+
+    it('opens on the ? key, but not while typing in a field', async () => {
+      const { el, settle } = await setup();
+      const input = document.createElement('input');
+      document.body.append(input);
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true }));
+      await settle();
+      expect(dialog(el).open).toBe(false);
+      input.remove();
+
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: '?', shiftKey: true, bubbles: true }),
+      );
+      await settle();
+      expect(dialog(el).open).toBe(true);
+    });
+  });
+
   describe('keyboard shortcuts for adding and editing', () => {
     const press = (key: string, init: KeyboardEventInit = {}, target: EventTarget = window) =>
       target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...init }));
