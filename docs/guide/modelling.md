@@ -26,6 +26,11 @@ field) and the **name** of the new state. The event field has the focus; `Enter`
 final state" in the inspector ask the same way. On a transition A → B the event you give belongs to the transition from
 the new state to B; the one into it keeps its own.
 
+**Editing in place:** double-click a state, or select it and press `F2`, to turn its name into a text field; a
+transition's event works the same way (on its label; a transition without an event has none yet, so `F2` puts the
+cursor in the inspector's Event field). `Enter` or leaving the field commits as one undo step, `Esc` cancels, and an
+empty state name puts the old one back. It is not available while walking through the saga or viewing a path.
+
 ## States
 
 A state has a name, an optional description and colour, and optionally:

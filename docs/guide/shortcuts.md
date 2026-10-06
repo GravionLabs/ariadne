@@ -13,6 +13,7 @@
 | `Home`, `End`               | First or last state                                                                           |
 | `Ctrl+A`                    | Select everything                                                                             |
 | `Esc`                       | Clear the selection                                                                           |
+| `F2`                        | Rename the selected state, or edit the event of the selected transition, in place             |
 | `Delete`                    | Remove the selection                                                                          |
 | `+`, `-`, `0`               | Zoom in, out, reset                                                                           |
 | `Enter` on a "+" button     | Open the add prompt                                                                           |

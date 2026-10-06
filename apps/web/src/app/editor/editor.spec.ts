@@ -833,6 +833,101 @@ describe('Editor', () => {
     expect(inputs()[2].value).toBe('');
   });
 
+  describe('editing on the canvas', () => {
+    const field = () =>
+      document.querySelector<HTMLInputElement>('app-inline-edit input') as HTMLInputElement | null;
+    const key = (target: EventTarget, name: string) =>
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }));
+    const nameCard = (el: HTMLElement, text: string) =>
+      [...el.querySelectorAll<HTMLElement>('app-node-card')].find((c) =>
+        c.textContent?.includes(text),
+      )!;
+
+    it('turns the name of a state into a field on double-click; Enter commits as one undo step', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+
+      nameCard(el, 'State').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await settle();
+      expect(field()).toBeTruthy();
+      expect(field()!.value).toBe('State');
+      expect(document.activeElement).toBe(field());
+
+      field()!.value = 'Charging';
+      key(field()!, 'Enter');
+      await settle();
+      expect(field()).toBeNull();
+      expect(store.nodes()[1].name).toBe('Charging');
+      store.undo();
+      expect(store.nodes()[1].name).toBe('State');
+    });
+
+    it('opens on F2 for the selected state; Escape cancels and an empty name puts the old one back', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+      await settle();
+      field()!.value = 'Typed';
+      key(field()!, 'Escape');
+      await settle();
+      expect(field()).toBeNull();
+      expect(store.nodes()[1].name).toBe('State');
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+      await settle();
+      field()!.value = '   ';
+      field()!.dispatchEvent(new Event('blur')); // leaving the field commits
+      await settle();
+      expect(store.nodes()[1].name).toBe('State');
+      expect(el.querySelector('app-inline-edit')).toBeNull();
+    });
+
+    it('edits the event of a transition in its label card', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      store.updateEdge('edge-1', { event: 'Go' });
+      await settle();
+      await select([], ['edge-1']);
+
+      el.querySelector('app-transition-label button.card')!.dispatchEvent(
+        new MouseEvent('dblclick', { bubbles: true }),
+      );
+      await settle();
+      expect(field()!.value).toBe('Go');
+      field()!.value = 'Start';
+      key(field()!, 'Enter');
+      await settle();
+      expect(store.edges()[0].event).toBe('Start');
+      expect(el.querySelector('app-transition-label .event .text')?.textContent?.trim()).toBe(
+        'Start',
+      );
+      store.undo();
+      expect(store.edges()[0].event).toBe('Go');
+    });
+
+    it('does not edit while a path is shown', async () => {
+      const { el, store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+      [...el.querySelectorAll<HTMLButtonElement>('.menu-button')]
+        .find((b) => b.textContent?.trim() === 'Path')!
+        .click();
+      await settle();
+      expect(el.querySelector('.workspace.walking')).toBeTruthy();
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+      nameCard(el, 'State').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await settle();
+      expect(field()).toBeNull();
+    });
+  });
+
   it('draws parallel transitions with a label each, and a state that leads to itself', async () => {
     const { el, store, settle } = await setup();
     store.appendNode('start-1', 'state');

@@ -1,4 +1,15 @@
-@if (rows() > 0) {
+@if (editing() && rows() > 0) {
+  <!-- An input cannot sit inside a button. -->
+  <div class="card selected" [style.height.px]="cardHeight()">
+    <app-inline-edit
+      [value]="edge().event ?? ''"
+      [list]="suggestionList()"
+      label="Event"
+      (committed)="commitEvent($event)"
+      (cancelled)="editEnded.emit()"
+    />
+  </div>
+} @else if (rows() > 0) {
   <button
     type="button"
     class="card"
@@ -7,6 +18,7 @@
     [style.height.px]="cardHeight()"
     [attr.aria-label]="'Transition' + (edge().event ? ' on ' + label() : '')"
     (click)="selectRequested.emit()"
+    (dblclick)="editRequested.emit()"
   >
     @if (edge().event) {
       <span

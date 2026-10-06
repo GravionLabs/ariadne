@@ -63,6 +63,7 @@ import {
   inputId,
   joinEventsOf,
   labelId,
+  suggestEvents,
   nodeIdOfConnector,
   nodeSize,
   outputId,
@@ -280,6 +281,10 @@ export class Editor {
     // A link such as `?sample=order` opens that sample (not in a host, which owns the document).
     if (!this.embedded) void this.openSampleFromUrl();
     // The text was edited while walking and the path no longer holds: the walk is over.
+    // Walking through or viewing a path makes the diagram read-only: an open field is dropped.
+    effect(() => {
+      if (this.walking()) untracked(() => this.ui.stopEditing());
+    });
     effect(() => {
       if (!this.walk.valid()) untracked(() => this.closeLeftPanel());
     });
@@ -301,6 +306,65 @@ export class Editor {
     if (this.walking()) return;
     const id = this.store.insertOnEdge(edgeId, type, init);
     if (id) this.ui.selectNode(id);
+  }
+
+  /** Suggestions for an event typed on the canvas. */
+  protected readonly eventSuggestions = computed(() => suggestEvents(this.store.diagram()));
+
+  protected isEditing(kind: 'node' | 'edge', id: string): boolean {
+    const editing = this.ui.editing();
+    return editing?.kind === kind && editing.id === id;
+  }
+
+  /**
+   * Double-click or `F2`: a state's name, or a transition's event, becomes a text field. Not while
+   * walking through or viewing a path (the diagram is read-only then).
+   */
+  protected startEditing(kind: 'node' | 'edge', id: string): void {
+    if (this.walking()) return;
+    if (kind === 'edge' && !this.edgesById().get(id)?.event) {
+      // No card to edit in: the Event field of the inspector takes over.
+      this.focusInspectorEvent();
+      return;
+    }
+    this.ui.startEditing(kind, id);
+  }
+
+  /** Enter or blur in the field: an empty state name puts the old one back, as in the inspector. */
+  protected commitName(id: string, name: string): void {
+    const trimmed = name.trim();
+    const node = this.store.nodes().find((n) => n.id === id);
+    if (node && trimmed && trimmed !== node.name) this.store.updateNode(id, { name: trimmed });
+  }
+
+  /** A transition that would duplicate another one keeps its old event. */
+  protected commitEvent(edgeId: string, event: string): void {
+    this.store.setEdgeEvent(edgeId, event);
+  }
+
+  protected endEditing(kind: 'node' | 'edge', id: string): void {
+    if (!this.isEditing(kind, id)) return;
+    this.ui.stopEditing();
+    // The field is gone: keep the keyboard on what was edited.
+    afterNextRender(
+      () => {
+        const key = kind === 'node' ? id : labelId(id);
+        const flow = this.flow()?.hostElement as HTMLElement | undefined;
+        const card = flow?.querySelector<HTMLElement>(attributeSelector('data-f-node-id', key));
+        (card?.querySelector<HTMLElement>('button.card') ?? card)?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  private focusInspectorEvent(): void {
+    afterNextRender(
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLInputElement>('app-inspector input[list="event-suggestions"]')
+          ?.focus(),
+      { injector: this.injector },
+    );
   }
 
   protected addStart(): void {
@@ -451,6 +515,10 @@ export class Editor {
   }
 
   protected onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'F2') {
+      this.onRename(event);
+      return;
+    }
     // The host handles save, open and undo itself, on the document.
     if (this.embedded || !(event.ctrlKey || event.metaKey)) return;
     const key = event.key.toLowerCase();
@@ -467,6 +535,17 @@ export class Editor {
       return;
     } else if (key === 'z' && !event.shiftKey) this.store.undo();
     else if ((key === 'z' && event.shiftKey) || key === 'y') this.store.redo();
+    else return;
+    event.preventDefault();
+  }
+
+  /** `F2` on the selected state or transition: edit its name or event in place. */
+  private onRename(event: KeyboardEvent): void {
+    if (isTextEntry(event.target) || this.walking() || event.ctrlKey || event.metaKey) return;
+    const node = this.ui.selectedNode();
+    const edge = this.ui.selectedEdge();
+    if (node) this.startEditing('node', node.id);
+    else if (edge) this.startEditing('edge', edge.id);
     else return;
     event.preventDefault();
   }

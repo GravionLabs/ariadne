@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { AddStepButton, NewStep } from './add-step-button';
 import { Icon, IconName } from './icon';
+import { InlineEdit } from './inline-edit';
 import { INSERT_TYPES } from './node-types';
 import {
   DiagramEdge,
@@ -20,7 +21,7 @@ import {
  */
 @Component({
   selector: 'app-transition-label',
-  imports: [AddStepButton, Icon],
+  imports: [AddStepButton, Icon, InlineEdit],
   host: {
     '[attr.data-direction]': 'direction()',
     '[class.empty]': 'rows() === 0',
@@ -45,7 +46,15 @@ export class TransitionLabel {
   readonly kind = input<EventKind>();
   /** Compensation transitions are not laid out and get no "+". */
   readonly insertable = input(true);
+  /** The event is a text field. */
+  readonly editing = input(false);
+  /** The id of the datalist that suggests events while editing. */
+  readonly suggestionList = input<string>();
   readonly selectRequested = output<void>();
+  /** Double-click on the card: the event should become a text field. */
+  readonly editRequested = output<void>();
+  readonly eventCommitted = output<string>();
+  readonly editEnded = output<void>();
   readonly inserted = output<NewStep>();
 
   protected readonly insertTypes = INSERT_TYPES;
@@ -91,4 +100,9 @@ export class TransitionLabel {
   protected readonly label = computed(() => eventLabel(this.edge()));
   protected readonly rows = computed(() => labelRows(this.edge()));
   protected readonly cardHeight = computed(() => this.rows() * LABEL_ROW + 2 * LABEL_PADDING);
+
+  protected commitEvent(event: string): void {
+    this.eventCommitted.emit(event);
+    this.editEnded.emit();
+  }
 }

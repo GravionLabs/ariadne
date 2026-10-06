@@ -172,6 +172,16 @@ const VIEWS: View[] = [
     },
   },
   {
+    name: 'a state name being edited',
+    shown: 'app-node-card app-inline-edit input',
+    show: async (e) => {
+      await loadOrder(e);
+      const card = e.el.querySelector<HTMLElement>('app-node-card[data-type=state]')!;
+      card.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await e.settle();
+    },
+  },
+  {
     name: 'the export menu',
     shown: '.cdk-overlay-pane [role=menuitem]',
     show: async (e) => {

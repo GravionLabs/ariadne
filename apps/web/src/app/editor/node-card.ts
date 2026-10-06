@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { EFConnectableSide, FFlowModule } from '@foblex/flow';
 import { Icon } from './icon';
+import { InlineEdit } from './inline-edit';
 import { DECISION, NODE_TYPES } from './node-types';
 import {
   ACTIVITY_VERBS,
@@ -31,7 +32,7 @@ export const SIDES: Readonly<Record<Direction, { in: EFConnectableSide; out: EFC
 
 @Component({
   selector: 'app-node-card',
-  imports: [FFlowModule, Icon],
+  imports: [FFlowModule, Icon, InlineEdit],
   host: {
     '[attr.data-type]': "decision() ? 'decision' : node().type",
     '[attr.data-color]': 'palette()',
@@ -42,6 +43,7 @@ export const SIDES: Readonly<Record<Direction, { in: EFConnectableSide; out: EFC
     '[attr.data-highlight]': 'highlight() ?? null',
     '[attr.data-badge]': 'badge() ?? null',
     '[attr.title]': 'open() ? null : node().description || null',
+    '(dblclick)': 'onDoubleClick($event)',
   },
   templateUrl: './node-card.html',
   styleUrl: './node-card.scss',
@@ -62,6 +64,12 @@ export class NodeCard {
   /** The description is unfolded under the heading. */
   readonly expanded = input(false);
   readonly expandToggled = output<void>();
+  /** The name is a text field. */
+  readonly editing = input(false);
+  /** Double-click: the name should become a text field (if the editor allows it). */
+  readonly editRequested = output<void>();
+  readonly nameCommitted = output<string>();
+  readonly editEnded = output<void>();
 
   protected readonly palette = computed(() => {
     const c = this.node().color;
@@ -86,4 +94,15 @@ export class NodeCard {
   /** In on the upstream side, out on the downstream side, in all four directions (#113). */
   protected readonly inSide = computed(() => SIDES[this.direction()].in);
   protected readonly outSide = computed(() => SIDES[this.direction()].out);
+
+  protected onDoubleClick(event: MouseEvent): void {
+    // The description toggle is a button of its own.
+    if ((event.target as HTMLElement).closest('button')) return;
+    this.editRequested.emit();
+  }
+
+  protected commitName(name: string): void {
+    this.nameCommitted.emit(name);
+    this.editEnded.emit();
+  }
 }
