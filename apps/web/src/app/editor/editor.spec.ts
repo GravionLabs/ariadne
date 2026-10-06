@@ -1107,6 +1107,18 @@ describe('Editor', () => {
       expect(dialog(el).open).toBe(false);
     });
 
+    it('closes on a click outside its content, not on a click inside', async () => {
+      const { el, settle } = await setup();
+      el.querySelector<HTMLButtonElement>('button[aria-label="Keyboard shortcuts"]')!.click();
+      await settle();
+      el.querySelector<HTMLElement>('app-shortcuts-dialog .dialog')!.click();
+      await settle();
+      expect(dialog(el).open).toBe(true);
+      dialog(el).click(); // the backdrop is the dialog element
+      await settle();
+      expect(dialog(el).open).toBe(false);
+    });
+
     it('opens on the ? key, but not while typing in a field', async () => {
       const { el, settle } = await setup();
       const input = document.createElement('input');

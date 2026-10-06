@@ -1,4 +1,4 @@
-import { Component, ElementRef, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, viewChild } from '@angular/core';
 import { SHORTCUT_GROUPS, keyParts } from './shortcuts';
 
 /**
@@ -10,7 +10,7 @@ import { SHORTCUT_GROUPS, keyParts } from './shortcuts';
   templateUrl: './shortcuts-dialog.html',
   styleUrl: './shortcuts-dialog.scss',
 })
-export class ShortcutsDialog {
+export class ShortcutsDialog implements AfterViewInit {
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
 
   protected readonly groups = SHORTCUT_GROUPS;
@@ -19,6 +19,15 @@ export class ShortcutsDialog {
   open(): void {
     const dialog = this.dialog().nativeElement;
     if (!dialog.open) dialog.showModal();
+  }
+
+  ngAfterViewInit(): void {
+    // A click outside the content lands on the dialog itself (its backdrop): that closes it. Mouse
+    // only, as Escape and the close button are the keyboard's way, so it is not a template handler.
+    const dialog = this.dialog().nativeElement;
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) this.close();
+    });
   }
 
   protected close(): void {
