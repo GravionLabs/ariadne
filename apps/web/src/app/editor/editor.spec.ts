@@ -517,6 +517,48 @@ describe('Editor', () => {
     expect(store.nodes()[1].timers).toBeUndefined();
   });
 
+  it('adds the transitions for the outcomes of a request, a routing slip and a timeout, as one undo step each', async () => {
+    const { el, store, select, settle } = await setup();
+    store.appendNode('start-1', 'state');
+    store.updateNode('state-1', {
+      requests: [{ name: 'CheckStock' }],
+      routingSlips: [{ name: 'Ship', activities: [{ name: 'Pack' }] }],
+      timers: [{ action: 'schedule', name: 'StockTimeout' }],
+    });
+    await select(['state-1']);
+    const button = (name: string) =>
+      el.querySelector<HTMLButtonElement>(
+        `app-inspector button[aria-label="Add transitions for the outcomes of ${name}"]`,
+      );
+    const leaving = () =>
+      store
+        .edges()
+        .filter((e) => e.source === 'state-1')
+        .map((e) => e.event);
+    expect(leaving()).toEqual([]);
+
+    button('CheckStock')!.click();
+    await settle();
+    expect(leaving()).toEqual([
+      'CheckStock.Completed',
+      'CheckStock.Faulted',
+      'CheckStock.TimeoutExpired',
+    ]);
+    // Done: not offered again for that request.
+    expect(button('CheckStock')).toBeNull();
+    store.undo();
+    expect(leaving()).toEqual([]);
+    store.redo();
+    await settle();
+
+    button('Ship')!.click();
+    await settle();
+    button('StockTimeout')!.click();
+    await settle();
+    expect(leaving().slice(3)).toEqual(['Ship.Completed', 'Ship.Faulted', 'StockTimeout']);
+    expect(el.querySelector('app-inspector .outcomes')).toBeNull();
+  });
+
   it('makes a request on a state; its three answers are recognised as transitions', async () => {
     const { el, store, select, settle, fill, expand } = await setup();
     store.appendNode('start-1', 'state');

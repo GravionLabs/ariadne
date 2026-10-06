@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { Diagram, emptyDiagram } from './diagram';
 import {
   addNode,
+  addOutcomeTransitions,
+  missingOutcomes,
   appendNode,
   connect,
   insertOnEdge,
@@ -304,5 +306,66 @@ describe('setEdgeEvent', () => {
     d.edges.push({ id: 'edge-3', source: 'start-1', target: 'state-1', kind: 'forward' });
     expect(setEdgeEvent(d, 'edge-3', 'Go')).toBeNull();
     expect(setEdgeEvent(d, 'missing', 'Go')).toBeNull();
+  });
+});
+
+describe('outcome transitions', () => {
+  const withRequest = (): Diagram => {
+    const d = path();
+    d.nodes[1] = {
+      ...d.nodes[1],
+      requests: [{ name: 'ChargeCard' }],
+      routingSlips: [{ name: 'Ship', activities: [{ name: 'Pack' }] }],
+      timers: [
+        { name: 'PaymentExpired', action: 'schedule' },
+        { name: 'PaymentExpired', action: 'unschedule' },
+      ],
+    };
+    return d;
+  };
+
+  it('adds a transition to a new state for each outcome of a request, with its event', () => {
+    const next = addOutcomeTransitions(withRequest(), 'state-1', { kind: 'request', index: 0 })!;
+    const added = next.edges.slice(2);
+    expect(added.map((e) => e.event)).toEqual([
+      'ChargeCard.Completed',
+      'ChargeCard.Faulted',
+      'ChargeCard.TimeoutExpired',
+    ]);
+    expect(added.every((e) => e.source === 'state-1' && e.kind === 'forward')).toBe(true);
+    expect(new Set(added.map((e) => e.target)).size).toBe(3);
+    expect(next.nodes).toHaveLength(6);
+  });
+
+  it('does the same for the two outcomes of a routing slip and the one of a scheduled timeout', () => {
+    const d = withRequest();
+    const slip = addOutcomeTransitions(d, 'state-1', { kind: 'routingSlip', index: 0 })!;
+    expect(slip.edges.slice(2).map((e) => e.event)).toEqual(['Ship.Completed', 'Ship.Faulted']);
+    const timer = addOutcomeTransitions(d, 'state-1', { kind: 'timer', index: 0 })!;
+    expect(timer.edges.slice(2).map((e) => e.event)).toEqual(['PaymentExpired']);
+  });
+
+  it('skips the outcomes that already have a transition from the state', () => {
+    const d = withRequest();
+    d.edges[1] = { ...d.edges[1], event: 'ChargeCard.Faulted' };
+    const source = { kind: 'request', index: 0 } as const;
+    expect(missingOutcomes(d, 'state-1', source)).toEqual([
+      'ChargeCard.Completed',
+      'ChargeCard.TimeoutExpired',
+    ]);
+    const next = addOutcomeTransitions(d, 'state-1', source)!;
+    expect(next.edges.slice(2).map((e) => e.event)).toEqual([
+      'ChargeCard.Completed',
+      'ChargeCard.TimeoutExpired',
+    ]);
+    // With none missing there is nothing to add.
+    expect(addOutcomeTransitions(next, 'state-1', source)).toBeNull();
+  });
+
+  it('has nothing to add for an unschedule, an unknown source or a state that cannot be left', () => {
+    const d = withRequest();
+    expect(addOutcomeTransitions(d, 'state-1', { kind: 'timer', index: 1 })).toBeNull();
+    expect(addOutcomeTransitions(d, 'state-1', { kind: 'request', index: 5 })).toBeNull();
+    expect(addOutcomeTransitions(d, 'end-1', { kind: 'request', index: 0 })).toBeNull();
   });
 });

@@ -9,7 +9,11 @@ import {
   NodeType,
   hasInput,
   hasOutput,
+  REQUEST_OUTCOMES,
+  SLIP_OUTCOMES,
   nextId,
+  requestEvent,
+  slipEvent,
 } from './diagram';
 
 export type NodePatch = Partial<Omit<DiagramNode, 'id' | 'type'>>;
@@ -100,6 +104,56 @@ export function insertOnEdge(
     },
     id: node.id,
   };
+}
+
+/** Something a state does that ends in events: a request, a routing slip or a scheduled timeout. */
+export interface OutcomeSource {
+  kind: 'request' | 'routingSlip' | 'timer';
+  /** Its position in the state's `requests`, `routingSlips` or `timers`. */
+  index: number;
+}
+
+/**
+ * The events a request (`Name.Completed`, `.Faulted`, `.TimeoutExpired`), a routing slip
+ * (`.Completed`, `.Faulted`) or a scheduled timer (its name) ends in. None for an unknown source or
+ * an unschedule.
+ */
+export function outcomeEventsOf(node: DiagramNode, source: OutcomeSource): string[] {
+  if (source.kind === 'request') {
+    const request = node.requests?.[source.index];
+    return request ? REQUEST_OUTCOMES.map((o) => requestEvent(request.name, o)) : [];
+  }
+  if (source.kind === 'routingSlip') {
+    const slip = node.routingSlips?.[source.index];
+    return slip ? SLIP_OUTCOMES.map((o) => slipEvent(slip.name, o)) : [];
+  }
+  const timer = node.timers?.[source.index];
+  return timer?.action === 'schedule' && timer.name ? [timer.name] : [];
+}
+
+/** The outcomes of `source` that no transition leaving the state reacts to yet. */
+export function missingOutcomes(d: Diagram, nodeId: string, source: OutcomeSource): string[] {
+  const node = d.nodes.find((n) => n.id === nodeId);
+  if (!node || !hasOutput(node.type)) return [];
+  const handled = new Set(d.edges.filter((e) => e.source === nodeId).map((e) => e.event));
+  return outcomeEventsOf(node, source).filter((event) => !handled.has(event));
+}
+
+/**
+ * Adds a transition to a new state for each outcome of a request, routing slip or scheduled timeout
+ * that the state does not react to yet, with the event filled in. `null` if there is nothing to add.
+ */
+export function addOutcomeTransitions(
+  d: Diagram,
+  nodeId: string,
+  source: OutcomeSource,
+): Diagram | null {
+  const events = missingOutcomes(d, nodeId, source);
+  if (!events.length) return null;
+  return events.reduce<Diagram>(
+    (current, event) => appendNode(current, nodeId, 'state', { event })?.diagram ?? current,
+    d,
+  );
 }
 
 export function updateNode(d: Diagram, id: string, patch: NodePatch): Diagram {

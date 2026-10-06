@@ -14,6 +14,7 @@ import {
   emptyDiagram,
   MessageKind,
   NewStateInit,
+  OutcomeSource,
   NodePatch,
   SagaPatch,
   NodeType,
@@ -21,7 +22,15 @@ import {
   serializeDiagram,
 } from '@ariadne/core';
 
-export type { DetailsPatch, EdgePatch, EventInfoPatch, NewStateInit, NodePatch, SagaPatch };
+export type {
+  DetailsPatch,
+  EdgePatch,
+  EventInfoPatch,
+  NewStateInit,
+  NodePatch,
+  OutcomeSource,
+  SagaPatch,
+};
 
 /** App-owned diagram state (f-flow's "classic" mode): all edits go through this store. */
 export const DiagramStore = signalStore(
@@ -83,6 +92,18 @@ export const DiagramStore = signalStore(
        */
       insertOnEdge(edgeId: string, type: NodeType, init?: NewStateInit): string | null {
         return create(edits.insertOnEdge(store.diagram(), edgeId, type, init));
+      },
+
+      /**
+       * Adds a transition to a new state for each outcome of a request, routing slip or scheduled
+       * timeout that the state does not react to yet, as one undo step. Returns how many were added.
+       */
+      addOutcomeTransitions(nodeId: string, source: OutcomeSource): number {
+        const next = edits.addOutcomeTransitions(store.diagram(), nodeId, source);
+        if (!next) return 0;
+        const added = next.edges.length - store.diagram().edges.length;
+        store._commit(() => next);
+        return added;
       },
 
       updateNode(id: string, patch: NodePatch): void {

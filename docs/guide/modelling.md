@@ -43,14 +43,19 @@ A state has a name, an optional description and colour, and optionally:
   _Publish event_ (to any subscribers, named in the past tense: `OrderAccepted`). The inspector hints when a name
   doesn't follow that convention.
 - **Requests** (`ValidateAddress`): the reply arrives as `ValidateAddress.Completed`, `.Faulted` or
-  `.TimeoutExpired`; draw a transition for each outcome you handle.
+  `.TimeoutExpired`; draw a transition for each outcome you handle, or let "Add transitions for its outcomes" add them.
 - **Routing slips** (`Provision`): a MassTransit Courier itinerary the state starts when it is entered, its
   activities in order. Mark an activity **compensates** when Courier can undo it; on a fault the inspector shows the
   order they are undone in (last first). The slip ends as `Provision.Completed` or `Provision.Faulted`; draw a
-  transition from the same state for each outcome you handle. A state waits for the outcomes of one slip only: C#
+  transition from the same state for each outcome you handle, or let "Add transitions for its outcomes" add them. A state waits for the outcomes of one slip only: C#
   cannot tell two apart.
 - **Timeouts**: schedule one when the state is entered (`PaymentTimeout`, `30s`) or cancel it. A transition on the
   timeout's name is the timeout path.
+
+  For a request, a scheduled timeout and a routing slip alike, "Add transitions for its outcomes" in the inspector adds
+  one transition to a new state for each outcome the state does not react to yet, with the event filled in, as one undo
+  step. It is not offered when none is missing.
+
 - **Ignored events**, **retry** and **timeout** notes, and a **compensation** (name and description).
 
 Only plain states can have these; the initial and final states cannot.

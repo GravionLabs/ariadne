@@ -45,6 +45,8 @@ import {
   SLIP_OUTCOMES,
   compensationOrder,
   hasRoutingSlips,
+  missingOutcomes,
+  OutcomeSource,
   outcomeEvents,
   suggestEvents,
   slipEvent,
@@ -432,6 +434,27 @@ export class Inspector {
 
   /** Names the diagram itself gives events: they need no naming hint. */
   protected readonly outcomes = computed(() => outcomeEvents(this.store.diagram()));
+
+  /**
+   * The outcomes of the selected state's requests, routing slips and scheduled timeouts that have no
+   * transition yet, by row; a row with none gets no "Add transitions for its outcomes".
+   */
+  protected readonly missing = computed(() => {
+    const node = this.node();
+    const d = this.store.diagram();
+    const of = (kind: OutcomeSource['kind'], rows: readonly unknown[] | undefined) =>
+      (rows ?? []).map((_, index) => (node ? missingOutcomes(d, node.id, { kind, index }) : []));
+    return {
+      request: of('request', node?.requests),
+      routingSlip: of('routingSlip', node?.routingSlips),
+      timer: of('timer', node?.timers),
+    };
+  });
+
+  protected addOutcomes(kind: OutcomeSource['kind'], index: number): void {
+    const node = this.node();
+    if (node) this.store.addOutcomeTransitions(node.id, { kind, index });
+  }
 
   protected eventEnds(outcome: string): boolean {
     return !!this.edge()?.event?.endsWith(`.${outcome}`);

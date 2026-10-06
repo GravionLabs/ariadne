@@ -270,6 +270,16 @@
                 [value]="request.timeout ?? ''"
                 (change)="setRequestTimeout(i, $event)"
               />
+              @if (missing().request[i]?.length) {
+                <button
+                  type="button"
+                  class="ghost outcomes"
+                  [attr.aria-label]="'Add transitions for the outcomes of ' + request.name"
+                  (click)="addOutcomes('request', i)"
+                >
+                  <app-icon name="add" /> Add transitions for its outcomes
+                </button>
+              }
             </div>
           }
           <div class="add-row">
@@ -387,6 +397,16 @@
               <button type="button" class="ghost" (click)="addSlipActivity(i)">
                 <app-icon name="add" /> Add an activity
               </button>
+              @if (missing().routingSlip[i]?.length) {
+                <button
+                  type="button"
+                  class="ghost outcomes"
+                  [attr.aria-label]="'Add transitions for the outcomes of ' + slip.name"
+                  (click)="addOutcomes('routingSlip', i)"
+                >
+                  <app-icon name="add" /> Add transitions for its outcomes
+                </button>
+              }
             </div>
           }
           <div class="add-row">
@@ -453,6 +473,16 @@
                   [value]="timer.delay ?? ''"
                   (change)="setTimerDelay(i, $event)"
                 />
+              }
+              @if (missing().timer[i]?.length) {
+                <button
+                  type="button"
+                  class="ghost outcomes"
+                  [attr.aria-label]="'Add transitions for the outcomes of ' + timer.name"
+                  (click)="addOutcomes('timer', i)"
+                >
+                  <app-icon name="add" /> Add transitions for its outcomes
+                </button>
               }
             </div>
           }
