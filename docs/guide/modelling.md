@@ -60,6 +60,10 @@ A state has a name, an optional description and colour, and optionally:
 
 Only plain states can have these; the initial and final states cannot.
 
+The inspector keeps a state short: **Details**, **Activities** and **Transitions** are always shown; requests, routing
+slips, timers, ignored events and recovery appear when the state has entries. **Add behaviour…** lists the hidden ones;
+picking one shows its section with a new entry focused. Removing the last entry takes the section away again.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../images/guide/state-activities-dark.png">
   <img alt="The inspector of the state “Charging payment”: its name and description, the command it sends, and the timeout it schedules" src="../images/guide/state-activities-light.png">

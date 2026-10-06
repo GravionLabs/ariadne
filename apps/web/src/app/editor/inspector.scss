@@ -514,3 +514,22 @@ textarea {
 .undo-order {
   color: var(--c-compensation);
 }
+
+// "Add behaviour…": the optional sections of a state that have nothing in them yet.
+.behaviours {
+  display: grid;
+  gap: 4px;
+}
+
+.behaviour-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  button {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

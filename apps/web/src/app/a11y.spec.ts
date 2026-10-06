@@ -106,6 +106,15 @@ const VIEWS: View[] = [
     },
   },
   {
+    name: 'a selected state with the "Add behaviour…" menu open',
+    shown: 'app-inspector .behaviour-list',
+    show: async (e) => {
+      await loadOrder(e);
+      await e.select([e.store.nodes().find((n) => n.type === 'state')!.id]);
+      await e.click(e.el.querySelector<HTMLButtonElement>('app-inspector .behaviours > button')!);
+    },
+  },
+  {
     name: 'a selected transition',
     shown: "app-inspector[aria-label='Transition settings']",
     show: async (e) => {

@@ -16,7 +16,7 @@ import { DiagramStore } from '../model/diagram-store';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
 import { NewStep } from './add-step-button';
-import { Icon } from './icon';
+import { Icon, IconName } from './icon';
 import { StatePrompt } from './state-prompt';
 import { DECISION, NODE_TYPES } from './node-types';
 import {
@@ -54,6 +54,17 @@ import {
 
 /** Inspector sections that start expanded even when empty. */
 const ALWAYS_OPEN = ['details', 'activities', 'transitions'];
+
+type BehaviourKey = 'requests' | 'slips' | 'timers' | 'ignores' | 'recovery';
+
+/** The optional sections of a state, as "Add behaviour…" names them. */
+const BEHAVIOURS: readonly { key: BehaviourKey; label: string; icon: IconName }[] = [
+  { key: 'requests', label: 'Request', icon: 'command' },
+  { key: 'slips', label: 'Routing slip', icon: 'route' },
+  { key: 'timers', label: 'Timer', icon: 'clock' },
+  { key: 'ignores', label: 'Ignored event', icon: 'ignore' },
+  { key: 'recovery', label: 'Recovery', icon: 'compensation' },
+];
 
 const NEW_MESSAGE: Record<MessageKind, string> = {
   command: 'DoSomething',
@@ -119,7 +130,11 @@ export class Inspector {
     // Another state or transition: sections go back to their defaults.
     effect(() => {
       this.selected();
-      untracked(() => this.toggled.set({}));
+      untracked(() => {
+        this.toggled.set({});
+        this.revealed.set(false);
+        this.menuOpen.set(false);
+      });
     });
   }
 
@@ -231,6 +246,67 @@ export class Inspector {
         node,
         (node.activities ?? []).filter((_, i) => i !== index),
       );
+  }
+
+  /** Behaviours of a state that have a section of their own once it has any. */
+  protected readonly behaviours = BEHAVIOURS;
+
+  /** Recovery has no list to be empty: asking for it from the menu is what shows it while it has nothing. */
+  private readonly revealed = signal(false);
+  protected readonly menuOpen = signal(false);
+
+  /** The optional sections the selected state shows: those with content, and Recovery once asked for. */
+  protected readonly shown = computed(() => {
+    const node = this.node();
+    const shown = new Set<BehaviourKey>();
+    if (!node) return shown;
+    if (node.requests?.length) shown.add('requests');
+    if (node.routingSlips?.length) shown.add('slips');
+    if (node.timers?.length) shown.add('timers');
+    if (node.ignores?.length) shown.add('ignores');
+    if (node.compensation || node.retry || node.timeout || this.revealed()) shown.add('recovery');
+    return shown;
+  });
+
+  /** What "Add behaviour…" lists: the hidden sections this kind of node supports. */
+  protected readonly hiddenBehaviours = computed(() => {
+    const node = this.node();
+    if (!node) return [];
+    const supported: Record<BehaviourKey, boolean> = {
+      requests: hasRequests(node.type),
+      slips: hasRoutingSlips(node.type),
+      timers: hasTimers(node.type),
+      ignores: hasIgnores(node.type),
+      recovery: node.type === 'state',
+    };
+    const shown = this.shown();
+    return BEHAVIOURS.filter((b) => supported[b.key] && !shown.has(b.key));
+  });
+
+  /** Shows a hidden section with a new entry in it, focused. */
+  protected addBehaviour(key: BehaviourKey): void {
+    this.menuOpen.set(false);
+    switch (key) {
+      case 'requests':
+        return this.addRequest();
+      case 'slips':
+        return this.addRoutingSlip();
+      case 'timers':
+        return this.addTimer('schedule');
+      case 'ignores':
+        return this.addIgnore();
+      case 'recovery':
+        this.revealed.set(true);
+        this.toggled.update((t) => ({ ...t, recovery: true }));
+        this.focusLast('[aria-label="Recovery"] input', 'first');
+    }
+  }
+
+  /** Escape closes the menu and nothing else (not the inspector). */
+  protected closeMenu(event: Event): void {
+    if (!this.menuOpen()) return;
+    event.stopPropagation();
+    this.menuOpen.set(false);
   }
 
   /** Sections the user opened or closed by hand; reset when another element is selected. */
@@ -396,13 +472,13 @@ export class Inspector {
     this.store.updateNode(node.id, { routingSlips: slips.length ? slips : undefined });
   }
 
-  private focusLast(selector: string): void {
+  private focusLast(selector: string, which: 'first' | 'last' = 'last'): void {
     afterNextRender(
       () => {
         const inputs = this.host.nativeElement.querySelectorAll<HTMLInputElement>(selector);
-        const last = inputs[inputs.length - 1];
-        last?.focus();
-        last?.select();
+        const target = which === 'first' ? inputs[0] : inputs[inputs.length - 1];
+        target?.focus();
+        target?.select();
       },
       { injector: this.injector },
     );

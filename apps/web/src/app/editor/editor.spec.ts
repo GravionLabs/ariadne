@@ -154,10 +154,21 @@ describe('Editor', () => {
       if (toggle.getAttribute('aria-expanded') === 'false') toggle.click();
       await settle();
     };
+    /** Reveals a hidden section of the state inspector from "Add behaviour…" (e.g. "Request"). */
+    const behave = async (label: string) => {
+      const menu = el.querySelector<HTMLButtonElement>('app-inspector .behaviours > button')!;
+      if (menu.getAttribute('aria-expanded') !== 'true') menu.click();
+      await settle();
+      [...el.querySelectorAll<HTMLButtonElement>('app-inspector .behaviour-list button')]
+        .find((b) => b.textContent?.trim() === label)!
+        .click();
+      await settle();
+    };
     return {
       fixture,
       el,
       store,
+      behave,
       storage,
       editors,
       settle,
@@ -233,13 +244,13 @@ describe('Editor', () => {
   });
 
   it('edits a state in the inspector and adds transitions from it', async () => {
-    const { el, store, select, fill, settle, expand, submitPrompt } = await setup();
+    const { el, store, select, fill, settle, behave, submitPrompt } = await setup();
     store.appendNode('start-1', 'state');
     await select(['state-1']);
 
     await fill('input[type=text]', 'Charging payment');
     await fill('input[type=text]', '   '); // an empty name reverts
-    await expand('Recovery');
+    await behave('Recovery');
     await fill('input[placeholder="e.g. RefundPayment"]', 'RefundPayment');
     expect(store.nodes()[1]).toEqual({
       id: 'state-1',
@@ -451,13 +462,11 @@ describe('Editor', () => {
   });
 
   it('lists ignored events of a state as struck-through chips and edits them in the inspector', async () => {
-    const { el, store, select, settle, expand } = await setup();
+    const { el, store, select, settle, behave } = await setup();
     store.appendNode('start-1', 'state');
     await select(['state-1']);
     const ignoreInputs = () => el.querySelectorAll<HTMLInputElement>('app-inspector .ignore input');
-    await expand('Ignored events');
-    inspectorButton(el, 'Ignore an event').click();
-    await settle();
+    await behave('Ignored event');
     expect(store.nodes()[1].ignores).toEqual(['SomethingHappened']);
 
     const field = ignoreInputs()[0];
@@ -478,13 +487,11 @@ describe('Editor', () => {
   });
 
   it('schedules a timeout on a state; the event of that name is a timeout transition', async () => {
-    const { el, store, select, settle, fill, expand } = await setup();
+    const { el, store, select, settle, fill, behave } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'end');
     await select(['state-1']);
-    await expand('Timers');
-    inspectorButton(el, 'Schedule a timeout').click();
-    await settle();
+    await behave('Timer');
     expect(store.nodes()[1].timers).toEqual([
       { action: 'schedule', name: 'SomethingTimedOut', delay: '30s' },
     ]);
@@ -560,13 +567,11 @@ describe('Editor', () => {
   });
 
   it('makes a request on a state; its three answers are recognised as transitions', async () => {
-    const { el, store, select, settle, fill, expand } = await setup();
+    const { el, store, select, settle, fill, behave } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'end');
     await select(['state-1']);
-    await expand('Requests');
-    inspectorButton(el, 'Make a request').click();
-    await settle();
+    await behave('Request');
     expect(store.nodes()[1].requests).toEqual([{ name: 'DoSomething', timeout: '30s' }]);
 
     const name = el.querySelector<HTMLInputElement>('app-inspector .request .name')!;
@@ -619,13 +624,11 @@ describe('Editor', () => {
   });
 
   it('starts a routing slip on a state: its itinerary, compensation order and outcomes (#399)', async () => {
-    const { el, store, select, settle, fill, expand } = await setup();
+    const { el, store, select, settle, fill, behave } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'end');
     await select(['state-1']);
-    await expand('Routing slips');
-    inspectorButton(el, 'Start a routing slip').click();
-    await settle();
+    await behave('Routing slip');
     expect(store.nodes()[1].routingSlips).toEqual([
       { name: 'DoTheWork', activities: [{ name: 'FirstActivity', compensates: true }] },
     ]);
@@ -721,28 +724,56 @@ describe('Editor', () => {
     );
   });
 
-  it('collapses the inspector sections: entries open them, empty ones start closed', async () => {
-    const { el, store, select, settle, expand } = await setup();
+  it('shows the optional sections only when they have entries; the rest are in "Add behaviour…"', async () => {
+    const { el, store, select, settle, behave } = await setup();
     store.appendNode('start-1', 'state');
     store.appendNode('state-1', 'state');
     store.updateNode('state-1', { timers: [{ action: 'schedule', name: 'T' }] });
     await select(['state-1']);
-    const toggle = (section: string) =>
-      el.querySelector<HTMLButtonElement>(`app-inspector [aria-label="${section}"] .group-toggle`)!;
-    const expanded = (section: string) => toggle(section).getAttribute('aria-expanded');
+    const section = (name: string) =>
+      el.querySelector<HTMLElement>(`app-inspector [aria-label="${name}"]`);
+    const toggle = (name: string) =>
+      section(name)!.querySelector<HTMLButtonElement>('.group-toggle')!;
+    const expanded = (name: string) => toggle(name).getAttribute('aria-expanded');
+    const menu = () => el.querySelector<HTMLButtonElement>('app-inspector .behaviours > button')!;
+    const listed = () =>
+      [...el.querySelectorAll('app-inspector .behaviour-list button')].map((b) =>
+        b.textContent?.trim(),
+      );
 
-    // Activities and Transitions always start open; Timers has an entry; the rest are empty.
+    // Details, Activities and Transitions are always there; Timers has an entry (and so is open).
+    expect(['Details', 'Activities', 'Transitions'].map((n) => !!section(n))).toEqual([
+      true,
+      true,
+      true,
+    ]);
     expect(expanded('Activities')).toBe('true');
     expect(expanded('Transitions')).toBe('true');
     expect(expanded('Timers')).toBe('true');
     expect(toggle('Timers').querySelector('.count')?.textContent?.trim()).toBe('1');
-    expect(expanded('Requests')).toBe('false');
-    expect(expanded('Ignored events')).toBe('false');
-    expect(inspectorButton(el, 'Make a request')).toBeUndefined();
+    // The others are hidden and offered by the menu.
+    for (const hidden of ['Requests', 'Routing slips', 'Ignored events', 'Recovery'])
+      expect(section(hidden)).toBeNull();
+    expect(menu().getAttribute('aria-expanded')).toBe('false');
+    menu().click();
+    await settle();
+    expect(menu().getAttribute('aria-expanded')).toBe('true');
+    expect(listed()).toEqual(['Request', 'Routing slip', 'Ignored event', 'Recovery']);
 
-    await expand('Requests');
-    expect(expanded('Requests')).toBe('true');
-    expect(inspectorButton(el, 'Make a request')).toBeTruthy();
+    // Picking one shows its section, with a new entry focused, and takes it off the menu.
+    await behave('Request');
+    expect(section('Requests')).toBeTruthy();
+    expect(document.activeElement).toBe(el.querySelector('app-inspector .request .name'));
+    expect(listed()).toEqual([]); // the menu closed
+    menu().click();
+    await settle();
+    expect(listed()).toEqual(['Routing slip', 'Ignored event', 'Recovery']);
+
+    // Removing the last entry takes the section away again, back into the menu.
+    el.querySelector<HTMLButtonElement>('app-inspector .request .icon-button')!.click();
+    await settle();
+    expect(section('Requests')).toBeNull();
+    expect(listed()).toEqual(['Request', 'Routing slip', 'Ignored event', 'Recovery']);
 
     // By hand: close Timers, then another state brings the defaults back.
     toggle('Timers').click();
@@ -750,9 +781,29 @@ describe('Editor', () => {
     expect(expanded('Timers')).toBe('false');
     expect(inspectorButton(el, 'Schedule a timeout')).toBeUndefined();
     await select(['state-2']);
-    expect(expanded('Requests')).toBe('false');
+    expect(section('Timers')).toBeNull();
     await select(['state-1']);
     expect(expanded('Timers')).toBe('true');
+  });
+
+  it('offers "Add behaviour…" only for what a kind of state supports, and not when all is shown', async () => {
+    const { el, store, select, settle, behave } = await setup();
+    store.appendNode('start-1', 'state');
+    store.appendNode('state-1', 'end');
+    store.appendNode('state-1', 'join');
+    const menu = () => el.querySelector('app-inspector .behaviours');
+    await select(['start-1']);
+    expect(menu()).toBeNull();
+    await select(['end-1']);
+    expect(menu()).toBeNull();
+    await select(['join-1']);
+    expect(menu()).toBeNull();
+
+    await select(['state-1']);
+    for (const label of ['Request', 'Routing slip', 'Timer', 'Ignored event', 'Recovery'])
+      await behave(label);
+    await settle();
+    expect(menu()).toBeNull();
   });
 
   it('lets a transition point at another state; an earlier one makes a loop with its label on the line', async () => {
@@ -789,7 +840,7 @@ describe('Editor', () => {
   });
 
   it('groups name, description and colour in Details, and compensation, retry and timeout in Recovery', async () => {
-    const { el, store, select, settle, expand } = await setup();
+    const { el, store, select, settle, behave } = await setup();
     store.appendNode('start-1', 'state');
     await select(['state-1']);
     const section = (label: string) => el.querySelector(`app-inspector [aria-label="${label}"]`)!;
@@ -801,10 +852,10 @@ describe('Editor', () => {
     expect(section('Details').querySelector('input[type=text]')).toBeTruthy();
     expect(section('Details').querySelector('textarea')).toBeTruthy();
     expect(section('Details').querySelector('.swatches')).toBeTruthy();
-    expect(expanded('Recovery')).toBe('false');
-    expect(section('Recovery').querySelector('input')).toBeNull();
+    expect(el.querySelector('app-inspector [aria-label="Recovery"]')).toBeNull();
 
-    await expand('Recovery');
+    await behave('Recovery');
+    expect(document.activeElement).toBe(section('Recovery').querySelector('input'));
     const inputs = [...section('Recovery').querySelectorAll<HTMLInputElement>('input')];
     expect(inputs.map((i) => i.placeholder)).toEqual(['e.g. RefundPayment', '3 attempts', '30s']);
 

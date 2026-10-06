@@ -218,7 +218,7 @@
       </div>
     }
 
-    @if (hasRequests(node.type)) {
+    @if (hasRequests(node.type) && shown().has('requests')) {
       <section class="group" aria-label="Requests">
         <button
           type="button"
@@ -291,7 +291,7 @@
       </section>
     }
 
-    @if (hasRoutingSlips(node.type)) {
+    @if (hasRoutingSlips(node.type) && shown().has('slips')) {
       <section class="group" aria-label="Routing slips">
         <button
           type="button"
@@ -418,7 +418,7 @@
       </section>
     }
 
-    @if (hasTimers(node.type)) {
+    @if (hasTimers(node.type) && shown().has('timers')) {
       <section class="group" aria-label="Timers">
         <button
           type="button"
@@ -498,7 +498,7 @@
       </section>
     }
 
-    @if (hasIgnores(node.type)) {
+    @if (hasIgnores(node.type) && shown().has('ignores')) {
       <section class="group" aria-label="Ignored events">
         <button
           type="button"
@@ -547,7 +547,7 @@
       </section>
     }
 
-    @if (node.type === 'state') {
+    @if (node.type === 'state' && shown().has('recovery')) {
       <section class="group" aria-label="Recovery">
         <button
           type="button"
@@ -624,6 +624,37 @@
           </div>
         }
       </section>
+    }
+
+    @if (hiddenBehaviours().length) {
+      <div class="behaviours">
+        <button
+          type="button"
+          class="ghost"
+          aria-controls="add-behaviour-list"
+          [attr.aria-expanded]="menuOpen()"
+          (click)="menuOpen.set(!menuOpen())"
+          (keydown.escape)="closeMenu($event)"
+        >
+          <app-icon name="add" /> Add behaviour…
+        </button>
+        @if (menuOpen()) {
+          <ul id="add-behaviour-list" class="behaviour-list" aria-label="Behaviours to add">
+            @for (behaviour of hiddenBehaviours(); track behaviour.key) {
+              <li>
+                <button
+                  type="button"
+                  class="ghost"
+                  (click)="addBehaviour(behaviour.key)"
+                  (keydown.escape)="closeMenu($event)"
+                >
+                  <app-icon [name]="behaviour.icon" /> {{ behaviour.label }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
     }
 
     @if (node.type !== 'end') {
