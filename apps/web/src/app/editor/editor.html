@@ -331,6 +331,28 @@
       <f-minimap class="minimap" [fMinSize]="2000" />
     </f-flow>
 
+    @if (keyboardAdd(); as add) {
+      <ng-template
+        cdkConnectedOverlay
+        cdkConnectedOverlayHasBackdrop
+        cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+        [cdkConnectedOverlayOrigin]="add.origin"
+        [cdkConnectedOverlayOpen]="true"
+        [cdkConnectedOverlayPositions]="addPositions"
+        [cdkConnectedOverlayPush]="true"
+        (backdropClick)="closeKeyboardAdd()"
+        (detach)="closeKeyboardAdd()"
+      >
+        <app-state-prompt
+          [(type)]="addType"
+          [types]="appendTypes"
+          [suggestions]="addSuggestions()"
+          (committed)="commitKeyboardAdd(add.sourceId, $event)"
+          (cancelled)="commitKeyboardAdd(add.sourceId)"
+        />
+      </ng-template>
+    }
+
     <!-- Outside the canvas, which scales and moves what is in it. -->
     <datalist id="canvas-event-suggestions">
       @for (suggestion of eventSuggestions(); track suggestion) {

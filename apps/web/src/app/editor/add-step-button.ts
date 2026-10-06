@@ -6,6 +6,13 @@ import { NewStateInit, NodeType, suggestEvents } from '@ariadne/core';
 import { DiagramStore } from '../model/diagram-store';
 import { StatePrompt } from './state-prompt';
 
+/** Where the add popover opens, relative to what it belongs to. */
+export const ADD_POSITIONS: ConnectedPosition[] = [
+  { originX: 'center', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 10 },
+  { originX: 'center', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -10 },
+  { originX: 'end', originY: 'center', overlayX: 'start', overlayY: 'center', offsetX: 10 },
+];
+
 /** A state to add: its type, and what the prompt asked for (nothing: the defaults). */
 export interface NewStep {
   type: NodeType;
@@ -40,11 +47,7 @@ export class AddStepButton {
   protected readonly chosen = signal<NodeType>('state');
 
   protected readonly isOpen = signal(false);
-  protected readonly positions: ConnectedPosition[] = [
-    { originX: 'center', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 10 },
-    { originX: 'center', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -10 },
-    { originX: 'end', originY: 'center', overlayX: 'start', overlayY: 'center', offsetX: 10 },
-  ];
+  protected readonly positions = ADD_POSITIONS;
 
   open(): void {
     this.isOpen.set(true);

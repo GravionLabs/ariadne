@@ -1,3 +1,4 @@
+import { CdkConnectedOverlay } from '@angular/cdk/overlay';
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
@@ -27,7 +28,7 @@ import { EmbeddedSync } from '../host/embedded-sync';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { Theme } from '../theme';
-import { AddStepButton, NewStep } from './add-step-button';
+import { ADD_POSITIONS, AddStepButton, NewStep } from './add-step-button';
 import { DiagramDetails } from './diagram-details';
 import { DiagramLayout } from './diagram-layout';
 import { EditorStore } from './editor-store';
@@ -39,6 +40,7 @@ import { WalkthroughPanel } from './walkthrough-panel';
 import { WalkthroughStore } from './walkthrough-store';
 import { ExportMenu } from './export-menu';
 import { Icon } from './icon';
+import { StatePrompt } from './state-prompt';
 import { Inspector } from './inspector';
 import { SagaImport } from '../import/saga-import';
 import { CatalogPanel } from './catalog-panel';
@@ -60,12 +62,15 @@ import {
   eventKindOf,
   eventLabel,
   Finding,
+  hasOutput,
   inputId,
   joinEventsOf,
   labelId,
   suggestEvents,
+  NewStateInit,
   nodeIdOfConnector,
   nodeSize,
+  NodeType,
   outputId,
   Point,
   SLOT_SIZE,
@@ -82,6 +87,7 @@ const OBSCURING =
   imports: [
     NgTemplateOutlet,
     AddStepButton,
+    CdkConnectedOverlay,
     CatalogPanel,
     PathPanel,
     PathTimeline,
@@ -98,6 +104,7 @@ const OBSCURING =
     NodeCard,
     ProblemsMenu,
     SourcePanel,
+    StatePrompt,
     TransitionLabel,
   ],
   providers: [
@@ -306,6 +313,55 @@ export class Editor {
     if (this.walking()) return;
     const id = this.store.insertOnEdge(edgeId, type, init);
     if (id) this.ui.selectNode(id);
+  }
+
+  /** The add popover opened from the keyboard: after which state, and next to which card. */
+  protected readonly keyboardAdd = signal<{ sourceId: string; origin: HTMLElement } | null>(null);
+  protected readonly addType = signal<NodeType>('state');
+  protected readonly addPositions = ADD_POSITIONS;
+  protected readonly addSuggestions = computed(() =>
+    suggestEvents(this.store.diagram(), { from: this.keyboardAdd()?.sourceId }),
+  );
+
+  protected closeKeyboardAdd(): void {
+    this.keyboardAdd.set(null);
+  }
+
+  /** Enter in the popover: the state goes in as it would from its "+"; Escape adds the defaults. */
+  protected commitKeyboardAdd(sourceId: string, init?: NewStateInit): void {
+    this.closeKeyboardAdd();
+    this.append(sourceId, { type: this.addType(), init });
+  }
+
+  /**
+   * Plain keys on the selection, for the keyboard user who would otherwise tab to a "+":
+   * `N` adds a state after the selected state, `F` a final state, `E` edits the selected
+   * transition's event. `C` (f-flow's) connects to an existing state. They do nothing in a field,
+   * while walking through, with a modifier held, or from the panels and the toolbar.
+   */
+  private onShortcut(event: KeyboardEvent): boolean {
+    if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return false;
+    const key = event.key.toLowerCase();
+    if (key !== 'n' && key !== 'f' && key !== 'e') return false;
+    if (isTextEntry(event.target) || this.walking() || this.keyboardAdd()) return false;
+    const target = event.target;
+    const flow = this.flow()?.hostElement as HTMLElement | undefined;
+    const inDiagram =
+      !(target instanceof Node) || target === document.body || (!!flow && flow.contains(target));
+    if (!inDiagram || !flow) return false;
+    if (key === 'e') {
+      const edge = this.ui.selectedEdge();
+      if (!edge) return false;
+      this.startEditing('edge', edge.id);
+      return true;
+    }
+    const node = this.ui.selectedNode();
+    if (!node || !hasOutput(node.type)) return false;
+    const card = flow.querySelector<HTMLElement>(attributeSelector('data-f-node-id', node.id));
+    if (!card) return false;
+    this.addType.set(key === 'f' ? 'end' : 'state');
+    this.keyboardAdd.set({ sourceId: node.id, origin: card });
+    return true;
   }
 
   /** Suggestions for the event being typed on the canvas. */
@@ -522,6 +578,10 @@ export class Editor {
   protected onKeydown(event: KeyboardEvent): void {
     if (event.key === 'F2') {
       this.onRename(event);
+      return;
+    }
+    if (this.onShortcut(event)) {
+      event.preventDefault();
       return;
     }
     // The host handles save, open and undo itself, on the document.

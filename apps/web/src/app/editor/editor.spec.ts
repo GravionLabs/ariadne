@@ -1083,6 +1083,93 @@ describe('Editor', () => {
     });
   });
 
+  describe('keyboard shortcuts for adding and editing', () => {
+    const press = (key: string, init: KeyboardEventInit = {}, target: EventTarget = window) =>
+      target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...init }));
+
+    it('N adds a state after the selected state through the same prompt; F adds a final state', async () => {
+      const { el, store, settle, select, promptForm, submitPrompt } = await setup();
+      store.appendNode('start-1', 'state');
+      await settle();
+      await select(['state-1']);
+
+      press('n');
+      await settle();
+      expect(promptForm()).toBeTruthy();
+      expect(
+        promptForm()!.querySelector<HTMLInputElement>('[data-type=state] input')!.checked,
+      ).toBe(true);
+      expect(document.activeElement).toBe(promptForm()!.querySelector('[name=event]'));
+      await submitPrompt('PaymentCharged', 'Charged');
+      expect(store.nodes().at(-1)).toMatchObject({ type: 'state', name: 'Charged' });
+      expect(store.edges().at(-1)).toMatchObject({ source: 'state-1', event: 'PaymentCharged' });
+      expect(promptForm()).toBeNull();
+
+      // The new state is selected, so the keys go on from there.
+      await settle();
+      press('f');
+      await settle();
+      expect(promptForm()!.querySelector<HTMLInputElement>('[data-type=end] input')!.checked).toBe(
+        true,
+      );
+      await submitPrompt('', '');
+      expect(store.nodes().at(-1)).toMatchObject({ type: 'end' });
+      expect(store.edges().at(-1)).toMatchObject({ source: store.nodes().at(-2)!.id });
+      expect(el.querySelector('app-state-prompt')).toBeNull();
+    });
+
+    it('E edits the event of the selected transition', async () => {
+      const { store, settle, select } = await setup();
+      store.appendNode('start-1', 'state');
+      store.updateEdge('edge-1', { event: 'Go' });
+      await settle();
+      await select([], ['edge-1']);
+
+      press('e');
+      await settle();
+      const field = document.querySelector<HTMLInputElement>('app-inline-edit input');
+      expect(field?.value).toBe('Go');
+    });
+
+    it('does nothing in a field, with a modifier, on a final state, without a selection or while a path is shown', async () => {
+      const { el, store, settle, select, promptForm } = await setup();
+      store.appendNode('start-1', 'state');
+      store.appendNode('state-1', 'end');
+      await settle();
+
+      await select(['state-1']);
+      const input = document.createElement('input');
+      document.body.append(input);
+      press('n', {}, input);
+      press('n', { ctrlKey: true });
+      press('n', { metaKey: true });
+      press('n', { altKey: true });
+      await settle();
+      expect(promptForm()).toBeNull();
+      input.remove();
+
+      await select(['end-1']);
+      press('n');
+      press('f');
+      await settle();
+      expect(promptForm()).toBeNull();
+
+      await select([]);
+      press('n');
+      await settle();
+      expect(promptForm()).toBeNull();
+
+      await select(['state-1']);
+      [...el.querySelectorAll<HTMLButtonElement>('.menu-button')]
+        .find((b) => b.textContent?.trim() === 'Path')!
+        .click();
+      await settle();
+      press('n');
+      await settle();
+      expect(promptForm()).toBeNull();
+    });
+  });
+
   it('draws parallel transitions with a label each, and a state that leads to itself', async () => {
     const { el, store, settle } = await setup();
     store.appendNode('start-1', 'state');
