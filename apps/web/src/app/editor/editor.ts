@@ -324,7 +324,9 @@ export class Editor {
   );
 
   protected closeKeyboardAdd(): void {
+    if (!this.keyboardAdd()) return;
     this.keyboardAdd.set(null);
+    this.focusDiagram();
   }
 
   /** Enter in the popover: the state goes in as it would from its "+"; Escape adds the defaults. */
@@ -407,16 +409,15 @@ export class Editor {
   protected endEditing(kind: 'node' | 'edge', id: string): void {
     if (!this.isEditing(kind, id)) return;
     this.ui.stopEditing();
-    // The field is gone: keep the keyboard on what was edited.
-    afterNextRender(
-      () => {
-        const key = kind === 'node' ? id : labelId(id);
-        const flow = this.flow()?.hostElement as HTMLElement | undefined;
-        const card = flow?.querySelector<HTMLElement>(attributeSelector('data-f-node-id', key));
-        (card?.querySelector<HTMLElement>('button.card') ?? card)?.focus();
-      },
-      { injector: this.injector },
-    );
+    // The field is gone: the keyboard stays in the diagram (f-flow keeps the focus on its own host).
+    this.focusDiagram();
+  }
+
+  /** Gives the focus back to the diagram, e.g. after a field or the add popover went away. */
+  private focusDiagram(): void {
+    afterNextRender(() => (this.flow()?.hostElement as HTMLElement | undefined)?.focus(), {
+      injector: this.injector,
+    });
   }
 
   private focusInspectorEvent(): void {

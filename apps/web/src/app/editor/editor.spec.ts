@@ -976,6 +976,8 @@ describe('Editor', () => {
       await settle();
       expect(field()).toBeNull();
       expect(store.nodes()[1].name).toBe('Charging');
+      // The keyboard stays in the diagram, not on the page.
+      expect(document.activeElement?.tagName).toBe('F-FLOW');
       store.undo();
       expect(store.nodes()[1].name).toBe('State');
     });
