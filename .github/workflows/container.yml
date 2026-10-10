@@ -4,6 +4,7 @@ name: Container
 # what goes into it only has to prove that the image builds and starts.
 on:
   pull_request:
+    branches: [main]
     paths:
       - Dockerfile
       - .dockerignore

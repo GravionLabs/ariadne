@@ -4,6 +4,7 @@ name: Dev container
 # integration tests inside it when what it is made of changes.
 on:
   pull_request:
+    branches: [main]
     paths:
       - '.devcontainer/**'
       - '.nvmrc'
