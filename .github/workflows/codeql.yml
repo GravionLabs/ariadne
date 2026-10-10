@@ -4,6 +4,7 @@ name: CodeQL
 # setup), so the configuration is versioned with the code. Needs GitHub Code Security on the repository.
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
   schedule:

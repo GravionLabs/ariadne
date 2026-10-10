@@ -3,6 +3,7 @@ name: Renovate config
 # A typo in the Renovate configuration stops the dependency updates without a sound: check it.
 on:
   pull_request:
+    branches: [main]
     paths:
       - '.github/renovate.json5'
       - '.github/workflows/renovate-config.yml'
