@@ -321,7 +321,7 @@
   "devDependencies": {
     "@types/markdown-it": "^14.2.0",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.19.1",
+    "@types/node": "^24.19.2",
     "@types/vscode": "^1.96.0",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^4.0.0",
