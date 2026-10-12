@@ -56,3 +56,8 @@ apps/vscode/capture/failures
 
 # VitePress (apps/site)
 .vitepress/cache
+
+# APM dependencies and deployed skills (run `apm install`)
+apm_modules/
+.claude/skills/
+.agents/skills/
