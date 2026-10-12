@@ -36,7 +36,7 @@ jobs:
       BASE: /${{ github.event.repository.name }}/
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: GravionLabs/ci/node/setup@f2bce90da1f215b8da4da9fba22881e9255921d2 # main
+      - uses: GravionLabs/ci/node/setup@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
