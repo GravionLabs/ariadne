@@ -83,6 +83,10 @@ Every release carries the extension as `ariadne-vscode-<version>.vsix`: download
 
 `docker run -p 8080:8080 ghcr.io/gravionlabs/ariadne:latest`, see [docs/self-hosting.md](docs/self-hosting.md). The [user guide](docs/guide/README.md) explains the editor, the C# import and generation, the exports and the VS Code extension. To show a saga in your own web or Angular app, see [the viewer](docs/guide/viewer.md) and its [README](packages/viewer/README.md) (demo pages included).
 
+## Agent skills
+
+Run `apm install` before working in this repository. It installs the Angular and TypeScript skills listed in `apm.yml`; the skill folders are git-ignored, so a fresh clone has none. Needs [apm](https://github.com/microsoft/apm).
+
 ## Coding agents
 
 An AI coding agent can check, draw, import, generate and compare sagas with the `ariadne` command, through the
