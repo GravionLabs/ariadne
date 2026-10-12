@@ -191,6 +191,8 @@ jobs:
     permissions:
       contents: write
       packages: write
+      issues: write
+      pull-requests: read
 
   # The .vsix goes onto the release the job above created, so it can be downloaded and installed
   # without a marketplace (code --install-extension ariadne-vscode-<version>.vsix).
