@@ -179,7 +179,7 @@ jobs:
     name: Release
     needs: [ci, format, generated-csharp, perf, vscode-extension, vsix, viewer-package, cli-package]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: GravionLabs/ci/.github/workflows/docker-package.yml@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+    uses: GravionLabs/ci/.github/workflows/docker-package.yml@7900456165095f0c69730006deb05b6403b5f719 # main
     with:
       # Lowercase: a registry rejects capitals, and `github.repository` (GravionLabs/ariadne) has them.
       image-name: gravionlabs/ariadne
