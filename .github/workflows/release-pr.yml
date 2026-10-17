@@ -1,0 +1,24 @@
+name: Release PR
+
+on:
+  push:
+    branches: ['release/**']
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  release-pr:
+    name: Release PR
+    runs-on: ubuntu-latest
+    steps:
+      # A PAT is needed: PRs created with GITHUB_TOKEN do not trigger the required pull_request checks.
+      - uses: GravionLabs/ci/versioning/release-pr@main
+        with:
+          token: ${{ secrets.GH_PAT || github.token }}
+      # Labels issues merged into the release branch with `merged` (removed when the release closes them).
+      - uses: GravionLabs/ci/versioning/mark-merged-issues@main
+        with:
+          token: ${{ secrets.GH_PAT || github.token }}
