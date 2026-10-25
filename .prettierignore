@@ -11,3 +11,4 @@ samples/library/*/*.docs.md
 samples/library/*/generated
 .claude
 apm.lock.yaml
+.worktrees

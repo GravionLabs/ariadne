@@ -8,6 +8,7 @@ export default tseslint.config(
       '**/.angular/**',
       '**/node_modules/**',
       '**/.claude/**',
+      '**/.worktrees/**',
       '**/apm_modules/**',
       '**/test-results/**',
       '**/.vscode-test/**',
