@@ -1,0 +1,15 @@
+name: ariadne
+version: 1.0.0
+description: APM project for ariadne
+author: Jérôme Kaufmann
+# Which agent platforms to deploy to.
+# Resolution order: --target flag > this field > auto-detect from filesystem.
+targets:
+  - claude
+dependencies:
+  apm:
+    - GravionLabs/apm-hub/packages/ts#v2.4.0
+    - GravionLabs/apm-hub/packages/ng#v2.4.0
+  mcp: []
+includes: auto
+scripts: {}

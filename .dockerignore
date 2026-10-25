@@ -6,3 +6,4 @@
 .vscode
 test-results
 coverage
+.worktrees/
