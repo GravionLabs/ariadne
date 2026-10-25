@@ -9,3 +9,5 @@ vsix
 samples/library/*/*.saga.yaml
 samples/library/*/*.docs.md
 samples/library/*/generated
+.claude
+apm.lock.yaml
