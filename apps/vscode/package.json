@@ -327,7 +327,7 @@
     "@vscode/vsce": "^4.0.0",
     "dejavu-fonts-ttf": "^2.37.3",
     "esbuild": "^0.28.2",
-    "markdown-it": "^15.0.2",
+    "markdown-it": "^15.0.3",
     "mocha": "^11.7.0",
     "playwright": "1.63.0",
     "sharp": "^0.35.5",
