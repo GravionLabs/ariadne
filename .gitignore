@@ -56,3 +56,6 @@ apps/vscode/capture/failures
 
 # VitePress (apps/site)
 .vitepress/cache
+
+# APM dependencies
+apm_modules/

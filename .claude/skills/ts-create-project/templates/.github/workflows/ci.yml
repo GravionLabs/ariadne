@@ -1,0 +1,13 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    uses: GravionLabs/ci/.github/workflows/node.yml@main
+    with:
+      node-version: '22'
+    secrets: inherit
