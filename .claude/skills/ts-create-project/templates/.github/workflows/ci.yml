@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    uses: GravionLabs/ci/.github/workflows/node.yml@main
+    uses: GravionLabs/ci/.github/workflows/node.yml@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
     with:
       node-version: '22'
     secrets: inherit

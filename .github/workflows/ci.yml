@@ -23,7 +23,7 @@ jobs:
     steps:
       # Lint, build and test with one install and the pnpm store cached
       # (GravionLabs/ci: node/ci runs `pnpm run lint`, `build` and `test:ci`).
-      - uses: GravionLabs/ci/node/ci@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+      - uses: GravionLabs/ci/node/ci@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           package-manager: pnpm
 
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: GravionLabs/ci/node/setup@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+      - uses: GravionLabs/ci/node/setup@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
@@ -44,12 +44,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: GravionLabs/ci/node/setup@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+      - uses: GravionLabs/ci/node/setup@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           package-manager: pnpm
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
-          dotnet-version: 8.0.425
+          dotnet-version: 8.0.427
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @ariadne/cli build
       - run: scripts/compile-generated.sh
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: GravionLabs/ci/node/setup@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+      - uses: GravionLabs/ci/node/setup@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: GravionLabs/ci/node/setup@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+      - uses: GravionLabs/ci/node/setup@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
@@ -98,10 +98,10 @@ jobs:
         with:
           fetch-depth: 0
       - id: version
-        uses: GravionLabs/ci/versioning/determine-version@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+        uses: GravionLabs/ci/versioning/determine-version@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           gitversion-config-file: GitVersion.yml
-      - uses: GravionLabs/ci/node/setup@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+      - uses: GravionLabs/ci/node/setup@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
@@ -127,10 +127,10 @@ jobs:
         with:
           fetch-depth: 0
       - id: version
-        uses: GravionLabs/ci/versioning/determine-version@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+        uses: GravionLabs/ci/versioning/determine-version@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           gitversion-config-file: GitVersion.yml
-      - uses: GravionLabs/ci/node/setup@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+      - uses: GravionLabs/ci/node/setup@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
@@ -157,10 +157,10 @@ jobs:
         with:
           fetch-depth: 0
       - id: version
-        uses: GravionLabs/ci/versioning/determine-version@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+        uses: GravionLabs/ci/versioning/determine-version@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           gitversion-config-file: GitVersion.yml
-      - uses: GravionLabs/ci/node/setup@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+      - uses: GravionLabs/ci/node/setup@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           package-manager: pnpm
       - run: pnpm install --frozen-lockfile
@@ -179,7 +179,7 @@ jobs:
     name: Release
     needs: [ci, format, generated-csharp, perf, vscode-extension, vsix, viewer-package, cli-package]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: GravionLabs/ci/.github/workflows/docker-package.yml@7900456165095f0c69730006deb05b6403b5f719 # main
+    uses: GravionLabs/ci/.github/workflows/docker-package.yml@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
     with:
       # Lowercase: a registry rejects capitals, and `github.repository` (GravionLabs/ariadne) has them.
       image-name: gravionlabs/ariadne
@@ -254,7 +254,7 @@ jobs:
           name: viewer-package
           path: viewer-package
       - if: env.NPM_TOKEN != ''
-        uses: GravionLabs/ci/node/setup@1fc7c889d8eac8530bba2910fe210516dffc9ea9 # main
+        uses: GravionLabs/ci/node/setup@a8333e23ea37bffdb2c3bcc0b326b1b03cce3881 # main
         with:
           package-manager: pnpm
       - if: env.NPM_TOKEN != ''
