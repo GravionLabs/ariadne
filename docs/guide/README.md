@@ -38,5 +38,5 @@ generates back, and a documentation page. Read the story of each in its README.
 | [Loan application](../../samples/library/loan-application/README.md)       | Three checks with a time limit each, a decision with three ways on, a manual review, an offer that lapses       | [hand-written](../../samples/library/loan-application) · [generated](../../samples/library/loan-application/generated)       |
 | [Tenant provisioning](../../samples/library/tenant-provisioning/README.md) | Two routing slips: setting up a tenant, undone step by step on a fault, and taking it down                      | [hand-written](../../samples/library/tenant-provisioning) · [generated](../../samples/library/tenant-provisioning/generated) |
 
-In the app: **New** → "Start with a tour" or "Real-world sagas". To add one, see the
+In the app: **Samples…** → "Start with a tour" or "Real-world sagas". To add one, see the
 [sample library](../../samples/library/README.md).

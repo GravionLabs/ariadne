@@ -94,6 +94,14 @@ export const DiagramDocument = signalStore(
       },
 
       /**
+       * A sample: open under the name of its file, but not tied to a file and unsaved, so saving
+       * asks where to put it and suggests that name.
+       */
+      openSample(diagram: Diagram, fileName: string): void {
+        replace(diagram, { name: fileName }, true);
+      },
+
+      /**
        * A diagram recovered from a draft: open under its old name but not tied to a file, so it is
        * unsaved and saving asks where to put it.
        */

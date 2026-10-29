@@ -55,6 +55,20 @@ describe('the samples', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it('names every sample after the file it is read from, so it is saved under that name', () => {
+    const folders: Record<string, string> = {
+      order: '../../docs/examples',
+      booking: '../../samples/sagas/booking',
+      'travel-booking': '../../docs/examples',
+    };
+    const text = (s: string) => s.replace(/\r\n/g, '\n');
+    for (const sample of SAMPLES) {
+      expect(sample.fileName, sample.id).toMatch(/^[\w-]+\.saga\.yaml$/);
+      const folder = folders[sample.id] ?? `../../samples/library/${sample.id}`;
+      expect(text(readSource(`${folder}/${sample.fileName}`)), sample.id).toBe(text(sample.yaml));
+    }
+  });
+
   it('has every folder of samples/library, so that a new sample cannot be left out', () => {
     const folders = listFolders('../../samples/library');
     expect(folders.length).toBeGreaterThanOrEqual(5);

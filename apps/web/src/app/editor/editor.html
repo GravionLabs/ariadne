@@ -19,6 +19,14 @@
       <button
         type="button"
         class="menu-button collapse-b"
+        (click)="openSample()"
+        title="Open a sample saga"
+      >
+        <app-icon name="samples" /><span class="label">Samples…</span>
+      </button>
+      <button
+        type="button"
+        class="menu-button collapse-b"
         (click)="open()"
         title="Open a YAML diagram (Ctrl+O)"
       >
@@ -539,6 +547,7 @@
 </div>
 
 <app-new-diagram-dialog />
+<app-samples-dialog />
 <app-import-dialog />
 <app-generate-dialog />
 <app-shortcuts-dialog />

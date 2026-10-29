@@ -27,6 +27,7 @@ const sample = (id: string, readme: string, yaml: string): Sample => ({
   group: 'library',
   ...describeSample(readme),
   yaml,
+  fileName: `${id}.saga.yaml`,
 });
 
 export const LIBRARY_SAMPLES: readonly Sample[] = [

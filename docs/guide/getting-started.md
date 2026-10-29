@@ -10,8 +10,8 @@
 
 ## Look at a sample
 
-Choose **New** and, under "Start with a tour", the _Order saga_ (under "Real-world sagas" there are bigger ones: [the sample library](../../samples/library/README.md)). It opens as a new diagram that is not saved
-anywhere yet. Click a state or a transition: the inspector on the right shows what it is. **Walkthrough** steps
+Choose **Samples…** and, under "Start with a tour", the _Order saga_ (under "Real-world sagas" there are bigger ones: [the sample library](../../samples/library/README.md)). It opens as a copy that is not saved
+anywhere yet, under the name of the sample's file (`order.saga.yaml`): **Save** keeps it on your computer under that name. Click a state or a transition: the inspector on the right shows what it is. **Walkthrough** steps
 through the saga event by event, **Messages** lists its commands and events and where they are used, and **Path**
 draws the path a saga instance took: paste the events it received (a JSON or YAML list, e.g. `- OrderReceived`) and the
 diagram shows the states visited, the transitions taken with their step numbers, and where the instance stands. A
@@ -21,8 +21,8 @@ diagram. The panel chooses between **On the diagram**, **Timeline** and **Both**
 [order sample with an example path](https://gravionlabs.github.io/ariadne/app/?sample=order&path=example) in the demo.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/new-dialog-dark.png">
-  <img alt="The New dialog: a name and a description for a new saga, then the samples to start from in two groups, a short tour and real-world sagas" src="../images/guide/new-dialog-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="../images/guide/samples-dialog-dark.png">
+  <img alt="The Samples dialog: the samples to open, in two groups, a short tour and real-world sagas, each with a title and a sentence on what it shows" src="../images/guide/samples-dialog-light.png">
 </picture>
 
 <picture>
