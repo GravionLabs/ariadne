@@ -99,7 +99,7 @@ export async function openApp(page: Page): Promise<void> {
 
 /** **New → sample**: opens the sample with this id (`order`, `booking`, `order-fulfilment`, ...). */
 export async function openSample(page: Page, id: string): Promise<void> {
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await page.getByRole('button', { name: 'Samples…', exact: true }).click();
   // The library is a chunk of its own, loaded when the dialog opens.
   const sample = page.locator(`.sample[data-sample-id="${id}"]`);
   await sample.waitFor();

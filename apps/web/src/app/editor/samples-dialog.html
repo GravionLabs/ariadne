@@ -1,0 +1,27 @@
+<dialog #dialog aria-labelledby="samples-title" (close)="onClose()">
+  <div class="dialog">
+    <h2 id="samples-title">Samples</h2>
+    <p class="intro">Opens a copy, unsaved, under the name of the sample's file.</p>
+
+    @for (group of groups(); track group.id) {
+      <section class="samples" [attr.aria-labelledby]="'samples-' + group.id">
+        <h3 [id]="'samples-' + group.id">{{ group.title }}</h3>
+        @for (sample of group.samples; track sample.id) {
+          <button
+            type="button"
+            class="sample"
+            [attr.data-sample-id]="sample.id"
+            (click)="pick(sample)"
+          >
+            <span class="title">{{ sample.title }}</span>
+            <span class="about">{{ sample.description }}</span>
+          </button>
+        }
+      </section>
+    }
+
+    <div class="actions">
+      <button type="button" class="menu-button" (click)="cancel()">Cancel</button>
+    </div>
+  </div>
+</dialog>

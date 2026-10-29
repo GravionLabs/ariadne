@@ -2163,17 +2163,53 @@ describe('Editor', () => {
   });
 
   describe('samples', () => {
-    it('opens a sample from the New popup as an unsaved copy', async () => {
+    const samplesButton = (el: HTMLElement) =>
+      [...el.querySelectorAll<HTMLButtonElement>('.file-actions button')].find((b) =>
+        b.textContent?.includes('Samples'),
+      )!;
+
+    it('opens a sample from the Samples popup as an unsaved copy, under its file name', async () => {
       const { el, store, settle } = await setup();
-      [...el.querySelectorAll<HTMLButtonElement>('.file-actions button')]
-        .find((b) => b.textContent?.includes('New'))!
-        .click();
+      samplesButton(el).click();
       await settle();
-      el.querySelector<HTMLButtonElement>('app-new-diagram-dialog .sample')!.click();
+      expect(el.querySelector('app-samples-dialog dialog[open]')).toBeTruthy();
+      el.querySelector<HTMLButtonElement>('app-samples-dialog [data-sample-id=booking]')!.click();
       await settle();
-      expect(store.diagram().name).toBe('OrderSaga');
+      expect(store.diagram().name).toBe('Booking');
       expect(store.nodes().length).toBeGreaterThan(4);
+      expect(el.querySelector('.file-label')?.textContent).toBe('BookingStateMachine.saga.yaml');
       expect(el.querySelector('[aria-label="Unsaved changes"]')).toBeTruthy();
+    });
+
+    it('no longer offers samples in the New popup', async () => {
+      const { el } = await setup();
+      expect(el.querySelector('app-new-diagram-dialog .sample')).toBeNull();
+    });
+
+    it('asks before a sample replaces unsaved changes, and keeps them when told no', async () => {
+      const { el, store, settle } = await setup();
+      store.appendNode('start-1', 'state');
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      samplesButton(el).click();
+      await settle();
+      expect(confirm).toHaveBeenCalled();
+      expect(el.querySelector('app-samples-dialog dialog[open]')).toBeNull();
+      expect(store.nodes()).toHaveLength(2);
+    });
+
+    it('keeps the diagram when the Samples popup is cancelled', async () => {
+      const { el, store, settle } = await setup();
+      const before = store.diagram();
+      samplesButton(el).click();
+      await settle();
+      el.querySelector<HTMLDialogElement>('app-samples-dialog dialog')!.close();
+      await settle();
+      expect(store.diagram()).toBe(before);
+    });
+
+    it('is not offered in VS Code, which owns the document', async () => {
+      const { el } = await setup({ embedded: true });
+      expect(el.querySelector('.file-actions')).toBeNull();
     });
 
     describe('from the address (?sample=)', () => {
@@ -2187,6 +2223,7 @@ describe('Editor', () => {
         await vi.waitFor(() => expect(store.diagram().name).toBe('OrderSaga'));
         await settle();
         expect(el.querySelector('[aria-label="Unsaved changes"]')).toBeTruthy();
+        expect(el.querySelector('.file-label')?.textContent).toBe('order.saga.yaml');
         expect(location.search).toBe('?x=1');
       });
 

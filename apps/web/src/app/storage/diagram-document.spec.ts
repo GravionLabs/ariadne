@@ -83,6 +83,22 @@ describe('DiagramDocument', () => {
     expect(doc.dirty()).toBe(true);
   });
 
+  it('opens a sample under its file name, unsaved, and saving suggests that name', async () => {
+    const sample = { ...store.diagram(), name: 'OrderSaga' };
+    doc.openSample(sample, 'order.saga.yaml');
+    expect(store.diagram()).toEqual(sample);
+    expect(doc.name()).toBe('order.saga.yaml');
+    expect(doc.dirty()).toBe(true);
+
+    await doc.saveAs();
+    expect(storage.saveAs).toHaveBeenLastCalledWith(expect.any(String), 'order.saga.yaml');
+
+    doc.openSample(sample, 'order.saga.yaml');
+    // Not tied to a file: the platform decides (the browser asks where, as for Save as).
+    await doc.save();
+    expect(storage.save).toHaveBeenLastCalledWith(expect.any(String), { name: 'order.saga.yaml' });
+  });
+
   it('opens a file into the store with a fresh history', async () => {
     store.addNode('state');
     storage.opened = {

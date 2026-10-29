@@ -15,6 +15,8 @@ export interface Sample {
   description: string;
   /** The diagram as a `*.saga.yaml` file. */
   yaml: string;
+  /** The name of that file, which an opened sample is saved under: `order.saga.yaml`. */
+  fileName: string;
   /**
    * The history of an example instance (a YAML list of steps, as the Path panel takes them): opened
    * with the sample by `?sample=<id>&path=example`, to show its path and timeline.
@@ -30,6 +32,7 @@ export const TOUR_SAMPLES: readonly Sample[] = [
     title: 'Order saga',
     description: 'Stock and payment, a payment retried and timed out. The simplest tour.',
     yaml: order,
+    fileName: 'order.saga.yaml',
     path: [
       '- { event: OrderReceived, at: "09:58", note: from the shop }',
       '- StockReserved',
@@ -43,6 +46,7 @@ export const TOUR_SAMPLES: readonly Sample[] = [
     title: 'Booking saga',
     description: 'Branches on events from outside, read from C#.',
     yaml: booking,
+    fileName: 'BookingStateMachine.saga.yaml',
     path: ['- BookingRequested', '- { event: PaymentReceived, note: paid by card }'].join('\n'),
   },
   {
@@ -51,6 +55,7 @@ export const TOUR_SAMPLES: readonly Sample[] = [
     title: 'Travel booking',
     description: 'Requests, a join, timeouts and compensation: flight, hotel and payment.',
     yaml: travel,
+    fileName: 'travel-booking.saga.yaml',
     path: [
       '- TravellerSubmitted',
       '- { event: ValidateTraveller.TimeoutExpired, to: Validating traveller, note: validation service slow }',

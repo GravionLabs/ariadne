@@ -50,6 +50,7 @@ import { findSample, sampleDiagram } from '../samples';
 import { GenerateDialog } from './generate-dialog';
 import { ImportDialog } from './import-dialog';
 import { NewDiagramDialog } from './new-diagram-dialog';
+import { SamplesDialog } from './samples-dialog';
 import { ShortcutsDialog } from './shortcuts-dialog';
 import { ProblemsMenu } from './problems-menu';
 import { SourcePanel } from './source-panel';
@@ -102,6 +103,7 @@ const OBSCURING =
     GenerateDialog,
     ImportDialog,
     NewDiagramDialog,
+    SamplesDialog,
     ShortcutsDialog,
     NodeCard,
     ProblemsMenu,
@@ -136,6 +138,7 @@ export class Editor {
   /** Walking through the saga or looking at a path: the diagram is read-only. */
   protected readonly walking = computed(() => this.walk.active() || this.path.active());
   private readonly newDialog = viewChild.required(NewDiagramDialog);
+  private readonly samplesDialog = viewChild.required(SamplesDialog);
   protected readonly shortcutsDialog = viewChild.required(ShortcutsDialog);
   private readonly importDialog = viewChild.required(ImportDialog);
   private readonly generateDialog = viewChild.required(GenerateDialog);
@@ -459,14 +462,21 @@ export class Editor {
     if (!this.confirmDiscard()) return;
     const details = await this.newDialog().open();
     if (!details) return;
-    // A sample opens like an import: a copy that is not saved anywhere yet.
-    if (details.sample) this.file.openImported(sampleDiagram(details.sample));
-    else this.file.newDiagram(details);
+    this.file.newDiagram(details);
+    this.afterReplace();
+  }
+
+  /** Opens a sample as an unsaved copy, under the name of the sample's file. */
+  protected async openSample(): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    const sample = await this.samplesDialog().open();
+    if (!sample) return;
+    this.file.openSample(sampleDiagram(sample), sample.fileName);
     this.afterReplace();
   }
 
   /**
-   * `?sample=<id>` in the address: opens that sample like New → sample; `&path=example` also shows the
+   * `?sample=<id>` in the address: opens that sample like Samples does; `&path=example` also shows the
    * path of its example instance, on the diagram and as a timeline. What cannot be opened is said so.
    */
   private async openSampleFromUrl(): Promise<void> {
@@ -477,7 +487,7 @@ export class Editor {
       this.errors.report(`There is no sample ${id}.`);
       return;
     }
-    this.file.openImported(sampleDiagram(sample));
+    this.file.openSample(sampleDiagram(sample), sample.fileName);
     this.afterReplace();
     if (!path) return;
     if (path !== 'example' || !sample.path) {

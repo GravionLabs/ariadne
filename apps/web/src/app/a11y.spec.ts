@@ -9,6 +9,7 @@ import { Editor } from './editor/editor';
 import { GenerateDialog } from './editor/generate-dialog';
 import { ImportDialog } from './editor/import-dialog';
 import { NewDiagramDialog } from './editor/new-diagram-dialog';
+import { SamplesDialog } from './editor/samples-dialog';
 import './editor/native-dialog.testing';
 import { CSHARP_IMPORTER } from './import/csharp-parser';
 import { DiagramStore } from './model/diagram-store';
@@ -211,6 +212,14 @@ const VIEWS: View[] = [
     shown: 'app-new-diagram-dialog dialog[open]',
     show: async (e) => {
       void e.fixture.debugElement.query(By.directive(NewDiagramDialog)).componentInstance.open();
+      await e.settle();
+    },
+  },
+  {
+    name: 'the samples dialog',
+    shown: 'app-samples-dialog dialog[open]',
+    show: async (e) => {
+      void e.fixture.debugElement.query(By.directive(SamplesDialog)).componentInstance.open();
       await e.settle();
     },
   },

@@ -45,14 +45,14 @@ const field = (page: Page, label: string) =>
 
 // ---- getting-started.md
 
-test('new-dialog', async ({ page }) => {
+test('samples-dialog', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await page.getByRole('button', { name: 'Samples…', exact: true }).click();
   await page.locator('#samples-library').waitFor();
   // Taller than the usual window: the dialog scrolls there, and the last sample would be cut in two.
   await withViewport(page, { width: 1720, height: 1150 }, async () => {
     await unhover(page);
-    await shots(page, 'new-dialog', { of: page.locator('dialog[open] .dialog') });
+    await shots(page, 'samples-dialog', { of: page.locator('dialog[open] .dialog') });
   });
 });
 

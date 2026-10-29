@@ -49,7 +49,7 @@ puts together (`apps/site/scripts/assemble.mjs`, which refuses to publish a half
 
 - The `demo` configuration replaces `app.config.ts` like `embedded` does and provides `DEMO_MODE`: a notice says that
   diagrams stay in the browser, and can be dismissed (remembered in `localStorage`, if the browser allows it).
-- `/app/?sample=<id>` opens a sample, as **New → sample** does, and takes the parameter out of the address. The
+- `/app/?sample=<id>` opens a sample, as **Samples…** does, and takes the parameter out of the address. The
   sample tables of the guide get an "Open in the demo" link on the site only (`.vitepress/demo-links.ts`), so the
   Markdown stays plain on GitHub.
 - A pull request that touches `apps/site`, `docs` or the workflow builds all of it (check "Build the site") without
