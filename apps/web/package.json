@@ -16,12 +16,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.spec.json"
   },
   "dependencies": {
-    "@angular/cdk": "^22.2.4",
-    "@angular/common": "^22.2.3",
-    "@angular/compiler": "^22.2.3",
-    "@angular/core": "^22.2.3",
-    "@angular/forms": "^22.2.3",
-    "@angular/platform-browser": "^22.2.3",
+    "@angular/cdk": "^22.2.5",
+    "@angular/common": "^22.2.4",
+    "@angular/compiler": "^22.2.4",
+    "@angular/core": "^22.2.4",
+    "@angular/forms": "^22.2.4",
+    "@angular/platform-browser": "^22.2.4",
     "@ariadne/core": "workspace:*",
     "@ariadne/editor-protocol": "workspace:*",
     "@ariadne/export": "workspace:*",
@@ -47,9 +47,9 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "@angular/build": "^22.2.4",
-    "@angular/cli": "^22.2.4",
-    "@angular/compiler-cli": "^22.2.3",
+    "@angular/build": "^22.2.5",
+    "@angular/cli": "^22.2.5",
+    "@angular/compiler-cli": "^22.2.4",
     "@playwright/test": "^1.63.0",
     "axe-core": "^4.13.0",
     "jsdom": "^30.0.0",
