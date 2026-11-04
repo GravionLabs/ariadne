@@ -1,0 +1,6 @@
+dist/
+node_modules/
+.angular/
+coverage/
+*.min.js
+*.min.css

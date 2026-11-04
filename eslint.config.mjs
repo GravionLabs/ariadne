@@ -10,6 +10,8 @@ export default tseslint.config(
       '**/test-results/**',
       '**/.vscode-test/**',
       '**/dist-test/**',
+      '.agents/**',
+      '.claude/**',
     ],
   },
   {
