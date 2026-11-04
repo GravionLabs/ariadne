@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    uses: GravionLabs/ci/.github/workflows/node-package.yml@v1
+    permissions:
+      contents: write
+      checks: write
+      pull-requests: write
+      packages: write
+      id-token: write
+      issues: write
+    with:
+      node-version: '26'
+      package-manager: npm
+      # The template has no lint script; set true after setup-biome-husky.
+      run-lint: false
+    secrets:
+      npm-token: ${{ secrets.NPM_TOKEN }}

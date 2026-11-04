@@ -85,7 +85,7 @@ Every release carries the extension as `ariadne-vscode-<version>.vsix`: download
 
 ## Agent skills
 
-Run `apm install` before working in this repository. It installs the Angular and TypeScript skills listed in `apm.yml`; the skill folders are git-ignored, so a fresh clone has none. Needs [apm](https://github.com/microsoft/apm).
+The Angular and TypeScript skills of [GravionLabs/skills](https://github.com/GravionLabs/skills) are committed in `.agents/skills/` and `.claude/skills/`, pinned in `skills-lock.json`. Update them with `npx skills update`.
 
 ## Coding agents
 
