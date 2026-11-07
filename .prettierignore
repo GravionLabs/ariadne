@@ -10,5 +10,6 @@ samples/library/*/*.saga.yaml
 samples/library/*/*.docs.md
 samples/library/*/generated
 .claude
+.agents
 apm.lock.yaml
 .worktrees
