@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    uses: GravionLabs/ci/.github/workflows/node-package.yml@v1
+    uses: GravionLabs/ci/.github/workflows/node-package.yml@d7c11be41cc7d66a579754c95cfac48a9792a1cd # v1
     permissions:
       contents: write
       checks: write
