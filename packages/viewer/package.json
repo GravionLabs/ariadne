@@ -63,10 +63,10 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "devDependencies": {
-    "@angular/common": "^22.2.3",
-    "@angular/compiler": "^22.2.3",
-    "@angular/compiler-cli": "^22.2.3",
-    "@angular/core": "^22.2.3",
+    "@angular/common": "^22.2.5",
+    "@angular/compiler": "^22.2.5",
+    "@angular/compiler-cli": "^22.2.5",
+    "@angular/core": "^22.2.5",
     "@ariadne/core": "workspace:*",
     "@ariadne/export": "workspace:*",
     "axe-core": "^4.13.0",
