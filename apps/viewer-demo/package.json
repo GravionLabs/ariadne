@@ -22,7 +22,7 @@
     "@ariadne/export": "workspace:*",
     "@ariadne/viewer": "workspace:*",
     "@dagrejs/dagre": "^3.1.1",
-    "rxjs": "~7.8.0",
+    "rxjs": "~7.8.2",
     "tslib": "^2.3.0",
     "yaml": "^2.9.1"
   },
