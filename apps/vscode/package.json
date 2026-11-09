@@ -315,7 +315,7 @@
     "@ariadne/masstransit": "workspace:*",
     "@resvg/resvg-wasm": "^2.6.2",
     "tree-sitter-c-sharp": "^0.23.5",
-    "web-tree-sitter": "^0.27.0",
+    "web-tree-sitter": "^0.27.2",
     "yaml": "^2.9.1"
   },
   "devDependencies": {
