@@ -40,7 +40,7 @@
     "@foblex/utils": "^1.1.1",
     "@lezer/highlight": "^1.2.5",
     "@ngrx/signals": "^22.0.1",
-    "rxjs": "~7.8.0",
+    "rxjs": "~7.8.2",
     "tree-sitter-c-sharp": "^0.23.5",
     "tslib": "^2.3.0",
     "web-tree-sitter": "^0.27.0",

@@ -122,7 +122,7 @@ importers:
         specifier: ^3.1.1
         version: 3.1.1
       rxjs:
-        specifier: ~7.8.0
+        specifier: ~7.8.2
         version: 7.8.2
       tslib:
         specifier: ^2.3.0
@@ -292,7 +292,7 @@ importers:
         specifier: ^22.0.1
         version: 22.0.1(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(rxjs@7.8.2)
       rxjs:
-        specifier: ~7.8.0
+        specifier: ~7.8.2
         version: 7.8.2
       tree-sitter-c-sharp:
         specifier: ^0.23.5
@@ -449,7 +449,7 @@ importers:
         specifier: ^6.5.1
         version: 6.5.1(rollup@4.64.0)(typescript@6.0.3)
       rxjs:
-        specifier: ~7.8.0
+        specifier: ~7.8.2
         version: 7.8.2
       tslib:
         specifier: ^2.3.0
