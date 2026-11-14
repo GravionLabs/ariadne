@@ -1,7 +1,7 @@
 # The development image: what the CI jobs need, so tests behave the same here and there.
 # Node 24 is what CI uses (GravionLabs/ci/node/setup) and what .nvmrc says. The production
 # image (../Dockerfile) and `engines` say 22; they are not changed by this.
-FROM mcr.microsoft.com/devcontainers/javascript-node:4-24-bookworm
+FROM mcr.microsoft.com/devcontainers/javascript-node:5-24-trixie
 
 # xvfb and the libraries Electron needs, for the VS Code integration tests. Debian 13 (trixie) and Ubuntu 24.04 (the CI runner)
 # call the sound library libasound2t64.

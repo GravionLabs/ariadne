@@ -19,6 +19,9 @@
   baseBranchPatterns: ['release/next'],
   timezone: 'Europe/Zurich',
   schedule: ['before 6am on monday'],
+  // Lock file maintenance refreshes the transitive dependencies inside their ranges once a month, in its own pull
+  // request. Its "Pending" entry on the dashboard is therefore expected until the first of the month: it is
+  // not an open update, and the lockfile needs no manual refresh in between.
   lockFileMaintenance: { enabled: true, schedule: ['before 6am on the first day of the month'] },
   // Raise the range in package.json to the new version instead of leaving it as it was.
   rangeStrategy: 'bump',
@@ -52,6 +55,26 @@
       // not install on that VS Code. Raise both together, by hand.
       matchPackageNames: ['@types/vscode'],
       allowedVersions: '<1.97.0',
+    },
+    {
+      // TypeScript 7 (7.0.2 is out) is held back: Angular 22 (@angular/compiler-cli and @angular/build) declares
+      // the peer range `typescript >=6.0 <6.1`. Raise it with the Angular release that allows 7 (#521).
+      // The lockfile may still resolve typescript 7 transitively for apps/site (an optional peer of vitepress and
+      // vue): that is intended, only the TypeScript the repository itself declares is held.
+      matchPackageNames: ['typescript'],
+      allowedVersions: '<6.1.0',
+    },
+    {
+      // @types/node follows the Node.js line the project runs on (CI and .nvmrc: 24, `engines`: >=22), not the
+      // newest one (26). Raise it with the move to Node.js 26 (#476).
+      matchPackageNames: ['@types/node'],
+      allowedVersions: '<25.0.0',
+    },
+    {
+      // The production image stays on Node.js 22 until the move to Node.js 26 (#476).
+      matchDatasources: ['docker'],
+      matchPackageNames: ['node'],
+      allowedVersions: '<23.0.0',
     },
     {
       // The WebAssembly files of the two must stay compatible (the vsix test checks it).
