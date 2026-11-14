@@ -26,10 +26,3 @@ allowBuilds:
   tree-sitter-c-sharp: false
   # Signs and verifies published extensions; packaging a .vsix does not need its native binary.
   '@vscode/vsce-sign': false
-
-minimumReleaseAgeExclude:
-  - '@eslint/config-array@0.23.6'
-  - eslint@10.15.0
-  - playwright-core@1.65.1
-  - playwright@1.65.1
-  - '@playwright/test@1.65.1'

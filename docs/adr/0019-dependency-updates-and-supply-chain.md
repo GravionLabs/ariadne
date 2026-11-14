@@ -70,6 +70,9 @@ Renovate rules in `.github/renovate.json5` keep three updates out until their re
 - **The `node` Docker image `<23`**: the production image stays on Node.js 22. Both Node.js holds end with the move to
   Node.js 26 (#476).
 
+Releases younger than the minimum release age (at the time: eslint 10.15.0, Playwright 1.65.1) were not taken and no
+exclusion was used; Renovate picks them up once they are old enough.
+
 ### Code scanning (#312)
 
 - **CodeQL** (`.github/workflows/codeql.yml`) scans `javascript-typescript` and `actions` (the workflows themselves,
