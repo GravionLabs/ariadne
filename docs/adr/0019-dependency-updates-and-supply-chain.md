@@ -62,13 +62,13 @@ package with an install script was added, so the decisions above are unchanged.
 
 ### Updates held back (#521)
 
-Renovate rules in `.github/renovate.json5` keep three updates out until their reason is gone:
+Renovate rules in `.github/renovate.json5` keep one update out until its reason is gone:
 
 - **TypeScript `<6.1`**: Angular 22.2 (`@angular/compiler-cli`, `@angular/build`) declares the peer range
   `typescript >=6.0 <6.1`. Raise it with the Angular release that allows 7.
-- **`@types/node` `<25`**: it follows the Node.js line the project runs on (CI and `.nvmrc`: 24), not the newest.
-- **The `node` Docker image `<23`**: the production image stays on Node.js 22. Both Node.js holds end with the move to
-  Node.js 26 (#476).
+
+The Node.js holds of #521 (`@types/node` `<25`, the `node` Docker image `<23`) ended with the move to Node.js 26 (#476):
+`.nvmrc`, CI, both Dockerfiles, `@types/node` and `engines` are on 26.
 
 Releases younger than the minimum release age (at the time: eslint 10.15.0, Playwright 1.65.1) were not taken and no
 exclusion was used; Renovate picks them up once they are old enough.

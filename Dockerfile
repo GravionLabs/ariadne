@@ -4,7 +4,7 @@
 
 # ---- build the app and the server
 # The build output is plain JavaScript, so it is built once on the build machine, whatever the target.
-FROM --platform=$BUILDPLATFORM node:22-alpine AS build
+FROM --platform=$BUILDPLATFORM node:26-alpine AS build
 RUN corepack enable
 WORKDIR /repo
 # The manifests first: the install layer is reused until a dependency changes.
@@ -27,7 +27,7 @@ COPY samples/library samples/library
 RUN pnpm --filter @ariadne/web build && pnpm --filter @ariadne/server build
 
 # ---- the node binary for the target platform
-FROM node:22-alpine AS node
+FROM node:26-alpine AS node
 
 # ---- run: the node binary, the bundled server and the built app, nothing else (no npm, no yarn)
 FROM alpine:3.24
