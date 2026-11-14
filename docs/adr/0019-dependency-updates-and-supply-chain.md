@@ -37,7 +37,7 @@ A group is a set of packages that must move together; one pull request is easier
 | tree-sitter              | `tree-sitter-c-sharp`, `web-tree-sitter`                                                                                         | The WebAssembly files must stay compatible (the `.vsix` test checks it).                                                                      |
 | build and test tooling   | `vitest`, `esbuild`, `rollup`, `rollup-plugin-dts`, `eslint`, `typescript-eslint`, `prettier`, `jsdom`, `axe-core`, `fast-check` | Tools that change output or reports, not behaviour.                                                                                           |
 | types                    | `@types/*` except `@types/vscode`                                                                                                | Rarely matter, often come in numbers.                                                                                                         |
-| github-actions           | every action                                                                                                                     | `GravionLabs/ci/*@main` is excluded: the organisation's shared workflows are followed on `main` on purpose.                                   |
+| github-actions           | every action                                                                                                                     | `GravionLabs/ci/*` is not pinned to a SHA: it follows the major tag `@v1` (below); a new major opens a pull request.                          |
 
 ### Install scripts are reviewed (#311)
 
@@ -79,6 +79,14 @@ repository of the action, and the next run of a workflow would run the new code 
 Every `uses:` in `.github/workflows` is therefore a full commit SHA with the version in a comment
 (`actions/checkout@<sha> # v4`), which CodeQL's `actions/unpinned-tag` query checks. `helpers:pinGitHubActionDigests`
 makes Renovate update the SHA and the comment together, so pinning costs a reviewed pull request, not a manual step.
+
+**The exception is GravionLabs/ci (#479).** The organisation's own actions and reusable workflows are referenced at
+the moving major tag, `GravionLabs/ci/...@v1`: the release job of ci moves `v1` to every 1.x release, and its
+reusable workflows call their own actions at `@v1` too. `@main` reached every merge into ci, breaking or not; a SHA
+pin was moved by nobody (Renovate left ci alone) and fell dozens of commits behind. With `@v1` fixes and features
+arrive without a pull request, and a breaking change of ci becomes `v2`, which Renovate proposes (`pinDigests: false`
+for `GravionLabs/ci`). The trust is the same as for the repository itself: the same organisation owns both.
+Third-party actions stay pinned to a SHA.
 
 ### The configuration is checked
 
