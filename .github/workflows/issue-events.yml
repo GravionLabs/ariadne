@@ -18,7 +18,7 @@ jobs:
   issues:
     permissions:
       issues: write
-    uses: GravionLabs/ci/.github/workflows/issues.yml@main
+    uses: GravionLabs/ci/.github/workflows/issues.yml@v1
     with:
       project-url: https://github.com/users/GravionLabs/projects/17
       needs: true

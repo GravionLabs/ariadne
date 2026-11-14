@@ -79,9 +79,10 @@
     },
     { groupName: 'github-actions', matchManagers: ['github-actions'] },
     {
-      // The shared workflows of the organisation are followed on `main` on purpose.
-      matchPackageNames: ['GravionLabs/ci/**'],
-      enabled: false,
+      // The shared workflows and actions of the organisation follow the moving major tag `@v1` (ADR 0019):
+      // no SHA pin, but a pull request when `v2` appears.
+      matchPackageNames: ['GravionLabs/ci{/,}**'],
+      pinDigests: false,
     },
     {
       // Majors get their own pull requests, labelled, and a person decides.
