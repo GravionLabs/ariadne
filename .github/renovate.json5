@@ -30,6 +30,17 @@
   // a separate `pnpm audit` job would.
   vulnerabilityAlerts: { enabled: true, labels: ['security'], schedule: ['at any time'] },
   osvVulnerabilityAlerts: true,
+  // corepack is installed with `npm install -g corepack@<version>` in both Dockerfiles (Node.js 26 images do not
+  // bundle it, ADR 0019); the Dockerfile manager does not see that, so the pin sits in an annotated ARG.
+  customManagers: [
+    {
+      customType: 'regex',
+      managerFilePatterns: ['/(^|/)Dockerfile$/'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+ARG \\w+=(?<currentValue>\\S+)',
+      ],
+    },
+  ],
   packageRules: [
     {
       groupName: 'angular',

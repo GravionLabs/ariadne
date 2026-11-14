@@ -12,5 +12,8 @@ RUN apt-get update \
         libsecret-1-0 libxss1 libdrm2 \
     && rm -rf /var/lib/apt/lists/*
 
-# pnpm through corepack, at the version `packageManager` in package.json pins.
-RUN corepack enable
+# pnpm through corepack, at the version `packageManager` in package.json pins. Node.js 26 images do not bundle
+# corepack: it is installed at an exact version, which Renovate keeps current (customManagers in .github/renovate.json5).
+# renovate: datasource=npm depName=corepack
+ARG COREPACK_VERSION=0.36.0
+RUN npm install -g corepack@${COREPACK_VERSION} && corepack enable

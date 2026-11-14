@@ -5,7 +5,11 @@
 # ---- build the app and the server
 # The build output is plain JavaScript, so it is built once on the build machine, whatever the target.
 FROM --platform=$BUILDPLATFORM node:26-alpine AS build
-RUN corepack enable
+# Node.js 26 images do not bundle corepack: it is installed at an exact version, which Renovate keeps current
+# (customManagers in .github/renovate.json5), then enabled to provide the pnpm that `packageManager` pins.
+# renovate: datasource=npm depName=corepack
+ARG COREPACK_VERSION=0.36.0
+RUN npm install -g corepack@${COREPACK_VERSION} && corepack enable
 WORKDIR /repo
 # The manifests first: the install layer is reused until a dependency changes.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
