@@ -128,6 +128,13 @@ An architectural change gets an ADR in `docs/adr/NNNN-title.md`, in the format o
 (status, date, issues, context, decision, consequences). Examples of what counts: a new package, a
 new dependency that shapes the code, a change to the file format or to a protocol.
 
+The `PR checks` workflow enforces part of this: a pull request that changes one of the paths listed
+under `governance.adrPaths` in `.agents/config.json`, or that closes an issue labelled
+`needs-decision`, must add or change an ADR. The label `skip-adr` on the pull request skips the check
+when no decision is involved. The same workflow checks that the title is a Conventional Commit and
+that the body closes an issue that is ready (`Closes #<issue>`, not labelled `needs-decision` or
+`needs-refinement`, not blocked by an open issue).
+
 ## Code style
 
 Prettier, ESLint and the type check of every package, specs included, run in CI (`pnpm format:check`, `pnpm lint`). Beyond that, write code that
