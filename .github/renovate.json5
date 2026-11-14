@@ -11,7 +11,7 @@
   ],
   // `chore(deps): …` keeps dependency updates out of the release notes (ADR 0015).
   // The issue titles of the repository start with their level (CONTRIBUTING.md): the dashboard is a PBI.
-  dependencyDashboardTitle: '[PBI] chore: Dependency Dashboard',
+  dependencyDashboard: { title: '[PBI] chore: Dependency Dashboard' },
   semanticCommitType: 'chore',
   semanticCommitScope: 'deps',
   // Updates are work like any other: pull requests go into the rolling release branch, not into main
