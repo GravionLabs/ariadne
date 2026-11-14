@@ -86,6 +86,10 @@ lacks: the runtime stage of the production Dockerfile installs `libatomic` next 
 Releases younger than the minimum release age (at the time: eslint 10.15.0, Playwright 1.65.1) were not taken and no
 exclusion was used; Renovate picks them up once they are old enough.
 
+Renovate holds the same line: `minimumReleaseAge: '3 days'` with `internalChecksFilter: 'strict'` in
+`.github/renovate.json5` opens no pull request for a release younger than three days (pnpm's own one day still applies
+on install). Security fixes from `vulnerabilityAlerts` are exempt (`minimumReleaseAge: null`), so a fix is not delayed.
+
 ### Code scanning (#312)
 
 - **CodeQL** (`.github/workflows/codeql.yml`) scans `javascript-typescript` and `actions` (the workflows themselves,

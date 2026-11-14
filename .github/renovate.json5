@@ -28,8 +28,18 @@
   postUpdateOptions: ['pnpmDedupe'],
   // A known vulnerability gets a pull request at once, outside the schedule. This also covers what
   // a separate `pnpm audit` job would.
-  vulnerabilityAlerts: { enabled: true, labels: ['security'], schedule: ['at any time'] },
+  // A security fix is not held back by the minimum release age below (pnpm's own one day still applies on install).
+  vulnerabilityAlerts: {
+    enabled: true,
+    labels: ['security'],
+    schedule: ['at any time'],
+    minimumReleaseAge: null,
+  },
   osvVulnerabilityAlerts: true,
+  // No pull request for a release younger than three days: a compromised release is usually pulled within hours or
+  // days (ADR 0019). `strict` keeps Renovate from proposing the newest version while it is still too young.
+  minimumReleaseAge: '3 days',
+  internalChecksFilter: 'strict',
   // corepack is installed with `npm install -g corepack@<version>` in both Dockerfiles (Node.js 26 images do not
   // bundle it, ADR 0019); the Dockerfile manager does not see that, so the pin sits in an annotated ARG.
   customManagers: [
