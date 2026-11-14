@@ -1,0 +1,9 @@
+# A CodeQL model pack: data for the queries of codeql/actions-all, picked up by code scanning from
+# .github/codeql/extensions. It tells `actions/unpinned-tag` which owners may be referenced by a tag.
+name: gravionlabs/ariadne-trusted-owners
+version: 0.0.0
+library: true
+extensionTargets:
+  codeql/actions-all: '*'
+dataExtensions:
+  - models/**/*.yml
