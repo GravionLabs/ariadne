@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-04
-- Issues: #285, #310, #311, #312
+- Issues: #285, #310, #311, #312, #362, #522
 - Builds on: [ADR 0006](0006-typescript-monorepo.md), [ADR 0015](0015-versioning-and-releases.md)
 
 ## Context
@@ -100,10 +100,53 @@ on install). Security fixes from `vulnerabilityAlerts` are exempt (`minimumRelea
   versioned with the code. `dist`, `node_modules`, `samples/generated` (C# that is generated and not shipped) and `docs`
   are not scanned.
 - **No build**: JavaScript and TypeScript are analysed from source (`build-mode: none`).
-- The repository is private, so scanning needs **GitHub Code Security**; without it the upload of the results fails.
-  Secret scanning with push protection (Secret Protection) is worth enabling next to it.
+- The repository is public (#522): code scanning, secret scanning and push protection are free. This replaces the
+  "out of scope" decision of #362, which kept them off while the repository was private.
 - A finding is fixed, filed as a bug under #285 when it is not small, or dismissed in the Security tab with a reason
   when it is a false positive.
+
+### Review of the supply chain before publishing packages (#522)
+
+The review of November 2026, with the repository public and npm, Marketplace and NuGet publishing coming (#502).
+
+- **Versions.** `renovatebot/github-action` v46.3.13 and `github/codeql-action` v4.39.3 were already the newest
+  majors, pinned by commit SHA. The Renovate version is stated in `renovate.yml` (`renovate-version: 44.239.1`) and
+  kept current by a custom manager; the configuration passes `renovate-config-validator --strict` and uses no
+  deprecated option.
+- **Rate limits.** `prHourlyLimit: 10` and `prConcurrentLimit: 20` (defaults 2 and 10): a week's updates are opened.
+- **`minimumReleaseAge: '3 days'` is kept** (#534) for every update, with `internalChecksFilter: 'strict'`; security
+  fixes are exempt. Three days is long enough for most compromised releases to be pulled and short enough not to
+  starve the weekly run.
+- **Ecosystems.** npm, GitHub Actions, Dockerfile, `compose.yaml`, the dev container, `.nvmrc` and NuGet
+  (`*.csproj`, so the coming `dotnet/` folder of #506) come from `config:recommended`; a custom manager adds the
+  .NET SDK of `setup-dotnet`. The inline project of `scripts/compile-generated.sh` (`MassTransit 8.*`) is a floating
+  range and needs no update. A dry run (`workflow_dispatch`, `dry-run`) lists the managers.
+- **CodeQL** keeps `security-extended` for `javascript-typescript` and `actions`; `csharp` is added to the matrix
+  with #506 (a comment marks the place). One open alert (`actions/unpinned-tag`, number 31) concerns the
+  `GravionLabs/ci@v1` exception above: dismiss it as "won't fix" with that reason.
+- **Dependency review** (`.github/workflows/dependency-review.yml`) fails a pull request on a new dependency with a
+  high severity vulnerability or a license outside the allow list (permissive licenses, MPL-2.0).
+- **Secret scanning and push protection are on**; **Dependabot alerts are on** as a second source next to
+  `osvVulnerabilityAlerts`, **Dependabot security updates stay off** (Renovate opens those pull requests, two
+  bots on one vulnerability would collide); **private vulnerability reporting is on** and `SECURITY.md` says how to
+  report.
+
+**Settings that need the owner's rights** (state of 2026-11-14 read with `gh api`, final state wanted):
+
+- [x] Secret scanning: enabled. [x] Push protection: enabled.
+- [ ] Scan the history once for secrets (Security > Secret scanning) and revoke every finding.
+- [x] Dependabot alerts: enabled. [x] Dependabot security updates: disabled (final state).
+- [x] Private vulnerability reporting: enabled.
+- [ ] Code scanning alert 31 (`actions/unpinned-tag`): dismiss with the reason above.
+- [ ] Ruleset `main` (id 24478507): add the required checks `Analyze (javascript-typescript)`, `Analyze (actions)` and
+      `Dependency review` next to `Lint, build, test` and `pr-checks / PR checks`. Add them once the workflows have run on
+      the release branch.
+- [ ] Renovate dry run (pending): run the `renovate` workflow by hand (`workflow_dispatch`, input `dry-run`) and confirm the
+      detected managers: npm, github-actions, dockerfile, docker-compose, devcontainer, `.nvmrc`, nuget and the two custom
+      managers.
+- [ ] `RENOVATE_TOKEN`: check scopes (contents, pull requests and workflows write, issues write for the dashboard, on
+      this repository only) and the expiry; prefer a fine-grained token that expires within a year, and note the
+      expiry date here (not the value). Not readable through the API.
 
 ### Actions are pinned to commit SHAs (#367)
 

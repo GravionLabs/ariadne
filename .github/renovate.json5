@@ -1,5 +1,6 @@
 // Renovate keeps npm packages and GitHub Actions current: a few grouped pull requests a week, gated
-// by CI, merged by a person (no automerge). See docs/adr/0019-dependency-updates-and-supply-chain.md.
+// by CI, merged by a person (no automerge). Ecosystems: npm, GitHub Actions, Dockerfile and compose.yaml, the dev
+// container, .nvmrc and NuGet (*.csproj, the coming dotnet/ folder) through the managers of config:recommended. See docs/adr/0019-dependency-updates-and-supply-chain.md.
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: [
@@ -26,6 +27,9 @@
   // Raise the range in package.json to the new version instead of leaving it as it was.
   rangeStrategy: 'bump',
   postUpdateOptions: ['pnpmDedupe'],
+  // A week's updates are opened, not held back on the dashboard (the defaults are 2 per hour and 10 open).
+  prHourlyLimit: 10,
+  prConcurrentLimit: 20,
   // A known vulnerability gets a pull request at once, outside the schedule. This also covers what
   // a separate `pnpm audit` job would.
   // A security fix is not held back by the minimum release age below (pnpm's own one day still applies on install).
@@ -43,6 +47,23 @@
   // corepack is installed with `npm install -g corepack@<version>` in both Dockerfiles (Node.js 26 images do not
   // bundle it, ADR 0019); the Dockerfile manager does not see that, so the pin sits in an annotated ARG.
   customManagers: [
+    {
+      // The Renovate version the workflow runs is stated in .github/workflows/renovate.yml (`renovate-version`).
+      customType: 'regex',
+      managerFilePatterns: ['/^\\.github/workflows/renovate\\.yml$/'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+renovate-version: (?<currentValue>\\S+)',
+      ],
+    },
+    {
+      // The .NET SDK of setup-dotnet (the nuget manager reads *.csproj and the like; this one reads the SDK).
+      customType: 'regex',
+      managerFilePatterns: ['/^\\.github/workflows/[^/]+\\.ya?ml$/'],
+      matchStrings: ['dotnet-version: (?<currentValue>\\d+\\.\\d+\\.\\d+)'],
+      depNameTemplate: 'dotnet-sdk',
+      datasourceTemplate: 'dotnet-version',
+      versioningTemplate: 'semver',
+    },
     {
       customType: 'regex',
       managerFilePatterns: ['/(^|/)Dockerfile$/'],
