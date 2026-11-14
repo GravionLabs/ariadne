@@ -7,9 +7,11 @@ is the short version of the rules below, for coding agents.
 ## Setup
 
 You need Node.js (the major version in [`.nvmrc`](.nvmrc)) and pnpm, which corepack provides at the
-version pinned in `package.json` (`packageManager`):
+version pinned in `package.json` (`packageManager`). Node.js 26 no longer bundles corepack: install it once with
+`npm install -g corepack`. The project itself uses pnpm only; npm is just the way to get corepack.
 
 ```sh
+npm install -g corepack   # Node.js 26 and later only: it does not ship corepack
 corepack enable
 pnpm install
 ```

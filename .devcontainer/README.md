@@ -1,6 +1,6 @@
 # Dev container
 
-A container with everything the CI jobs need: Node 24 (as `.nvmrc` and CI), pnpm through corepack
+A container with everything the CI jobs need: Node 26 (as `.nvmrc` and CI), pnpm through corepack
 at the version `package.json` pins, the .NET 10 SDK for the generated-C# check, and xvfb with the
 libraries Electron needs for the VS Code integration tests. `pnpm install --frozen-lockfile` runs
 when the container is created.

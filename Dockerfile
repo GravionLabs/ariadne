@@ -5,7 +5,11 @@
 # ---- build the app and the server
 # The build output is plain JavaScript, so it is built once on the build machine, whatever the target.
 FROM --platform=$BUILDPLATFORM node:26-alpine AS build
-RUN corepack enable
+# Node.js 26 images do not bundle corepack: it is installed at an exact version, which Renovate keeps current
+# (customManagers in .github/renovate.json5), then enabled to provide the pnpm that `packageManager` pins.
+# renovate: datasource=npm depName=corepack
+ARG COREPACK_VERSION=0.36.0
+RUN npm install -g corepack@${COREPACK_VERSION} && corepack enable
 WORKDIR /repo
 # The manifests first: the install layer is reused until a dependency changes.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
@@ -33,8 +37,9 @@ FROM node:26-alpine AS node
 FROM alpine:3.24
 # Unpinned on purpose: the Alpine release is pinned above, and a pinned patch version disappears from its
 # repository when Alpine publishes a fix, which would break the build.
+# libatomic: the node 26 binary links libatomic.so.1, which a bare alpine image lacks.
 # hadolint ignore=DL3018
-RUN apk add --no-cache libstdc++ && adduser -D -u 10001 ariadne
+RUN apk add --no-cache libstdc++ libatomic && adduser -D -u 10001 ariadne
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 WORKDIR /app
 COPY --from=build /repo/apps/server/dist/server.mjs ./server.mjs
