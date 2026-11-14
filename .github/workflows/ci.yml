@@ -49,7 +49,7 @@ jobs:
           package-manager: pnpm
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 8.0.427
+          dotnet-version: 10.0.404
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @ariadne/cli build
       - run: scripts/compile-generated.sh

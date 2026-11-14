@@ -75,7 +75,7 @@ Every change comes with tests, and the suite is green before every commit.
 - **Viewer package test:** `pnpm --filter @ariadne/viewer test:package` packs the viewer and uses it
   from a clean project.
 - **Generated C# compiles:** `pnpm --filter @ariadne/cli build && scripts/compile-generated.sh`
-  needs the .NET 8 SDK (the `generated-csharp` job in
+  needs the .NET 10 SDK (the `generated-csharp` job in
   [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs it; you only need it when you change
   the generator).
 

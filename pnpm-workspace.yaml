@@ -3,7 +3,7 @@ packages:
   - 'apps/*'
 
 # A dependency with an install script must be decided here, as `true` (it may run) or `false` (it may
-# not), with a reason. pnpm 11 already refuses an undecided one (`pnpm install` fails with
+# not), with a reason. pnpm 12 already refuses an undecided one (`pnpm install` fails with
 # ERR_PNPM_IGNORED_BUILDS); it is set explicitly so a change of the default cannot loosen it.
 # See CONTRIBUTING.md and docs/adr/0019-dependency-updates-and-supply-chain.md.
 strictDepBuilds: true
@@ -26,3 +26,10 @@ allowBuilds:
   tree-sitter-c-sharp: false
   # Signs and verifies published extensions; packaging a .vsix does not need its native binary.
   '@vscode/vsce-sign': false
+
+minimumReleaseAgeExclude:
+  - '@eslint/config-array@0.23.6'
+  - eslint@10.15.0
+  - playwright-core@1.65.1
+  - playwright@1.65.1
+  - '@playwright/test@1.65.1'

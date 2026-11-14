@@ -25,6 +25,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3
+      - uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # 0.3.1900000450
         with:
           runCmd: pnpm lint && pnpm test && pnpm --filter ariadne-vscode test:integration:ci

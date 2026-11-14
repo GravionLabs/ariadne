@@ -49,13 +49,26 @@ A package that runs a script when it is installed runs code on every developer m
   `lmdb`, `msgpackr-extract`); the two that do not are packages whose native part Ariadne does not use
   (`tree-sitter-c-sharp`, `@vscode/vsce-sign`).
 - **`strictDepBuilds: true`** makes `pnpm install` fail (`ERR_PNPM_IGNORED_BUILDS`) when a package with a script is in
-  neither list, in CI too (`--frozen-lockfile`). pnpm 11 does this by default; the setting is explicit so a change of
+  neither list, in CI too (`--frozen-lockfile`). pnpm 12 does this by default; the setting is explicit so a change of
   the default cannot loosen it. The alternative, skipping unknown scripts with a warning, hides a new package that
   would not work, or one that should not run.
 - **Reviewing a package that wants to build:** read the script (what does it download or compile, from where?); check
   whether a prebuilt binary or WebAssembly makes it unnecessary (then `false`); if it is needed, `true`, with the reason.
   Replace the `set this to true or false` line pnpm leaves in `allowBuilds` after a failed install with the decision
   and the reason. A Renovate pull request that fails on this needs a person, not a rerun.
+
+The `allowBuilds` list was reviewed again for pnpm 12 (#521): `pnpm install` with `strictDepBuilds` passes and no
+package with an install script was added, so the decisions above are unchanged.
+
+### Updates held back (#521)
+
+Renovate rules in `.github/renovate.json5` keep three updates out until their reason is gone:
+
+- **TypeScript `<6.1`**: Angular 22.2 (`@angular/compiler-cli`, `@angular/build`) declares the peer range
+  `typescript >=6.0 <6.1`. Raise it with the Angular release that allows 7.
+- **`@types/node` `<25`**: it follows the Node.js line the project runs on (CI and `.nvmrc`: 24), not the newest.
+- **The `node` Docker image `<23`**: the production image stays on Node.js 22. Both Node.js holds end with the move to
+  Node.js 26 (#476).
 
 ### Code scanning (#312)
 

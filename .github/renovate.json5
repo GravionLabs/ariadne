@@ -19,6 +19,9 @@
   baseBranchPatterns: ['release/next'],
   timezone: 'Europe/Zurich',
   schedule: ['before 6am on monday'],
+  // Lock file maintenance refreshes the transitive dependencies inside their ranges once a month, in its own pull
+  // request. Its "Pending" entry on the dashboard is therefore expected until the first of the month: it is
+  // not an open update, and the lockfile needs no manual refresh in between.
   lockFileMaintenance: { enabled: true, schedule: ['before 6am on the first day of the month'] },
   // Raise the range in package.json to the new version instead of leaving it as it was.
   rangeStrategy: 'bump',
@@ -56,6 +59,8 @@
     {
       // TypeScript 7 (7.0.2 is out) is held back: Angular 22 (@angular/compiler-cli and @angular/build) declares
       // the peer range `typescript >=6.0 <6.1`. Raise it with the Angular release that allows 7 (#521).
+      // The lockfile may still resolve typescript 7 transitively for apps/site (an optional peer of vitepress and
+      // vue): that is intended, only the TypeScript the repository itself declares is held.
       matchPackageNames: ['typescript'],
       allowedVersions: '<6.1.0',
     },
