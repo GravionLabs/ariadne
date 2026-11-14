@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/GravionLabs/skills/main/skills/shared/implementation/schema/config.schema.json",
+  "governance": {
+    "adrDir": "docs/adr",
+    "adrPaths": [
+      "compose.yaml",
+      "Dockerfile",
+      "pnpm-workspace.yaml",
+      "tsconfig.base.json",
+      "docs/specs/saga.schema.json"
+    ],
+    "skipLabels": ["skip-adr"]
+  }
+}

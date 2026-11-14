@@ -4,6 +4,7 @@
 - Date: 2026-10-03
 - Issues: #162, #43, #258, #259
 - Builds on: [ADR 0014](0014-server-and-container.md)
+- Amended by: [ADR 0027](0027-release-branch.md) (work goes into `release/next`; `main` receives the release pull request)
 
 ## Context
 
