@@ -56,6 +56,6 @@
     "markdown-it": "^15.0.3",
     "sharp": "^0.35.5",
     "typescript": "~6.0.3",
-    "vitest": "^5.0.0"
+    "vitest": "^5.1.0"
   }
 }
