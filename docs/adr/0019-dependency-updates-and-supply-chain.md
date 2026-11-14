@@ -125,7 +125,9 @@ The review of November 2026, with the repository public and npm, Marketplace and
   with #506 (a comment marks the place). One open alert (`actions/unpinned-tag`, number 31) concerns the
   `GravionLabs/ci@v1` exception above: dismiss it as "won't fix" with that reason.
 - **Dependency review** (`.github/workflows/dependency-review.yml`) fails a pull request on a new dependency with a
-  high severity vulnerability or a license outside the allow list (permissive licenses, MPL-2.0).
+  high severity vulnerability or a license outside the allow list (permissive licenses, MPL-2.0, PSF-2.0). Exception: `@vscode/vsce-sign` and its platform variants
+  (VS Code extension packaging dev tooling, Microsoft proprietary license, not shipped) are exempt from the license
+  check through `allow-dependencies-licenses`, by purl without version.
 - **Secret scanning and push protection are on**; **Dependabot alerts are on** as a second source next to
   `osvVulnerabilityAlerts`, **Dependabot security updates stay off** (Renovate opens those pull requests, two
   bots on one vulnerability would collide); **private vulnerability reporting is on** and `SECURITY.md` says how to

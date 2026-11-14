@@ -18,4 +18,18 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
-          allow-licenses: MIT, MIT-0, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, CC0-1.0, Unlicense, BlueOak-1.0.0, Python-2.0, CC-BY-4.0, MPL-2.0, Zlib
+          allow-licenses: MIT, MIT-0, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, CC0-1.0, Unlicense, BlueOak-1.0.0, Python-2.0, CC-BY-4.0, MPL-2.0, Zlib, PSF-2.0
+          # @vscode/vsce-sign and its platform variants (dev tooling to package the VS Code extension) carry a
+          # Microsoft proprietary license (LicenseRef-bad-see-license-in-license.txt). Not shipped, exempt from the
+          # license check only (ADR 0019). purl without version: every version matches.
+          allow-dependencies-licenses: >-
+            pkg:npm/%40vscode/vsce-sign,
+            pkg:npm/%40vscode/vsce-sign-alpine-arm64,
+            pkg:npm/%40vscode/vsce-sign-alpine-x64,
+            pkg:npm/%40vscode/vsce-sign-darwin-arm64,
+            pkg:npm/%40vscode/vsce-sign-darwin-x64,
+            pkg:npm/%40vscode/vsce-sign-linux-arm,
+            pkg:npm/%40vscode/vsce-sign-linux-arm64,
+            pkg:npm/%40vscode/vsce-sign-linux-x64,
+            pkg:npm/%40vscode/vsce-sign-win32-arm64,
+            pkg:npm/%40vscode/vsce-sign-win32-x64
