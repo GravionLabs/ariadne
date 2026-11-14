@@ -14,6 +14,9 @@
   dependencyDashboardTitle: '[PBI] chore: Dependency Dashboard',
   semanticCommitType: 'chore',
   semanticCommitScope: 'deps',
+  // Updates are work like any other: pull requests go into the rolling release branch, not into main
+  // (docs/adr/0027-release-branch.md).
+  baseBranchPatterns: ['release/next'],
   timezone: 'Europe/Zurich',
   schedule: ['before 6am on monday'],
   lockFileMaintenance: { enabled: true, schedule: ['before 6am on the first day of the month'] },

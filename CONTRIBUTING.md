@@ -113,9 +113,14 @@ Every issue and pull request is also an item of the project board; set its **Lev
 - One logical change per commit, with green tests.
 - Pull requests are squash-merged and the PR title is kept, which becomes the release note
   ([ADR 0015](docs/adr/0015-versioning-and-releases.md)). Put `Closes #<issue>` in the PR body.
-- Every PR targets `main`; do not stack PRs on other feature branches. A PR merged into a branch
-  that is then squash-merged is lost (this happened to #332 and #336). Wait for the parent to merge,
-  then open the next PR from `main`. The `PR base` check fails otherwise.
+- Work goes into `release/next`: cut your branch from it and open the pull request into it. `main`
+  is released code (every push to it is a release) and only receives the release pull request from
+  `release/next`, merged with a merge commit by a maintainer, or a hotfix
+  ([ADR 0027](docs/adr/0027-release-branch.md)). The issue closes when its pull request is merged
+  into `release/next`.
+- Do not stack PRs on other feature branches. A PR merged into a branch that is then squash-merged
+  is lost (this happened to #332 and #336). Wait for the parent to merge, then open the next PR from
+  `release/next`. The `PR base` check fails otherwise.
 
 ## ADRs
 
