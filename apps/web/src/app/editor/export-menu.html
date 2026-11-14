@@ -31,8 +31,7 @@
       <header aria-hidden="true">Image</header>
       @for (entry of images; track entry.label) {
         <button type="button" role="menuitem" class="item" (click)="pick(entry)">
-          <strong>{{ entry.label }}</strong
-          ><small>{{ entry.hint }}</small>
+          <strong>{{ entry.label }}</strong><small>{{ entry.hint }}</small>
         </button>
       }
     </div>
@@ -40,8 +39,7 @@
       <header aria-hidden="true">Mermaid</header>
       @for (entry of mermaid; track entry.label) {
         <button type="button" role="menuitem" class="item" (click)="pick(entry)">
-          <strong>{{ entry.label }}</strong
-          ><small>{{ entry.hint }}</small>
+          <strong>{{ entry.label }}</strong><small>{{ entry.hint }}</small>
         </button>
       }
     </div>
@@ -49,8 +47,7 @@
       <header aria-hidden="true">Documentation</header>
       @for (entry of documentation; track entry.label) {
         <button type="button" role="menuitem" class="item" (click)="pick(entry)">
-          <strong>{{ entry.label }}</strong
-          ><small>{{ entry.hint }}</small>
+          <strong>{{ entry.label }}</strong><small>{{ entry.hint }}</small>
         </button>
       }
     </div>

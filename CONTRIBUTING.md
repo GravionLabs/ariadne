@@ -7,9 +7,11 @@ is the short version of the rules below, for coding agents.
 ## Setup
 
 You need Node.js (the major version in [`.nvmrc`](.nvmrc)) and pnpm, which corepack provides at the
-version pinned in `package.json` (`packageManager`):
+version pinned in `package.json` (`packageManager`). Node.js 26 no longer bundles corepack: install it once with
+`npm install -g corepack`. The project itself uses pnpm only; npm is just the way to get corepack.
 
 ```sh
+npm install -g corepack   # Node.js 26 and later only: it does not ship corepack
 corepack enable
 pnpm install
 ```
@@ -75,7 +77,7 @@ Every change comes with tests, and the suite is green before every commit.
 - **Viewer package test:** `pnpm --filter @ariadne/viewer test:package` packs the viewer and uses it
   from a clean project.
 - **Generated C# compiles:** `pnpm --filter @ariadne/cli build && scripts/compile-generated.sh`
-  needs the .NET 8 SDK (the `generated-csharp` job in
+  needs the .NET 10 SDK (the `generated-csharp` job in
   [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs it; you only need it when you change
   the generator).
 
@@ -111,17 +113,31 @@ Every issue and pull request is also an item of the project board; set its **Lev
 - [Conventional Commits](https://www.conventionalcommits.org/) (`feat`, `fix`, `docs`, `test`,
   `refactor`, `chore`, `ci`, `perf`) that reference the issue: `feat: short summary (#123)`.
 - One logical change per commit, with green tests.
-- Pull requests are squash-merged and the PR title is kept, which becomes the release note
-  ([ADR 0015](docs/adr/0015-versioning-and-releases.md)). Put `Closes #<issue>` in the PR body.
-- Every PR targets `main`; do not stack PRs on other feature branches. A PR merged into a branch
-  that is then squash-merged is lost (this happened to #332 and #336). Wait for the parent to merge,
-  then open the next PR from `main`. The `PR base` check fails otherwise.
+- Pull requests are squash-merged and the PR title is kept. It becomes the release note and decides
+  the version: `fix:` is a patch release, `feat:` a minor one, `feat!:` (or any type with `!`) a
+  major one ([ADR 0015](docs/adr/0015-versioning-and-releases.md)). Put `Closes #<issue>` in the PR
+  body.
+- Work goes into `release/next`: cut your branch from it and open the pull request into it. `main`
+  is released code (every push to it is a release) and only receives the release pull request from
+  `release/next`, merged with a merge commit by a maintainer, or a hotfix
+  ([ADR 0027](docs/adr/0027-release-branch.md)). The issue closes when its pull request is merged
+  into `release/next`.
+- Do not stack PRs on other feature branches. A PR merged into a branch that is then squash-merged
+  is lost (this happened to #332 and #336). Wait for the parent to merge, then open the next PR from
+  `release/next`. The `PR base` check fails otherwise.
 
 ## ADRs
 
 An architectural change gets an ADR in `docs/adr/NNNN-title.md`, in the format of the existing ones
 (status, date, issues, context, decision, consequences). Examples of what counts: a new package, a
 new dependency that shapes the code, a change to the file format or to a protocol.
+
+The `PR checks` workflow enforces part of this: a pull request that changes one of the paths listed
+under `governance.adrPaths` in `.agents/config.json`, or that closes an issue labelled
+`needs-decision`, must add or change an ADR. The label `skip-adr` on the pull request skips the check
+when no decision is involved. The same workflow checks that the title is a Conventional Commit and
+that the body closes an issue that is ready (`Closes #<issue>`, not labelled `needs-decision` or
+`needs-refinement`, not blocked by an open issue).
 
 ## Code style
 

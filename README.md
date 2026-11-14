@@ -42,7 +42,7 @@ States do things; transitions react to events. A command is sent to exactly one 
 
 ## Getting started
 
-You need Node.js (see `.nvmrc`) and [pnpm](https://pnpm.io) (enabled with `corepack enable`). Ariadne uses pnpm only.
+You need Node.js (see `.nvmrc`) and [pnpm](https://pnpm.io) (enabled with `corepack enable`; Node.js 26 does not bundle corepack, so run `npm install -g corepack` first). Ariadne uses pnpm only.
 
 ```sh
 pnpm install

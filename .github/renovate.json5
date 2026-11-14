@@ -1,5 +1,6 @@
 // Renovate keeps npm packages and GitHub Actions current: a few grouped pull requests a week, gated
-// by CI, merged by a person (no automerge). See docs/adr/0019-dependency-updates-and-supply-chain.md.
+// by CI, merged by a person (no automerge). Ecosystems: npm, GitHub Actions, Dockerfile and compose.yaml, the dev
+// container, .nvmrc and NuGet (*.csproj, the coming dotnet/ folder) through the managers of config:recommended. See docs/adr/0019-dependency-updates-and-supply-chain.md.
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: [
@@ -11,19 +12,66 @@
   ],
   // `chore(deps): …` keeps dependency updates out of the release notes (ADR 0015).
   // The issue titles of the repository start with their level (CONTRIBUTING.md): the dashboard is a PBI.
-  dependencyDashboardTitle: '[PBI] chore: Dependency Dashboard',
+  dependencyDashboard: { title: '[PBI] chore: Dependency Dashboard' },
   semanticCommitType: 'chore',
   semanticCommitScope: 'deps',
+  // Updates are work like any other: pull requests go into the rolling release branch, not into main
+  // (docs/adr/0027-release-branch.md).
+  baseBranchPatterns: ['release/next'],
   timezone: 'Europe/Zurich',
   schedule: ['before 6am on monday'],
+  // Lock file maintenance refreshes the transitive dependencies inside their ranges once a month, in its own pull
+  // request. Its "Pending" entry on the dashboard is therefore expected until the first of the month: it is
+  // not an open update, and the lockfile needs no manual refresh in between.
   lockFileMaintenance: { enabled: true, schedule: ['before 6am on the first day of the month'] },
   // Raise the range in package.json to the new version instead of leaving it as it was.
   rangeStrategy: 'bump',
   postUpdateOptions: ['pnpmDedupe'],
+  // A week's updates are opened, not held back on the dashboard (the defaults are 2 per hour and 10 open).
+  prHourlyLimit: 10,
+  prConcurrentLimit: 20,
   // A known vulnerability gets a pull request at once, outside the schedule. This also covers what
   // a separate `pnpm audit` job would.
-  vulnerabilityAlerts: { enabled: true, labels: ['security'], schedule: ['at any time'] },
+  // A security fix is not held back by the minimum release age below (pnpm's own one day still applies on install).
+  vulnerabilityAlerts: {
+    enabled: true,
+    labels: ['security'],
+    schedule: ['at any time'],
+    minimumReleaseAge: null,
+  },
   osvVulnerabilityAlerts: true,
+  // No pull request for a release younger than three days: a compromised release is usually pulled within hours or
+  // days (ADR 0019). `strict` keeps Renovate from proposing the newest version while it is still too young.
+  minimumReleaseAge: '3 days',
+  internalChecksFilter: 'strict',
+  // corepack is installed with `npm install -g corepack@<version>` in both Dockerfiles (Node.js 26 images do not
+  // bundle it, ADR 0019); the Dockerfile manager does not see that, so the pin sits in an annotated ARG.
+  customManagers: [
+    {
+      // The Renovate version the workflow runs is stated in .github/workflows/renovate.yml (`renovate-version`).
+      customType: 'regex',
+      managerFilePatterns: ['/^\\.github/workflows/renovate\\.yml$/'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+renovate-version: (?<currentValue>\\S+)',
+      ],
+    },
+    {
+      // The .NET SDK of setup-dotnet (the nuget manager reads *.csproj and the like; this one reads the SDK).
+      customType: 'regex',
+      managerFilePatterns: ['/^\\.github/workflows/[^/]+\\.ya?ml$/'],
+      matchStrings: ['dotnet-version: (?<currentValue>\\d+\\.\\d+\\.\\d+)'],
+      depNameTemplate: 'dotnet-sdk',
+      datasourceTemplate: 'dotnet-version',
+      versioningTemplate: 'semver',
+    },
+    {
+      customType: 'regex',
+      managerFilePatterns: ['/(^|/)Dockerfile$/'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+ARG \\w+=(?<currentValue>\\S+)',
+      ],
+    },
+  ],
   packageRules: [
     {
       groupName: 'angular',
@@ -51,6 +99,14 @@
       allowedVersions: '<1.97.0',
     },
     {
+      // TypeScript 7 (7.0.2 is out) is held back: Angular 22 (@angular/compiler-cli and @angular/build) declares
+      // the peer range `typescript >=6.0 <6.1`. Raise it with the Angular release that allows 7 (#521).
+      // The lockfile may still resolve typescript 7 transitively for apps/site (an optional peer of vitepress and
+      // vue): that is intended, only the TypeScript the repository itself declares is held.
+      matchPackageNames: ['typescript'],
+      allowedVersions: '<6.1.0',
+    },
+    {
       // The WebAssembly files of the two must stay compatible (the vsix test checks it).
       groupName: 'tree-sitter',
       matchPackageNames: ['tree-sitter-c-sharp', 'web-tree-sitter'],
@@ -76,9 +132,10 @@
     },
     { groupName: 'github-actions', matchManagers: ['github-actions'] },
     {
-      // The shared workflows of the organisation are followed on `main` on purpose.
-      matchPackageNames: ['GravionLabs/ci/**'],
-      enabled: false,
+      // The shared workflows and actions of the organisation follow the moving major tag `@v1` (ADR 0019):
+      // no SHA pin, but a pull request when `v2` appears.
+      matchPackageNames: ['GravionLabs/ci{/,}**'],
+      pinDigests: false,
     },
     {
       // Majors get their own pull requests, labelled, and a person decides.
