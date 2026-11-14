@@ -37,8 +37,9 @@ FROM node:26-alpine AS node
 FROM alpine:3.24
 # Unpinned on purpose: the Alpine release is pinned above, and a pinned patch version disappears from its
 # repository when Alpine publishes a fix, which would break the build.
+# libatomic: the node 26 binary links libatomic.so.1, which a bare alpine image lacks.
 # hadolint ignore=DL3018
-RUN apk add --no-cache libstdc++ && adduser -D -u 10001 ariadne
+RUN apk add --no-cache libstdc++ libatomic && adduser -D -u 10001 ariadne
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 WORKDIR /app
 COPY --from=build /repo/apps/server/dist/server.mjs ./server.mjs

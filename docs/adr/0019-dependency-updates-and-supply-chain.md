@@ -78,6 +78,11 @@ pin). The pin is the newest version at least as old as the minimum release age (
 published 2026-08-28; it installs the `packageManager` pnpm (12.18.0). On a local Node.js 26, run
 `npm install -g corepack` once.
 
+Two more facts of the Node.js 26 images (#531). The `javascript-node` image already ships a pnpm shim in the global npm
+bin, so `npm install -g corepack` stops with `EEXIST`; the dev container Dockerfile uses `--force`, and corepack then
+takes over the `pnpm` and `pnpx` names. And the Node.js 26 binary links `libatomic.so.1`, which a bare `alpine` image
+lacks: the runtime stage of the production Dockerfile installs `libatomic` next to `libstdc++`.
+
 Releases younger than the minimum release age (at the time: eslint 10.15.0, Playwright 1.65.1) were not taken and no
 exclusion was used; Renovate picks them up once they are old enough.
 

@@ -16,4 +16,6 @@ RUN apt-get update \
 # corepack: it is installed at an exact version, which Renovate keeps current (customManagers in .github/renovate.json5).
 # renovate: datasource=npm depName=corepack
 ARG COREPACK_VERSION=0.36.0
-RUN npm install -g corepack@${COREPACK_VERSION} && corepack enable
+# --force: the base image already ships a pnpm shim in the global npm bin, and without it npm stops with EEXIST;
+# corepack then takes the pnpm and pnpx names over.
+RUN npm install -g --force corepack@${COREPACK_VERSION} && corepack enable
