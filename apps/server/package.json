@@ -5,7 +5,7 @@
   "description": "Serves the built Ariadne web app for self-hosting: static files, /config.json and /health.",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=26"
   },
   "scripts": {
     "build": "node build.mjs",
@@ -15,12 +15,12 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.0",
-    "hono": "^4.9.0"
+    "@hono/node-server": "^2.1.8",
+    "hono": "^4.13.18"
   },
   "devDependencies": {
-    "@types/node": "^24.19.2",
+    "@types/node": "^26.6.6",
     "esbuild": "^0.28.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.1.0"
   }
 }

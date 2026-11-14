@@ -1,0 +1,33 @@
+# Pushes to a release branch, handled by the reusable workflow release-branch.yml of GravionLabs/ci: keeps the
+# release PR into main open and current, closes the issues whose PR was merged into the branch ("ships with
+# <milestone>") and syncs the project field Needs. `Closes #n` alone only fires on the default branch.
+# CI_APP_ID / CI_APP_PRIVATE_KEY: the GitHub App "GravionLabs CI" (a PR created with the GITHUB_TOKEN triggers
+# no required checks); GH_PAT is the deprecated fallback.
+name: Release branch
+
+on:
+  push:
+    branches: ['release/**']
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Only list the issues that would be closed
+        type: boolean
+        default: true
+
+permissions: {}
+
+jobs:
+  release-branch:
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    uses: GravionLabs/ci/.github/workflows/release-branch.yml@v1
+    with:
+      project-url: https://github.com/users/GravionLabs/projects/17
+      dry-run: ${{ inputs.dry-run == true }}
+    secrets:
+      CI_APP_ID: ${{ secrets.CI_APP_ID }}
+      CI_APP_PRIVATE_KEY: ${{ secrets.CI_APP_PRIVATE_KEY }}
+      GH_PAT: ${{ secrets.GH_PAT }}

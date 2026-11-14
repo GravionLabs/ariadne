@@ -308,8 +308,9 @@ describe('<ariadne-saga>', () => {
       pointer('pointermove', 400, 400); // not dragging any more
       expect(transform(element)).toBe(
         before.replace(
-          /translate\(([-\d.]+)px, ([-\d.]+)px\)/,
-          (_m, x, y) => `translate(${+x + 30}px, ${+y + 15}px)`,
+          // jsdom 31 serialises a zero y offset as `translate(0px)`: the second argument is optional.
+          /translate\(([-\d.]+)px(?:, ([-\d.]+)px)?\)/,
+          (_m, x, y = '0') => `translate(${+x + 30}px, ${+y + 15}px)`,
         ),
       );
     });

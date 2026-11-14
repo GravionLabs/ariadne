@@ -3,7 +3,7 @@
   "build": { "dockerfile": "Dockerfile" },
   "features": {
     // The .NET SDK for the generated-C# check (the `generated-csharp` job in CI).
-    "ghcr.io/devcontainers/features/dotnet:2": { "version": "8.0" }
+    "ghcr.io/devcontainers/features/dotnet:2": { "version": "10.0" }
   },
   // Docker gives a container 64 MB of /dev/shm; Chromium (VS Code in the integration tests, the
   // browsers of the screenshots) runs out of it and its renderer crashes, e.g. as VS Code closes.

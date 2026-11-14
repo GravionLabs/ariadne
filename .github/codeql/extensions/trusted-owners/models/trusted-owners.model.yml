@@ -1,0 +1,9 @@
+# GravionLabs/ci is referenced at the moving major tag @v1 on purpose (ADR 0019): the organisation owns both
+# repositories. Every other action stays pinned to a commit SHA and is still reported when it is not.
+extensions:
+  - addsTo:
+      pack: codeql/actions-all
+      extensible: trustedActionsOwnerDataModel
+    data:
+      - ['GravionLabs']
+      - ['gravionlabs']

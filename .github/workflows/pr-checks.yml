@@ -1,0 +1,26 @@
+# The pull request checks of GravionLabs/ci, bundled into one required check, "pr-checks / PR checks":
+#   title      the PR title is a Conventional Commit and agrees with the commits (it becomes the squash commit)
+#   readiness  the PR closes at least one issue (`Closes #n`), and none of them is labelled needs-decision or
+#              needs-refinement or blocked by an open issue; release PRs from release/** are exempt
+#   adr        a change under governance.adrPaths of .agents/config.json (read from the base branch), or a PR that
+#              closes a needs-decision issue, adds or changes an ADR in docs/adr; the label skip-adr skips it
+# spec is off: docs/specs holds topic documents, not one specification per component (no governance.specMap).
+# The job id `pr-checks` is part of the check name the rulesets `main` and `release` require; do not rename it.
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main, 'release/**']
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled, ready_for_review]
+
+permissions: {}
+
+jobs:
+  pr-checks:
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    uses: GravionLabs/ci/.github/workflows/pr-checks.yml@v1
+    with:
+      spec: false
