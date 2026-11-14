@@ -1,5 +1,8 @@
-# The version comes from the git history (GitVersion, via GravionLabs/ci). Every merge to main is a
-# release: the patch number counts up from the last tag, `+semver: minor` or `+semver: major` in a
-# commit message bumps that part. The first release is 1.0.0.
+# The version comes from the git history (GitVersion, via GravionLabs/ci versioning/determine-version). A push to
+# main is a release. The bump comes from the Conventional Commits since the last tag: `fix:`, `perf:` and
+# `revert:` raise the patch, `feat:` the minor, a `!` after the type or a `BREAKING CHANGE:` footer the major;
+# only the commit title counts, so the title of a squashed pull request decides. A release without any of them
+# still counts the patch up. `+semver: minor` or `+semver: major` in a commit message is the escape hatch only
+# (`github-release finish major`). The first release was 1.0.0.
 mode: ContinuousDeployment
 next-version: 1.0.0

@@ -15,9 +15,18 @@ actions in `GravionLabs/ci`; Ariadne does the same.
 ## Decision
 
 - **`GitVersion.yml`** has `mode: ContinuousDeployment` and `next-version: 1.0.0`. The first release is 1.0.0; each
-  later release on `main` counts the patch up from the last `vX.Y.Z` tag. `+semver: minor` or `+semver: major` in a
-  commit message bumps that part. Checked on a copy of the repository: 1.0.0, then 1.0.1 after a `fix`, then 1.1.0
-  after a commit with `+semver: minor`.
+  later release on `main` counts the patch up from the last `vX.Y.Z` tag.
+- **The bump comes from the Conventional Commits** since the last tag (#478, GravionLabs/ci#107): `fix:`, `perf:`
+  and `revert:` raise the patch, `feat:` the minor, a `!` after the type or a `BREAKING CHANGE:` footer the major.
+  Only the commit title counts. `versioning/determine-version` of GravionLabs/ci sets these rules by default; nothing
+  in `GitVersion.yml` is needed. `+semver: minor` or `+semver: major` in a commit message still works and is the
+  escape hatch only. (Until #478 the bump was `+semver:` alone: 1.0.0, then 1.0.1 after a `fix`, then 1.1.0 after a
+  commit with `+semver: minor`.)
+- **The pull request title is checked**, because it becomes the commit: the `PR checks` workflow (#475) requires a
+  Conventional Commit title that agrees with the commits of the pull request (a `feat:` commit needs a `feat` title,
+  a breaking commit a `!`). The repository squashes with the pull request title as the commit title; the ruleset
+  `release` allows squash (feature pull requests) and merge (the merge-back of `main`), the ruleset `main` merge only,
+  so the release pull request keeps its single commits visible to GitVersion and git-cliff.
 - **Every merge to `main` that passes the checks is a release.** The `release` job in `ci.yml` waits for the lint, build
   and test job, the format job and the C# compile job, runs on `main` only, and calls the shared
   `docker-package.yml` workflow. That workflow determines the version, lints the Dockerfile, publishes the image to
