@@ -111,8 +111,10 @@ Every issue and pull request is also an item of the project board; set its **Lev
 - [Conventional Commits](https://www.conventionalcommits.org/) (`feat`, `fix`, `docs`, `test`,
   `refactor`, `chore`, `ci`, `perf`) that reference the issue: `feat: short summary (#123)`.
 - One logical change per commit, with green tests.
-- Pull requests are squash-merged and the PR title is kept, which becomes the release note
-  ([ADR 0015](docs/adr/0015-versioning-and-releases.md)). Put `Closes #<issue>` in the PR body.
+- Pull requests are squash-merged and the PR title is kept. It becomes the release note and decides
+  the version: `fix:` is a patch release, `feat:` a minor one, `feat!:` (or any type with `!`) a
+  major one ([ADR 0015](docs/adr/0015-versioning-and-releases.md)). Put `Closes #<issue>` in the PR
+  body.
 - Work goes into `release/next`: cut your branch from it and open the pull request into it. `main`
   is released code (every push to it is a release) and only receives the release pull request from
   `release/next`, merged with a merge commit by a maintainer, or a hotfix
