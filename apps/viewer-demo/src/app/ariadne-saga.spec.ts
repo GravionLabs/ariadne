@@ -302,6 +302,16 @@ describe('AriadneSaga', () => {
     http.verify();
   });
 
+  it('keeps a given diagram when url is set: no request, no loading, no error', async () => {
+    const { fixture, host, el, http } = await create();
+    host.diagram.set(JSON.parse(serializeDiagramJson(diagram)));
+    host.url.set('/api/sagas/order');
+    await flush(fixture);
+    http.expectNone('/api/sagas/order');
+    expect($(el, '.name').textContent).toBe('Order');
+    expect(host.failed).toEqual([]);
+  });
+
   it('prefers source over url, and takes over from a url when source is set', async () => {
     const { fixture, host, el, http } = await create();
     host.url.set('/a');
