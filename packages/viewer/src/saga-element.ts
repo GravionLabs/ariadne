@@ -17,7 +17,14 @@ import { renderDiagramSvg, renderTimelineSvg, SvgExport } from '@ariadne/export'
 import { FEATURES, parseFeatures, ViewerFeature } from './features';
 import { applyMarks, drawPath, Marks, SagaEmphasis, SagaSelection } from './marks';
 import { messagesPanel, Panel, problemsPanel, SagaWalk, walkthroughPanel } from './panels';
-import { fetchSaga, Loaded, readSaga, ViewerError } from './read-saga';
+import {
+  FetchOptions,
+  fetchSaga,
+  Loaded,
+  readSaga,
+  readSagaObject,
+  ViewerError,
+} from './read-saga';
 import { STYLES } from './styles';
 import { fitView, PAN_STEP, panBy, revealBox, View, ZOOM_STEP, zoomAt } from './view-transform';
 
@@ -56,7 +63,12 @@ const inOverlay = (event: Event) =>
 /**
  * `<ariadne-saga>`: shows one saga read-only, drawn with the SVG renderer of `@ariadne/export`.
  *
- * - `src`: URL of a `.saga.yaml`, fetched; `source`: the YAML text (wins over `src`);
+ * - `src`: URL of a saga file or JSON endpoint, fetched (JSON or YAML, decided by the content);
+ *   `source`: the YAML or JSON text (wins over `src`); `diagram` (property): the parsed object, e.g.
+ *   `await response.json()` (wins over both);
+ * - `credentials`: fetch's mode for `src` (`omit`, `same-origin`, `include`); `headers` (property): request
+ *   headers of `src`; `fetcher` (property): your own `fetch`, e.g. adding a bearer token. A 401 or 403 is an
+ *   `error` of kind `network` with the `status`;
  * - `direction`: `top-bottom`, `bottom-top`, `left-right` or `right-left`, overriding the file's;
  * - `theme`: `light`, `dark` or `auto` (the default; follows `prefers-color-scheme`);
  * - `features`: any of `walkthrough`, `messages`, `problems`, each with its panel (read-only);
@@ -74,6 +86,7 @@ export class AriadneSagaElement extends Base {
   static readonly observedAttributes = [
     'src',
     'source',
+    'credentials',
     'direction',
     'theme',
     'features',
@@ -94,6 +107,9 @@ export class AriadneSagaElement extends Base {
   readonly #timeline: HTMLElement;
 
   #diagram?: Diagram;
+  #given: unknown = null;
+  #headers: HeadersInit | null = null;
+  #fetcher: FetchOptions['fetch'] | null = null;
   #svg?: SvgExport;
   #view: View = { scale: 1, x: 0, y: 0 };
   /** Once the user zoomed or panned, a resize no longer re-fits the diagram. */
@@ -162,6 +178,33 @@ export class AriadneSagaElement extends Base {
   set source(value: string | null) {
     this.#reflect('source', value);
     this.#schedule(); // also for the same text again, e.g. after an error
+  }
+
+  /** fetch's `credentials` mode for `src`. */
+  get credentials(): RequestCredentials | null {
+    const value = this.getAttribute('credentials');
+    return value === 'omit' || value === 'same-origin' || value === 'include' ? value : null;
+  }
+  set credentials(value: RequestCredentials | null) {
+    this.#reflect('credentials', value);
+  }
+
+  /** Request headers of `src`, e.g. `{ Authorization: 'Bearer …' }`. */
+  get headers(): HeadersInit | null {
+    return this.#headers;
+  }
+  set headers(value: HeadersInit | null) {
+    this.#headers = value ?? null;
+    this.#schedule();
+  }
+
+  /** A `fetch` of your own for `src`; gets the URL and the request init. */
+  get fetcher(): FetchOptions['fetch'] | null {
+    return this.#fetcher;
+  }
+  set fetcher(value: FetchOptions['fetch'] | null) {
+    this.#fetcher = value ?? null;
+    this.#schedule();
   }
 
   get direction(): ViewerDirection | null {
@@ -251,6 +294,14 @@ export class AriadneSagaElement extends Base {
   get diagram(): Diagram | undefined {
     return this.#diagram;
   }
+  /**
+   * Draws a parsed saga (e.g. the result of `response.json()`), validated like text; wins over `source`
+   * and `src`. `null` goes back to them.
+   */
+  set diagram(value: unknown) {
+    this.#given = value ?? null;
+    this.#schedule();
+  }
 
   connectedCallback(): void {
     if (typeof ResizeObserver !== 'undefined') {
@@ -338,7 +389,8 @@ export class AriadneSagaElement extends Base {
     this.#abort?.abort();
     const source = this.source;
     const src = this.src;
-    if (!source && !src) {
+    const given = this.#given;
+    if (given === null && !source && !src) {
       this.#clear();
       if (this.#external) this.#showStatus(this.#external.message, this.#external.state);
       return;
@@ -346,12 +398,18 @@ export class AriadneSagaElement extends Base {
     this.#external = null;
     this.#showStatus('Loading…', 'loading');
     let result: Loaded;
-    if (source) {
+    if (given !== null) {
+      result = readSagaObject(given);
+    } else if (source) {
       result = readSaga(source);
     } else {
       this.#abort = new AbortController();
       try {
-        result = await fetchSaga(src!, this.#abort.signal);
+        result = await fetchSaga(src!, this.#abort.signal, {
+          credentials: this.credentials ?? undefined,
+          headers: this.#headers ?? undefined,
+          fetch: this.#fetcher ?? undefined,
+        });
       } catch {
         return; // aborted: a newer request took over
       }

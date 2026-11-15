@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import {
   booleanAttribute,
@@ -33,7 +33,8 @@ import type {
  * no wrapper element in the DOM.
  *
  * `url` is loaded with the host's `HttpClient` (interceptors, auth and base URLs apply), `source` is
- * the YAML text; `source` wins when both are set. On the server nothing is rendered or loaded; the
+ * the YAML or JSON text (the content decides, not the URL); `diagram` is a parsed object and wins over
+ * both; `source` wins over `url`. On the server nothing is rendered or loaded; the
  * browser fills the element in after hydration.
  */
 @Component({
@@ -48,8 +49,14 @@ export class AriadneSaga {
 
   /** Where to load the `.saga.yaml` from, with `HttpClient`. */
   readonly url = input<string>();
-  /** The saga as YAML text. */
+  /** The saga as YAML or JSON text. */
   readonly source = input<string>();
+  /** The saga as a parsed object (e.g. `await response.json()`); wins over `source` and `url`. */
+  readonly diagram = input<unknown>();
+  /** fetch's `credentials` mode for `url`; `include` sends cookies cross-origin (`withCredentials`). */
+  readonly credentials = input<'omit' | 'same-origin' | 'include'>();
+  /** Request headers of `url`, e.g. a bearer token (interceptors apply as well). */
+  readonly headers = input<Record<string, string | string[]>>();
   /** Overrides the direction of the file. */
   readonly direction = input<ViewerDirection>();
   readonly theme = input<ViewerTheme>();
@@ -100,9 +107,13 @@ export class AriadneSaga {
     effect(() => (el.showUntaken = this.showUntaken()));
     effect(() => (el.pathView = this.pathView()));
 
+    effect(() => (el.diagram = this.diagram() ?? null));
+
     effect((onCleanup) => {
       const source = this.source();
       const url = this.url();
+      const headers = this.headers();
+      const withCredentials = this.credentials() === 'include';
       if (source != null) {
         el.source = source;
         return;
@@ -110,16 +121,26 @@ export class AriadneSaga {
       el.source = null;
       if (!url) return;
       el.showLoading();
-      const request = this.http.get(url, { responseType: 'text' }).subscribe({
-        next: (text) => (el.source = text),
-        error: (e: HttpErrorResponse) =>
-          el.showError({
-            kind: 'network',
-            message: e.status
-              ? `${url} could not be loaded (${`${e.status} ${e.statusText}`.trim()}).`
-              : `${url} could not be loaded: ${e.message}`,
+      const request = this.http
+        .get(url, {
+          responseType: 'text',
+          withCredentials,
+          headers: new HttpHeaders({
+            Accept: 'application/json, application/yaml;q=0.9, */*;q=0.5',
+            ...headers,
           }),
-      });
+        })
+        .subscribe({
+          next: (text) => (el.source = text),
+          error: (e: HttpErrorResponse) =>
+            el.showError({
+              kind: 'network',
+              ...(e.status && { status: e.status }),
+              message: e.status
+                ? `${url} could not be loaded (${`${e.status} ${e.statusText}`.trim()}).`
+                : `${url} could not be loaded: ${e.message}`,
+            }),
+        });
       onCleanup(() => request.unsubscribe());
     });
   }
