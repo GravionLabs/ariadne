@@ -11,8 +11,9 @@ diagram and C#. It documents a saga; it never runs one.
 5. [Keyboard shortcuts](shortcuts.md).
 6. [Ariadne in VS Code](vscode.md): install the extension from a release and work next to the code.
 7. [Show a saga in your own app](viewer.md): the `<ariadne-saga>` viewer for web and Angular apps.
-8. [Accessibility](accessibility.md): what is checked, what is not, and what is known not to work.
-9. [Coding agents](agents.md): let an AI coding agent check, draw and convert sagas with a skill.
+8. [Sagas from a REST API](sagas-from-rest-api.md): draw the sagas a backend returns as JSON, and keep a response as YAML.
+9. [Accessibility](accessibility.md): what is checked, what is not, and what is known not to work.
+10. [Coding agents](agents.md): let an AI coding agent check, draw and convert sagas with a skill.
 
 Operators: [self-hosting](../self-hosting.md). The file format: [diagram-format.md](../specs/diagram-format.md).
 
