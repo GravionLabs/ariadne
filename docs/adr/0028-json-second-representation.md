@@ -26,7 +26,7 @@ The numbers 0025 and 0026 are reserved by #433 and #441, and 0027 is taken by th
    same `version: 3` (see [`diagram-format.md`](../specs/diagram-format.md)). There is no JSON-only field and no
    second version number. A format change bumps `version` once, for both containers.
 3. **Deterministic JSON output.** The writer emits keys in the order of the YAML writer (`version`, `name`,
-   `description`, `saga`, `events`, `direction`, `nodes`, `edges`, and the element order within), omits unset and
+   `description`, `saga`, `events`, `direction`, `spacing`, `nodes`, `edges`, and the element order within), omits unset and
    empty optional fields, indents with two spaces and ends with a single trailing newline. The same diagram gives the
    same bytes, so JSON diffs too.
 4. **An optional top-level `$schema` string.** It names the JSON Schema of the format
@@ -41,8 +41,9 @@ The numbers 0025 and 0026 are reserved by #433 and #441, and 0027 is taken by th
      container by accident.
    - **VS Code extension:** unchanged. It edits `*.saga.yaml`.
 6. **REST shape for producers** (the viewer and the .NET library follow it):
-   - Media type `application/json`. The viewer sends `Accept: application/json` and reads the body as JSON when the
-     response says so; a `*.saga.yaml` URL is still read as YAML.
+   - Media type `application/json`. The viewer sends an `Accept` header that prefers JSON (`application/json`, then
+     YAML at a lower quality) and lets the content decide the container, not the URL or the content type the server
+     answers with: a `*.saga.yaml` URL that returns JSON is read as JSON.
    - **One saga per resource**: `GET /sagas/{name}` returns one diagram document as above, with no envelope.
    - **A list of sagas** is a JSON array of objects `{ "name": string, "title": string, "link": string }`. `name` is
      the identifier used in the URL, `title` the display text, `link` the URL of the saga resource (absolute, or
