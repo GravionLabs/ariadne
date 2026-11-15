@@ -12,7 +12,7 @@ rules are used by `ariadne convert --merge` (`mergeDiagram` in `@ariadne/core`) 
 - **Structure comes from the new input:** nodes, edges, events, activities, requests, routing slips,
   timers, ignores and the `saga` block.
 - **From the existing file** (where it sets them): `name` and `description` of the diagram,
-  `direction`, `spacing`; per node `description`, `color`, `retry`, `timeout`, `compensation`; per
+  `direction` (an unset one takes the direction of the new input, also when that is not the default), `spacing`; per node `description`, `color`, `retry`, `timeout`, `compensation`; per
   edge `eventSource` and `kind`. What the file does not set is taken from the new input.
 - **Matching:** nodes by `id`; edges by `source`, `target`, `event` and `guard` (a matched edge keeps
   the `id` of the file).

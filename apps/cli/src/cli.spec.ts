@@ -527,6 +527,14 @@ describe('ariadne, files it cannot use', () => {
       expect(same.disk.get('order.saga.yaml')).toBe(serializeDiagram(parseDiagram(orderSaga)));
     });
 
+    it('--merge takes the direction of the input when the file sets none', async () => {
+      const incoming = JSON.stringify({ ...JSON.parse(json), direction: 'left-right' });
+      const bare = JSON.stringify({ ...JSON.parse(json), direction: undefined });
+      const t = setup({ 'order.saga.json': incoming, 'order.saga.yaml': bare });
+      expect(await t.run('convert', 'order.saga.json', '--to', 'yaml', '--merge')).toBe(0);
+      expect(parseDiagram(t.disk.get('order.saga.yaml') as string).direction).toBe('left-right');
+    });
+
     it('--merge into an invalid file leaves it alone', async () => {
       const t = setup({ 'order.saga.json': json, 'order.saga.yaml': 'version: 9\n' });
       expect(await t.run('convert', 'order.saga.json', '--to', 'yaml', '--merge')).toBe(1);

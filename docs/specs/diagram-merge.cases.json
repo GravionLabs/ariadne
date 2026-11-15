@@ -185,5 +185,48 @@
       ]
     },
     "removed": []
+  },
+  {
+    "name": "a direction the file does not set is taken from the new input",
+    "existing": {
+      "version": 3,
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "incoming": {
+      "version": 3,
+      "direction": "left-right",
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "expected": {
+      "version": 3,
+      "direction": "left-right",
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "removed": []
+  },
+  {
+    "name": "a direction the file sets stays, even the default one",
+    "existing": {
+      "version": 3,
+      "direction": "top-bottom",
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "incoming": {
+      "version": 3,
+      "direction": "left-right",
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "expected": {
+      "version": 3,
+      "direction": "top-bottom",
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "removed": []
   }
 ]

@@ -1,7 +1,7 @@
 import rawCases from '../../../docs/specs/diagram-merge.cases.json';
 import { describe, expect, it } from 'vitest';
 import { mergeDiagram } from './diagram-merge';
-import { serializeDiagramJson, validateDiagram } from './diagram-yaml';
+import { serializeDiagramJson, validateDiagram, validateDiagramWithNotes } from './diagram-yaml';
 
 interface Case {
   name: string;
@@ -16,10 +16,10 @@ const cases = rawCases as Case[];
 describe('mergeDiagram: the shared cases of docs/specs/diagram-merge.md', () => {
   for (const c of cases) {
     it(c.name, () => {
-      const { diagram, removed } = mergeDiagram(
-        validateDiagram(c.existing),
-        validateDiagram(c.incoming),
-      );
+      const existing = validateDiagramWithNotes(c.existing);
+      const { diagram, removed } = mergeDiagram(existing.diagram, validateDiagram(c.incoming), {
+        existingDirectionSet: existing.directionSet,
+      });
       expect(serializeDiagramJson(diagram)).toBe(serializeDiagramJson(validateDiagram(c.expected)));
       expect(removed.map((r) => r.message)).toEqual(c.removed);
     });

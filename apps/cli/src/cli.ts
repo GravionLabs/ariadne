@@ -8,7 +8,9 @@ import {
   SourceRange,
   locateSourceError,
   mergeDiagram,
+  ParsedDiagram,
   parseDiagram,
+  parseDiagramWithNotes,
   serializeDiagram,
   validate,
 } from '@ariadne/core';
@@ -472,9 +474,11 @@ async function mergeInto(
   incoming: Diagram,
   to: Container,
 ): Promise<{ text: string; removed: string[] } | null> {
-  const existing = await loadDiagram(io, target);
+  const existing = await loadParsed(io, target);
   if (!existing) return null;
-  const { diagram, removed } = mergeDiagram(existing, incoming);
+  const { diagram, removed } = mergeDiagram(existing.diagram, incoming, {
+    existingDirectionSet: existing.directionSet,
+  });
   return {
     text: serializeDiagram(diagram, { format: to }),
     removed: removed.map((r) => r.message),
@@ -497,8 +501,12 @@ function baseName(file: string): string {
 
 /** Reads and parses a diagram (either container); reports why not and returns `undefined`. */
 async function loadDiagram(io: Io, file: string): Promise<Diagram | undefined> {
+  return (await loadParsed(io, file))?.diagram;
+}
+
+async function loadParsed(io: Io, file: string): Promise<ParsedDiagram | undefined> {
   try {
-    return parseDiagram(await read(io, file));
+    return parseDiagramWithNotes(await read(io, file));
   } catch (e) {
     if (e instanceof DiagramFormatError) {
       io.stderr(`${file === STDIN ? '<stdin>' : file}: not a valid saga diagram: ${e.message}\n`);

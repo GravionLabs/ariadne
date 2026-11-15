@@ -19,6 +19,14 @@ const NODE_KEPT = ['description', 'color', 'retry', 'timeout', 'compensation'] a
 const edgeKey = (e: Pick<DiagramEdge, 'source' | 'target' | 'event' | 'guard'>): string =>
   JSON.stringify([e.source, e.target, e.event ?? null, e.guard ?? null]);
 
+export interface MergeOptions {
+  /**
+   * Whether `existing` sets its direction itself (`ParsedDiagram.directionSet`). When it does not,
+   * the direction of `incoming` is taken. Default `true`.
+   */
+  existingDirectionSet?: boolean;
+}
+
 /**
  * Merges a diagram that comes from code (or any tool) into the one a person has been editing, by the
  * rules of `docs/specs/diagram-merge.md`: structure comes from `incoming`; name and description of
@@ -27,7 +35,11 @@ const edgeKey = (e: Pick<DiagramEdge, 'source' | 'target' | 'event' | 'guard'>):
  * edges by source, target, event and guard. The order of `existing` is kept, new elements are
  * appended. Elements only `existing` has are dropped and reported.
  */
-export function mergeDiagram(existing: Diagram, incoming: Diagram): MergeResult {
+export function mergeDiagram(
+  existing: Diagram,
+  incoming: Diagram,
+  options: MergeOptions = {},
+): MergeResult {
   const removed: MergeRemoval[] = [];
 
   const oldNodes = new Map(existing.nodes.map((n) => [n.id, n]));
@@ -74,7 +86,12 @@ export function mergeDiagram(existing: Diagram, incoming: Diagram): MergeResult 
   }
   for (const fresh of incoming.edges) if (!oldEdges.has(edgeKey(fresh))) edges.push(fresh);
 
-  const diagram: Diagram = { ...incoming, direction: existing.direction, nodes, edges };
+  const diagram: Diagram = {
+    ...incoming,
+    direction: options.existingDirectionSet === false ? incoming.direction : existing.direction,
+    nodes,
+    edges,
+  };
   if (existing.name !== undefined) diagram.name = existing.name;
   if (existing.description !== undefined) diagram.description = existing.description;
   if (existing.spacing !== undefined) diagram.spacing = existing.spacing;
