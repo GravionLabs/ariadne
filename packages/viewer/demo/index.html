@@ -128,16 +128,25 @@
       api.addEventListener('load', () => (apiLog.textContent = ''));
 
       const get = async (path) => (await mockFetch(path, { headers: api.headers })).json();
-      for (const { name, title, link } of await get('/sagas')) {
-        sagas.append(new Option(title, link));
+      // The links live in these arrays, never read back from the DOM.
+      const sagaLinks = [];
+      const instanceLinks = ['']; // index 0 is the "none" option
+      for (const { title, link } of await get('/sagas')) {
+        sagaLinks.push(link);
+        sagas.append(new Option(title));
       }
-      for (const id of ['o-1', 't-1']) instances.append(new Option(id, '/instances/' + id));
+      for (const id of ['o-1', 't-1']) {
+        instanceLinks.push('/instances/' + id);
+        instances.append(new Option(id));
+      }
       const show = async () => {
         api.path = null;
-        api.src = sagas.value; // fetched by the element: JSON, decided by the content
-        if (instances.value) {
-          const instance = await get(instances.value);
-          if (instance.saga === sagas.value) api.path = instance.path;
+        const sagaLink = sagaLinks[sagas.selectedIndex];
+        const instanceLink = instanceLinks[instances.selectedIndex];
+        api.src = sagaLink; // fetched by the element: JSON, decided by the content
+        if (instanceLink) {
+          const instance = await get(instanceLink);
+          if (instance.saga === sagaLink) api.path = instance.path;
           else apiLog.textContent = 'This instance belongs to ' + instance.saga;
         }
       };

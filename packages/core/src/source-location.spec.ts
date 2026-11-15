@@ -194,7 +194,7 @@ describe('isJsonText and jsonSyntaxProblem', () => {
   it('decide by the first character', () => {
     expect(isJsonText('  \n{"a": 1}')).toBe(true);
     expect(isJsonText('\uFEFF{}')).toBe(true);
-    expect(isJsonText('{a: 1}'.replace('{', 'a: {'))).toBe(false);
+    expect(isJsonText('a: {a: 1}')).toBe(false);
     expect(isJsonText('version: 3')).toBe(false);
     expect(isJsonText('{version: 3, nodes: [], edges: []}')).toBe(false);
     expect(isJsonText('{ "version": 3 }')).toBe(true);
