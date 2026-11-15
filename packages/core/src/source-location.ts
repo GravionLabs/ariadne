@@ -11,9 +11,12 @@ export interface SourceRange {
 /** Nesting deeper than this is not read as JSON (the scanner recurses once per level). */
 const MAX_JSON_DEPTH = 500;
 
-/** A text is JSON when its first character that is not white space is `{`: a diagram is a mapping. */
+/**
+ * A text is JSON when it opens with `{` followed by `"` or `}`: a diagram is a mapping. A flow
+ * mapping of YAML (`{version: 3}`) also starts with `{`, but its first key is not quoted.
+ */
 export function isJsonText(text: string): boolean {
-  return /^﻿?\s*\{/.test(text);
+  return /^\uFEFF?\s*\{\s*["}]/.test(text);
 }
 
 interface JsonNode {
