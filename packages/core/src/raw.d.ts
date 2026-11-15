@@ -11,3 +11,8 @@ interface ImportMeta {
     options: { query: string; import: string; eager: true },
   ): Record<string, unknown>;
 }
+
+declare module '*.json?raw' {
+  const text: string;
+  export default text;
+}

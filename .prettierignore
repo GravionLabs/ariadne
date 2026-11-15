@@ -13,3 +13,5 @@ samples/library/*/generated
 .agents
 apm.lock.yaml
 .worktrees
+# Written by the JSON writer; a test keeps it byte-for-byte equal to the YAML example.
+docs/examples/*.saga.json
