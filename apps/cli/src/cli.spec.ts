@@ -3,7 +3,7 @@ import travelBooking from '../../../docs/examples/travel-booking.saga.yaml?raw';
 import orderCode from '../../../samples/sagas/order/OrderStateMachine.cs?raw';
 import orderGolden from '../../../samples/sagas/order/OrderStateMachine.saga.yaml?raw';
 import bookingCode from '../../../samples/sagas/booking/BookingStateMachine.cs?raw';
-import { serializeDiagram } from '@ariadne/core';
+import { parseDiagram, serializeDiagram, serializeDiagramJson } from '@ariadne/core';
 import { largeSaga } from '@ariadne/core/testing';
 import { createNodeParser } from '@ariadne/masstransit/node';
 import { describe, expect, it } from 'vitest';
@@ -12,7 +12,7 @@ import { Io, VERSION, run } from './cli';
 import { testFonts } from './test-fonts';
 
 /** The command line on an in-memory disk. */
-function setup(files: Record<string, string> = {}, overrides: Partial<Io> = {}) {
+function setup(files: Record<string, string> = {}, overrides: Partial<Io> = {}, stdin = '') {
   const disk = new Map<string, string | Uint8Array>(Object.entries(files));
   const out: string[] = [];
   const err: string[] = [];
@@ -27,6 +27,8 @@ function setup(files: Record<string, string> = {}, overrides: Partial<Io> = {}) 
       if (path.startsWith('/readonly/')) throw new Error('read-only');
       disk.set(path, data);
     },
+    readStdin: async () => stdin,
+    exists: async (path) => disk.has(path),
     stdout: (text) => out.push(text),
     stderr: (text) => err.push(text),
     csharpParser: createNodeParser,
@@ -421,5 +423,120 @@ describe('ariadne, files it cannot use', () => {
         .join('\n'),
     );
     expect(t.stderr()).not.toContain('Usage:');
+  });
+
+  describe('JSON and stdin', () => {
+    const json = serializeDiagramJson(parseDiagram(orderSaga));
+
+    it('lint, export, generate and diff read JSON, from a file or from stdin', async () => {
+      const t = setup({ 'order.saga.json': json, 'O.cs': orderCode }, {}, json);
+      expect(await t.run('lint', 'order.saga.json', '-')).toBe(0);
+      expect(await t.run('export', 'order.saga.json', '-f', 'mermaid')).toBe(0);
+      expect(t.stdout()).toContain('stateDiagram-v2');
+      expect(await t.run('export', '-', '-f', 'md')).toBe(0);
+      expect(await t.run('generate', '-', '-o', 'out')).toBe(0);
+      expect([...t.disk.keys()].some((k) => k.startsWith('out/'))).toBe(true);
+      expect(await t.run('diff', 'order.saga.json', 'O.cs')).toBeLessThanOrEqual(1);
+    });
+
+    it('lint --format json: the position of an error in JSON text', async () => {
+      const t = setup({ 'bad.saga.json': '{\n  "version": 3,\n  "nodes": [,]\n}\n' });
+      expect(await t.run('lint', 'bad.saga.json', '--format', 'json')).toBe(1);
+      const [report] = JSON.parse(t.stdout());
+      expect(report.invalid).toContain('Not valid JSON');
+      expect(report.location).toMatchObject({ line: 3 });
+    });
+
+    it('import --format json writes *.saga.json; the default stays YAML', async () => {
+      const t = setup({ 'OrderStateMachine.cs': orderCode });
+      expect(await t.run('import', 'OrderStateMachine.cs', '-o', 'd', '--format', 'json')).toBe(0);
+      expect(JSON.parse(t.disk.get('d/OrderStateMachine.saga.json') as string).version).toBe(3);
+      expect(await t.run('import', 'OrderStateMachine.cs', '-o', 'd')).toBe(0);
+      expect(t.disk.has('d/OrderStateMachine.saga.yaml')).toBe(true);
+      expect(await t.run('import', 'OrderStateMachine.cs', '--format', 'xml')).toBe(2);
+    });
+  });
+
+  describe('convert', () => {
+    const json = serializeDiagramJson(parseDiagram(orderSaga));
+
+    it('writes the other container next to the file and keeps the source', async () => {
+      const t = setup({ 'docs/order.saga.yaml': orderSaga, 'docs/o.saga.json': json });
+      expect(
+        await t.run('convert', 'docs/order.saga.yaml', 'docs/o.saga.json', '--to', 'json'),
+      ).toBe(1);
+      expect(t.disk.get('docs/order.saga.json')).toBe(json);
+      expect(t.disk.get('docs/order.saga.yaml')).toBe(orderSaga);
+      // docs/o.saga.json would be overwritten by itself
+      expect(t.stderr()).toContain('docs/o.saga.json: already exists');
+      const back = setup({ 'order.saga.json': json });
+      expect(await back.run('convert', 'order.saga.json', '--to', 'yaml')).toBe(0);
+      expect(back.disk.get('order.saga.yaml')).toBe(serializeDiagram(parseDiagram(orderSaga)));
+      expect(back.stdout()).toBe('order.saga.yaml\n');
+    });
+
+    it('stdin to -o, or to the standard output without -o; invalid input exits 1', async () => {
+      const t = setup({}, {}, json);
+      expect(await t.run('convert', '-', '--to', 'yaml', '-o', 'docs/order.saga.yaml')).toBe(0);
+      expect(t.disk.get('docs/order.saga.yaml')).toBe(serializeDiagram(parseDiagram(orderSaga)));
+      const o = setup({}, {}, json);
+      expect(await o.run('convert', '-', '--to', 'yaml')).toBe(0);
+      expect(o.stdout()).toBe(serializeDiagram(parseDiagram(orderSaga)));
+      const bad = setup({}, {}, 'not a diagram: [');
+      expect(await bad.run('convert', '-', '--to', 'json', '-o', 'x.saga.json')).toBe(1);
+      expect(bad.stderr()).toContain('<stdin>: not a valid saga diagram');
+      expect(bad.disk.size).toBe(0);
+    });
+
+    it('an invalid file writes nothing but the others are converted', async () => {
+      const t = setup({ 'bad.saga.yaml': 'version: 9\n', 'ok.saga.yaml': orderSaga });
+      expect(
+        await t.run('convert', 'bad.saga.yaml', 'ok.saga.yaml', '--to', 'json', '-o', 'out'),
+      ).toBe(1);
+      expect(t.disk.has('out/bad.saga.json')).toBe(false);
+      expect(t.disk.has('out/ok.saga.json')).toBe(true);
+    });
+
+    it('does not overwrite without --force', async () => {
+      const t = setup({ 'order.saga.yaml': orderSaga, 'order.saga.json': 'old' });
+      expect(await t.run('convert', 'order.saga.yaml', '--to', 'json')).toBe(1);
+      expect(t.disk.get('order.saga.json')).toBe('old');
+      expect(await t.run('convert', 'order.saga.yaml', '--to', 'json', '--force')).toBe(0);
+      expect(t.disk.get('order.saga.json')).toBe(json);
+    });
+
+    it('--merge keeps what a person wrote and reports what was removed', async () => {
+      const written = parseDiagram(orderSaga);
+      const edited = {
+        ...written,
+        description: 'By hand',
+        nodes: [
+          ...written.nodes,
+          { id: 'gone', type: 'state' as const, name: 'Gone', color: 'red' as const },
+        ],
+      };
+      const t = setup({ 'order.saga.json': json, 'order.saga.yaml': serializeDiagram(edited) });
+      expect(await t.run('convert', 'order.saga.json', '--to', 'yaml', '--merge')).toBe(0);
+      const merged = parseDiagram(t.disk.get('order.saga.yaml') as string);
+      expect(merged.description).toBe('By hand');
+      expect(merged.nodes.some((n) => n.id === 'gone')).toBe(false);
+      expect(t.stderr()).toContain('“Gone” removed, its color is lost');
+      // unchanged structure: byte for byte
+      const same = setup({ 'order.saga.json': json, 'order.saga.yaml': orderSaga });
+      expect(await same.run('convert', 'order.saga.json', '--to', 'yaml', '--merge')).toBe(0);
+      expect(same.disk.get('order.saga.yaml')).toBe(serializeDiagram(parseDiagram(orderSaga)));
+    });
+
+    it('--merge into an invalid file leaves it alone', async () => {
+      const t = setup({ 'order.saga.json': json, 'order.saga.yaml': 'version: 9\n' });
+      expect(await t.run('convert', 'order.saga.json', '--to', 'yaml', '--merge')).toBe(1);
+      expect(t.disk.get('order.saga.yaml')).toBe('version: 9\n');
+    });
+
+    it('wrong usage: no --to, bad --to, no file', async () => {
+      expect(await setup().run('convert', 'a.saga.yaml')).toBe(2);
+      expect(await setup().run('convert', 'a.saga.yaml', '--to', 'xml')).toBe(2);
+      expect(await setup().run('convert', '--to', 'json')).toBe(2);
+    });
   });
 });

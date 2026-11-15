@@ -14,6 +14,7 @@ export * from './color';
 export * from './diagram';
 export * from './diagram-edits';
 export * as edits from './diagram-edits';
+export * from './diagram-merge';
 export * from './diagram-yaml';
 export * from './layout';
 export * from './messages';
