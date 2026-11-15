@@ -140,12 +140,13 @@ The review of November 2026, with the repository public and npm, Marketplace and
 - [x] Dependabot alerts: enabled. [x] Dependabot security updates: disabled (final state).
 - [x] Private vulnerability reporting: enabled.
 - [ ] Code scanning alert 31 (`actions/unpinned-tag`): dismiss with the reason above.
-- [ ] Ruleset `main` (id 24478507): add the required checks `Analyze (javascript-typescript)`, `Analyze (actions)` and
+- [x] Ruleset `main` (id 24478507): add the required checks `Analyze (javascript-typescript)`, `Analyze (actions)` and
       `Dependency review` next to `Lint, build, test` and `pr-checks / PR checks`. Add them once the workflows have run on
       the release branch.
-- [ ] Renovate dry run (pending): run the `renovate` workflow by hand (`workflow_dispatch`, input `dry-run`) and confirm the
+- [x] Renovate dry run (2026-11-15): run the `renovate` workflow by hand (`workflow_dispatch`, input `dry-run`) and confirm the
       detected managers: npm, github-actions, dockerfile, docker-compose, devcontainer, `.nvmrc`, nuget and the two custom
-      managers.
+      managers. Result: all detected except nuget, which has no files yet (no `.csproj`); it is found once the .NET
+      exporter lands.
 - [ ] `RENOVATE_TOKEN`: check scopes (contents, pull requests and workflows write, issues write for the dashboard, on
       this repository only) and the expiry; prefer a fine-grained token that expires within a year, and note the
       expiry date here (not the value). Not readable through the API.
