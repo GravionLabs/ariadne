@@ -64,6 +64,9 @@ export const DIAGRAM_EXTENSIONS = ['.saga.yaml'];
 /** Plain YAML names that are still read; saving under a new name gives them the diagram extension. */
 export const LEGACY_EXTENSIONS = ['.yaml', '.yml'];
 
+/** JSON diagrams are read, never written: opening one gives an unsaved `*.saga.yaml` (ADR 0028). */
+export const JSON_EXTENSIONS = ['.json'];
+
 export const UNTITLED_NAME = 'untitled.saga.yaml';
 
 /**
@@ -74,7 +77,9 @@ export function diagramFileName(name: string): string {
   const trimmed = name.trim();
   const lower = trimmed.toLowerCase();
   if (DIAGRAM_EXTENSIONS.some((e) => lower.endsWith(e) && lower.length > e.length)) return trimmed;
-  const legacy = LEGACY_EXTENSIONS.find((e) => lower.endsWith(e) && lower.length > e.length);
+  const legacy = [...LEGACY_EXTENSIONS, '.saga.json', ...JSON_EXTENSIONS].find(
+    (e) => lower.endsWith(e) && lower.length > e.length,
+  );
   const base = legacy ? trimmed.slice(0, -legacy.length) : trimmed.replace(/\.+$/, '');
   return base ? `${base}${DIAGRAM_EXTENSIONS[0]}` : UNTITLED_NAME;
 }
