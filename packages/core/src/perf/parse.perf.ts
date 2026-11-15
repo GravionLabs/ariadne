@@ -1,7 +1,7 @@
 import { PathStep, resolvePath } from '../path';
 import { buildCatalog } from '../catalog';
 import { Diagram } from '../diagram';
-import { parseDiagram, serializeDiagram } from '../diagram-yaml';
+import { parseDiagram, serializeDiagram, serializeDiagramJson } from '../diagram-yaml';
 import { layoutDiagram } from '../layout';
 import { validate } from '../validation';
 import { expectWithinBudget, largeSaga, measure } from '../testing';
@@ -10,6 +10,8 @@ import { expectWithinBudget, largeSaga, measure } from '../testing';
 const BUDGETS: Record<string, Record<number, number>> = {
   parseDiagram: { 50: 120, 150: 160, 300: 200 },
   serializeDiagram: { 50: 50, 150: 70, 300: 80 },
+  parseDiagramJson: { 50: 120, 150: 160, 300: 200 },
+  serializeDiagramJson: { 50: 50, 150: 50, 300: 50 },
   validate: { 50: 50, 150: 50, 300: 50 },
   layoutDiagram: { 50: 280, 150: 600, 300: 2050 },
   buildCatalog: { 50: 50, 150: 50, 300: 50 },
@@ -40,11 +42,14 @@ function pathAlong(saga: Diagram, length: number): PathStep[] {
 describe.each([50, 150, 300])('a saga of %i states', (states) => {
   const saga = largeSaga(states);
   const text = serializeDiagram(saga);
+  const json = serializeDiagramJson(saga);
   const steps = pathAlong(saga, 200);
 
   const operations: [string, () => unknown][] = [
     ['parseDiagram', () => parseDiagram(text)],
     ['serializeDiagram', () => serializeDiagram(saga)],
+    ['parseDiagramJson', () => parseDiagram(json)],
+    ['serializeDiagramJson', () => serializeDiagramJson(saga)],
     ['validate', () => validate(saga)],
     ['layoutDiagram', () => layoutDiagram(saga)],
     ['buildCatalog', () => buildCatalog(saga)],
