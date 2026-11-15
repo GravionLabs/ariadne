@@ -49,7 +49,7 @@ is meant to produce in a MassTransit backend once it exists, is defined in
 Give the element the URL of the saga. It fetches it, asking for JSON first, and draws it.
 
 ```js
-api.src = sagas.value; // fetched by the element: JSON, decided by the content
+api.src = sagaLink; // fetched by the element: JSON, decided by the content
 ```
 
 In Angular, `AriadneSaga` loads the URL with your `HttpClient`, so your interceptors and base URLs apply:
@@ -99,8 +99,8 @@ sets `path` when the instance belongs to the saga on screen.
 
 ```js
 '/instances/o-1': { saga: '/sagas/order', path: [{ event: 'Step1' }, { event: 'Step2' }] },
-const instance = await get(instances.value);
-if (instance.saga === sagas.value) api.path = instance.path;
+const instance = await get(instanceLink);
+if (instance.saga === sagaLink) api.path = instance.path;
 ```
 
 The viewer resolves the steps against the diagram, emphasises the states visited and marks the current one. How the
