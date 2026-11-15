@@ -136,7 +136,7 @@ The review of November 2026, with the repository public and npm, Marketplace and
 **Settings that need the owner's rights** (state of 2026-11-14 read with `gh api`, final state wanted):
 
 - [x] Secret scanning: enabled. [x] Push protection: enabled.
-- [ ] Scan the history once for secrets (Security > Secret scanning) and revoke every finding.
+- [x] Scan the history once for secrets (Security > Secret scanning) and revoke every finding. Checked 2026-11-15: no open alert.
 - [x] Dependabot alerts: enabled. [x] Dependabot security updates: disabled (final state).
 - [x] Private vulnerability reporting: enabled.
 - [ ] Code scanning alert 31 (`actions/unpinned-tag`): dismiss with the reason above.
@@ -147,7 +147,7 @@ The review of November 2026, with the repository public and npm, Marketplace and
       detected managers: npm, github-actions, dockerfile, docker-compose, devcontainer, `.nvmrc`, nuget and the two custom
       managers. Result: all detected except nuget, which has no files yet (no `.csproj`); it is found once the .NET
       exporter lands.
-- [ ] `RENOVATE_TOKEN`: check scopes (contents, pull requests and workflows write, issues write for the dashboard, on
+- [x] `RENOVATE_TOKEN` (checked 2026-11-15 by the owner; the expiry date is not recorded here): check scopes (contents, pull requests and workflows write, issues write for the dashboard, on
       this repository only) and the expiry; prefer a fine-grained token that expires within a year, and note the
       expiry date here (not the value). Not readable through the API.
 
