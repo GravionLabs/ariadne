@@ -195,6 +195,8 @@ export interface ParsedDiagram {
   diagram: Diagram;
   /** Human-readable notes about migrations; empty for files in the current version. */
   notes: string[];
+  /** Whether the file sets `direction` itself; when not, `diagram.direction` is the default. */
+  directionSet: boolean;
 }
 
 /** Parses and validates a diagram file, YAML or JSON (JSON is read by the YAML parser). */
@@ -314,6 +316,7 @@ export function validateDiagramWithNotes(file: unknown): ParsedDiagram {
       edges,
     }),
     notes,
+    directionSet: root['direction'] !== undefined,
   };
 }
 

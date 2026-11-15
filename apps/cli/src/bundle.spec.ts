@@ -1,4 +1,5 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -71,5 +72,27 @@ describe('the bundled ariadne command', () => {
     expect([...(await readFile(png)).subarray(1, 4)]).toEqual([0x50, 0x4e, 0x47]);
     expect((await ariadne('export', order, '-f', 'mermaid')).stdout).toContain('stateDiagram-v2');
     expect((await ariadne('export', order, '-f', 'md')).stdout).toMatch(/^# OrderSaga/);
+  });
+
+  it('converts YAML to JSON and back, and reads stdin', async () => {
+    const order = join(examples, 'order.saga.yaml');
+    const json = join(out, 'order.saga.json');
+    const yaml = join(out, 'again.saga.yaml');
+    expect((await ariadne('convert', order, '--to', 'json', '-o', json)).code).toBe(0);
+    expect(JSON.parse(await readFile(json, 'utf8')).version).toBe(3);
+    expect((await ariadne('convert', json, '--to', 'yaml', '-o', yaml)).code).toBe(0);
+    expect((await ariadne('lint', json, yaml)).code).toBe(0);
+    const piped = await new Promise<{ code: number | null; stdout: string }>((done) => {
+      const child = spawn(process.execPath, [bin, 'convert', '-', '--to', 'yaml']);
+      let stdout = '';
+      child.stdout.on('data', (d) => (stdout += d));
+      child.on('close', (code) => done({ code, stdout }));
+      child.stdin.end(readFileSync(json));
+    });
+    expect(piped.code).toBe(0);
+    expect(piped.stdout).toBe(await readFile(yaml, 'utf8'));
+    // the target next to the source now exists after the first run, and is not overwritten
+    expect((await ariadne('convert', json, '--to', 'yaml')).code).toBe(0);
+    expect((await ariadne('convert', json, '--to', 'yaml')).code).toBe(1);
   });
 });

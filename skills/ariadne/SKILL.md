@@ -33,14 +33,16 @@ or a file that cannot be read or written. Treat `1` as a result to report, not a
 
 ## The commands
 
-| Task                       | Command                                                                      |
-| -------------------------- | ---------------------------------------------------------------------------- |
-| Check a diagram            | `ariadne lint <file.saga.yaml…> [--format text\|json] [--max-warnings <n>]`  |
-| C# → diagram               | `ariadne import <file.cs…> [-o <dir>]`                                       |
-| Diagram → C#               | `ariadne generate <file.saga.yaml> [-o <dir>]`                               |
-| Do code and diagram agree? | `ariadne diff <file.saga.yaml> <file.cs…> [--class <name>]`                  |
-| Draw it                    | `ariadne export <file.saga.yaml> --format mermaid\|svg\|png\|md [-o <file>]` |
+| Task                       | Command                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| Check a diagram            | `ariadne lint <file.saga.yaml…> [--format text\|json] [--max-warnings <n>]`    |
+| C# → diagram               | `ariadne import <file.cs…> [-o <dir>] [--format yaml\|json]`                   |
+| Diagram → C#               | `ariadne generate <file.saga.yaml> [-o <dir>]`                                 |
+| Do code and diagram agree? | `ariadne diff <file.saga.yaml> <file.cs…> [--class <name>]`                    |
+| YAML ↔ JSON                | `ariadne convert <file…> --to json\|yaml [-o <file\|dir>] [--force] [--merge]` |
+| Draw it                    | `ariadne export <file.saga.yaml> --format mermaid\|svg\|png\|md [-o <file>]`   |
 
+Every command that reads a diagram accepts `*.saga.yaml` and `*.saga.json`, and `-` for the standard input.
 `ariadne --help` shows the same, with details.
 
 ### lint
@@ -67,6 +69,16 @@ Writes the state machine, the saga instance and the message contracts as C# (Mas
 but it is a starting point: message properties and guards are `TODO`s, and what the diagram cannot say (a
 transition without an event, a compensation's undo action) is reported on standard error. Never overwrite the
 user's existing saga code with generated files; generate into a new folder and compare, or ask.
+
+### convert
+
+Writes a diagram in the other container: `order.saga.yaml` becomes `order.saga.json` next to it (or to `-o`: a
+file for one input, a directory for several), and the source stays. A file that is not a diagram is reported and
+nothing is written for it (exit 1); an existing target is not overwritten without `--force`. `-` reads the
+standard input and writes to `-o` or the standard output, so `curl …/sagas/order | ariadne convert - --to yaml
+-o docs/order.saga.yaml` works. `--merge` writes over an existing target but keeps what a person wrote there
+(descriptions, colors, `eventSource`, `retry`, `timeout`, `compensation`, `direction`, `spacing`): the structure
+comes from the input, and elements that are gone are listed on standard error; tell the user about them.
 
 ### diff
 
