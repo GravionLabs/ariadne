@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-10-01
 - Issues: #20, #23, #26, #107
+- Amended by: [ADR 0028](0028-json-second-representation.md) (JSON as a second representation for transport; the file format stays YAML)
 
 ## Context
 
