@@ -26,6 +26,9 @@
   lockFileMaintenance: { enabled: true, schedule: ['before 6am on the first day of the month'] },
   // Raise the range in package.json to the new version instead of leaving it as it was.
   rangeStrategy: 'bump',
+  // Installed APM skills (.agents/skills) carry template manifests that are not dependencies of this repository.
+  // Setting ignorePaths replaces the preset default, so the node_modules entry is repeated.
+  ignorePaths: ['**/node_modules/**', '.agents/skills/**'],
   postUpdateOptions: ['pnpmDedupe'],
   // A week's updates are opened, not held back on the dashboard (the defaults are 2 per hour and 10 open).
   prHourlyLimit: 10,

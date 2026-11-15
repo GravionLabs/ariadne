@@ -166,6 +166,12 @@ arrive without a pull request, and a breaking change of ci becomes `v2`, which R
 for `GravionLabs/ci`). The trust is the same as for the repository itself: the same organisation owns both.
 Third-party actions stay pinned to a SHA.
 
+### Installed APM skills are not dependencies (#546)
+
+The templates under `.agents/skills/**` (for example a `package.json` with `zod` 3) belong to installed APM skills,
+not to this repository. Renovate ignores `.agents/skills/**` (`ignorePaths`), and a Dependabot alert on such a file is
+dismissed as "not used". The installed files are never edited by hand; a skill is updated through `apm`.
+
 ### The configuration is checked
 
 `renovate-config-validator --strict` runs in CI when the configuration changes (`.github/workflows/renovate-config.yml`),
