@@ -1,4 +1,5 @@
 import { parse, stringify } from 'yaml';
+import { isJsonText, jsonSyntaxProblem } from './source-location';
 import {
   Diagram,
   EventInfo,
@@ -205,6 +206,14 @@ export function parseDiagram(text: string): Diagram {
 export function parseDiagramWithNotes(text: string): ParsedDiagram {
   const tooBig = diagramSizeProblem(text);
   if (tooBig) throw new DiagramFormatError(tooBig);
+  const jsonProblem = isJsonText(text) ? jsonSyntaxProblem(text) : undefined;
+  if (jsonProblem) {
+    throw new DiagramFormatError(
+      /nested too deeply/.test(jsonProblem.message)
+        ? 'The file is nested too deeply to be read as a diagram.'
+        : jsonProblem.message,
+    );
+  }
   let file: unknown;
   try {
     file = parse(text, { maxAliasCount: DIAGRAM_LIMITS.maxAliases });
