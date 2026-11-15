@@ -52,11 +52,99 @@
     <h2>Given as text with <code>source</code></h2>
     <ariadne-saga id="inline"></ariadne-saga>
 
+    <h2>A JSON endpoint: list of sagas, one saga, and an instance</h2>
+    <p>
+      A mock API answers <code>GET /sagas</code> (the list),
+      <code>GET /sagas/&#123;name&#125;</code> (a saga as JSON, behind a bearer token) and
+      <code>GET /instances/&#123;id&#125;</code> (its history). The viewer gets the mock as
+      <code>fetcher</code>; a real app sets <code>credentials</code> or
+      <code>headers</code> instead.
+    </p>
+    <label
+      >Saga
+      <select id="saga-list"></select
+    ></label>
+    <label
+      >Instance
+      <select id="instance-list">
+        <option value="">none</option>
+      </select></label
+    >
+    <ariadne-saga id="api" theme="dark"></ariadne-saga>
+    <p id="api-log" role="status"></p>
+
     <h2>Errors</h2>
     <ariadne-saga src="missing.saga.yaml" style="height: 120px"></ariadne-saga>
     <ariadne-saga source="version: 99" style="height: 120px"></ariadne-saga>
 
     <script type="module">
+      // --- The mock API: in a page, `fetch` is replaced by a function that answers like a backend.
+      const sagaDoc = (name, states) => ({
+        version: 3,
+        name,
+        nodes: [
+          { id: 'start-1', type: 'start', name: 'Initial' },
+          ...states.map((s) => ({ id: s, type: 'state', name: s })),
+          { id: 'end-1', type: 'end', name: 'Completed' },
+        ],
+        edges: [
+          ...['start-1', ...states].map((from, i, all) => ({
+            id: 'e' + i,
+            source: from,
+            target: all[i + 1] ?? 'end-1',
+            kind: 'forward',
+            event: 'Step' + (i + 1),
+          })),
+        ],
+      });
+      const API = {
+        '/sagas': [
+          { name: 'order', title: 'Order Saga', link: '/sagas/order' },
+          { name: 'travel', title: 'Travel booking', link: '/sagas/travel' },
+        ],
+        '/sagas/order': sagaDoc('Order', ['Reserving', 'Paying']),
+        '/sagas/travel': sagaDoc('Travel', ['Flight', 'Hotel', 'Car']),
+        '/instances/o-1': { saga: '/sagas/order', path: [{ event: 'Step1' }, { event: 'Step2' }] },
+        '/instances/t-1': { saga: '/sagas/travel', path: [{ event: 'Step1' }] },
+      };
+      const mockFetch = async (url, init) => {
+        const key = new URL(url, location.href).pathname.replace(
+          /^.*?(\/(sagas|instances)\b)/,
+          '$1',
+        );
+        if (new Headers(init.headers).get('Authorization') !== 'Bearer demo-token')
+          return new Response('', { status: 401, statusText: 'Unauthorized' });
+        return key in API
+          ? Response.json(API[key])
+          : new Response('', { status: 404, statusText: 'Not Found' });
+      };
+      const api = document.getElementById('api');
+      const sagas = document.getElementById('saga-list');
+      const instances = document.getElementById('instance-list');
+      const apiLog = document.getElementById('api-log');
+      api.headers = { Authorization: 'Bearer demo-token' };
+      api.fetcher = mockFetch;
+      api.addEventListener('error', (e) => (apiLog.textContent = 'error: ' + e.detail.message));
+      api.addEventListener('load', () => (apiLog.textContent = ''));
+
+      const get = async (path) => (await mockFetch(path, { headers: api.headers })).json();
+      for (const { name, title, link } of await get('/sagas')) {
+        sagas.append(new Option(title, link));
+      }
+      for (const id of ['o-1', 't-1']) instances.append(new Option(id, '/instances/' + id));
+      const show = async () => {
+        api.path = null;
+        api.src = sagas.value; // fetched by the element: JSON, decided by the content
+        if (instances.value) {
+          const instance = await get(instances.value);
+          if (instance.saga === sagas.value) api.path = instance.path;
+          else apiLog.textContent = 'This instance belongs to ' + instance.saga;
+        }
+      };
+      sagas.addEventListener('change', show);
+      instances.addEventListener('change', show);
+      await show();
+
       document.getElementById('inline').source = `version: 3
 name: Light switch
 direction: left-right

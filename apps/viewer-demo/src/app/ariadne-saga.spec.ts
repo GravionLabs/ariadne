@@ -5,7 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ChangeDetectionStrategy, Component, PLATFORM_ID, signal } from '@angular/core';
 import type { ComponentFixture } from '@angular/core/testing';
 import { TestBed } from '@angular/core/testing';
-import { type Diagram, type PathStep, serializeDiagram } from '@ariadne/core';
+import { type Diagram, type PathStep, serializeDiagram, serializeDiagramJson } from '@ariadne/core';
 import type {
   SagaEmphasis,
   SagaErrorDetail,
@@ -56,6 +56,9 @@ const yaml = serializeDiagram(diagram);
     <ariadne-saga
       [url]="url()"
       [source]="source()"
+      [diagram]="diagram()"
+      [credentials]="credentials()"
+      [headers]="headers()"
       [direction]="direction()"
       [theme]="theme()"
       [features]="features()"
@@ -73,6 +76,9 @@ const yaml = serializeDiagram(diagram);
 class Host {
   readonly url = signal<string | undefined>(undefined);
   readonly source = signal<string | undefined>(undefined);
+  readonly diagram = signal<unknown>(undefined);
+  readonly credentials = signal<'omit' | 'same-origin' | 'include' | undefined>(undefined);
+  readonly headers = signal<Record<string, string> | undefined>(undefined);
   readonly direction = signal<'top-bottom' | 'left-right' | undefined>(undefined);
   readonly theme = signal<'light' | 'dark' | 'auto' | undefined>(undefined);
   readonly features = signal<readonly ViewerFeature[] | undefined>(undefined);
@@ -170,6 +176,52 @@ describe('AriadneSaga', () => {
     http.verify();
   });
 
+  it('draws a JSON response of url, sending Accept, credentials and headers', async () => {
+    const { fixture, host, el, http } = await create();
+    host.credentials.set('include');
+    host.headers.set({ Authorization: 'Bearer t' });
+    host.url.set('/api/sagas/order');
+    await flush(fixture);
+    const request = http.expectOne('/api/sagas/order');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.headers.get('Authorization')).toBe('Bearer t');
+    expect(request.request.headers.get('Accept')).toMatch(/^application\/json/);
+    request.flush(serializeDiagramJson(diagram));
+    await flush(fixture);
+    expect($(el, '.name').textContent).toBe('Order');
+    expect(host.loaded).toEqual(['Order']);
+  });
+
+  it('emits failed with the status for 401 and 403', async () => {
+    const { fixture, host, http } = await create();
+    host.url.set('/api/sagas/order');
+    await flush(fixture);
+    http.expectOne('/api/sagas/order').flush('', { status: 401, statusText: 'Unauthorized' });
+    await flush(fixture);
+    expect(host.failed[0]).toMatchObject({ kind: 'network', status: 401 });
+  });
+
+  it('draws a parsed object given as diagram, which wins over source', async () => {
+    const { fixture, host, el } = await create();
+    host.source.set('nodes: [');
+    host.diagram.set(JSON.parse(serializeDiagramJson(diagram)));
+    await flush(fixture);
+    expect($(el, '.name').textContent).toBe('Order');
+    expect(host.failed).toEqual([]);
+  });
+
+  it('emits failed invalid with line and column for JSON text, none for an object', async () => {
+    const { fixture, host } = await create();
+    host.source.set('{\n  "version": 3,\n  "nodes": {}\n}');
+    await flush(fixture);
+    expect(host.failed[0]).toMatchObject({ kind: 'invalid', line: 3, column: 12 });
+    host.source.set(undefined);
+    host.diagram.set({ version: 3, nodes: {} });
+    await flush(fixture);
+    expect(host.failed[1]).toMatchObject({ kind: 'invalid' });
+    expect(host.failed[1]!.line).toBeUndefined();
+  });
+
   it('never calls fetch for url', async () => {
     const fetcher = vi.spyOn(globalThis, 'fetch');
     const { fixture, host, http } = await create();
@@ -189,6 +241,7 @@ describe('AriadneSaga', () => {
     await flush(fixture);
     expect(host.failed.at(-1)).toEqual({
       kind: 'network',
+      status: 404,
       message: '/missing could not be loaded (404 Not Found).',
     });
     expect($(el, '.status').textContent).toContain('404');
@@ -203,7 +256,12 @@ describe('AriadneSaga', () => {
     await flush(fixture);
     http.expectOne('/bad').flush('version: 3\nnodes: {}');
     await flush(fixture);
-    expect(host.failed.at(-1)).toEqual({ kind: 'invalid', message: 'nodes must be a list' });
+    expect(host.failed.at(-1)).toEqual({
+      kind: 'invalid',
+      message: 'nodes must be a list',
+      line: 2,
+      column: 8,
+    });
 
     host.url.set('/future');
     await flush(fixture);
