@@ -57,7 +57,11 @@ export class ExportMenu {
 
   protected readonly json: readonly ExportEntry[] = [
     { label: 'Copy JSON', hint: 'To the clipboard', run: () => this.exporter.copyJson() },
-    { label: 'JSON', hint: 'The diagram as JSON (.json)', run: () => this.exporter.exportJson() },
+    {
+      label: 'JSON',
+      hint: 'The diagram as JSON (.saga.json)',
+      run: () => this.exporter.exportJson(),
+    },
   ];
 
   protected toggle(): void {

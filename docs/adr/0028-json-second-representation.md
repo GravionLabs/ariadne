@@ -21,7 +21,11 @@ The numbers 0025 and 0026 are reserved by #433 and #441, and 0027 is taken by th
 
 1. **JSON is for transport, not for storage.** REST APIs, the viewer and tools exchange sagas as JSON. Diagrams that
    people keep in a repository stay `*.saga.yaml`. Nothing of ADR 0002 is superseded: one YAML file per diagram
-   remains the file format, `FileStorage` is unchanged, and no `*.saga.json` file extension is introduced.
+   remains the file format and `FileStorage` is unchanged. `*.saga.json` is allowed as the name of a JSON diagram that a
+   tool writes (`ariadne convert`, `import --format json`, the web export) or that a person saves from a REST API;
+   such a file is a transport copy, not the stored diagram. Amendment (#562): this decision first said that no
+   `*.saga.json` extension exists, but the CLI, the guide and the examples already use it, so the extension is
+   allowed (the other way, dropping it from the CLI and the docs, was not chosen).
 2. **Same model, same version.** A JSON document is the diagram file as JSON: the same keys, the same validation, the
    same `version: 3` (see [`diagram-format.md`](../specs/diagram-format.md)). There is no JSON-only field and no
    second version number. A format change bumps `version` once, for both containers.

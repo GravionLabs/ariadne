@@ -203,8 +203,8 @@ The same holds for the JSON form, see [JSON](#json).
 
 A diagram can also be written as JSON ([ADR 0028](../adr/0028-json-second-representation.md)). JSON is for
 **transport**, not for storage: a REST API serves sagas as JSON, the viewer draws them, and tools that speak JSON
-exchange them. The files people keep in a repository stay `*.saga.yaml`; there is no `*.saga.json` file
-extension for them.
+exchange them. The files people keep in a repository stay `*.saga.yaml`. `*.saga.json` is the name of a JSON diagram that a tool
+writes (`ariadne convert`, the web export) or that a person saves from a REST API.
 
 The fields are the same as in YAML, with the same validation and the same `version: 3`. There is no JSON-only
 field and no second version number. The only extra is the optional top-level `$schema` string, which names
