@@ -5,6 +5,13 @@ import {
   diagramFileName,
 } from './file-storage';
 
+describe('diagramFileName for JSON', () => {
+  it('turns a JSON name into a diagram name', () => {
+    expect(diagramFileName('order.json')).toBe('order.saga.yaml');
+    expect(diagramFileName('order.saga.json')).toBe('order.saga.yaml');
+  });
+});
+
 describe('diagram file names', () => {
   it('uses the double extension that sets diagrams apart from other YAML files', () => {
     expect(DIAGRAM_EXTENSIONS).toEqual(['.saga.yaml']);

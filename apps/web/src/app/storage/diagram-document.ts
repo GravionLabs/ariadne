@@ -1,9 +1,12 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { DiagramStore } from '../model/diagram-store';
+import { OpenedFile } from './file-storage';
 import { FileRef, FileStorage, UNTITLED_NAME, diagramFileName } from './file-storage';
+import { isJsonText, locateSourceError } from '@ariadne/core';
 import {
   Diagram,
+  DiagramFormatError,
   emptyDiagram,
   parseDiagramWithNotes,
   serializeDiagram,
@@ -68,6 +71,27 @@ export const DiagramDocument = signalStore(
         return true;
       });
 
+    /**
+     * A JSON saga opens as an unsaved `*.saga.yaml`: it has no file handle, so saving asks where
+     * and writes YAML, and the JSON file is never written. A bad file is rejected with its position.
+     */
+    const openJson = (opened: OpenedFile): boolean => {
+      let result: ReturnType<typeof parseDiagramWithNotes>;
+      try {
+        result = parseDiagramWithNotes(opened.content);
+      } catch (e) {
+        const at = locateSourceError(opened.content, (e as Error).message);
+        if (!at || !(e instanceof DiagramFormatError)) throw e;
+        throw new Error(`${(e as Error).message} (line ${at.line}, column ${at.column})`);
+      }
+      const name = diagramFileName(opened.ref.name);
+      replace(result.diagram, { name }, true);
+      patchState(store, {
+        notice: [`Opened from JSON; saving writes ${name}.`, ...result.notes].join(' '),
+      });
+      return true;
+    };
+
     const saveAs = (): Promise<boolean> =>
       // Always suggest a `*.saga.yaml` name, also for a legacy `.yaml` file opened before. A new
       // file takes it from the diagram's name, if it has one.
@@ -118,6 +142,7 @@ export const DiagramDocument = signalStore(
         return run(async () => {
           const opened = await storage.open();
           if (!opened) return false;
+          if (isJsonText(opened.content)) return openJson(opened);
           const { diagram: parsed, notes } = parseDiagramWithNotes(opened.content);
           // A migrated file differs from what is on disk, so it counts as unsaved until it is saved.
           replace(parsed, opened.ref, notes.length > 0);

@@ -45,6 +45,8 @@ describe('BrowserFileStorage', () => {
           description: 'Ariadne diagram (*.saga.yaml)',
           accept: { 'application/yaml': ['.saga.yaml'] },
         },
+        { description: 'YAML (*.yaml, *.yml)', accept: { 'application/yaml': ['.yaml', '.yml'] } },
+        { description: 'JSON (*.json)', accept: { 'application/json': ['.json'] } },
       ]);
       expect(options['excludeAcceptAllOption']).toBeUndefined();
       // A plain .yaml file opens just the same.
@@ -240,7 +242,7 @@ describe('BrowserFileStorage', () => {
         return el;
       });
       expect(await storage.open()).toBeNull();
-      expect(input?.accept).toBe('.saga.yaml');
+      expect(input?.accept).toBe('.saga.yaml,.yaml,.yml,.json');
     });
 
     it('lets the file input pick several files', async () => {

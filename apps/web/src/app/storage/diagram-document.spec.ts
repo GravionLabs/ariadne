@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from './diagram-document';
 import { FileRef, FileStorage, OpenedFile } from './file-storage';
-import { serializeDiagram } from '@ariadne/core';
+import { serializeDiagram, serializeDiagramJson } from '@ariadne/core';
 
 class FakeFileStorage extends FileStorage {
   opened: OpenedFile | null = null;
@@ -180,6 +180,45 @@ describe('DiagramDocument', () => {
     expect(doc.error()).toBe('The file is 5 MB; Ariadne reads diagrams up to 5 MB.');
     expect(store.nodes().map((n) => n.id)).toEqual(['start-1', 'state-1']);
     expect(doc.name()).toBe('untitled.saga.yaml');
+  });
+
+  describe('opening JSON', () => {
+    const json = () => serializeDiagramJson(store.diagram());
+
+    it('opens as an unsaved YAML document with a note, and Save asks where', async () => {
+      store.addNode('state');
+      storage.opened = { ref: { name: 'order.json' }, content: json() };
+      doc.newDiagram();
+      expect(await doc.open()).toBe(true);
+      expect(store.nodes().map((n) => n.id)).toEqual(['start-1', 'state-1']);
+      expect(doc.name()).toBe('order.saga.yaml');
+      expect(doc.dirty()).toBe(true);
+      expect(doc.notice()).toBe('Opened from JSON; saving writes order.saga.yaml.');
+
+      await doc.save();
+      // The ref has no handle (like a sample's), so the storage turns Save into Save As.
+      expect(storage.save).toHaveBeenCalledWith(expect.any(String), { name: 'order.saga.yaml' });
+      expect(storage.written.at(-1)?.content).toBe(serializeDiagram(store.diagram()));
+      expect(doc.dirty()).toBe(false);
+    });
+
+    it('rejects invalid JSON with line and column and keeps the diagram', async () => {
+      store.addNode('state');
+      storage.opened = {
+        ref: { name: 'bad.json' },
+        content: '{\n  "version": 3,\n  "nodes": [\n    { "id": 1 }\n  ]\n}\n',
+      };
+      expect(await doc.open()).toBe(false);
+      expect(doc.error()).toMatch(/\(line \d+, column \d+\)$/);
+      expect(store.nodes().map((n) => n.id)).toEqual(['start-1', 'state-1']);
+      expect(doc.name()).toBe('untitled.saga.yaml');
+    });
+
+    it('rejects JSON with a syntax error with its position', async () => {
+      storage.opened = { ref: { name: 'bad.json' }, content: '{\n  "version": 3,\n}' };
+      expect(await doc.open()).toBe(false);
+      expect(doc.error()).toMatch(/line 3/);
+    });
   });
 
   it('starts a new diagram with just a start node', () => {
