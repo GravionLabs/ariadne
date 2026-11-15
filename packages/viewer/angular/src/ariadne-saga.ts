@@ -112,6 +112,7 @@ export class AriadneSaga {
     effect((onCleanup) => {
       const source = this.source();
       const url = this.url();
+      const given = this.diagram() != null;
       const headers = this.headers();
       const withCredentials = this.credentials() === 'include';
       if (source != null) {
@@ -119,7 +120,7 @@ export class AriadneSaga {
         return;
       }
       el.source = null;
-      if (!url) return;
+      if (given || !url) return;
       el.showLoading();
       const request = this.http
         .get(url, {
