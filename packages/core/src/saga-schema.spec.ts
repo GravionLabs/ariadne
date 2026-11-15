@@ -2,12 +2,13 @@ import Ajv from 'ajv';
 import { parse } from 'yaml';
 import schema from '../../../docs/specs/saga.schema.json';
 import order from '../../../docs/examples/order.saga.yaml?raw';
+import listSchema from '../../../docs/specs/saga-list.schema.json';
 import travel from '../../../docs/examples/travel-booking.saga.yaml?raw';
 import booking from '../../../samples/sagas/booking/BookingStateMachine.saga.yaml?raw';
 import ticket from '../../../samples/sagas/helpers/TicketStateMachine.saga.yaml?raw';
 import orderSample from '../../../samples/sagas/order/OrderStateMachine.saga.yaml?raw';
 import shipment from '../../../samples/sagas/when-enter/ShipmentStateMachine.saga.yaml?raw';
-import { parseDiagram } from './diagram-yaml';
+import { parseDiagram, serializeDiagramJson } from './diagram-yaml';
 
 // docs/specs/saga.schema.json is what editors validate `*.saga.yaml` against. It is written by
 // hand, so these specs keep it in step with the parser: what the parser reads, the schema accepts,
@@ -44,6 +45,28 @@ describe('saga.schema.json accepts what the parser reads', () => {
   ])('%s', (_name, text) => {
     expect(parserAccepts(text)).toBe(true);
     expect(validate(parse(text)) ? [] : validate.errors).toEqual([]);
+  });
+
+  it.each([
+    ['docs/examples/order', order],
+    ['docs/examples/travel-booking', travel],
+    ['samples booking', booking],
+    ['samples ticket', ticket],
+    ['samples order', orderSample],
+    ['samples shipment', shipment],
+  ])('%s as JSON', (_name, text) => {
+    const json = serializeDiagramJson(parseDiagram(text));
+    expect(parserAccepts(json)).toBe(true);
+    expect(validate(JSON.parse(json)) ? [] : validate.errors).toEqual([]);
+  });
+
+  it('accepts the optional $schema property, in YAML and in JSON', () => {
+    const url =
+      'https://raw.githubusercontent.com/GravionLabs/ariadne/main/docs/specs/saga.schema.json';
+    expect(schemaAccepts(`$schema: ${url}\nversion: 3`)).toBe(true);
+    expect(parserAccepts(JSON.stringify({ $schema: url, version: 3 }))).toBe(true);
+    expect(validate({ $schema: url, version: 3 })).toBe(true);
+    expect(validate({ $schema: 3, version: 3 })).toBe(false);
   });
 
   it('accepts a file with only a version', () => {
@@ -271,5 +294,28 @@ describe('saga.schema.json and routing slips', () => {
     expect(
       validate(parse(state('[{ routingSlip: S, activities: [{ activity: X, undo: true }] }]'))),
     ).toBe(false);
+  });
+});
+
+describe('saga-list.schema.json', () => {
+  const validateList = new Ajv({ strict: false }).compile(listSchema);
+  const entry = { name: 'order', title: 'Order Saga', link: '/sagas/order' };
+
+  it('accepts a list of sagas, also an empty one', () => {
+    expect(validateList([entry, { ...entry, name: 'b', link: 'https://x.test/sagas/b' }])).toBe(
+      true,
+    );
+    expect(validateList([])).toBe(true);
+  });
+
+  it.each([
+    ['an object instead of a list', entry],
+    ['an entry without a link', [{ name: 'a', title: 'A' }]],
+    ['an entry without a title', [{ name: 'a', link: '/sagas/a' }]],
+    ['an empty name', [{ ...entry, name: '' }]],
+    ['a diagram in place of an entry', [{ version: 3 }]],
+    ['a field the list does not have', [{ ...entry, nodes: [] }]],
+  ])('rejects %s', (_name, value) => {
+    expect(validateList(value)).toBe(false);
   });
 });

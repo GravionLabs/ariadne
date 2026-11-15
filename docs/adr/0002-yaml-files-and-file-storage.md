@@ -15,7 +15,7 @@ File System Access API) and later inside a Tauri 2 shell (native dialogs and fil
 
 1. **One YAML file per diagram**, versioned with a top-level `version` field. The schema is in
    [`docs/specs/diagram-format.md`](../specs/diagram-format.md). (De)serialization is a pure module
-   (`src/app/model/diagram-yaml.ts`, using the `yaml` package) with deterministic output: fixed key order,
+   (`packages/core/src/diagram-yaml.ts`, using the `yaml` package) with deterministic output: fixed key order,
    model element order, rounded positions, no line wrapping. Parsing validates the whole file and fails
    with a path-specific `DiagramFormatError` instead of loading partial data.
 2. **`FileStorage` abstract class** (`src/app/storage/file-storage.ts`) with `open()`, `save(content, ref)`
