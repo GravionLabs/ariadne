@@ -3,7 +3,7 @@
 A read-only viewer for [Ariadne](https://github.com/GravionLabs/ariadne) saga diagrams, to embed in admin tools
 and documentation: the `<ariadne-saga>` custom element, with zoom and pan, a walkthrough, the message catalog,
 problem markers and the path a saga instance took. Angular apps get a wrapper with signal inputs and outputs.
-It draws what the editor, the exports and the VS Code preview draw, from the same `.saga.yaml` files.
+It draws what the editor, the exports and the VS Code preview draw, from the same sagas, held as `.saga.yaml` files or as JSON (a REST endpoint).
 
 ```html
 <ariadne-saga src="/api/sagas/order.saga.yaml"></ariadne-saga>
@@ -34,7 +34,7 @@ defineAriadneSaga(); // <ariadne-saga>; pass another tag name if you like
 
 Importing the package does nothing on a server (no DOM needed), so it is safe in server-side rendering.
 
-Give it a saga in one of two ways:
+Give it a saga, as YAML or JSON (both name the same saga), in one of two ways, or as an object (`diagram`, below):
 
 ```html
 <!-- Fetched by the element -->

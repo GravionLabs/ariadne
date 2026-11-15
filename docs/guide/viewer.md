@@ -1,7 +1,8 @@
 # Show a saga in your own app
 
 The editor is for drawing. To **show** a saga in an admin tool or in documentation, embed it with the viewer,
-`@ariadne/viewer`: a read-only `<ariadne-saga>` element that loads a `.saga.yaml` from your API or repository.
+`@ariadne/viewer`: a read-only `<ariadne-saga>` element that loads a saga from your API or repository, as a `.saga.yaml` file or as JSON
+(both containers hold the same saga; the content decides, not the file name).
 
 ```html
 <ariadne-saga src="/api/sagas/order.saga.yaml" features="walkthrough messages"></ariadne-saga>
@@ -18,6 +19,9 @@ saga.pathView = 'both'; // also as a timeline, left to right, under the diagram
 Your app hears about what the user picks and about the path (`select`, `walkthrough`, `pathresolved`), and can pick
 out states from outside, for example the one a running instance is in. Angular apps use `AriadneSaga`, which
 loads the file with their own `HttpClient`.
+
+A frontend that draws what its backends return finds the JSON endpoint, authentication and the `diagram` input in
+[Sagas from a REST API](sagas-from-rest-api.md).
 
 Everything is in the package's [README](../../packages/viewer/README.md): install, the element and the Angular
 wrapper, theming with CSS custom properties, events and outputs.
