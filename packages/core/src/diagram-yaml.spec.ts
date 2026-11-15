@@ -43,6 +43,24 @@ const sample: Diagram = {
   ],
 };
 
+describe('YAML flow mapping', () => {
+  it('still parses', () => {
+    const d = parseDiagram('{version: 3, nodes: [], edges: []}');
+    expect(d.nodes).toEqual([]);
+    expect(d.edges).toEqual([]);
+  });
+
+  it('reports a syntax error as YAML', () => {
+    expect(() => parseDiagram('{version: 3, nodes: [}')).toThrow(/^Not valid YAML/);
+  });
+
+  it('reports JSON syntax errors as JSON', () => {
+    expect(() => parseDiagram('{"version": 3 "nodes": []}')).toThrow(/^Not valid JSON/);
+    expect(() => parseDiagram('{"version": 3,}')).toThrow(/^Not valid JSON/);
+    expect(() => parseDiagram('{"version": "3}')).toThrow(/^Not valid JSON/);
+  });
+});
+
 describe('diagram YAML', () => {
   it('round-trips a diagram', () => {
     expect(parseDiagram(serializeDiagram(sample))).toEqual(sample);

@@ -19,6 +19,7 @@ export * from './layout';
 export * from './messages';
 export * from './node-info';
 export * from './path';
+export * from './source-location';
 export * from './suggestions';
 export * from './validation';
 export * from './walkthrough';
