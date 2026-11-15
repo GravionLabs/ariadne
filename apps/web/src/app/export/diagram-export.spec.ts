@@ -13,7 +13,7 @@ describe('exportFileName', () => {
     expect(exportFileName('.saga.yaml', 'svg')).toBe('diagram.svg');
     expect(exportFileName('order.saga.yaml', 'mmd')).toBe('order.mmd');
     expect(exportFileName('order.saga.yaml', 'docs.md')).toBe('order.docs.md');
-    expect(exportFileName('order.saga.yaml', 'json')).toBe('order.json');
+    expect(exportFileName('order.saga.yaml', 'saga.json')).toBe('order.saga.json');
   });
 });
 
@@ -88,7 +88,7 @@ describe('DiagramExport', () => {
   it('saves the JSON of @ariadne/core through FileStorage', async () => {
     expect(await exporter.exportJson()).toBe(true);
     const [blob, name] = exportFile.mock.calls[0];
-    expect(name).toBe('untitled.json');
+    expect(name).toBe('untitled.saga.json');
     expect(blob.type).toBe('application/json');
     const text = await blob.text();
     expect(text).toBe(serializeDiagramJson(TestBed.inject(DiagramStore).diagram()));

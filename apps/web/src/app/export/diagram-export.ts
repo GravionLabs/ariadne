@@ -12,7 +12,7 @@ import {
   renderDiagramSvg,
 } from '@ariadne/export';
 
-type ExportExtension = 'svg' | 'png' | 'mmd' | 'md' | 'docs.md' | 'json';
+type ExportExtension = 'svg' | 'png' | 'mmd' | 'md' | 'docs.md' | 'saga.json';
 
 /** Name of an export of `diagramName`: `order.saga.yaml` becomes `order.svg`. */
 export function exportFileName(diagramName: string, extension: ExportExtension): string {
@@ -62,9 +62,9 @@ export class DiagramExport {
     });
   }
 
-  /** Saves the diagram as JSON (`.json`): the deterministic output of `@ariadne/core`. */
+  /** Saves the diagram as JSON (`.saga.json`): the deterministic output of `@ariadne/core`. */
   exportJson(): Promise<boolean> {
-    return this.run('json', async () => {
+    return this.run('saga.json', async () => {
       return new Blob([serializeDiagramJson(this.store.diagram())], { type: 'application/json' });
     });
   }
