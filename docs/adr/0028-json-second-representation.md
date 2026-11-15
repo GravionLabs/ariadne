@@ -32,7 +32,8 @@ The numbers 0025 and 0026 are reserved by #433 and #441, and 0027 is taken by th
 4. **An optional top-level `$schema` string.** It names the JSON Schema of the format
    ([`saga.schema.json`](../specs/saga.schema.json)) so editors can validate and complete. The reader accepts it in
    both containers (in YAML too, where the schema is otherwise given by a comment) and ignores it; the writer emits
-   it only when the diagram carries one.
+   it only when the diagram carries one. `saga.schema.json` itself gains `$schema` as an optional top-level string
+   property; it is not part of the diagram model.
 5. **What each surface does with JSON.**
    - **Viewer:** draws it. It reads YAML and JSON, whichever the URL or attribute delivers.
    - **CLI:** reads JSON everywhere it reads a saga, and converts in both directions (YAML to JSON, JSON to YAML).
