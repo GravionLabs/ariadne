@@ -209,7 +209,7 @@ extension for them.
 The fields are the same as in YAML, with the same validation and the same `version: 3`. There is no JSON-only
 field and no second version number. The only extra is the optional top-level `$schema` string, which names
 [`saga.schema.json`](saga.schema.json) so that editors can validate and complete; the reader ignores it and the
-writer emits it only when asked to.
+writers never emit it.
 
 The example from the top of the page as JSON (the full order saga is also at
 [`docs/examples/order.saga.json`](../examples/order.saga.json), next to its YAML):
