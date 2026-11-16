@@ -54,6 +54,43 @@ jobs:
       - run: pnpm --filter @ariadne/cli build
       - run: scripts/compile-generated.sh
 
+  # The .NET library (ADR 0031): build, test, format check and pack. It runs on a pull request only when the .NET folder,
+  # the shared schema or the sample library changed (the first step decides; the job itself always reports, so the
+  # required check never stays pending), and always on main, where the release needs it. The pnpm jobs do not run .NET.
+  dotnet:
+    name: .NET
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Did the .NET part or its shared files change?
+        id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ] || git diff --name-only "$BASE_SHA"...HEAD | grep -qE '^(dotnet/|docs/specs/saga\.schema\.json$|samples/library/)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No change under dotnet/, docs/specs/saga.schema.json or samples/library: nothing to do."
+          fi
+      - if: steps.changes.outputs.run == 'true'
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.404
+      - if: steps.changes.outputs.run == 'true'
+        run: dotnet restore dotnet/Ariadne.slnx --locked-mode
+      - if: steps.changes.outputs.run == 'true'
+        run: dotnet build dotnet/Ariadne.slnx --no-restore --configuration Release
+      - if: steps.changes.outputs.run == 'true'
+        run: dotnet test dotnet/Ariadne.slnx --no-build --configuration Release
+      - if: steps.changes.outputs.run == 'true'
+        run: dotnet format dotnet/Ariadne.slnx --verify-no-changes --no-restore
+      - if: steps.changes.outputs.run == 'true'
+        run: dotnet pack dotnet/Ariadne.slnx --no-restore --configuration Release -p:Version=0.0.0-ci --output "$RUNNER_TEMP/nupkg"
+
   # The hot paths on generated large sagas, against the budgets of docs/specs/performance-budgets.md.
   # A benchmark that is over its budget fails; above 70% of it, it warns.
   perf:
@@ -177,7 +214,18 @@ jobs:
   # 1.0.0, and a GitHub release v1.0.0 is created with notes from the Conventional Commits.
   release:
     name: Release
-    needs: [ci, format, generated-csharp, perf, vscode-extension, vsix, viewer-package, cli-package]
+    needs:
+      [
+        ci,
+        format,
+        generated-csharp,
+        dotnet,
+        perf,
+        vscode-extension,
+        vsix,
+        viewer-package,
+        cli-package,
+      ]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: GravionLabs/ci/.github/workflows/docker-package.yml@v1
     with:

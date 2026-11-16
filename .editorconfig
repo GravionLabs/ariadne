@@ -13,3 +13,17 @@ indent_size = 4
 
 [*.md]
 trim_trailing_whitespace = false
+
+[*.{cs,csproj,props,targets,slnx}]
+indent_size = 4
+
+[*.cs]
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_sort_system_directives_first = true
+dotnet_style_qualification_for_field = false:warning
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_new_line_before_open_brace = all
+
+[packages.lock.json]
+indent_size = 2
