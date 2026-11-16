@@ -91,9 +91,9 @@ internal static class DiagramBuilder
             }
         }
 
-        void AddEdge(string source, string target, string eventName, bool guarded)
+        void AddEdge(string source, string target, string eventName, string? guard)
         {
-            var spec = new EdgeSpec(source, target, eventName, guarded ? UnreadableGuard : null);
+            var spec = new EdgeSpec(source, target, eventName, guard);
             if (!edgeSpecs.Contains(spec))
             {
                 edgeSpecs.Add(spec);
@@ -117,6 +117,46 @@ internal static class DiagramBuilder
             }
 
             return ids.TryGetValue(targetName, out var id) ? id : null;
+        }
+
+        // What a state does on entry: WhenEnter first, then what the transitions into it do, as the importer orders it.
+        var entering = new Dictionary<string, List<ItemRecord>>(StringComparer.Ordinal);
+        var arriving = new Dictionary<string, List<ItemRecord>>(StringComparer.Ordinal);
+
+        void Take(Dictionary<string, List<ItemRecord>> into, string state, IEnumerable<ItemRecord> items)
+        {
+            if (!into.TryGetValue(state, out var list))
+            {
+                into[state] = list = new List<ItemRecord>();
+            }
+
+            list.AddRange(items);
+        }
+
+        // The items of a transition go to the state it leads into.
+        void Place(HandlerRecord handler, TransitionRecord transition, string targetName, bool intoJoin)
+        {
+            var items = transition.Scope.ItemsOnTheWay().ToList();
+            if (items.Count == 0)
+            {
+                return;
+            }
+
+            var names = string.Join(", ", items.Select(Describe));
+            if (targetName == final)
+            {
+                warnings.Add(new DiagramWarning(
+                    "Finalize", names + " on the way to the final state cannot be shown: nothing happens in a final state.", handler.State, handler.EventName));
+            }
+            else if (intoJoin)
+            {
+                warnings.Add(new DiagramWarning(
+                    "CompositeEvent", names + " on an event that counts towards a join cannot be shown.", handler.State, handler.EventName));
+            }
+            else if (ids.ContainsKey(targetName) && targetName != initial)
+            {
+                Take(arriving, targetName, items);
+            }
         }
 
         string JoinId(string composite)
@@ -158,7 +198,8 @@ internal static class DiagramBuilder
                         var target = TargetId(transition.Target, state, handler.EventName);
                         if (target is not null)
                         {
-                            AddEdge(joinId, target, handler.EventName, transition.Guarded);
+                            AddEdge(joinId, target, handler.EventName, transition.Guard);
+                            Place(handler, transition, transition.Target, false);
                         }
                     }
 
@@ -175,7 +216,16 @@ internal static class DiagramBuilder
                 {
                     if (handlers.Any(h => h.EventName == composite && h.Role == HandlerRole.Normal && h.Transitions.Any(t => !t.Caught)))
                     {
-                        AddEdge(sourceId, JoinId(composite), handler.EventName, false);
+                        AddEdge(sourceId, JoinId(composite), handler.EventName, null);
+                        var counted = handler.Root.ItemsOnTheWay().ToList();
+                        if (counted.Count > 0)
+                        {
+                            warnings.Add(new DiagramWarning(
+                                "CompositeEvent",
+                                string.Join(", ", counted.Select(Describe)) + " on an event that counts towards a join cannot be shown.",
+                                state,
+                                handler.EventName));
+                        }
                     }
                 }
 
@@ -184,7 +234,8 @@ internal static class DiagramBuilder
                     var target = TargetId(transition.Target, state, handler.EventName);
                     if (target is not null)
                     {
-                        AddEdge(sourceId, target, handler.EventName, transition.Guarded);
+                        AddEdge(sourceId, target, handler.EventName, transition.Guard);
+                        Place(handler, transition, transition.Target, false);
                     }
                 }
 
@@ -199,7 +250,17 @@ internal static class DiagramBuilder
                     }
                     else
                     {
-                        AddEdge(sourceId, sourceId, handler.EventName, false);
+                        AddEdge(sourceId, sourceId, handler.EventName, null);
+                        var stays = handler.Root.ItemsOnTheWay().ToList();
+                        if (stays.Count > 0)
+                        {
+                            warnings.Add(new DiagramWarning(
+                                "Stays",
+                                "The event keeps the saga in " + state + "; " + string.Join(", ", stays.Select(Describe)) + " is shown on entering it.",
+                                state,
+                                handler.EventName));
+                            Take(arriving, state, stays);
+                        }
                     }
                 }
             }
@@ -212,7 +273,8 @@ internal static class DiagramBuilder
                 var target = TargetId(transition.Target, handler.State, handler.EventName);
                 if (target is not null)
                 {
-                    AddEdge(AnyId, target, handler.EventName, transition.Guarded);
+                    AddEdge(AnyId, target, handler.EventName, transition.Guard);
+                    Place(handler, transition, transition.Target, false);
                 }
             }
 
@@ -220,6 +282,37 @@ internal static class DiagramBuilder
             {
                 warnings.Add(new DiagramWarning(
                     "DuringAny", "A handler for every state without a transition is not shown.", null, handler.EventName));
+            }
+        }
+
+        // WhenEnter(State, …) is the event "<State>.Enter" under that state. For the final state (Finally) MassTransit lists it
+        // under every state: it is read once, from the first handler that has it.
+        var entered = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var handler in collector.Handlers.Where(h => h.Role == HandlerRole.Enter))
+        {
+            var entry = handler.EventName.Substring(0, handler.EventName.Length - ".Enter".Length);
+            if (entry != handler.State && entry != final || !entered.Add(entry))
+            {
+                continue;
+            }
+
+            var items = handler.Root.ItemsOnTheWay().ToList();
+            if (items.Count == 0)
+            {
+                continue;
+            }
+
+            if (entry == final || entry == initial)
+            {
+                warnings.Add(new DiagramWarning(
+                    entry == final ? "Finally" : "WhenEnter",
+                    string.Join(", ", items.Select(Describe)) + " in the " + (entry == final ? "final" : "initial") + " state cannot be shown: nothing runs there.",
+                    entry,
+                    handler.EventName));
+            }
+            else if (ids.ContainsKey(entry) && entry.IndexOf('.') < 0)
+            {
+                Take(entering, entry, items);
             }
         }
 
@@ -248,7 +341,37 @@ internal static class DiagramBuilder
         nodes.Add(new DiagramNode(InitialId, NodeType.Start, initial));
         foreach (var name in stateNames)
         {
-            nodes.Add(new DiagramNode(ids[name], NodeType.State, name, ignores: ignores.TryGetValue(name, out var list) ? list : null));
+            var things = new List<ItemRecord>();
+            if (entering.TryGetValue(name, out var onEnter))
+            {
+                things.AddRange(onEnter);
+            }
+
+            if (arriving.TryGetValue(name, out var onArrival))
+            {
+                things.AddRange(onArrival);
+            }
+
+            nodes.Add(new DiagramNode(
+                ids[name],
+                NodeType.State,
+                name,
+                activities: things
+                    .Where(t => t.Kind == ItemKind.Command || t.Kind == ItemKind.Event)
+                    .Select(t => new Activity(t.Kind == ItemKind.Command ? MessageKind.Command : MessageKind.Event, t.Name))
+                    .Distinct(ActivityComparer.Instance),
+                ignores: ignores.TryGetValue(name, out var list) ? list : null,
+                requests: things
+                    .Where(t => t.Kind == ItemKind.Request)
+                    .GroupBy(t => t.Name, StringComparer.Ordinal)
+                    .Select(g => new Request(g.Key, g.Select(t => t.Detail).FirstOrDefault(d => d is not null))),
+                timers: things
+                    .Where(t => t.Kind == ItemKind.Schedule || t.Kind == ItemKind.Unschedule)
+                    .GroupBy(t => (t.Kind, t.Name))
+                    .Select(g => new Timer(
+                        g.Key.Kind == ItemKind.Schedule ? TimerAction.Schedule : TimerAction.Unschedule,
+                        g.Key.Name,
+                        g.Select(t => t.Detail).FirstOrDefault(d => d is not null)))));
         }
 
         if (usedFinal)
@@ -309,11 +432,54 @@ internal static class DiagramBuilder
                 ? messageNamespaces[0]
                 : null);
 
-        return new SagaDiagram(nodes, edges, DiagramTitle(className), null, saga, events, warnings: warnings);
+        // The same thing found in several states (a copy of DuringAny, a handler MassTransit lists everywhere) is said once.
+        var distinct = new List<DiagramWarning>();
+        var said = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var warning in warnings)
+        {
+            if (said.Add(warning.ToString()))
+            {
+                distinct.Add(warning);
+            }
+        }
+
+        return new SagaDiagram(nodes, edges, DiagramTitle(className), null, saga, events, warnings: distinct);
+    }
+
+    private static string Describe(ItemRecord item) => item.Kind switch
+    {
+        ItemKind.Request => "Request " + item.Name,
+        ItemKind.Schedule => "Schedule " + item.Name,
+        ItemKind.Unschedule => "Unschedule " + item.Name,
+        _ => item.Name,
+    };
+
+    private sealed class ActivityComparer : IEqualityComparer<Activity>
+    {
+        internal static readonly ActivityComparer Instance = new ActivityComparer();
+
+        public bool Equals(Activity? x, Activity? y) => x is not null && y is not null && x.Kind == y.Kind && x.Name == y.Name;
+
+        public int GetHashCode(Activity obj) => StringComparer.Ordinal.GetHashCode(obj.Name) ^ (int)obj.Kind;
     }
 
     private static void ReportUnreadable(HandlerRecord handler, List<DiagramWarning> warnings)
     {
+        foreach (var (construct, message) in handler.Problems)
+        {
+            warnings.Add(new DiagramWarning(construct, message, handler.State, handler.EventName));
+        }
+
+        if (handler.MessageType is not null
+            && (handler.MessageType.Name == "RoutingSlipCompleted" || handler.MessageType.Name == "RoutingSlipFaulted"))
+        {
+            warnings.Add(new DiagramWarning(
+                "RoutingSlip",
+                "The itinerary of a routing slip is built in code and cannot be read from a built state machine: only its outcome is shown.",
+                handler.State,
+                handler.EventName));
+        }
+
         switch (handler.Role)
         {
             case HandlerRole.Leave:
@@ -345,10 +511,20 @@ internal static class DiagramBuilder
                 "Then", "Code in Then or ThenAsync cannot be read from a built state machine.", handler.State, handler.EventName));
         }
 
+        var orphans = handler.OrphanItems().ToList();
+        if (orphans.Count > 0)
+        {
+            warnings.Add(new DiagramWarning(
+                "If",
+                string.Join(", ", orphans.Select(Describe)) + " in a branch without a transition cannot be shown: no state follows it.",
+                handler.State,
+                handler.EventName));
+        }
+
         if (handler.HasCondition)
         {
             warnings.Add(new DiagramWarning(
-                "If", "The text of a condition (If, IfElse, When with a filter) is a compiled delegate and cannot be read; its transitions get the guard '" + UnreadableGuard + "'.", handler.State, handler.EventName));
+                "If", "The text of a condition (If, IfElse, When with a filter) is a compiled delegate, not source text, and cannot be read; its transitions get the guard '" + UnreadableGuard + "' (the negation '!(" + UnreadableGuard + ")' for the way out, joined with && for nested conditions).", handler.State, handler.EventName));
         }
 
         if (handler.HasCatch)
@@ -478,7 +654,7 @@ internal static class DiagramBuilder
             : name;
     }
 
-    private static string TypeName(Type type)
+    internal static string TypeName(Type type)
     {
         if (!type.IsGenericType)
         {
