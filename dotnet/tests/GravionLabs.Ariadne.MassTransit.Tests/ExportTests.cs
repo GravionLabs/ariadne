@@ -34,6 +34,19 @@ public class ExportTests
         d.Nodes.Select(n => $"{n.Id} {n.Type} {n.Name} ignores=[{string.Join(",", n.Ignores)}]").ToList();
 
     /// <summary>
+    /// What each state does on entry: its activities, requests and timers, in order. Not compared with the checked-in diagram:
+    /// <c>description</c>, <c>color</c>, <c>retry</c>, <c>timeout</c> and <c>compensation</c> of a node and <c>eventSource</c> of an
+    /// edge (a person writes them; code has no place for them), the text of a guard (a built machine has a compiled delegate:
+    /// only that there is a guard is compared) and the itinerary of a routing slip (it is built in code).
+    /// </summary>
+    private static List<string> Things(SagaDiagram d) =>
+        d.Nodes
+            .Select(n => $"{n.Id}: activities=[{string.Join(", ", n.Activities.Select(a => $"{a.Kind} {a.Name}"))}]"
+                + $" requests=[{string.Join(", ", n.Requests.Select(r => $"{r.Name} {r.Timeout}"))}]"
+                + $" timers=[{string.Join(", ", n.Timers.Select(t => $"{t.Action} {t.Name} {t.Delay}"))}]")
+            .ToList();
+
+    /// <summary>
     /// The transitions, sorted. The order of the edges of a checked-in diagram is the order of the <c>During</c> calls in
     /// the code; a built machine holds the handlers per state, so its order is by state (documented on
     /// <see cref="StateMachineExtensions.ToAriadne"/>). A routing slip is called by its name in the checked-in diagram
@@ -77,6 +90,8 @@ public class ExportTests
 
         Assert.Equal(string.Join("\n", Nodes(expected)), string.Join("\n", Nodes(exported)));
         Assert.Equal(string.Join("\n", Edges(expected)), string.Join("\n", Edges(exported)));
+        Assert.Equal(string.Join("\n", Things(expected)), string.Join("\n", Things(exported)));
+        Assert.All(exported.Nodes, n => Assert.Empty(n.RoutingSlips));
 
         // The importer cannot read the message types of Schedule and Request events; a built machine can, so it lists more.
         Assert.All(expected.Events, e => Assert.Contains((e.Name, e.MessageType), exported.Events.Select(x => (x.Name, x.MessageType))));
