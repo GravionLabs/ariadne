@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GravionLabs.Ariadne.MassTransit/GravionLabs.Ariadne.MassTransit.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GravionLabs.Ariadne.MassTransit.Tests/GravionLabs.Ariadne.MassTransit.Tests.csproj" />
+  </Folder>
+</Solution>

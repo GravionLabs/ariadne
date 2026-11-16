@@ -94,6 +94,14 @@ scripts above do not cover it; run these from the root:
 | `dotnet build dotnet/Ariadne.slnx`                      | builds every project  |
 | `dotnet test dotnet/Ariadne.slnx`                       | runs the tests        |
 | `dotnet format dotnet/Ariadne.slnx --verify-no-changes` | checks the formatting |
+| `dotnet restore dotnet/Ariadne.slnx --locked-mode`      | restores as CI does   |
+| `dotnet pack dotnet/Ariadne.slnx -p:Version=0.0.0-dev`  | packs the packages    |
+
+Versions of NuGet packages are stated once, in `dotnet/Directory.Packages.props`, and locked in `packages.lock.json`
+(commit the lock file when a version changes). The `.NET` job of CI runs these commands on a pull request that
+touches `dotnet/`, `docs/specs/saga.schema.json` or `samples/library`, and always on `main`. Prettier and ESLint
+ignore the folder; `.editorconfig` holds the C# rules. The tests target net10.0: with only a newer SDK installed,
+run them with `DOTNET_ROLL_FORWARD=Major`.
 
 The format is shared with the TypeScript side: `docs/specs/saga.schema.json` and the golden files of `samples/` are read
 by both test suites, so a format change goes through the schema and the spec first and touches both readers in one

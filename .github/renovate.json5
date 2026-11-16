@@ -1,6 +1,6 @@
 // Renovate keeps npm packages and GitHub Actions current: a few grouped pull requests a week, gated
 // by CI, merged by a person (no automerge). Ecosystems: npm, GitHub Actions, Dockerfile and compose.yaml, the dev
-// container, .nvmrc and NuGet (*.csproj, the coming dotnet/ folder) through the managers of config:recommended. See docs/adr/0019-dependency-updates-and-supply-chain.md.
+// container, .nvmrc and NuGet (dotnet/: *.csproj, Directory.Packages.props and packages.lock.json) through the managers of config:recommended. See docs/adr/0019-dependency-updates-and-supply-chain.md.
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: [
@@ -134,6 +134,12 @@
       matchPackageNames: ['@types/{/,}**', '!@types/vscode'],
     },
     { groupName: 'github-actions', matchManagers: ['github-actions'] },
+    { groupName: 'nuget', matchManagers: ['nuget'], matchUpdateTypes: ['minor', 'patch'] },
+    {
+      // MassTransit 9 is under a commercial license: no package of dotnet/ may select it (ADR 0031, section 2).
+      matchPackageNames: ['MassTransit'],
+      allowedVersions: '<9.0.0',
+    },
     {
       // The shared workflows and actions of the organisation follow the moving major tag `@v1` (ADR 0019):
       // no SHA pin, but a pull request when `v2` appears.
