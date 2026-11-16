@@ -77,6 +77,10 @@ public class ExportTests
 
         Assert.Equal(string.Join("\n", Nodes(expected)), string.Join("\n", Nodes(exported)));
         Assert.Equal(string.Join("\n", Edges(expected)), string.Join("\n", Edges(exported)));
+
+        // The importer cannot read the message types of Schedule and Request events; a built machine can, so it lists more.
+        Assert.All(expected.Events, e => Assert.Contains((e.Name, e.MessageType), exported.Events.Select(x => (x.Name, x.MessageType))));
+        Assert.All(exported.Events, e => Assert.Contains(exported.Edges, edge => edge.Event == e.Name));
     }
 
     [Theory]

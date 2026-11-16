@@ -236,6 +236,15 @@ internal static class DiagramBuilder
             }
         }
 
+        if (probe.Ignored.TryGetValue(initial, out var initialIgnored))
+        {
+            foreach (var name in initialIgnored)
+            {
+                warnings.Add(new DiagramWarning(
+                    "Ignore", "The format has no place for an ignored event on the initial state: left out.", initial, name));
+            }
+        }
+
         nodes.Add(new DiagramNode(InitialId, NodeType.Start, initial));
         foreach (var name in stateNames)
         {
