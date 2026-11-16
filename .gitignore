@@ -59,3 +59,7 @@ apps/vscode/capture/failures
 
 # git worktrees
 .worktrees/
+
+# .NET (dotnet/)
+dotnet/**/bin/
+dotnet/**/obj/

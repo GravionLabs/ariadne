@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The C# state machines of samples/ (hand-written, as a team would write them) built from source, so the tests
+       can read real built state machines. The sample code is not held to the analyzer rules of the library. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS8618;NU1902;NU1903</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\samples\library\*\*.cs" Exclude="..\..\..\samples\library\*\generated\**" LinkBase="library" />
+    <!-- The two sagas under samples/sagas that are complete (with their messages); the others are only read as text. -->
+    <Compile Include="..\..\..\samples\sagas\built-base-class\*.cs;..\..\..\samples\sagas\built-extensions\*.cs" LinkBase="sagas" />
+    <PackageReference Include="MassTransit" />
+  </ItemGroup>
+</Project>
