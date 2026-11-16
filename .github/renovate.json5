@@ -15,6 +15,8 @@
   dependencyDashboard: { title: '[PBI] chore: Dependency Dashboard' },
   semanticCommitType: 'chore',
   semanticCommitScope: 'deps',
+  // Renovate runs with GH_PAT, so the author is not distinctive: the project view "Dependencies" filters on this label.
+  labels: ['dependencies'],
   // Updates are work like any other: pull requests go into the rolling release branch, not into main
   // (docs/adr/0027-release-branch.md).
   baseBranchPatterns: ['release/next'],
@@ -38,7 +40,7 @@
   // A security fix is not held back by the minimum release age below (pnpm's own one day still applies on install).
   vulnerabilityAlerts: {
     enabled: true,
-    labels: ['security'],
+    labels: ['dependencies', 'security'],
     schedule: ['at any time'],
     minimumReleaseAge: null,
   },
