@@ -47,6 +47,12 @@ public class ReaderTests
     }
 
     [Fact]
+    public void A_color_with_a_trailing_newline_is_rejected()
+    {
+        Assert.Contains("color", Message("{\"version\":3,\"nodes\":[{\"id\":\"a\",\"type\":\"start\",\"name\":\"A\",\"color\":\"#aabbcc\\n\"}]}"), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Text_that_is_not_JSON_is_rejected()
     {
         Assert.StartsWith("Not valid JSON", Message("version: 3\nnodes: []"), StringComparison.Ordinal);

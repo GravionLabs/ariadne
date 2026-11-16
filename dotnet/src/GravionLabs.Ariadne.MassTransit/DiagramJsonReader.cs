@@ -8,7 +8,8 @@ namespace GravionLabs.Ariadne.MassTransit;
 
 /// <summary>
 /// Reads a version 3 JSON diagram. The checks and the messages are those of <c>@ariadne/core</c>; every message
-/// starts with the path in the document (<c>nodes[2].type</c>). Keys the format does not know (and <c>$schema</c>)
+/// starts with the path in the document (<c>nodes[2].type</c>). A <c>direction</c> or <c>spacing</c> it does not know
+/// is rejected here, where the TypeScript reader falls back to the default with a note. Keys the format does not know (and <c>$schema</c>)
 /// are ignored, like the TypeScript reader does.
 /// </summary>
 internal static class DiagramJsonReader
@@ -19,7 +20,7 @@ internal static class DiagramJsonReader
     private const int MaxEdges = 20_000;
 
     private static readonly string[] Colors = { "red", "orange", "amber", "green", "teal", "blue", "purple", "pink" };
-    private static readonly Regex HexColor = new("^#[0-9a-fA-F]{6}$", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+    private static readonly Regex HexColor = new(@"\A#[0-9a-fA-F]{6}\z", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
     internal static SagaDiagram Read(string json)
     {
