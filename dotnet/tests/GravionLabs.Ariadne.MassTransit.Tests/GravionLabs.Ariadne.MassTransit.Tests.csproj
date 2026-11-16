@@ -5,9 +5,13 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="JsonSchema.Net" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="golden\**" CopyToOutputDirectory="PreserveNewest" LinkBase="golden" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\GravionLabs.Ariadne.MassTransit\GravionLabs.Ariadne.MassTransit.csproj" />
