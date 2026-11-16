@@ -139,7 +139,7 @@ The review of November 2026, with the repository public and npm, Marketplace and
 - [x] Scan the history once for secrets (Security > Secret scanning) and revoke every finding. Checked 2026-11-15: no open alert.
 - [x] Dependabot alerts: enabled. [x] Dependabot security updates: disabled (final state).
 - [x] Private vulnerability reporting: enabled.
-- [ ] Code scanning alert 31 (`actions/unpinned-tag`): dismiss with the reason above.
+- [x] Code scanning alert 31 (`actions/unpinned-tag`): dismissed as "won't fix" with the reason above.
 - [x] Ruleset `main` (id 24478507): add the required checks `Analyze (javascript-typescript)`, `Analyze (actions)` and
       `Dependency review` next to `Lint, build, test` and `pr-checks / PR checks`. Add them once the workflows have run on
       the release branch.

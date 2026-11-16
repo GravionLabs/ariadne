@@ -14,6 +14,7 @@
     <None Include="golden\**" CopyToOutputDirectory="PreserveNewest" LinkBase="golden" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\GravionLabs.Ariadne.MassTransit.Samples\GravionLabs.Ariadne.MassTransit.Samples.csproj" />
     <ProjectReference Include="..\..\src\GravionLabs.Ariadne.MassTransit\GravionLabs.Ariadne.MassTransit.csproj" />
   </ItemGroup>
 </Project>
