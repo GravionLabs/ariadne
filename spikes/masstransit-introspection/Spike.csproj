@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <MassTransitVersion Condition="'$(MassTransitVersion)' == ''">8.5.12</MassTransitVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS8618;CS8625;CS0436;NU1903;NU1902</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+    <Compile Include="../../samples/library/*/*.cs" Exclude="../../samples/library/*/generated/**" />
+    <PackageReference Include="MassTransit" Version="$(MassTransitVersion)" />
+  </ItemGroup>
+</Project>
