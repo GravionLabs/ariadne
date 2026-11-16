@@ -70,7 +70,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "$EVENT" != "pull_request" ] || git diff --name-only "$BASE_SHA"...HEAD | grep -qE '^(dotnet/|docs/specs/saga\.schema\.json$|samples/library/)'; then
+          if [ "$EVENT" != "pull_request" ] || git diff --name-only "$BASE_SHA"...HEAD | grep -qE '^(dotnet/|docs/specs/saga\.schema\.json$|samples/library/|packages/core/src/diagram-yaml\.ts$)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -80,12 +80,23 @@ jobs:
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: 10.0.404
+      # The YAML tests compare the writer with the TypeScript writer through the CLI (ariadne convert).
+      - if: steps.changes.outputs.run == 'true'
+        uses: GravionLabs/ci/node/setup@v1
+        with:
+          package-manager: pnpm
+      - if: steps.changes.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.changes.outputs.run == 'true'
+        run: pnpm --filter @ariadne/cli build
       - if: steps.changes.outputs.run == 'true'
         run: dotnet restore dotnet/Ariadne.slnx --locked-mode
       - if: steps.changes.outputs.run == 'true'
         run: dotnet build dotnet/Ariadne.slnx --no-restore --configuration Release
       - if: steps.changes.outputs.run == 'true'
         run: dotnet test dotnet/Ariadne.slnx --no-build --configuration Release
+        env:
+          ARIADNE_CLI_REQUIRED: '1'
       - if: steps.changes.outputs.run == 'true'
         run: dotnet format dotnet/Ariadne.slnx --verify-no-changes --no-restore
       - if: steps.changes.outputs.run == 'true'

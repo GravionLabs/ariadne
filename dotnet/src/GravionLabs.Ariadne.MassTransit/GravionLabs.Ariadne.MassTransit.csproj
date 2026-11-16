@@ -8,6 +8,9 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="GravionLabs.Ariadne.MassTransit.Yaml" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 </Project>
