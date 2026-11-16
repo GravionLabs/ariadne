@@ -511,10 +511,20 @@ internal static class DiagramBuilder
                 "Then", "Code in Then or ThenAsync cannot be read from a built state machine.", handler.State, handler.EventName));
         }
 
+        var orphans = handler.OrphanItems().ToList();
+        if (orphans.Count > 0)
+        {
+            warnings.Add(new DiagramWarning(
+                "If",
+                string.Join(", ", orphans.Select(Describe)) + " in a branch without a transition cannot be shown: no state follows it.",
+                handler.State,
+                handler.EventName));
+        }
+
         if (handler.HasCondition)
         {
             warnings.Add(new DiagramWarning(
-                "If", "The text of a condition (If, IfElse, When with a filter) is a compiled delegate, not source text, and cannot be read; its transitions get the guard '" + UnreadableGuard + "' (the negation '!(" + UnreadableGuard + ")' for the way out).", handler.State, handler.EventName));
+                "If", "The text of a condition (If, IfElse, When with a filter) is a compiled delegate, not source text, and cannot be read; its transitions get the guard '" + UnreadableGuard + "' (the negation '!(" + UnreadableGuard + ")' for the way out, joined with && for nested conditions).", handler.State, handler.EventName));
         }
 
         if (handler.HasCatch)

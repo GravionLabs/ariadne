@@ -102,6 +102,19 @@ public class ActivityTests
     }
 
     [Fact]
+    public void Nested_conditions_join_their_guards_and_a_branch_without_a_transition_is_a_warning()
+    {
+        var diagram = new Nested().ToAriadne();
+
+        string GuardTo(string target) => Assert.Single(diagram.Edges, e => e.Target == "state-" + target).Guard!;
+
+        Assert.Equal(Guard + " && " + Guard, GuardTo("c"));
+        Assert.Equal(Guard + " && !(" + Guard + ")", GuardTo("d"));
+        Assert.Contains(diagram.Warnings, w => w.Construct == "If" && w.Event == "Go" && w.Message.Contains("Lost", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagram.Nodes.SelectMany(n => n.Activities), a => a.Name == "Lost");
+    }
+
+    [Fact]
     public void A_guard_is_marked_in_a_warning_as_not_the_source_text()
     {
         var warning = Assert.Single(Diagram().Warnings, w => w.Construct == "If" && w.Event == "DecideE");
@@ -207,6 +220,37 @@ public class ActivityTests
     internal sealed record ValidationResult(Guid Id);
 
     internal sealed record RoutingDone(Guid Id);
+
+    internal sealed record Lost(Guid Id);
+
+    internal sealed class Nested : MassTransitStateMachine<Job>
+    {
+        public Nested()
+        {
+            InstanceState(x => x.CurrentState, B, C, D);
+            Event(() => Go, x => x.CorrelateById(c => c.Message.Id));
+            Initially(When(Go).TransitionTo(B));
+            During(
+                B,
+                When(Go)
+                    .If(
+                        c => c.Saga.CurrentState > 0,
+                        t => t
+                            .IfElse(
+                                c => c.Saga.CurrentState > 1,
+                                u => u.TransitionTo(C),
+                                u => u.Publish(c => new Lost(c.Saga.CorrelationId)))
+                            .TransitionTo(D)));
+        }
+
+        public State B { get; private set; } = null!;
+
+        public State C { get; private set; } = null!;
+
+        public State D { get; private set; } = null!;
+
+        public Event<Start> Go { get; private set; } = null!;
+    }
 
     internal sealed class Machine : MassTransitStateMachine<Job>
     {

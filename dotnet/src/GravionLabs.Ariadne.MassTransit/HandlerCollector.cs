@@ -85,6 +85,20 @@ internal sealed class BranchScope
 
     internal List<ItemRecord> Items { get; } = new List<ItemRecord>();
 
+    /// <summary>This scope is <paramref name="outer"/> or lies inside it.</summary>
+    internal bool IsWithin(BranchScope outer)
+    {
+        for (var scope = this; scope is not null; scope = scope.Parent)
+        {
+            if (scope == outer)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>How often a condition was met in this scope: every condition is visited twice, for its then and its else.</summary>
     internal int ConditionVisits { get; set; }
 
@@ -155,6 +169,15 @@ internal sealed class HandlerRecord
 
     /// <summary>The behavior itself: its items are those of the handler as a whole.</summary>
     internal BranchScope Root { get; } = new BranchScope(null, null);
+
+    /// <summary>The branches of conditions in the behavior, in the order they were met.</summary>
+    internal List<BranchScope> Branches { get; } = new List<BranchScope>();
+
+    /// <summary>The items in a branch that no transition leaves: they have no state to be shown on.</summary>
+    internal IEnumerable<ItemRecord> OrphanItems() =>
+        Branches
+            .Where(b => b.Items.Count > 0 && !Transitions.Any(t => !t.Caught && t.Scope.IsWithin(b)))
+            .SelectMany(b => b.Items);
 
     /// <summary>What could not be read, as construct and message.</summary>
     internal List<(string Construct, string Message)> Problems { get; } = new List<(string, string)>();
@@ -311,8 +334,11 @@ internal sealed class HandlerCollector : StateMachineVisitor
             case "ConditionActivity`2":
             case "ConditionActivity`1":
                 handler.HasCondition = true;
+                var outer = GuardOf(scope);
                 var visit = scope.ConditionVisits++;
-                var branch = new BranchScope(scope, visit % 2 == 0 ? DiagramBuilder.UnreadableGuard : "!(" + DiagramBuilder.UnreadableGuard + ")");
+                var text = visit % 2 == 0 ? DiagramBuilder.UnreadableGuard : "!(" + DiagramBuilder.UnreadableGuard + ")";
+                var branch = new BranchScope(scope, outer is null ? text : outer + " && " + text);
+                handler.Branches.Add(branch);
                 _scope = branch;
                 try
                 {
@@ -347,17 +373,13 @@ internal sealed class HandlerCollector : StateMachineVisitor
     /// </summary>
     private static string? GuardOf(BranchScope scope)
     {
-        if (scope.ConditionVisits >= 4)
+        if (scope.ConditionVisits < 2)
         {
-            return "otherwise";
+            return scope.Guard;
         }
 
-        if (scope.ConditionVisits >= 2)
-        {
-            return "!(" + DiagramBuilder.UnreadableGuard + ")";
-        }
-
-        return scope.Guard;
+        var way = scope.ConditionVisits >= 4 ? "otherwise" : "!(" + DiagramBuilder.UnreadableGuard + ")";
+        return scope.Guard is null ? way : scope.Guard + " && " + way;
     }
 
     private static void Record(HandlerRecord handler, BranchScope scope, IStateMachineActivity activity, string name)
