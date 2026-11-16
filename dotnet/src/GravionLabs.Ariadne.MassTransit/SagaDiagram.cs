@@ -20,6 +20,7 @@ public sealed class SagaDiagram
     /// <param name="events">What is known in code about the events.</param>
     /// <param name="direction">Which way the flow runs.</param>
     /// <param name="spacing">Room between states and layers; <see langword="null"/> and <see cref="Spacing.Normal"/> are the same and not written.</param>
+    /// <param name="warnings">What the exporter could not read; not part of the JSON.</param>
     public SagaDiagram(
         IEnumerable<DiagramNode>? nodes = null,
         IEnumerable<DiagramEdge>? edges = null,
@@ -28,7 +29,8 @@ public sealed class SagaDiagram
         SagaInfo? saga = null,
         IEnumerable<EventInfo>? events = null,
         Direction direction = Direction.TopBottom,
-        Spacing? spacing = null)
+        Spacing? spacing = null,
+        IEnumerable<DiagramWarning>? warnings = null)
     {
         Nodes = Lists.Copy(nodes);
         Edges = Lists.Copy(edges);
@@ -38,6 +40,7 @@ public sealed class SagaDiagram
         Events = Lists.Copy(events);
         Direction = direction;
         Spacing = spacing;
+        Warnings = Lists.Copy(warnings);
     }
 
     /// <summary>Title of the saga.</summary>
@@ -57,6 +60,12 @@ public sealed class SagaDiagram
 
     /// <summary>Room between states and layers; <see langword="null"/> is normal.</summary>
     public Spacing? Spacing { get; }
+
+    /// <summary>
+    /// What the exporter could not read from the state machine (construct, state, event) and left out. Empty for a
+    /// diagram that was read from JSON. It is not written to JSON.
+    /// </summary>
+    public IReadOnlyList<DiagramWarning> Warnings { get; }
 
     /// <summary>The states.</summary>
     public IReadOnlyList<DiagramNode> Nodes { get; }

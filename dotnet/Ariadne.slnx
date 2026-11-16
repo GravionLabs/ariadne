@@ -6,5 +6,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/GravionLabs.Ariadne.MassTransit.Tests/GravionLabs.Ariadne.MassTransit.Tests.csproj" />
     <Project Path="tests/GravionLabs.Ariadne.MassTransit.Yaml.Tests/GravionLabs.Ariadne.MassTransit.Yaml.Tests.csproj" />
+    <Project Path="tests/GravionLabs.Ariadne.MassTransit.Samples/GravionLabs.Ariadne.MassTransit.Samples.csproj" />
   </Folder>
 </Solution>
