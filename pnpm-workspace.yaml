@@ -24,7 +24,7 @@ overrides:
   glob: '^14.0.2'
   minimatch: '^11.0.1'
   'vitepress>vite': '^6.4.4'
-  '@vitejs/plugin-vue>vite': '^6.4.4'
+  '@vitejs/plugin-vue>vite': '^6.4.6'
 
 allowBuilds:
   # File watching of the Angular builds (`ng serve`, `ng build --watch`); the script selects the prebuilt binary.
