@@ -53,7 +53,9 @@ const edgesOf = (d: Diagram) =>
 const messages = (r: ImportResult) => r.warnings.map((w) => w.message);
 
 describe('the sample sagas', () => {
-  const dirs = readdirSync(samples).filter((d) => d !== 'base-class');
+  // The samples the importer cannot read have no expected diagram: the built state machine is the way (dotnet/, #509).
+  const unreadable = ['base-class', 'built-base-class', 'built-extensions'];
+  const dirs = readdirSync(samples).filter((d) => !unreadable.includes(d));
 
   it.each(dirs)('%s: matches the expected diagram, which is a valid file', (dir) => {
     const result = importSagas(sample(dir), parser);
