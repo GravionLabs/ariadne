@@ -7,6 +7,10 @@
   "required": ["version"],
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "The JSON Schema of the format (this file). Accepted in YAML and JSON, ignored by Ariadne, not part of the model."
+    },
     "version": {
       "const": 3,
       "description": "Version of the file format."

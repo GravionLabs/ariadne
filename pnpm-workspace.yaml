@@ -13,6 +13,19 @@ strictDepBuilds: true
 publicHoistPattern:
   - vue
 
+# VitePress 1.6.4 (latest stable; 2.x is alpha) depends on vite ^5.4, which has open Dependabot alerts
+# (no patched 5.x; fixed in >=6.4.4, with esbuild >=0.25). @vitejs/plugin-vue 5.2.4 accepts vite ^6.
+# Remove this override once VitePress 2 is stable (it uses vite 8). Issue #544.
+# glob 13 (via mocha 12.0.3, vscode extension tests) and minimatch 10.2.6 (via eslint's @eslint/config-array) are
+# affected by Dependabot alerts #39/#40 (fixed in glob 14.0.2 / minimatch 11.0.1). Neither parent has released a
+# version using the fixed majors yet. Both are dev tooling only; the APIs used (glob(), Minimatch) are unchanged
+# in the new majors (Node >=18). Remove once mocha and eslint depend on them. Issue #545.
+overrides:
+  glob: '^14.0.2'
+  minimatch: '^11.0.1'
+  'vitepress>vite': '^6.4.4'
+  '@vitejs/plugin-vue>vite': '^6.4.6'
+
 allowBuilds:
   # File watching of the Angular builds (`ng serve`, `ng build --watch`); the script selects the prebuilt binary.
   '@parcel/watcher': true

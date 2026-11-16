@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { zipFiles } from './zip';
 import {
   DIAGRAM_EXTENSIONS,
+  JSON_EXTENSIONS,
+  LEGACY_EXTENSIONS,
   FileRef,
   FileStorage,
   OpenedFile,
@@ -50,6 +52,13 @@ const PICKER_TYPES = [
   },
 ];
 
+/** What Open lists: saving only offers the diagram extension, a JSON or plain YAML file is saved as one. */
+const OPEN_TYPES = [
+  ...PICKER_TYPES,
+  { description: 'YAML (*.yaml, *.yml)', accept: { 'application/yaml': LEGACY_EXTENSIONS } },
+  { description: 'JSON (*.json)', accept: { 'application/json': JSON_EXTENSIONS } },
+];
+
 /**
  * Browser {@link FileStorage}: uses the File System Access API where available (save in
  * place), otherwise falls back to a file input for opening and a download for saving.
@@ -68,7 +77,7 @@ export class BrowserFileStorage extends FileStorage {
   async open(): Promise<OpenedFile | null> {
     const fs = this.fs;
     if (fs) {
-      const [handle] = (await cancelled(fs.showOpenFilePicker({ types: PICKER_TYPES }))) ?? [];
+      const [handle] = (await cancelled(fs.showOpenFilePicker({ types: OPEN_TYPES }))) ?? [];
       if (!handle) return null;
       const file = await handle.getFile();
       const content = await file.text();
@@ -184,7 +193,7 @@ export class BrowserFileStorage extends FileStorage {
     return new Promise((resolve) => {
       const input = this.document.createElement('input');
       input.type = 'file';
-      input.accept = DIAGRAM_EXTENSIONS.join(',');
+      input.accept = [...DIAGRAM_EXTENSIONS, ...LEGACY_EXTENSIONS, ...JSON_EXTENSIONS].join(',');
       input.addEventListener('change', () => resolve(input.files?.[0] ?? null));
       input.addEventListener('cancel', () => resolve(null));
       input.click();

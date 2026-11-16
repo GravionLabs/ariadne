@@ -1,4 +1,5 @@
-import { Diagram, serializeDiagram } from '@ariadne/core';
+import { Diagram, serializeDiagram, serializeDiagramJson } from '@ariadne/core';
+import type { FetchOptions } from './read-saga';
 import { AriadneSagaElement, defineAriadneSaga } from './saga-element';
 
 const diagram: Diagram = {
@@ -373,6 +374,74 @@ describe('<ariadne-saga>', () => {
         'Fit to view',
       ]);
       expect(root(element).querySelector('input, textarea, [contenteditable]')).toBeNull();
+    });
+  });
+
+  describe('JSON and credentials', () => {
+    const jsonText = serializeDiagramJson(diagram);
+
+    it('draws JSON text from source', async () => {
+      const element = create();
+      const loaded = next<{ diagram: Diagram }>(element, 'load');
+      element.source = jsonText;
+      expect((await loaded).detail.diagram.name).toBe('Order');
+    });
+
+    it('draws a parsed object from diagram, which wins over source and src', async () => {
+      const fetchMock = vi.fn(async () => new Response(yaml));
+      vi.stubGlobal('fetch', fetchMock);
+      const element = create({ src: '/x', source: 'nodes: [' });
+      const loaded = next<{ diagram: Diagram }>(element, 'load');
+      element.diagram = JSON.parse(jsonText);
+      expect((await loaded).detail.diagram.name).toBe('Order');
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('fires error invalid without position for a bad object', async () => {
+      const element = create();
+      const failed = next<{ kind: string; line?: number }>(element, 'error');
+      element.diagram = { version: 3, nodes: {} };
+      const detail = (await failed).detail;
+      expect(detail.kind).toBe('invalid');
+      expect(detail.line).toBeUndefined();
+    });
+
+    it('fires error invalid with line and column for JSON text', async () => {
+      const element = create();
+      const failed = next<{ kind: string; line?: number; column?: number }>(element, 'error');
+      element.source = '{\n  "version": 3,\n  "nodes": {}\n}';
+      expect((await failed).detail).toMatchObject({ kind: 'invalid', line: 3, column: 12 });
+    });
+
+    it('sends credentials, headers and uses the fetcher for src', async () => {
+      const fetcher = vi.fn<NonNullable<FetchOptions['fetch']>>(async () => new Response(jsonText));
+      const element = create({ credentials: 'include' });
+      element.headers = { Authorization: 'Bearer t' };
+      element.fetcher = fetcher;
+      const loaded = next(element, 'load');
+      element.src = '/api/sagas/order';
+      await loaded;
+      const init = fetcher.mock.calls[0]![1];
+      expect(new Headers(init.headers).get('Authorization')).toBe('Bearer t');
+      expect(fetcher).toHaveBeenCalledWith(
+        '/api/sagas/order',
+        expect.objectContaining({ credentials: 'include' }),
+      );
+    });
+
+    it('fires error network with the status for 401', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => new Response('', { status: 401, statusText: 'Unauthorized' })),
+      );
+      const element = create();
+      const failed = next<{ kind: string; status?: number }>(element, 'error');
+      element.src = '/api';
+      expect((await failed).detail).toMatchObject({ kind: 'network', status: 401 });
+    });
+
+    it('ignores an unknown credentials value', () => {
+      expect(create({ credentials: 'always' }).credentials).toBeNull();
     });
   });
 });

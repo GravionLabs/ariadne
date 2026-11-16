@@ -22,6 +22,8 @@ jobs:
           # @vscode/vsce-sign and its platform variants (dev tooling to package the VS Code extension) carry a
           # Microsoft proprietary license (LicenseRef-bad-see-license-in-license.txt). Not shipped, exempt from the
           # license check only (ADR 0019). purl without version: every version matches.
+          # MassTransit (dotnet/) is Apache-2.0 up to 8.x, but its NuGet metadata is not recognised
+          # (LicenseRef-scancode-unknown). Renovate keeps it below 9, which is commercial (ADR 0031).
           allow-dependencies-licenses: >-
             pkg:npm/%40vscode/vsce-sign,
             pkg:npm/%40vscode/vsce-sign-alpine-arm64,
@@ -32,4 +34,5 @@ jobs:
             pkg:npm/%40vscode/vsce-sign-linux-arm64,
             pkg:npm/%40vscode/vsce-sign-linux-x64,
             pkg:npm/%40vscode/vsce-sign-win32-arm64,
-            pkg:npm/%40vscode/vsce-sign-win32-x64
+            pkg:npm/%40vscode/vsce-sign-win32-x64,
+            pkg:nuget/MassTransit

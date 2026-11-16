@@ -3,7 +3,7 @@ import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { FileStorage } from '../storage/file-storage';
 import { SOURCE_DEBOUNCE_MS, SourceSync } from './source-sync';
-import { serializeDiagram } from '@ariadne/core';
+import { serializeDiagram, serializeDiagramJson } from '@ariadne/core';
 
 describe('SourceSync', () => {
   let store: DiagramStore;
@@ -33,6 +33,32 @@ describe('SourceSync', () => {
   afterEach(() => vi.useRealTimers());
 
   const withName = (text: string, from: string, to: string) => text.replace(from, to);
+
+  describe('JSON text', () => {
+    it('is read when pasted over the source and shown as YAML after the next edit', () => {
+      store.appendNode('start-1', 'state');
+      tick();
+      const json = serializeDiagramJson(store.diagram());
+      store.undo();
+      tick();
+      sync.edit(json);
+      tick(SOURCE_DEBOUNCE_MS);
+      expect(sync.status()).toEqual({ kind: 'synced' });
+      expect(store.nodes().map((n) => n.id)).toEqual(['start-1', 'state-1']);
+      store.addNode('end');
+      tick();
+      expect(sync.text()).toBe(serializeDiagram(store.diagram()));
+      expect(sync.text().startsWith('version: 3')).toBe(true);
+    });
+
+    it('reports a JSON syntax error with its position and keeps the diagram', () => {
+      const before = store.diagram();
+      sync.edit('{\n  "version": 3,\n}');
+      tick(SOURCE_DEBOUNCE_MS);
+      expect(sync.status()).toMatchObject({ kind: 'error', error: { line: 3 } });
+      expect(store.diagram()).toBe(before);
+    });
+  });
 
   describe('diagram → text', () => {
     it('starts with the diagram in file format', () => {

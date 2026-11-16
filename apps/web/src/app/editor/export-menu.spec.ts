@@ -9,6 +9,8 @@ describe('ExportMenu', () => {
     exportMermaid: vi.fn(),
     exportMarkdown: vi.fn(),
     copyMermaid: vi.fn(),
+    exportJson: vi.fn(),
+    copyJson: vi.fn(),
   };
 
   function setup() {
@@ -37,7 +39,7 @@ describe('ExportMenu', () => {
     expect(trigger().getAttribute('aria-expanded')).toBe('true');
   });
 
-  it('offers images, Mermaid with the copy entry first, then the documentation page', () => {
+  it('offers images, Mermaid with the copy entry first, then the documentation page and JSON', () => {
     const { items, open } = setup();
     open();
     expect(items().map((i) => i.querySelector('strong')?.textContent)).toEqual([
@@ -47,6 +49,8 @@ describe('ExportMenu', () => {
       'Mermaid',
       'Mermaid in Markdown',
       'Markdown page',
+      'Copy JSON',
+      'JSON',
     ]);
   });
 
@@ -57,6 +61,8 @@ describe('ExportMenu', () => {
     [3, () => exporter.exportMermaid, ['mmd']],
     [4, () => exporter.exportMermaid, ['md']],
     [5, () => exporter.exportMarkdown, []],
+    [6, () => exporter.copyJson, []],
+    [7, () => exporter.exportJson, []],
   ])('runs entry %i and closes the menu', (index, method, args) => {
     const { fixture, trigger, items, open } = setup();
     open();

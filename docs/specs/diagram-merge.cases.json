@@ -1,0 +1,232 @@
+[
+  {
+    "name": "an unchanged structure keeps everything a person wrote",
+    "existing": {
+      "version": 3,
+      "name": "Order Saga",
+      "description": "Takes an order.",
+      "direction": "left-right",
+      "spacing": "compact",
+      "nodes": [
+        { "id": "s", "type": "start", "name": "Initial" },
+        {
+          "id": "a",
+          "type": "state",
+          "name": "A",
+          "description": "Waits",
+          "color": "blue",
+          "retry": "3x",
+          "timeout": "30s",
+          "compensation": { "name": "Undo" }
+        },
+        { "id": "e", "type": "end", "name": "Final" }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "s",
+          "target": "a",
+          "event": "Submitted",
+          "eventSource": "Shop API"
+        },
+        { "id": "e2", "source": "a", "target": "e", "event": "Done", "kind": "compensation" }
+      ]
+    },
+    "incoming": {
+      "version": 3,
+      "nodes": [
+        { "id": "s", "type": "start", "name": "Initial" },
+        { "id": "a", "type": "state", "name": "A" },
+        { "id": "e", "type": "end", "name": "Final" }
+      ],
+      "edges": [
+        { "id": "x1", "source": "s", "target": "a", "event": "Submitted" },
+        { "id": "x2", "source": "a", "target": "e", "event": "Done" }
+      ]
+    },
+    "expected": {
+      "version": 3,
+      "name": "Order Saga",
+      "description": "Takes an order.",
+      "direction": "left-right",
+      "spacing": "compact",
+      "nodes": [
+        { "id": "s", "type": "start", "name": "Initial" },
+        {
+          "id": "a",
+          "type": "state",
+          "name": "A",
+          "description": "Waits",
+          "color": "blue",
+          "retry": "3x",
+          "timeout": "30s",
+          "compensation": { "name": "Undo" }
+        },
+        { "id": "e", "type": "end", "name": "Final" }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "s",
+          "target": "a",
+          "event": "Submitted",
+          "eventSource": "Shop API"
+        },
+        { "id": "e2", "source": "a", "target": "e", "event": "Done", "kind": "compensation" }
+      ]
+    },
+    "removed": []
+  },
+  {
+    "name": "a new state is appended, a removed state is reported, a renamed id is both",
+    "existing": {
+      "version": 3,
+      "nodes": [
+        { "id": "s", "type": "start", "name": "Initial" },
+        { "id": "a", "type": "state", "name": "Reserving", "description": "Holds stock" },
+        { "id": "e", "type": "end", "name": "Final" }
+      ],
+      "edges": [
+        { "id": "e1", "source": "s", "target": "a", "event": "Submitted" },
+        { "id": "e2", "source": "a", "target": "e", "event": "Done" }
+      ]
+    },
+    "incoming": {
+      "version": 3,
+      "nodes": [
+        { "id": "e", "type": "end", "name": "Final" },
+        { "id": "s", "type": "start", "name": "Initial" },
+        { "id": "b", "type": "state", "name": "Picking", "activities": [{ "command": "Pick" }] }
+      ],
+      "edges": [
+        { "id": "n1", "source": "s", "target": "b", "event": "Submitted" },
+        { "id": "n2", "source": "b", "target": "e", "event": "Done" }
+      ]
+    },
+    "expected": {
+      "version": 3,
+      "nodes": [
+        { "id": "s", "type": "start", "name": "Initial" },
+        { "id": "e", "type": "end", "name": "Final" },
+        { "id": "b", "type": "state", "name": "Picking", "activities": [{ "command": "Pick" }] }
+      ],
+      "edges": [
+        { "id": "n1", "source": "s", "target": "b", "event": "Submitted" },
+        { "id": "n2", "source": "b", "target": "e", "event": "Done" }
+      ]
+    },
+    "removed": [
+      "“Reserving” removed, its description is lost",
+      "Transition Initial → Reserving on Submitted removed",
+      "Transition Reserving → Final on Done removed"
+    ]
+  },
+  {
+    "name": "edges are matched by source, target, event and guard",
+    "existing": {
+      "version": 3,
+      "nodes": [
+        { "id": "s", "type": "start", "name": "Initial" },
+        { "id": "a", "type": "state", "name": "A" }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "s",
+          "target": "a",
+          "event": "Go",
+          "guard": "x > 1",
+          "eventSource": "API"
+        },
+        {
+          "id": "e2",
+          "source": "s",
+          "target": "a",
+          "event": "Go",
+          "guard": "x <= 1",
+          "eventSource": "Batch"
+        }
+      ]
+    },
+    "incoming": {
+      "version": 3,
+      "nodes": [
+        { "id": "s", "type": "start", "name": "Initial" },
+        { "id": "a", "type": "state", "name": "A" }
+      ],
+      "edges": [
+        { "id": "n2", "source": "s", "target": "a", "event": "Go", "guard": "x <= 1" },
+        { "id": "n1", "source": "s", "target": "a", "event": "Go", "guard": "x > 1" }
+      ]
+    },
+    "expected": {
+      "version": 3,
+      "nodes": [
+        { "id": "s", "type": "start", "name": "Initial" },
+        { "id": "a", "type": "state", "name": "A" }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "s",
+          "target": "a",
+          "event": "Go",
+          "guard": "x > 1",
+          "eventSource": "API"
+        },
+        {
+          "id": "e2",
+          "source": "s",
+          "target": "a",
+          "event": "Go",
+          "guard": "x <= 1",
+          "eventSource": "Batch"
+        }
+      ]
+    },
+    "removed": []
+  },
+  {
+    "name": "a direction the file does not set is taken from the new input",
+    "existing": {
+      "version": 3,
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "incoming": {
+      "version": 3,
+      "direction": "left-right",
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "expected": {
+      "version": 3,
+      "direction": "left-right",
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "removed": []
+  },
+  {
+    "name": "a direction the file sets stays, even the default one",
+    "existing": {
+      "version": 3,
+      "direction": "top-bottom",
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "incoming": {
+      "version": 3,
+      "direction": "left-right",
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "expected": {
+      "version": 3,
+      "direction": "top-bottom",
+      "nodes": [{ "id": "s", "type": "start", "name": "Initial" }],
+      "edges": []
+    },
+    "removed": []
+  }
+]

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>GravionLabs.Ariadne.MassTransit</RootNamespace>
+    <PackageId>GravionLabs.Ariadne.MassTransit</PackageId>
+    <Description>Reads a built MassTransit saga state machine and writes it as an Ariadne diagram.</Description>
+    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="GravionLabs.Ariadne.MassTransit.Yaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="System.Text.Json" />
+  </ItemGroup>
+</Project>

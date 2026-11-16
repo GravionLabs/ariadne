@@ -2,7 +2,7 @@
   "name": "Ariadne",
   "build": { "dockerfile": "Dockerfile" },
   "features": {
-    // The .NET SDK for the generated-C# check (the `generated-csharp` job in CI).
+    // The .NET SDK for dotnet/ (the library, ADR 0031) and the generated-C# check (the `generated-csharp` job in CI).
     "ghcr.io/devcontainers/features/dotnet:2": { "version": "10.0" }
   },
   // Docker gives a container 64 MB of /dev/shm; Chromium (VS Code in the integration tests, the

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>GravionLabs.Ariadne.MassTransit.Yaml</RootNamespace>
+    <PackageId>GravionLabs.Ariadne.MassTransit.Yaml</PackageId>
+    <Description>Reads and writes Ariadne saga diagrams as *.saga.yaml, byte for byte as @ariadne/core does.</Description>
+    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+    <ProjectReference Include="..\GravionLabs.Ariadne.MassTransit\GravionLabs.Ariadne.MassTransit.csproj" />
+  </ItemGroup>
+</Project>

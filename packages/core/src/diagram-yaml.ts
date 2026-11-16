@@ -1,4 +1,5 @@
 import { parse, stringify } from 'yaml';
+import { isJsonText, jsonSyntaxProblem } from './source-location';
 import {
   Diagram,
   EventInfo,
@@ -101,7 +102,29 @@ export class DiagramVersionError extends DiagramFormatError {
  * Serializes a diagram to YAML. Output is deterministic: fixed key order, element order
  * as in the model, absent optional fields omitted. Layout is derived, so no positions.
  */
-export function serializeDiagram(diagram: Diagram): string {
+export function serializeDiagram(diagram: Diagram, options: SerializeOptions = {}): string {
+  const file = diagramToFile(diagram);
+  return options.format === 'json'
+    ? `${JSON.stringify(file, null, 2)}\n`
+    : stringify(file, { lineWidth: 0 });
+}
+
+/** Options of {@link serializeDiagram}. */
+export interface SerializeOptions {
+  /** The container: `yaml` (the default, the file format) or `json` (transport, ADR 0028). */
+  format?: 'yaml' | 'json';
+}
+
+/**
+ * Serializes a diagram to JSON: the same keys in the same order as the YAML, two-space indent, one
+ * property per line, a trailing newline (ADR 0028). The model has no `$schema`, so none is written.
+ */
+export function serializeDiagramJson(diagram: Diagram): string {
+  return serializeDiagram(diagram, { format: 'json' });
+}
+
+/** The diagram as the plain object both containers write: fixed key order, unset fields omitted. */
+function diagramToFile(diagram: Diagram): Record<string, unknown> {
   const file = {
     version: FORMAT_VERSION,
     name: diagram.name,
@@ -118,7 +141,7 @@ export function serializeDiagram(diagram: Diagram): string {
       withoutUndefined({ id, source, target, kind, event, eventSource, guard }),
     ),
   };
-  return stringify(withoutUndefined(file), { lineWidth: 0 });
+  return withoutUndefined(file);
 }
 
 /** The saga block in the file: `class` for `className`, `instance` for `instanceType`; `source` is last. */
@@ -172,9 +195,11 @@ export interface ParsedDiagram {
   diagram: Diagram;
   /** Human-readable notes about migrations; empty for files in the current version. */
   notes: string[];
+  /** Whether the file sets `direction` itself; when not, `diagram.direction` is the default. */
+  directionSet: boolean;
 }
 
-/** Parses and validates a YAML diagram file. */
+/** Parses and validates a diagram file, YAML or JSON (JSON is read by the YAML parser). */
 export function parseDiagram(text: string): Diagram {
   return parseDiagramWithNotes(text).diagram;
 }
@@ -183,6 +208,14 @@ export function parseDiagram(text: string): Diagram {
 export function parseDiagramWithNotes(text: string): ParsedDiagram {
   const tooBig = diagramSizeProblem(text);
   if (tooBig) throw new DiagramFormatError(tooBig);
+  const jsonProblem = isJsonText(text) ? jsonSyntaxProblem(text) : undefined;
+  if (jsonProblem) {
+    throw new DiagramFormatError(
+      /nested too deeply/.test(jsonProblem.message)
+        ? 'The file is nested too deeply to be read as a diagram.'
+        : jsonProblem.message,
+    );
+  }
   let file: unknown;
   try {
     file = parse(text, { maxAliasCount: DIAGRAM_LIMITS.maxAliases });
@@ -195,6 +228,21 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
     // The first line has the reason and the position; the rest is a code frame.
     throw new DiagramFormatError(`Not valid YAML: ${(e as Error).message.split('\n')[0]}`);
   }
+  return validateDiagramWithNotes(file);
+}
+
+/**
+ * Validates an already parsed value (the result of `response.json()` or of a YAML parser) into a
+ * diagram. The same checks, errors and limits as {@link parseDiagram}, except the size in bytes,
+ * which only a text has.
+ */
+export function validateDiagram(file: unknown): Diagram {
+  return validateDiagramWithNotes(file).diagram;
+}
+
+/** Like {@link validateDiagram}, and reports migrations of older files. */
+export function validateDiagramWithNotes(file: unknown): ParsedDiagram {
+  // `$schema` (the JSON Schema of the format, ADR 0028) is accepted and not part of the model.
   const root = asRecord(file, 'file');
   if (!READABLE_VERSIONS.includes(root['version'] as number)) {
     const message = `Unsupported format version ${JSON.stringify(root['version'])} (expected ${FORMAT_VERSION})`;
@@ -268,6 +316,7 @@ export function parseDiagramWithNotes(text: string): ParsedDiagram {
       edges,
     }),
     notes,
+    directionSet: root['direction'] !== undefined,
   };
 }
 

@@ -137,7 +137,7 @@ edges:
   - { id: edge-2, source: state-1, target: end-1, event: StockReserved }
 ```
 
-The full format, with every field and the migration rules, is in [docs/specs/diagram-format.md](docs/specs/diagram-format.md). A complete example is [docs/examples/order.saga.yaml](docs/examples/order.saga.yaml).
+The full format, with every field and the migration rules, is in [docs/specs/diagram-format.md](docs/specs/diagram-format.md). A complete example is [docs/examples/order.saga.yaml](docs/examples/order.saga.yaml). The same document exists as JSON (`*.saga.json`, e.g. [order.saga.json](docs/examples/order.saga.json)), which is the form a REST API returns and the viewer and the CLI read; `ariadne convert` turns one into the other, and files you keep in git stay YAML ([Sagas from a REST API](docs/guide/sagas-from-rest-api.md)).
 
 ## Project layout
 

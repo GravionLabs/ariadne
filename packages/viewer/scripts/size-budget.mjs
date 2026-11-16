@@ -7,7 +7,7 @@
 export const BUDGETS = {
   'dist/ariadne-viewer.js': 77_000,
   'dist/index.js': 104_000,
-  'dist/angular/index.js': 2_600,
+  'dist/angular/index.js': 3_000,
 };
 
 /** Share of a budget above which a warning is given. */

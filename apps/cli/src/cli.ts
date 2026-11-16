@@ -5,7 +5,12 @@ import {
   Diagram,
   Finding,
   Severity,
+  SourceRange,
+  locateSourceError,
+  mergeDiagram,
+  ParsedDiagram,
   parseDiagram,
+  parseDiagramWithNotes,
   serializeDiagram,
   validate,
 } from '@ariadne/core';
@@ -23,6 +28,10 @@ import { diagramToMarkdown, diagramToMermaid, pngScale, renderDiagramSvg } from 
 export interface Io {
   readText(path: string): Promise<string>;
   writeFile(path: string, data: string | Uint8Array): Promise<void>;
+  /** Everything on the standard input, for the file name `-`. */
+  readStdin(): Promise<string>;
+  /** Whether a file exists (convert does not overwrite one without --force). */
+  exists(path: string): Promise<boolean>;
   stdout(text: string): void;
   stderr(text: string): void;
   /** The C# parser; loaded on demand, because only `import` and `diff` need it. */
@@ -44,11 +53,14 @@ export const VERSION: string = pkg.version;
 export const USAGE = `ariadne ${VERSION}: check, export and convert saga diagrams to and from C#
 
 Usage:
-  ariadne lint <file.saga.yaml…> [--format text|json] [--max-warnings <n>]
-  ariadne export <file.saga.yaml> --format mermaid|svg|png|md [-o <file>]
-  ariadne generate <file.saga.yaml> [-o <dir>]
-  ariadne import <file.cs…> [-o <dir>]
-  ariadne diff <file.saga.yaml> <file.cs…> [--class <name>]
+  ariadne lint <file…> [--format text|json] [--max-warnings <n>]
+  ariadne export <file> --format mermaid|svg|png|md [-o <file>]
+  ariadne generate <file> [-o <dir>]
+  ariadne import <file.cs…> [-o <dir>] [--format yaml|json]
+  ariadne diff <file> <file.cs…> [--class <name>]
+  ariadne convert <file…> --to json|yaml [-o <file|dir>] [--force] [--merge]
+
+A <file> is a diagram as *.saga.yaml or *.saga.json; - reads it from the standard input.
 
 Commands:
   lint      Report modelling mistakes. Exits with 1 when there are errors (or more warnings
@@ -59,11 +71,19 @@ Commands:
             into the directory given with -o (default: the current one). What could not be
             generated is reported on the standard error.
   import    Read MassTransit saga state machines from C# files and write each as a *.saga.yaml file
-            into the directory given with -o (default: the current one). What could not be shown
-            is reported on the standard error, with file and line. Exits with 1 if no saga is found.
+            (*.saga.json with --format json) into the directory given with -o (default: the
+            current one). What could not be shown is reported on the standard error, with file and
+            line. Exits with 1 if no saga is found.
   diff      Compare a diagram with the C# that implements it: missing and extra states,
             transitions, sent and published messages. Exits with 1 when they differ, so it can
             fail a CI build. --class picks the state machine when the files have several.
+  convert   Write each diagram in the other container, next to the file (order.saga.yaml becomes
+            order.saga.json) or to -o: a file for one input, a directory for several; the standard
+            input (-) goes to -o or the standard output. The source is kept. A file that is not
+            a diagram is reported and nothing is written for it (exit 1). An existing target is not
+            overwritten without --force. --merge keeps what a person wrote in an existing target
+            (descriptions, colors, eventSource, retry, timeout, compensation, direction, spacing)
+            and takes the structure from the input; removed elements are reported.
 
 Options:
   -h, --help      Show this text
@@ -94,6 +114,7 @@ export async function run(args: readonly string[], io: Io): Promise<number> {
     if (command === 'generate') return await generateCommand(rest, io);
     if (command === 'import') return await importCommand(rest, io);
     if (command === 'diff') return await diffCommand(rest, io);
+    if (command === 'convert') return await convertCommand(rest, io);
     throw new UsageError(`Unknown command “${command}”.`);
   } catch (e) {
     if (e instanceof UsageError) {
@@ -123,6 +144,8 @@ interface LintReport {
   findings: (Finding & { element?: string })[];
   /** Set when the file could not be read as a diagram at all. */
   invalid?: string;
+  /** Where in the text `invalid` points, when it can be told (YAML and JSON alike). */
+  location?: SourceRange | null;
 }
 
 async function lint(args: readonly string[], io: Io): Promise<number> {
@@ -149,7 +172,12 @@ async function lint(args: readonly string[], io: Io): Promise<number> {
       diagram = parseDiagram(text);
     } catch (e) {
       if (!(e instanceof DiagramFormatError)) throw e;
-      reports.push({ file, findings: [], invalid: e.message });
+      reports.push({
+        file,
+        findings: [],
+        invalid: e.message,
+        location: locateSourceError(text, e.message),
+      });
       continue;
     }
     const names = new Map(
@@ -172,7 +200,12 @@ async function lint(args: readonly string[], io: Io): Promise<number> {
   if (format === 'json') {
     io.stdout(
       `${JSON.stringify(
-        reports.map((r) => ({ file: r.file, invalid: r.invalid ?? null, findings: r.findings })),
+        reports.map((r) => ({
+          file: r.file,
+          invalid: r.invalid ?? null,
+          ...(r.invalid ? { location: r.location ?? null } : {}),
+          findings: r.findings,
+        })),
         null,
         2,
       )}\n`,
@@ -234,16 +267,8 @@ async function exportCommand(args: readonly string[], io: Io): Promise<number> {
     throw new UsageError(`export needs --format ${FORMATS.join('|')}.`);
   }
   const [file] = positionals;
-  let diagram: Diagram;
-  try {
-    diagram = parseDiagram(await read(io, file));
-  } catch (e) {
-    if (e instanceof DiagramFormatError) {
-      io.stderr(`${file}: not a valid saga diagram: ${e.message}\n`);
-      return 1;
-    }
-    throw e;
-  }
+  const diagram = await loadDiagram(io, file);
+  if (!diagram) return 1;
 
   const title = diagram.name ?? baseName(file);
   let output: string | Uint8Array;
@@ -294,16 +319,8 @@ async function generateCommand(args: readonly string[], io: Io): Promise<number>
   const { values, positionals } = options(args, { output: { type: 'string', short: 'o' } });
   if (positionals.length !== 1) throw new UsageError('generate needs exactly one file.');
   const [file] = positionals;
-  let diagram: Diagram;
-  try {
-    diagram = parseDiagram(await read(io, file));
-  } catch (e) {
-    if (e instanceof DiagramFormatError) {
-      io.stderr(`${file}: not a valid saga diagram: ${e.message}\n`);
-      return 1;
-    }
-    throw e;
-  }
+  const diagram = await loadDiagram(io, file);
+  if (!diagram) return 1;
   const dir = (values.output ?? '.').replace(/[\\/]+$/, '');
   const { files, warnings } = generateSaga(diagram);
   for (const f of files) {
@@ -327,8 +344,15 @@ async function readSagas(files: readonly string[], io: Io): Promise<ImportResult
 }
 
 async function importCommand(args: readonly string[], io: Io): Promise<number> {
-  const { values, positionals } = options(args, { output: { type: 'string', short: 'o' } });
+  const { values, positionals } = options(args, {
+    output: { type: 'string', short: 'o' },
+    format: { type: 'string' },
+  });
   if (positionals.length === 0) throw new UsageError('import needs at least one C# file.');
+  const format = values.format ?? 'yaml';
+  if (format !== 'yaml' && format !== 'json') {
+    throw new UsageError(`Unknown import format “${format}”: use yaml or json.`);
+  }
   const { sagas } = await readSagas(positionals, io);
   if (sagas.length === 0) {
     io.stderr('No MassTransit saga state machine found in the files.\n');
@@ -336,8 +360,8 @@ async function importCommand(args: readonly string[], io: Io): Promise<number> {
   }
   const dir = (values.output ?? '.').replace(/[\\/]+$/, '');
   for (const saga of sagas) {
-    const path = `${dir}/${saga.className}.saga.yaml`;
-    await write(io, path, serializeDiagram(saga.diagram));
+    const path = `${dir}/${saga.className}.saga.${format}`;
+    await write(io, path, serializeDiagram(saga.diagram, { format }));
     io.stdout(`${path}\n`);
   }
   return 0;
@@ -349,16 +373,8 @@ async function diffCommand(args: readonly string[], io: Io): Promise<number> {
   if (!file || code.length === 0) {
     throw new UsageError('diff needs a diagram and at least one C# file.');
   }
-  let diagram: Diagram;
-  try {
-    diagram = parseDiagram(await read(io, file));
-  } catch (e) {
-    if (e instanceof DiagramFormatError) {
-      io.stderr(`${file}: not a valid saga diagram: ${e.message}\n`);
-      return 1;
-    }
-    throw e;
-  }
+  const diagram = await loadDiagram(io, file);
+  if (!diagram) return 1;
   const { sagas } = await readSagas(code, io);
   const wanted = values.class ?? diagram.saga?.className;
   const found = wanted
@@ -385,16 +401,124 @@ async function diffCommand(args: readonly string[], io: Io): Promise<number> {
   return 1;
 }
 
+// ---- convert
+
+type Container = 'yaml' | 'json';
+
+/** `dir/order.saga.yaml` → `dir/order.saga.json`; any other name gets `.saga.<container>`. */
+function siblingPath(file: string, to: Container): string {
+  return `${file.replace(CONTAINER_EXTENSION, '')}.saga.${to}`;
+}
+
+async function convertCommand(args: readonly string[], io: Io): Promise<number> {
+  const { values, positionals } = options(args, {
+    to: { type: 'string' },
+    output: { type: 'string', short: 'o' },
+    force: { type: 'boolean' },
+    merge: { type: 'boolean' },
+  });
+  if (positionals.length === 0) throw new UsageError('convert needs at least one file.');
+  const to = values.to;
+  if (to !== 'yaml' && to !== 'json') throw new UsageError('convert needs --to json|yaml.');
+  if (positionals.filter((f) => f === STDIN).length > 1) {
+    throw new UsageError('The standard input (-) can be read once.');
+  }
+  const output = values.output?.replace(/(?<=.)[\\/]+$/, '');
+  const many = positionals.length > 1;
+
+  let failed = false;
+  for (const file of positionals) {
+    const diagram = await loadDiagram(io, file);
+    if (!diagram) {
+      failed = true;
+      continue;
+    }
+    let target: string | undefined;
+    if (file === STDIN) target = output;
+    else if (output === undefined) target = siblingPath(file, to);
+    else if (many) target = `${output}/${baseName(file)}.saga.${to}`;
+    else target = output;
+
+    let text = serializeDiagram(diagram, { format: to });
+    if (target === undefined) {
+      io.stdout(text);
+      continue;
+    }
+    if (await io.exists(target)) {
+      if (values.merge) {
+        const merged = await mergeInto(io, target, diagram, to);
+        if (!merged) {
+          failed = true;
+          continue;
+        }
+        text = merged.text;
+        for (const r of merged.removed) io.stderr(`${target}: ${r}\n`);
+      } else if (!values.force) {
+        io.stderr(
+          `${target}: already exists; nothing written (use --force to overwrite, --merge to keep what is written there).\n`,
+        );
+        failed = true;
+        continue;
+      }
+    }
+    await write(io, target, text);
+    io.stdout(`${target}\n`);
+  }
+  return failed ? 1 : 0;
+}
+
+/** The input merged into the diagram already at `target`; `null` (reported) when that is not one. */
+async function mergeInto(
+  io: Io,
+  target: string,
+  incoming: Diagram,
+  to: Container,
+): Promise<{ text: string; removed: string[] } | null> {
+  const existing = await loadParsed(io, target);
+  if (!existing) return null;
+  const { diagram, removed } = mergeDiagram(existing.diagram, incoming, {
+    existingDirectionSet: existing.directionSet,
+  });
+  return {
+    text: serializeDiagram(diagram, { format: to }),
+    removed: removed.map((r) => r.message),
+  };
+}
+
 const ensureNewline = (text: string): string => (text.endsWith('\n') ? text : `${text}\n`);
+
+/** The file name that stands for the standard input. */
+const STDIN = '-';
+/** The ending of a diagram file, either container: `.saga.yaml`, `.saga.json`, `.yml`, … */
+const CONTAINER_EXTENSION = /\.(saga\.)?(ya?ml|json)$/i;
 
 /** `dir/order.saga.yaml` → `order`. */
 function baseName(file: string): string {
+  if (file === STDIN) return 'Saga';
   const name = file.split(/[\\/]/).pop() ?? file;
-  return name.replace(/\.(saga\.)?ya?ml$/i, '') || 'Saga';
+  return name.replace(CONTAINER_EXTENSION, '') || 'Saga';
+}
+
+/** Reads and parses a diagram (either container); reports why not and returns `undefined`. */
+async function loadDiagram(io: Io, file: string): Promise<Diagram | undefined> {
+  return (await loadParsed(io, file))?.diagram;
+}
+
+async function loadParsed(io: Io, file: string): Promise<ParsedDiagram | undefined> {
+  try {
+    return parseDiagramWithNotes(await read(io, file));
+  } catch (e) {
+    if (e instanceof DiagramFormatError) {
+      io.stderr(`${file === STDIN ? '<stdin>' : file}: not a valid saga diagram: ${e.message}\n`);
+      return undefined;
+    }
+    throw e;
+  }
 }
 
 async function read(io: Io, file: string): Promise<string> {
   try {
+    if (file === STDIN) return await io.readStdin();
     return await io.readText(file);
   } catch (e) {
     throw new Error(`cannot read ${file}: ${(e as Error).message}`);

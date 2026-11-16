@@ -1,8 +1,9 @@
 import orderSaga from '../../../docs/examples/order.saga.yaml?raw';
+import orderJson from '../../../docs/examples/order.saga.json?raw';
 import travelBooking from '../../../docs/examples/travel-booking.saga.yaml?raw';
 import { eventKindOf, joinEventsOf, publishedEvents } from './diagram';
 import { backEdgeIds } from './layout';
-import { parseDiagramWithNotes, serializeDiagram } from './diagram-yaml';
+import { parseDiagramWithNotes, serializeDiagram, serializeDiagramJson } from './diagram-yaml';
 
 describe('docs/examples/order.saga.yaml', () => {
   const { diagram, notes } = parseDiagramWithNotes(orderSaga);
@@ -22,6 +23,11 @@ describe('docs/examples/order.saga.yaml', () => {
 
   it('is written exactly as the editor would save it', () => {
     expect(serializeDiagram(diagram)).toBe(orderSaga);
+  });
+
+  it('has a JSON form next to it that is the same diagram, written as the editor would write it', () => {
+    expect(parseDiagramWithNotes(orderJson).diagram).toEqual(diagram);
+    expect(serializeDiagramJson(diagram)).toBe(orderJson);
   });
 
   it('shows the three kinds of messages: commands, a published event, external events', () => {
