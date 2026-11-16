@@ -22,3 +22,12 @@ rules are used by `ariadne convert --merge` (`mergeDiagram` in `@ariadne/core`) 
   (`“Reserving” removed, its description is lost`). A renamed id is a removed and an added element.
   A caller may turn a non-empty report into a failure.
 - YAML comments in the file are lost when it is written again.
+
+## In .NET
+
+`diagram.Save(path)` (`GravionLabs.Ariadne.MassTransit.Yaml`) merges into an existing file by these rules and
+returns what was dropped (`SaveResult.Removed`). `SaveOptions.FailOnLoss` throws a `DiagramLossException` instead
+(the file is not touched); `SaveOptions.Overwrite` writes without merging. A file that is invalid or of an older
+version is not touched either: `DiagramFormatException` says to fix it or to overwrite. A file that already is what
+would be written is not rewritten. `SagaDiagram.MergeInto(existing)` merges in memory for callers that do not write
+files.

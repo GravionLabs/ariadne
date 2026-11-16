@@ -104,7 +104,7 @@ internal static class DiagramJsonReader
             edges.Add(ReadEdge(edgeItems[i], $"edges[{i}]", ids));
         }
 
-        return new SagaDiagram(
+        var diagram = new SagaDiagram(
             nodes,
             edges,
             Trimmed(file, "name", "name"),
@@ -113,6 +113,8 @@ internal static class DiagramJsonReader
             file.TryGetProperty("events", out var events) ? ReadEvents(events) : null,
             direction,
             spacing);
+        diagram.DirectionSet = file.TryGetProperty("direction", out _);
+        return diagram;
     }
 
     private static void CheckVersion(JsonElement file)

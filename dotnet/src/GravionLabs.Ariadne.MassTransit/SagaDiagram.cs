@@ -39,6 +39,7 @@ public sealed class SagaDiagram
         Saga = saga;
         Events = Lists.Copy(events);
         Direction = direction;
+        DirectionSet = direction != Direction.TopBottom;
         Spacing = spacing;
         Warnings = Lists.Copy(warnings);
     }
@@ -57,6 +58,9 @@ public sealed class SagaDiagram
 
     /// <summary>Which way the flow runs; <see cref="Direction.TopBottom"/> when the document does not say.</summary>
     public Direction Direction { get; }
+
+    /// <summary>Whether the document sets its direction itself (a read file that has the key, or a direction other than the default). A merge takes the direction of the new input when the file does not.</summary>
+    internal bool DirectionSet { get; set; }
 
     /// <summary>Room between states and layers; <see langword="null"/> is normal.</summary>
     public Spacing? Spacing { get; }
@@ -83,6 +87,18 @@ public sealed class SagaDiagram
     /// <summary>The diagram as JSON without indentation or a trailing newline, for HTTP responses. Same keys, same order, same escaping.</summary>
     /// <returns>The JSON text.</returns>
     public string ToCompactJson() => DiagramJsonWriter.Write(this, indented: false);
+
+    /// <summary>
+    /// Merges this diagram, which comes from code, into one a person has been editing, by the rules of
+    /// <c>docs/specs/diagram-merge.md</c> (the same as <c>ariadne convert --merge</c>): structure comes from this
+    /// diagram; name and description of the diagram, direction, spacing, per node description, color, retry, timeout and
+    /// compensation, per edge eventSource and kind come from <paramref name="existing"/>. Nodes are matched by id, edges
+    /// by source, target, event and guard. The order of <paramref name="existing"/> is kept and new elements are
+    /// appended. Elements only <paramref name="existing"/> has are dropped and reported. Neither diagram is changed.
+    /// </summary>
+    /// <param name="existing">The diagram with the hand-written documentation.</param>
+    /// <returns>The merged diagram and what was dropped.</returns>
+    public MergeResult MergeInto(SagaDiagram existing) => DiagramMerge.Merge(existing, this);
 
     /// <summary>Reads a JSON diagram of format version 3.</summary>
     /// <param name="json">The JSON text.</param>
