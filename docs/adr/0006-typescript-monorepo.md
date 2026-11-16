@@ -4,6 +4,7 @@
 - Date: 2026-10-03
 - Issues: #162, #163, #164, #165
 - Builds on: [ADR 0001](0001-flow-editor-foundations.md)
+- Amended by: [ADR 0031](0031-dotnet-library.md) (a .NET library in `dotnet/` that reads built state machines)
 
 ## Context
 

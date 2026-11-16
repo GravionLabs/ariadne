@@ -28,9 +28,10 @@ manager would ignore both.
 ```
 apps/       web (the Angular editor), server, cli, vscode, viewer-demo
 packages/   core, export, masstransit, editor-protocol, viewer
+dotnet/     the .NET library that reads built MassTransit state machines (own solution, see below)
 ```
 
-The [README](README.md#project-layout) describes each of them. The rules that keep it healthy
+The [README](README.md#project-layout) describes each of them. `dotnet/` is not part of the pnpm workspace. The rules that keep it healthy
 ([ADR 0006](docs/adr/0006-typescript-monorepo.md)):
 
 - packages never import from `apps/`;
@@ -80,6 +81,24 @@ Every change comes with tests, and the suite is green before every commit.
   needs the .NET 10 SDK (the `generated-csharp` job in
   [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs it; you only need it when you change
   the generator).
+
+## The .NET part
+
+`dotnet/` holds a library, an ASP.NET Core package and a tool that read a **built** MassTransit state machine and
+write the same diagram format as the TypeScript side ([ADR 0031](docs/adr/0031-dotnet-library.md)). It has its own
+solution, `dotnet/Ariadne.slnx`, and needs the .NET SDK (the version pinned in CI; the dev container has it). The pnpm
+scripts above do not cover it; run these from the root:
+
+| Command                                                 | What it does          |
+| ------------------------------------------------------- | --------------------- |
+| `dotnet build dotnet/Ariadne.slnx`                      | builds every project  |
+| `dotnet test dotnet/Ariadne.slnx`                       | runs the tests        |
+| `dotnet format dotnet/Ariadne.slnx --verify-no-changes` | checks the formatting |
+
+The format is shared with the TypeScript side: `docs/specs/saga.schema.json` and the golden files of `samples/` are read
+by both test suites, so a format change goes through the schema and the spec first and touches both readers in one
+pull request. The packages are never to use the network, write outside the given path or map an endpoint the
+application did not ask for (ADR 0031, section 6).
 
 ## The images of the user guide
 
