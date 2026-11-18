@@ -23,7 +23,7 @@ publicHoistPattern:
 overrides:
   glob: '^14.0.2'
   minimatch: '^11.0.1'
-  'vitepress>vite': '^6.4.4'
+  'vitepress>vite': '^6.4.6'
   '@vitejs/plugin-vue>vite': '^6.4.6'
 
 allowBuilds:
