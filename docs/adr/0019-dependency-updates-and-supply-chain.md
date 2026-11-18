@@ -86,9 +86,12 @@ lacks: the runtime stage of the production Dockerfile installs `libatomic` next 
 Releases younger than the minimum release age (at the time: eslint 10.15.0, Playwright 1.65.1) were not taken and no
 exclusion was used; Renovate picks them up once they are old enough.
 
-Renovate holds the same line: `minimumReleaseAge: '3 days'` with `internalChecksFilter: 'strict'` in
-`.github/renovate.json5` opens no pull request for a release younger than three days (pnpm's own one day still applies
-on install). Security fixes from `vulnerabilityAlerts` are exempt (`minimumReleaseAge: null`), so a fix is not delayed.
+Since #592 the minimum release age is 7 days on both sides (owner decision after the audit of GravionLabs/ci#239).
+`.github/renovate.json5` extends the shared preset `github>GravionLabs/ci` (`minimumReleaseAge: '7 days'` with
+`internalChecksFilter: 'strict'`, actions pinned to commit SHAs) and sets no age of its own, so Renovate opens no pull
+request for a younger release; security fixes from `vulnerabilityAlerts` are exempt, so a fix is not delayed.
+`pnpm-workspace.yaml` sets `minimumReleaseAge: 10080` (minutes), so an install takes no younger release either; a
+version that must come in earlier is named under `minimumReleaseAgeExclude`, with the date to remove it.
 
 ### Code scanning (#312)
 
@@ -116,7 +119,7 @@ The review of November 2026, with the repository public and npm, Marketplace and
 - **Rate limits.** `prHourlyLimit: 10` and `prConcurrentLimit: 20` (defaults 2 and 10): a week's updates are opened.
 - **`minimumReleaseAge: '3 days'` is kept** (#534) for every update, with `internalChecksFilter: 'strict'`; security
   fixes are exempt. Three days is long enough for most compromised releases to be pulled and short enough not to
-  starve the weekly run.
+  starve the weekly run. (Raised to 7 days with #592, see above.)
 - **Ecosystems.** npm, GitHub Actions, Dockerfile, `compose.yaml`, the dev container, `.nvmrc` and NuGet
   (`*.csproj`, so the coming `dotnet/` folder of #506) come from `config:recommended`; a custom manager adds the
   .NET SDK of `setup-dotnet`. The inline project of `scripts/compile-generated.sh` (`MassTransit 8.*`) is a floating
@@ -156,8 +159,9 @@ The review of November 2026, with the repository public and npm, Marketplace and
 A tag (`actions/checkout@v4`) or a branch (`GravionLabs/ci/node/setup@main`) can be moved by whoever owns the
 repository of the action, and the next run of a workflow would run the new code with the repository's token.
 Every `uses:` in `.github/workflows` is therefore a full commit SHA with the version in a comment
-(`actions/checkout@<sha> # v4`), which CodeQL's `actions/unpinned-tag` query checks. `helpers:pinGitHubActionDigests`
-makes Renovate update the SHA and the comment together, so pinning costs a reviewed pull request, not a manual step.
+(`actions/checkout@<sha> # v4.4.0`), which CodeQL's `actions/unpinned-tag` query checks. `helpers:pinGitHubActionDigests`
+(since #592 through the preset `github>GravionLabs/ci`) makes Renovate update the SHA and the comment together, so
+pinning costs a reviewed pull request, not a manual step.
 
 **The exception is GravionLabs/ci (#479).** The organisation's own actions and reusable workflows are referenced at
 the moving major tag, `GravionLabs/ci/...@v1`: the release job of ci moves `v1` to every 1.x release, and its
