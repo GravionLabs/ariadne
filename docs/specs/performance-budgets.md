@@ -25,6 +25,8 @@ measurement: opening 150 states in the editor takes under 1 s, and selecting a s
 | --------------------------------- | ----------- | ---------------------- | ----------------------- | ----------------------- |
 | parseDiagram                      | core        | 40 / **120**           | 51 / **160**            | 64 / **200**            |
 | serializeDiagram                  | core        | 10 / **50**            | 23 / **70**             | 26 / **80**             |
+| parseDiagram (JSON)               | core        | 6 / **120**            | 16 / **160**            | 33 / **200**            |
+| serializeDiagramJson              | core        | 0.1 / **50**           | 0.4 / **50**            | 0.8 / **50**            |
 | validate                          | core        | 0.7 / **50**           | 1.7 / **50**            | 2.4 / **50**            |
 | layoutDiagram                     | core        | 92 / **280**           | 114 / **600**           | 668 / **2050**          |
 | buildCatalog                      | core        | 0.7 / **50**           | 0.9 / **50**            | 2.7 / **50**            |

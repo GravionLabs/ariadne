@@ -4,6 +4,7 @@
 - Date: 2026-10-03
 - Issues: #78, #83, #84, #85, #86
 - Builds on: [ADR 0005](0005-activities-on-states.md), [ADR 0006](0006-typescript-monorepo.md)
+- Amended by: [ADR 0031](0031-dotnet-library.md) (a .NET library in `dotnet/` that reads built state machines)
 
 ## Context
 

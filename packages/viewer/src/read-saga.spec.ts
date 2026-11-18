@@ -1,5 +1,5 @@
 import { serializeDiagram } from '@ariadne/core';
-import { fetchSaga, readSaga } from './read-saga';
+import { FetchOptions, fetchSaga, readSaga, readSagaObject } from './read-saga';
 
 const yaml = serializeDiagram({
   direction: 'top-bottom',
@@ -22,7 +22,7 @@ describe('readSaga', () => {
 
   it("reports an invalid file with the reader's message", () => {
     expect(readSaga('version: 3\nnodes: {}')).toEqual({
-      error: { kind: 'invalid', message: 'nodes must be a list' },
+      error: { kind: 'invalid', message: 'nodes must be a list', line: 2, column: 8 },
     });
     expect(readSaga('nodes: [')).toMatchObject({ error: { kind: 'invalid' } });
   });
@@ -62,7 +62,11 @@ describe('fetchSaga', () => {
       vi.fn(async () => new Response('no', { status: 404, statusText: 'Not Found' })),
     );
     expect(await fetchSaga('/x.saga.yaml')).toEqual({
-      error: { kind: 'network', message: '/x.saga.yaml could not be loaded (404 Not Found).' },
+      error: {
+        kind: 'network',
+        status: 404,
+        message: '/x.saga.yaml could not be loaded (404 Not Found).',
+      },
     });
     vi.stubGlobal(
       'fetch',
@@ -89,5 +93,94 @@ describe('fetchSaga', () => {
     );
     abort.abort();
     await expect(fetchSaga('/x', abort.signal)).rejects.toThrow();
+  });
+});
+
+const json = JSON.stringify({
+  version: 3,
+  name: 'Order',
+  nodes: [{ id: 'start-1', type: 'start', name: 'Initial' }],
+  edges: [],
+});
+
+describe('JSON input', () => {
+  it('reads JSON text like YAML', () => {
+    expect(readSaga(json)).toMatchObject({ diagram: { name: 'Order' } });
+  });
+
+  it('places a JSON syntax error at line and column', () => {
+    const result = readSaga('{\n  "version": 3,\n  "nodes": [,]\n}');
+    expect(result).toMatchObject({ error: { kind: 'invalid', line: 3, column: 13 } });
+  });
+
+  it('places a format error of JSON text at the offending value', () => {
+    const result = readSaga('{\n  "version": 3,\n  "nodes": {}\n}');
+    expect(result).toEqual({
+      error: { kind: 'invalid', message: 'nodes must be a list', line: 3, column: 12 },
+    });
+  });
+
+  it('validates a parsed object like text, without a position', () => {
+    expect(readSagaObject(JSON.parse(json))).toMatchObject({ diagram: { name: 'Order' } });
+    const bad = readSagaObject({ version: 3, nodes: {} });
+    expect(bad).toEqual({ error: { kind: 'invalid', message: 'nodes must be a list' } });
+    expect(readSagaObject(null)).toMatchObject({ error: { kind: 'invalid' } });
+    expect(readSagaObject({ version: 99, nodes: [], edges: [] })).toMatchObject({
+      error: { kind: 'version', version: 99 },
+    });
+  });
+});
+
+describe('fetchSaga with credentials', () => {
+  it('draws a JSON response whatever its content type', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(json, { headers: { 'content-type': 'text/plain' } })),
+    );
+    expect(await fetchSaga('/api/sagas/order')).toMatchObject({ diagram: { name: 'Order' } });
+  });
+
+  it('passes credentials mode and headers to fetch', async () => {
+    const fetchMock = vi.fn(async () => new Response(json));
+    vi.stubGlobal('fetch', fetchMock);
+    await fetchSaga('/api', undefined, {
+      credentials: 'include',
+      headers: { Authorization: 'Bearer t' },
+    });
+    const init = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(init.credentials).toBe('include');
+    expect(new Headers(init.headers).get('Authorization')).toBe('Bearer t');
+  });
+
+  it('asks for JSON, unless the host chose an Accept', async () => {
+    const fetchMock = vi.fn(async () => new Response(json));
+    vi.stubGlobal('fetch', fetchMock);
+    await fetchSaga('/api');
+    await fetchSaga('/api', undefined, { headers: { Accept: 'application/yaml' } });
+    const accept = (i: number) =>
+      new Headers((fetchMock.mock.calls[i] as unknown as [string, RequestInit])[1].headers).get(
+        'Accept',
+      );
+    expect(accept(0)).toMatch(/^application\/json/);
+    expect(accept(1)).toBe('application/yaml');
+  });
+
+  it('uses the fetch of the host instead of the global one', async () => {
+    const globalFetch = vi.fn();
+    vi.stubGlobal('fetch', globalFetch);
+    const own = vi.fn<NonNullable<FetchOptions['fetch']>>(async () => new Response(json));
+    expect(await fetchSaga('/api', undefined, { fetch: own })).toMatchObject({
+      diagram: { name: 'Order' },
+    });
+    expect(own).toHaveBeenCalledWith('/api', expect.any(Object));
+    expect(globalFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([401, 403])('reports %i as a network error with the status', async (status) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('', { status, statusText: 'No' })),
+    );
+    expect(await fetchSaga('/api')).toMatchObject({ error: { kind: 'network', status } });
   });
 });

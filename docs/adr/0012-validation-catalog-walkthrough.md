@@ -54,8 +54,7 @@ saga event by event in a review.
   by one spec per rule, plus a check that the two example sagas have no errors or warnings.
 - Nothing about validation, the catalog or the walkthrough is saved in the file: they are views of the
   diagram.
-- The rules live in `src/app/model` for now. When the code moves into the planned shared packages
-  (epic #162) they belong in the core package with the parser and the format.
+- The rules live in `packages/core/src`, with the parser and the format.
 - A walkthrough ignores guards (it offers every transition of the event) and does not model several
   events arriving for a join: it is a reading aid, not a simulation. Documentation only, as in ADR 0001.
 - The initial bundle grows by about 36 kB (948 to 985 kB). Lazy-loading the two panels saves only about

@@ -47,7 +47,14 @@ describe('the agent skill', () => {
   });
 
   it('reads the usage of the command', () => {
-    expect([...commands.keys()]).toEqual(['lint', 'export', 'generate', 'import', 'diff']);
+    expect([...commands.keys()]).toEqual([
+      'lint',
+      'export',
+      'generate',
+      'import',
+      'diff',
+      'convert',
+    ]);
   });
 
   it('mentions every command, and only commands and options that exist', () => {
@@ -84,6 +91,8 @@ describe('the agent skill', () => {
     const io: Io = {
       readText: async () => yaml!,
       writeFile: async () => {},
+      readStdin: async () => '',
+      exists: async () => false,
       stdout: (text) => out.push(text),
       stderr: (text) => out.push(text),
       csharpParser: createNodeParser,

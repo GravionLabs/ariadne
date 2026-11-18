@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { FileStorage } from '../storage/file-storage';
+import { serializeDiagramJson } from '@ariadne/core';
 import { PngOptions, svgToPng } from './diagram-png';
 import {
   diagramToMarkdown,
@@ -11,11 +12,10 @@ import {
   renderDiagramSvg,
 } from '@ariadne/export';
 
+type ExportExtension = 'svg' | 'png' | 'mmd' | 'md' | 'docs.md' | 'saga.json';
+
 /** Name of an export of `diagramName`: `order.saga.yaml` becomes `order.svg`. */
-export function exportFileName(
-  diagramName: string,
-  extension: 'svg' | 'png' | 'mmd' | 'md' | 'docs.md',
-): string {
+export function exportFileName(diagramName: string, extension: ExportExtension): string {
   const base = diagramName.replace(/\.(saga\.)?ya?ml$/i, '') || 'diagram';
   return `${base}.${extension}`;
 }
@@ -62,13 +62,28 @@ export class DiagramExport {
     });
   }
 
-  async copyMermaid(): Promise<boolean> {
+  /** Saves the diagram as JSON (`.saga.json`): the deterministic output of `@ariadne/core`. */
+  exportJson(): Promise<boolean> {
+    return this.run('saga.json', async () => {
+      return new Blob([serializeDiagramJson(this.store.diagram())], { type: 'application/json' });
+    });
+  }
+
+  copyMermaid(): Promise<boolean> {
+    return this.copy(diagramToMermaid(this.store.diagram()), 'Mermaid copied to clipboard.');
+  }
+
+  copyJson(): Promise<boolean> {
+    return this.copy(serializeDiagramJson(this.store.diagram()), 'JSON copied to clipboard.');
+  }
+
+  private async copy(text: string, notice: string): Promise<boolean> {
     try {
       const clipboard = this.window?.navigator.clipboard;
       if (!clipboard) throw new Error('The clipboard is not available in this browser.');
-      await clipboard.writeText(diagramToMermaid(this.store.diagram()));
+      await clipboard.writeText(text);
       this.document.setError(null);
-      this.document.setNotice('Mermaid copied to clipboard.');
+      this.document.setNotice(notice);
       return true;
     } catch (e) {
       this.document.setError((e as Error).message);
@@ -76,10 +91,7 @@ export class DiagramExport {
     }
   }
 
-  private async run(
-    extension: 'svg' | 'png' | 'mmd' | 'md' | 'docs.md',
-    render: () => Promise<Blob>,
-  ): Promise<boolean> {
+  private async run(extension: ExportExtension, render: () => Promise<Blob>): Promise<boolean> {
     try {
       const blob = await render();
       const ref = await this.storage.exportFile(

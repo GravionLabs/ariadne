@@ -24,6 +24,13 @@ const HISTORY: PathStep[] = [
       (selected)="selected.set(describe($event))"
       (pathResolved)="resolved.set($event)"
     />
+    <h2>A saga fetched as JSON</h2>
+    <ariadne-saga
+      style="display: block; height: 320px"
+      url="order.saga.json"
+      credentials="same-origin"
+      [headers]="{ 'X-Demo': 'viewer' }"
+    />
     <p>Selected: {{ selected() }}</p>
     <p>
       Path: {{ resolved()?.transitions?.length ?? 0 }} step(s)

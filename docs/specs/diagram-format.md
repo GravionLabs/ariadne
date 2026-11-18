@@ -76,6 +76,7 @@ edges:
 
 | Field         | Type                                                         | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ------------- | ------------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `$schema`     | string                                                       | no       | The JSON Schema of the format (`saga.schema.json`), so editors can validate a JSON document. Accepted in YAML and JSON, ignored by the reader and not part of the model, so the writers never emit it (ADR 0028).                                                                                                                                                                                                                                      |
 | `version`     | integer                                                      | yes      | `3` (files with `1` or `2` are still read, see below).                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `name`        | string                                                       | no       | Title of the saga, e.g. `Order Saga`. Surrounding whitespace is trimmed; empty means unset. Exports use it as the title and fall back to the file name.                                                                                                                                                                                                                                                                                                |
 | `description` | string                                                       | no       | What the saga does; trimmed, empty means unset. Shown under the title in exports.                                                                                                                                                                                                                                                                                                                                                                      |
@@ -189,12 +190,146 @@ Everything else is unchanged.
 
 ## Determinism
 
-The writer (`src/app/model/diagram-yaml.ts`) guarantees stable output:
+The writer (`packages/core/src/diagram-yaml.ts`) guarantees stable output:
 
-- keys are always written in the order listed above (`version`, `name`, `description`, `saga`, `events`, `direction`, `nodes`, `edges`);
+- keys are always written in the order listed above (`version`, `name`, `description`, `saga`, `events`, `direction`, `spacing`, `nodes`, `edges`);
 - nodes, edges and activities keep their order in the diagram (new elements are appended);
 - optional fields that are not set (or empty) are omitted;
 - lines are never wrapped.
+
+The same holds for the JSON form, see [JSON](#json).
+
+## JSON
+
+A diagram can also be written as JSON ([ADR 0028](../adr/0028-json-second-representation.md)). JSON is for
+**transport**, not for storage: a REST API serves sagas as JSON, the viewer draws them, and tools that speak JSON
+exchange them. The files people keep in a repository stay `*.saga.yaml`. `*.saga.json` is the name of a JSON diagram that a tool
+writes (`ariadne convert`, the web export) or that a person saves from a REST API.
+
+The fields are the same as in YAML, with the same validation and the same `version: 3`. There is no JSON-only
+field and no second version number. The only extra is the optional top-level `$schema` string, which names
+[`saga.schema.json`](saga.schema.json) so that editors can validate and complete; the reader ignores it and the
+writers never emit it.
+
+The example from the top of the page as JSON (the full order saga is also at
+[`docs/examples/order.saga.json`](../examples/order.saga.json), next to its YAML):
+
+```json
+{
+  "version": 3,
+  "name": "Order Saga",
+  "description": "Takes an order from the shop to delivery.",
+  "direction": "top-bottom",
+  "nodes": [
+    {
+      "id": "start-1",
+      "type": "start",
+      "name": "Initial"
+    },
+    {
+      "id": "state-1",
+      "type": "state",
+      "name": "Charging payment",
+      "description": "Waits for the payment provider",
+      "activities": [
+        {
+          "command": "ChargePayment"
+        }
+      ],
+      "retry": "3 attempts, exponential backoff",
+      "timeout": "30s",
+      "compensation": {
+        "name": "RefundPayment"
+      }
+    },
+    {
+      "id": "state-2",
+      "type": "state",
+      "name": "Shipping",
+      "activities": [
+        {
+          "command": "ShipOrder"
+        },
+        {
+          "event": "OrderAccepted"
+        }
+      ]
+    },
+    {
+      "id": "end-1",
+      "type": "end",
+      "name": "Completed"
+    },
+    {
+      "id": "end-2",
+      "type": "end",
+      "name": "Cancelled"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "source": "start-1",
+      "target": "state-1",
+      "kind": "forward",
+      "event": "OrderSubmitted",
+      "eventSource": "Shop API"
+    },
+    {
+      "id": "edge-2",
+      "source": "state-1",
+      "target": "state-2",
+      "kind": "forward",
+      "event": "PaymentCharged"
+    },
+    {
+      "id": "edge-4",
+      "source": "state-2",
+      "target": "end-1",
+      "kind": "forward",
+      "event": "OrderShipped"
+    },
+    {
+      "id": "edge-3",
+      "source": "state-1",
+      "target": "end-2",
+      "kind": "forward",
+      "event": "PaymentFailed"
+    }
+  ]
+}
+```
+
+**Deterministic output.** `serializeDiagramJson` (or `serializeDiagram(diagram, { format: 'json' })`) writes the
+keys in the order of the YAML writer, omits unset and empty optional fields, indents with two spaces, puts one
+property per line and ends with a single trailing newline. The same diagram gives the same bytes. JSON has no
+comments, so comments of a YAML source are lost on the way through JSON.
+
+**Reading.** `parseDiagram` reads YAML and JSON alike (JSON is a subset of YAML 1.2); `validateDiagram` takes an
+already parsed object. The errors are the same.
+
+**Limits.** All limits of [Limits](#limits) apply to JSON: the size of the file, the number of nodes and of
+transitions, and the nesting. The alias limit is YAML only, since JSON has no aliases.
+
+### REST shape
+
+Producers (the viewer reads them, the .NET library writes them) follow ADR 0028:
+
+- Media type `application/json`. The viewer sends `Accept: application/json`.
+- `GET /sagas/{name}` returns **one saga**: a diagram document as above, with no envelope
+  ([`saga.schema.json`](saga.schema.json)).
+- `GET /sagas` returns **a list of sagas**: a JSON array of `{ "name", "title", "link" }`, all three strings and
+  required. `name` is the identifier used in the URL, `title` the display text, `link` the URL of the saga resource
+  (absolute, or relative to the list). The list carries no diagram content; a consumer follows `link`. The JSON
+  Schema is [`saga-list.schema.json`](saga-list.schema.json).
+- Errors use the HTTP status codes (404 for an unknown saga); no body is needed.
+
+```json
+[
+  { "name": "order", "title": "Order Saga", "link": "/sagas/order" },
+  { "name": "travel-booking", "title": "Travel booking", "link": "/sagas/travel-booking" }
+]
+```
 
 ## Limits
 
@@ -206,13 +341,13 @@ extension or the CLI, the reader accepts:
 | Size of the file (UTF-8)               | 5 MB (5 000 000 bytes) | `The file is 7.2 MB; Ariadne reads diagrams up to 5 MB.`                 |
 | Nodes                                  | 5 000                  | `The file has 5001 nodes; Ariadne reads diagrams with up to 5000.`       |
 | Transitions                            | 20 000                 | `The file has 20001 edges; Ariadne reads diagrams with up to 20000.`     |
-| Aliases (`*name`)                      | fewer than 100         | `Not valid YAML: Excessive alias count indicates a resource exhaustion…` |
+| Aliases (`*name`), YAML only           | fewer than 100         | `Not valid YAML: Excessive alias count indicates a resource exhaustion…` |
 | Nesting (lists and mappings in a list) | what the parser holds  | `The file is nested too deeply to be read as a diagram.`                 |
 
 The size is checked before the text is parsed. A pasted path (walkthrough) is limited to 10 000 steps
 and 1 MB of text. The C# importer skips a file over 2 MB with a warning on that file and reads the
-others. The limits are constants in code (`DIAGRAM_LIMITS` in `diagram-yaml.ts`, `PATH_LIMITS` in
-`path.ts`, `IMPORT_LIMITS` in `import.ts`); they are far above real sagas (the largest sample has a
+others. The limits are constants in code (`DIAGRAM_LIMITS` in `packages/core/src/diagram-yaml.ts`, `PATH_LIMITS` in
+`packages/core/src/path.ts`, `IMPORT_LIMITS` in `packages/masstransit/src/import.ts`); they are far above real sagas (the largest sample has a
 few dozen states).
 
 ## Errors

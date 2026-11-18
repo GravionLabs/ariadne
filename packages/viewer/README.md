@@ -3,7 +3,7 @@
 A read-only viewer for [Ariadne](https://github.com/GravionLabs/ariadne) saga diagrams, to embed in admin tools
 and documentation: the `<ariadne-saga>` custom element, with zoom and pan, a walkthrough, the message catalog,
 problem markers and the path a saga instance took. Angular apps get a wrapper with signal inputs and outputs.
-It draws what the editor, the exports and the VS Code preview draw, from the same `.saga.yaml` files.
+It draws what the editor, the exports and the VS Code preview draw, from the same sagas, held as `.saga.yaml` files or as JSON (a REST endpoint).
 
 ```html
 <ariadne-saga src="/api/sagas/order.saga.yaml"></ariadne-saga>
@@ -34,7 +34,7 @@ defineAriadneSaga(); // <ariadne-saga>; pass another tag name if you like
 
 Importing the package does nothing on a server (no DOM needed), so it is safe in server-side rendering.
 
-Give it a saga in one of two ways:
+Give it a saga, as YAML or JSON (both name the same saga), in one of two ways, or as an object (`diagram`, below):
 
 ```html
 <!-- Fetched by the element -->
@@ -51,8 +51,12 @@ Give the element a height (`ariadne-saga { height: 480px }`); it fills it.
 
 | Attribute / property | Meaning                                                                                                                                      |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src`                | URL of a `.saga.yaml`, fetched with `fetch`.                                                                                                 |
-| `source`             | The saga as YAML text. Wins over `src`.                                                                                                      |
+| `src`                | URL of a saga, fetched with `fetch`: a `.saga.yaml` or a JSON endpoint. JSON or YAML is decided by the content, not by the URL or the type.  |
+| `source`             | The saga as YAML or JSON text. Wins over `src`.                                                                                              |
+| `diagram` †          | The saga as a parsed object, e.g. `await response.json()`; validated like text. Wins over `source` and `src`. Reads back the shown diagram.  |
+| `credentials`        | `fetch`'s credentials mode for `src`: `omit`, `same-origin` or `include` (cookies across origins).                                           |
+| `headers` †          | Request headers of `src`, e.g. `{ Authorization: 'Bearer …' }`. Without an `Accept`, JSON is asked for first.                                |
+| `fetcher` †          | A `fetch` of your own for `src` (gets the URL and the init), e.g. to refresh a token.                                                        |
 | `direction`          | `top-bottom`, `bottom-top`, `left-right` or `right-left`, overriding the file's.                                                             |
 | `theme`              | `light`, `dark` or `auto` (the default: follows `prefers-color-scheme`).                                                                     |
 | `features`           | Opt-in extras, space separated: `walkthrough`, `messages`, `problems`. Each adds a button and a read-only panel.                             |
@@ -64,17 +68,36 @@ Give the element a height (`ariadne-saga { height: 480px }`); it fills it.
 
 † A property, not an attribute.
 
+### A JSON endpoint
+
+An admin frontend usually has a REST API behind authentication (the shape is in
+[the format specification](../../docs/specs/diagram-format.md#rest-shape)):
+
+```js
+const saga = document.getElementById('saga');
+
+// Let the element fetch it, with a token or with cookies
+saga.headers = { Authorization: `Bearer ${token}` }; // or: saga.setAttribute('credentials', 'include')
+saga.src = '/api/sagas/order';
+
+// Or fetch it yourself and hand over the object
+saga.diagram = await (await fetch('/api/sagas/order', { headers })).json();
+```
+
+A 401 or 403 (or any failed status) fires `error` with `kind: 'network'` and the `status`. An `error` of
+`kind: 'invalid'` carries `line` and `column` when the input was text (JSON or YAML), not for `diagram`.
+
 ### Events
 
 All of them bubble and cross the shadow boundary; the data is in `event.detail`.
 
-| Event          | Detail                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------- |
-| `load`         | `{ diagram }`: the saga was read and drawn.                                                                   |
-| `error`        | `{ kind: 'network' \| 'invalid' \| 'version', message, version? }`: nothing is shown.                         |
-| `select`       | `{ selection }`: the state or transition the user picked (with its `node` or `edge`), or `null` when cleared. |
-| `walkthrough`  | `{ steps, path }`: the transitions (ids) and states (ids) of the walkthrough, after each step.                |
-| `pathresolved` | The resolved `path`: `{ transitions, problems, current, finished, stepNumbers, visits, nodes }`.              |
+| Event          | Detail                                                                                                         |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| `load`         | `{ diagram }`: the saga was read and drawn.                                                                    |
+| `error`        | `{ kind: 'network' \| 'invalid' \| 'version', message, version?, status?, line?, column? }`: nothing is shown. |
+| `select`       | `{ selection }`: the state or transition the user picked (with its `node` or `edge`), or `null` when cleared.  |
+| `walkthrough`  | `{ steps, path }`: the transitions (ids) and states (ids) of the walkthrough, after each step.                 |
+| `pathresolved` | The resolved `path`: `{ transitions, problems, current, finished, stepNumbers, visits, nodes }`.               |
 
 ### Loading and errors
 
@@ -170,17 +193,17 @@ export class SagaPage {}
 ```
 
 `provideAriadneViewer()` registers the element once. `url` is loaded with your app's `HttpClient`, so interceptors,
-authentication and base URLs apply (it does not use `fetch`); `source` takes the YAML text. The component works with
+authentication and base URLs apply (it does not use `fetch`); `source` takes the YAML or JSON text, `diagram` a parsed object (it wins), `credentials` (`include` sets `withCredentials`) and `headers` go with the request; `fetcher` has no counterpart, use an interceptor. The component works with
 zoneless change detection, renders nothing on the server, and fills in after hydration. Angular 21 and 22 are
 supported (`@angular/core` and `@angular/common` are peer dependencies, as is `rxjs`).
 
-| Input                                                                                                         | Output               | Data                          |
-| ------------------------------------------------------------------------------------------------------------- | -------------------- | ----------------------------- |
-| `url`, `source`, `direction`, `theme`, `features`, `emphasis`, `selection`, `path`, `showUntaken`, `pathView` | `loaded`             | `{ diagram }`                 |
-|                                                                                                               | `failed`             | `{ kind, message, version? }` |
-|                                                                                                               | `selected`           | `{ selection }`               |
-|                                                                                                               | `walkthroughChanged` | `{ steps, path }`             |
-|                                                                                                               | `pathResolved`       | the resolved path             |
+| Input                                                                                                                                              | Output               | Data                                                   |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------ |
+| `url`, `source`, `diagram`, `credentials`, `headers`, `direction`, `theme`, `features`, `emphasis`, `selection`, `path`, `showUntaken`, `pathView` | `loaded`             | `{ diagram }`                                          |
+|                                                                                                                                                    | `failed`             | `{ kind, message, version?, status?, line?, column? }` |
+|                                                                                                                                                    | `selected`           | `{ selection }`                                        |
+|                                                                                                                                                    | `walkthroughChanged` | `{ steps, path }`                                      |
+|                                                                                                                                                    | `pathResolved`       | the resolved path                                      |
 
 ## Demos
 

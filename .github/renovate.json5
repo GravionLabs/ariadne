@@ -1,6 +1,6 @@
 // Renovate keeps npm packages and GitHub Actions current: a few grouped pull requests a week, gated
 // by CI, merged by a person (no automerge). Ecosystems: npm, GitHub Actions, Dockerfile and compose.yaml, the dev
-// container, .nvmrc and NuGet (*.csproj, the coming dotnet/ folder) through the managers of config:recommended. See docs/adr/0019-dependency-updates-and-supply-chain.md.
+// container, .nvmrc and NuGet (dotnet/: *.csproj, Directory.Packages.props and packages.lock.json) through the managers of config:recommended. See docs/adr/0019-dependency-updates-and-supply-chain.md.
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: [
@@ -18,6 +18,8 @@
   dependencyDashboardTitle: '[PBI] chore: Dependency Dashboard',
   semanticCommitType: 'chore',
   semanticCommitScope: 'deps',
+  // Renovate runs with GH_PAT, so the author is not distinctive: the project view "Dependencies" filters on this label.
+  labels: ['dependencies'],
   // Updates are work like any other: pull requests go into the rolling release branch, not into main
   // (docs/adr/0027-release-branch.md).
   baseBranchPatterns: ['release/next'],
@@ -29,6 +31,9 @@
   lockFileMaintenance: { enabled: true, schedule: ['before 6am on the first day of the month'] },
   // Raise the range in package.json to the new version instead of leaving it as it was.
   rangeStrategy: 'bump',
+  // Installed APM skills (.agents/skills) carry template manifests that are not dependencies of this repository.
+  // Setting ignorePaths replaces the preset default, so the node_modules entry is repeated.
+  ignorePaths: ['**/node_modules/**', '.agents/skills/**'],
   postUpdateOptions: ['pnpmDedupe'],
   // A week's updates are opened, not held back on the dashboard (the defaults are 2 per hour and 10 open).
   prHourlyLimit: 10,
@@ -39,7 +44,7 @@
   // (`minimumReleaseAge` in pnpm-workspace.yaml), so a younger fix needs an entry in `minimumReleaseAgeExclude`.
   vulnerabilityAlerts: {
     enabled: true,
-    labels: ['security'],
+    labels: ['dependencies', 'security'],
     schedule: ['at any time'],
   },
   osvVulnerabilityAlerts: true,
@@ -130,6 +135,12 @@
       matchPackageNames: ['@types/{/,}**', '!@types/vscode'],
     },
     { groupName: 'github-actions', matchManagers: ['github-actions'] },
+    { groupName: 'nuget', matchManagers: ['nuget'], matchUpdateTypes: ['minor', 'patch'] },
+    {
+      // MassTransit 9 is under a commercial license: no package of dotnet/ may select it (ADR 0031, section 2).
+      matchPackageNames: ['MassTransit'],
+      allowedVersions: '<9.0.0',
+    },
     {
       // The shared workflows and actions of the organisation follow the moving major tag `@v1` (ADR 0019):
       // no SHA pin, but a pull request when `v2` appears.

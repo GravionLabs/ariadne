@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { DiagramStore } from '../model/diagram-store';
 import { DiagramDocument } from '../storage/diagram-document';
 import { FileStorage } from '../storage/file-storage';
+import { serializeDiagramJson } from '@ariadne/core';
 import { DiagramExport, exportFileName } from './diagram-export';
 
 describe('exportFileName', () => {
@@ -12,6 +13,7 @@ describe('exportFileName', () => {
     expect(exportFileName('.saga.yaml', 'svg')).toBe('diagram.svg');
     expect(exportFileName('order.saga.yaml', 'mmd')).toBe('order.mmd');
     expect(exportFileName('order.saga.yaml', 'docs.md')).toBe('order.docs.md');
+    expect(exportFileName('order.saga.yaml', 'saga.json')).toBe('order.saga.json');
   });
 });
 
@@ -81,6 +83,24 @@ describe('DiagramExport', () => {
     expect(await exporter.copyMermaid()).toBe(true);
     expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^stateDiagram-v2\n/));
     expect(doc.notice()).toBe('Mermaid copied to clipboard.');
+  });
+
+  it('saves the JSON of @ariadne/core through FileStorage', async () => {
+    expect(await exporter.exportJson()).toBe(true);
+    const [blob, name] = exportFile.mock.calls[0];
+    expect(name).toBe('untitled.saga.json');
+    expect(blob.type).toBe('application/json');
+    const text = await blob.text();
+    expect(text).toBe(serializeDiagramJson(TestBed.inject(DiagramStore).diagram()));
+    expect(text.startsWith('{\n  "version": 3,')).toBe(true);
+  });
+
+  it('copies JSON to the clipboard and says so', async () => {
+    const writeText = vi.fn(async () => undefined);
+    stubClipboard({ writeText });
+    expect(await exporter.copyJson()).toBe(true);
+    expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^\{\n {2}"version": 3,/));
+    expect(doc.notice()).toBe('JSON copied to clipboard.');
   });
 
   it('shows an error when the clipboard refuses', async () => {

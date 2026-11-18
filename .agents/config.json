@@ -10,5 +10,17 @@
       "docs/specs/saga.schema.json"
     ],
     "skipLabels": ["skip-adr"]
+  },
+  "deliver": {
+    "protectedPaths": [
+      ".github/",
+      ".agents/",
+      ".claude/",
+      "package.json",
+      "pnpm-workspace.yaml",
+      "Cargo.toml",
+      "pyproject.toml",
+      "go.mod"
+    ]
   }
 }

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCSharpParser } from '@ariadne/masstransit';
@@ -10,6 +10,16 @@ const io: Io = {
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, data);
   },
+  readStdin: async () => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+    return Buffer.concat(chunks).toString('utf8');
+  },
+  exists: (path) =>
+    access(path).then(
+      () => true,
+      () => false,
+    ),
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),
   // The build copies the fonts next to this file, like the grammar and the runtime.

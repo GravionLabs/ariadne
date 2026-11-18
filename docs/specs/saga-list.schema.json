@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/GravionLabs/ariadne/main/docs/specs/saga-list.schema.json",
+  "title": "Ariadne saga list",
+  "description": "The list of sagas a REST API serves (ADR 0028, docs/specs/diagram-format.md). It carries no diagram content: a consumer follows `link` to the saga resource, which is a document of saga.schema.json.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["name", "title", "link"],
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "description": "The identifier used in the URL."
+      },
+      "title": { "type": "string", "description": "The display text." },
+      "link": {
+        "type": "string",
+        "minLength": 1,
+        "description": "The URL of the saga resource, absolute or relative to the list."
+      }
+    }
+  }
+}

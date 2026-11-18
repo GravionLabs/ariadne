@@ -282,6 +282,22 @@ describe('parsePathSteps limits', () => {
     expect(parsePathSteps(text)).toEqual({ error: 'The path is too long: up to 1 MB of text.' });
   });
 
+  it('reads a path as a REST API returns it, indented JSON', () => {
+    const text = JSON.stringify([{ event: 'Go', at: '2026-01-01T00:00:00Z' }, 'Stop'], null, 2);
+    expect(parsePathSteps(text)).toEqual({
+      steps: [{ event: 'Go', at: '2026-01-01T00:00:00Z' }, { event: 'Stop' }],
+    });
+  });
+
+  it('applies the same limits to JSON and YAML', () => {
+    const items = Array.from({ length: PATH_LIMITS.maxSteps + 1 }, () => 'Go');
+    const json = JSON.stringify(items);
+    const yaml = items.map((i) => `- ${i}`).join('\n');
+    expect(parsePathSteps(json)).toEqual(parsePathSteps(yaml));
+    const big = `[${'"x",'.repeat(PATH_LIMITS.maxBytes / 4)}"x"]`;
+    expect(parsePathSteps(big)).toEqual(parsePathSteps(`- ${'x'.repeat(PATH_LIMITS.maxBytes)}`));
+  });
+
   it('answers deep nesting with an error, not an exception', () => {
     const result = parsePathSteps('['.repeat(10_000) + ']'.repeat(10_000));
     expect('error' in result).toBe(true);

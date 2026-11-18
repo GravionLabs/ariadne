@@ -2677,6 +2677,9 @@ edges:
     const canvas = fixture.debugElement.query(By.directive(FCanvasComponent))
       .componentInstance as FCanvasComponent;
     const fit = vi.spyOn(canvas, 'fitToScreen');
+    // The one-time fit of the first render (not animated) can land after setup() under load; only
+    // the animated fits of a layout change are counted.
+    const fits = () => fit.mock.calls.filter(([, animated]) => animated !== false).length;
     /** Lets the layout finish and the deferred fit run. */
     const flush = async () => {
       await settle();
@@ -2685,15 +2688,15 @@ edges:
 
     store.setDirection('left-right');
     await flush();
-    expect(fit).toHaveBeenCalledTimes(1);
+    expect(fits()).toBe(1);
 
     store.undo();
     await flush();
-    expect(fit).toHaveBeenCalledTimes(2);
+    expect(fits()).toBe(2);
 
     store.appendNode(store.nodes()[0].id, 'state');
     await flush();
-    expect(fit).toHaveBeenCalledTimes(2);
+    expect(fits()).toBe(2);
   });
 
   it('offers to add the initial state when the diagram is empty', async () => {

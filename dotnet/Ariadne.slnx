@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GravionLabs.Ariadne.MassTransit/GravionLabs.Ariadne.MassTransit.csproj" />
+    <Project Path="src/GravionLabs.Ariadne.MassTransit.Yaml/GravionLabs.Ariadne.MassTransit.Yaml.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GravionLabs.Ariadne.MassTransit.Tests/GravionLabs.Ariadne.MassTransit.Tests.csproj" />
+    <Project Path="tests/GravionLabs.Ariadne.MassTransit.Yaml.Tests/GravionLabs.Ariadne.MassTransit.Yaml.Tests.csproj" />
+    <Project Path="tests/GravionLabs.Ariadne.MassTransit.Samples/GravionLabs.Ariadne.MassTransit.Samples.csproj" />
+  </Folder>
+</Solution>

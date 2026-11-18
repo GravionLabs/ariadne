@@ -51,5 +51,13 @@
         </button>
       }
     </div>
+    <div role="group" class="group" aria-label="JSON">
+      <header aria-hidden="true">JSON</header>
+      @for (entry of json; track entry.label) {
+        <button type="button" role="menuitem" class="item" (click)="pick(entry)">
+          <strong>{{ entry.label }}</strong><small>{{ entry.hint }}</small>
+        </button>
+      }
+    </div>
   </section>
 </ng-template>

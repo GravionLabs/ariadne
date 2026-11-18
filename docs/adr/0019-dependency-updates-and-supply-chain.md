@@ -139,17 +139,18 @@ The review of November 2026, with the repository public and npm, Marketplace and
 **Settings that need the owner's rights** (state of 2026-11-14 read with `gh api`, final state wanted):
 
 - [x] Secret scanning: enabled. [x] Push protection: enabled.
-- [ ] Scan the history once for secrets (Security > Secret scanning) and revoke every finding.
+- [x] Scan the history once for secrets (Security > Secret scanning) and revoke every finding. Checked 2026-11-15: no open alert.
 - [x] Dependabot alerts: enabled. [x] Dependabot security updates: disabled (final state).
 - [x] Private vulnerability reporting: enabled.
 - [x] Code scanning alert 31 (`actions/unpinned-tag`): dismissed as "won't fix" with the reason above.
-- [ ] Ruleset `main` (id 24478507): add the required checks `Analyze (javascript-typescript)`, `Analyze (actions)` and
+- [x] Ruleset `main` (id 24478507): add the required checks `Analyze (javascript-typescript)`, `Analyze (actions)` and
       `Dependency review` next to `Lint, build, test` and `pr-checks / PR checks`. Add them once the workflows have run on
       the release branch.
-- [ ] Renovate dry run (pending): run the `renovate` workflow by hand (`workflow_dispatch`, input `dry-run`) and confirm the
+- [x] Renovate dry run (2026-11-15): run the `renovate` workflow by hand (`workflow_dispatch`, input `dry-run`) and confirm the
       detected managers: npm, github-actions, dockerfile, docker-compose, devcontainer, `.nvmrc`, nuget and the two custom
-      managers.
-- [ ] `RENOVATE_TOKEN`: check scopes (contents, pull requests and workflows write, issues write for the dashboard, on
+      managers. Result: all detected except nuget, which has no files yet (no `.csproj`); it is found once the .NET
+      exporter lands.
+- [x] `RENOVATE_TOKEN` (checked 2026-11-15 by the owner; the expiry date is not recorded here): check scopes (contents, pull requests and workflows write, issues write for the dashboard, on
       this repository only) and the expiry; prefer a fine-grained token that expires within a year, and note the
       expiry date here (not the value). Not readable through the API.
 
@@ -169,6 +170,12 @@ pin was moved by nobody (Renovate left ci alone) and fell dozens of commits behi
 arrive without a pull request, and a breaking change of ci becomes `v2`, which Renovate proposes (`pinDigests: false`
 for `GravionLabs/ci`). The trust is the same as for the repository itself: the same organisation owns both.
 Third-party actions stay pinned to a SHA.
+
+### Installed APM skills are not dependencies (#546)
+
+The templates under `.agents/skills/**` (for example a `package.json` with `zod` 3) belong to installed APM skills,
+not to this repository. Renovate ignores `.agents/skills/**` (`ignorePaths`), and a Dependabot alert on such a file is
+dismissed as "not used". The installed files are never edited by hand; a skill is updated through `apm`.
 
 ### The configuration is checked
 

@@ -11,7 +11,12 @@ import {
   EventInfo,
   DIRECTIONS,
 } from './diagram';
-import { DiagramFormatError, parseDiagram, serializeDiagram } from './diagram-yaml';
+import {
+  DiagramFormatError,
+  parseDiagram,
+  serializeDiagram,
+  serializeDiagramJson,
+} from './diagram-yaml';
 import { parsePathSteps } from './path';
 
 const RUNS = { numRuns: 300 };
@@ -255,6 +260,40 @@ describe('diagram file, property-based', () => {
   });
 });
 
+describe('diagram file as JSON, property-based', () => {
+  it('reads back what it wrote', () => {
+    fc.assert(
+      fc.property(diagrams, (diagram) => {
+        expect(parseDiagram(serializeDiagramJson(diagram))).toEqual(diagram);
+      }),
+      RUNS,
+    );
+  });
+
+  it('writes the same text again after reading it', () => {
+    fc.assert(
+      fc.property(diagrams, (diagram) => {
+        const text = serializeDiagramJson(diagram);
+        expect(serializeDiagramJson(parseDiagram(text))).toBe(text);
+      }),
+      RUNS,
+    );
+  });
+
+  it('gives the same model across containers: YAML to model to JSON to model', () => {
+    fc.assert(
+      fc.property(diagrams, (diagram) => {
+        const fromYaml = parseDiagram(serializeDiagram(diagram));
+        expect(parseDiagram(serializeDiagramJson(fromYaml))).toEqual(fromYaml);
+        expect(parseDiagram(serializeDiagram(parseDiagram(serializeDiagramJson(diagram))))).toEqual(
+          diagram,
+        );
+      }),
+      RUNS,
+    );
+  });
+});
+
 /** The reader's whole contract for bad input: a diagram, or a format error. */
 function readsOrFormatError(text: string): void {
   try {
@@ -280,7 +319,7 @@ const replacements: fc.Arbitrary<unknown> = fc.oneof(
   }),
 );
 
-const validTexts = diagrams.map(serializeDiagram);
+const validTexts = diagrams.map((d) => serializeDiagram(d));
 
 /** Replaces one value, picked by `pick` (0..1) among those at most `maxDepth` deep, in a parsed file. */
 function replaceValue(

@@ -1,0 +1,34 @@
+<Project>
+  <!-- Shared by every project of dotnet/ (ADR 0031). No project file holds a version: it is passed at pack time
+       (the pack command sets the Version property). -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- NuGet audit stays a visible warning: Microsoft.Build.Tasks.Git (Source Link, build time only, never in a package)
+         has an advisory (GHSA-23fw-v26w-5fgq) without a fixed release. Renovate raises the pull request once there is one. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1902</WarningsNotAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <!-- Locked restore (packages.lock.json); CI restores in locked mode. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- Source Link: debuggers fetch the source of a package from GitHub. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Authors>GravionLabs</Authors>
+    <Company>GravionLabs</Company>
+    <Copyright>Copyright (c) 2026 Jérôme Kaufmann</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/GravionLabs/ariadne</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/GravionLabs/ariadne</PackageProjectUrl>
+  </PropertyGroup>
+</Project>

@@ -1,3 +1,4 @@
+import { parse, stringify } from 'yaml';
 import { Diagram } from './diagram';
 import {
   DIAGRAM_LIMITS,
@@ -7,6 +8,9 @@ import {
   parseDiagram,
   parseDiagramWithNotes,
   serializeDiagram,
+  serializeDiagramJson,
+  validateDiagram,
+  validateDiagramWithNotes,
 } from './diagram-yaml';
 
 const sample: Diagram = {
@@ -38,6 +42,24 @@ const sample: Diagram = {
     { id: 'edge-2', source: 'state-1', target: 'end-1', kind: 'forward' },
   ],
 };
+
+describe('YAML flow mapping', () => {
+  it('still parses', () => {
+    const d = parseDiagram('{version: 3, nodes: [], edges: []}');
+    expect(d.nodes).toEqual([]);
+    expect(d.edges).toEqual([]);
+  });
+
+  it('reports a syntax error as YAML', () => {
+    expect(() => parseDiagram('{version: 3, nodes: [}')).toThrow(/^Not valid YAML/);
+  });
+
+  it('reports JSON syntax errors as JSON', () => {
+    expect(() => parseDiagram('{"version": 3 "nodes": []}')).toThrow(/^Not valid JSON/);
+    expect(() => parseDiagram('{"version": 3,}')).toThrow(/^Not valid JSON/);
+    expect(() => parseDiagram('{"version": "3}')).toThrow(/^Not valid JSON/);
+  });
+});
 
 describe('diagram YAML', () => {
   it('round-trips a diagram', () => {
@@ -107,7 +129,7 @@ describe('diagram YAML', () => {
     const diagram: Diagram = { ...sample, spacing };
     expect(parseDiagram(serializeDiagram(diagram))).toEqual(diagram);
     expect(serializeDiagram(diagram)).toMatch(
-      new RegExp(`^direction: .*\\nspacing: ${spacing}$`, 'm'),
+      new RegExp(`^direction: .*\nspacing: ${spacing}$`, 'm'),
     );
   });
 
@@ -911,5 +933,166 @@ describe('routing slips', () => {
     ],
   ])('needs %s', (_what, text, error) => {
     expect(() => parseDiagram(text)).toThrow(error);
+  });
+});
+
+describe('diagram as JSON (ADR 0028)', () => {
+  const diagram = parseDiagram(`version: 3
+name: Order
+saga:
+  class: OrderStateMachine
+nodes:
+  - id: a
+    type: start
+    name: Initial
+  - id: b
+    type: state
+    name: Working
+    activities:
+      - command: Charge
+edges:
+  - id: e1
+    source: a
+    target: b
+    event: Started
+`);
+
+  it('writes keys in file order, two spaces, a trailing newline, unset fields omitted', () => {
+    expect(serializeDiagramJson(diagram)).toBe(`{
+  "version": 3,
+  "name": "Order",
+  "saga": {
+    "class": "OrderStateMachine"
+  },
+  "direction": "top-bottom",
+  "nodes": [
+    {
+      "id": "a",
+      "type": "start",
+      "name": "Initial"
+    },
+    {
+      "id": "b",
+      "type": "state",
+      "name": "Working",
+      "activities": [
+        {
+          "command": "Charge"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "a",
+      "target": "b",
+      "kind": "forward",
+      "event": "Started"
+    }
+  ]
+}
+`);
+  });
+
+  it('is the format option of serializeDiagram, and leaves the YAML writer alone', () => {
+    expect(serializeDiagram(diagram, { format: 'json' })).toBe(serializeDiagramJson(diagram));
+    expect(serializeDiagram(diagram)).toBe(serializeDiagram(diagram, { format: 'yaml' }));
+    expect(serializeDiagram(diagram).startsWith('version: 3\nname: Order\n')).toBe(true);
+  });
+
+  it('is written byte for byte identically after a read', () => {
+    const text = serializeDiagramJson(diagram);
+    expect(serializeDiagramJson(parseDiagram(text))).toBe(text);
+  });
+
+  it('reads JSON of versions 1 and 2 with the same notes as YAML', () => {
+    const v2 = {
+      version: 2,
+      nodes: [
+        { id: 'a', type: 'start', name: 'I' },
+        { id: 'b', type: 'state', name: 'W' },
+      ],
+      edges: [{ id: 'e', source: 'a', target: 'b', event: 'Go', activities: [{ command: 'Do' }] }],
+    };
+    const fromJson = parseDiagramWithNotes(JSON.stringify(v2));
+    expect(fromJson.notes).toHaveLength(1);
+    expect(fromJson.diagram.nodes[1].activities).toEqual([{ kind: 'command', name: 'Do' }]);
+    expect(parseDiagramWithNotes(stringify(v2))).toEqual(fromJson);
+    const v1 = { version: 1, nodes: [{ id: 'a', type: 'step', name: 'S' }] };
+    expect(parseDiagram(JSON.stringify(v1)).nodes[0].type).toBe('state');
+  });
+
+  it('gives the same errors as YAML', () => {
+    const bad = { version: 3, nodes: [{ id: 'a', type: 'nope', name: 'x' }] };
+    expect(() => parseDiagram(JSON.stringify(bad))).toThrow(
+      'nodes[0].type must be one of start, end, state, any, join',
+    );
+    expect(() => validateDiagram(bad)).toThrow(DiagramFormatError);
+    expect(() => parseDiagram('{"version": 9}')).toThrow(DiagramVersionError);
+  });
+
+  it('refuses JSON over the limits like YAML', () => {
+    const nodes = Array.from({ length: DIAGRAM_LIMITS.maxNodes + 1 }, (_, i) => ({
+      id: `n${i}`,
+      type: 'state',
+      name: 'n',
+    }));
+    expect(() => parseDiagram(JSON.stringify({ version: 3, nodes }))).toThrow(
+      /5001 nodes; Ariadne reads diagrams with up to 5000/,
+    );
+    expect(() => validateDiagram({ version: 3, nodes })).toThrow(/5001 nodes/);
+    expect(() => parseDiagram(`{"version":3,"name":"${'x'.repeat(5_000_000)}"}`)).toThrow(
+      /Ariadne reads diagrams up to 5 MB/,
+    );
+  });
+
+  it('refuses text that is neither JSON nor YAML', () => {
+    expect(() => parseDiagram('{"version": 3,')).toThrow(DiagramFormatError);
+  });
+
+  it('validates a parsed object without text, as response.json() gives it', () => {
+    expect(validateDiagram(JSON.parse(serializeDiagramJson(diagram)))).toEqual(diagram);
+    expect(validateDiagramWithNotes({ version: 3 }).notes).toEqual([]);
+    expect(() => validateDiagram(null)).toThrow('file must be a mapping');
+    expect(() => validateDiagram([])).toThrow(DiagramFormatError);
+  });
+
+  it('accepts a top-level $schema in JSON and YAML and does not keep it', () => {
+    const url = 'https://example.org/saga.schema.json';
+    expect(parseDiagram(`{"$schema":"${url}","version":3}`)).toEqual(parseDiagram('version: 3'));
+    expect(parseDiagram(`$schema: ${url}\nversion: 3\n`)).toEqual(parseDiagram('version: 3'));
+    expect(serializeDiagramJson(parseDiagram(`{"$schema":"${url}","version":3}`))).not.toContain(
+      '$schema',
+    );
+  });
+});
+
+describe('every sample reads the same from YAML and from JSON', () => {
+  const samples = {
+    ...import.meta.glob('../../../docs/examples/*.saga.yaml', {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    }),
+    ...import.meta.glob('../../../samples/**/*.saga.yaml', {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    }),
+  } as Record<string, string>;
+
+  it('finds the samples', () => {
+    expect(Object.keys(samples).length).toBeGreaterThanOrEqual(7);
+  });
+
+  it.each(Object.entries(samples))('%s', (_path, yaml) => {
+    const fromYaml = parseDiagramWithNotes(yaml);
+    // The file as JSON, version and all, and the model as JSON.
+    expect(parseDiagramWithNotes(JSON.stringify(parse(yaml), null, 2))).toEqual(fromYaml);
+    const json = serializeDiagramJson(fromYaml.diagram);
+    expect(parseDiagram(json)).toEqual(fromYaml.diagram);
+    expect(parseDiagram(serializeDiagram(parseDiagram(json)))).toEqual(fromYaml.diagram);
+    expect(validateDiagramWithNotes(JSON.parse(json)).diagram).toEqual(fromYaml.diagram);
   });
 });
