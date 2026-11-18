@@ -43,7 +43,7 @@ allowBuilds:
 # 7 days, in minutes: a younger release reaches neither the lockfile nor an install (GravionLabs/ci#239).
 minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
-  # In the lockfile before the 7 days applied and younger than that on 2026-11-18; remove after 2026-11-20.
+  # In the lockfile before the 7 days applied and younger than that on 2026-11-18; remove after 2026-11-20 (glob and minimatch: after 2026-11-19).
   - '@angular-devkit/architect@0.2202.7'
   - '@angular-devkit/core@22.2.7'
   - '@angular-devkit/schematics@22.2.7'
@@ -140,3 +140,5 @@ minimumReleaseAgeExclude:
   - 'prettier@3.10.1'
   - 'rolldown@1.2.19'
   - 'rollup@4.68.3'
+  - 'glob@14.0.6'
+  - 'minimatch@11.0.8'
