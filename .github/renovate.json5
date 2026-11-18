@@ -7,12 +7,14 @@
     'config:recommended',
     ':semanticCommits',
     ':dependencyDashboard',
-    // Every action in .github/workflows is pinned to a commit SHA; Renovate moves SHA and comment together.
-    'helpers:pinGitHubActionDigests',
+    // The shared preset of GravionLabs: no pull request for a release younger than 7 days (`internalChecksFilter:
+    // 'strict'`; security fixes exempt), and every action in .github/workflows is pinned to a commit SHA, which
+    // Renovate moves together with its comment (ADR 0019).
+    'github>GravionLabs/ci',
   ],
   // `chore(deps): …` keeps dependency updates out of the release notes (ADR 0015).
   // The issue titles of the repository start with their level (CONTRIBUTING.md): the dashboard is a PBI.
-  dependencyDashboard: { title: '[PBI] chore: Dependency Dashboard' },
+  dependencyDashboard: { enabled: true, title: '[PBI] chore: Dependency Dashboard' },
   semanticCommitType: 'chore',
   semanticCommitScope: 'deps',
   // Renovate runs with GH_PAT, so the author is not distinctive: the project view "Dependencies" filters on this label.
@@ -37,18 +39,14 @@
   prConcurrentLimit: 20,
   // A known vulnerability gets a pull request at once, outside the schedule. This also covers what
   // a separate `pnpm audit` job would.
-  // A security fix is not held back by the minimum release age below (pnpm's own one day still applies on install).
+  // The preset exempts a security fix from the minimum release age; on install pnpm's own 7 days still apply
+  // (`minimumReleaseAge` in pnpm-workspace.yaml), so a younger fix needs an entry in `minimumReleaseAgeExclude`.
   vulnerabilityAlerts: {
     enabled: true,
     labels: ['dependencies', 'security'],
     schedule: ['at any time'],
-    minimumReleaseAge: null,
   },
   osvVulnerabilityAlerts: true,
-  // No pull request for a release younger than three days: a compromised release is usually pulled within hours or
-  // days (ADR 0019). `strict` keeps Renovate from proposing the newest version while it is still too young.
-  minimumReleaseAge: '3 days',
-  internalChecksFilter: 'strict',
   // corepack is installed with `npm install -g corepack@<version>` in both Dockerfiles (Node.js 26 images do not
   // bundle it, ADR 0019); the Dockerfile manager does not see that, so the pin sits in an annotated ARG.
   customManagers: [
