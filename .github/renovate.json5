@@ -14,8 +14,7 @@
   ],
   // `chore(deps): …` keeps dependency updates out of the release notes (ADR 0015).
   // The issue titles of the repository start with their level (CONTRIBUTING.md): the dashboard is a PBI.
-  dependencyDashboard: true,
-  dependencyDashboardTitle: '[PBI] chore: Dependency Dashboard',
+  dependencyDashboard: { enabled: true, title: '[PBI] chore: Dependency Dashboard' },
   semanticCommitType: 'chore',
   semanticCommitScope: 'deps',
   // Renovate runs with GH_PAT, so the author is not distinctive: the project view "Dependencies" filters on this label.
