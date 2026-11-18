@@ -20,7 +20,8 @@ jobs:
     permissions:
       contents: read
       issues: read
-      pull-requests: read
+      # write: the retarget job of GravionLabs/ci (v1.14.0) moves work-branch PRs from main to release/next.
+      pull-requests: write
     uses: GravionLabs/ci/.github/workflows/pr-checks.yml@v1
     with:
       spec: false
