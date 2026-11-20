@@ -137,7 +137,6 @@ minimumReleaseAgeExclude:
   - 'hono@4.13.18'
   - 'jsdom@31.0.1'
   - 'node-releases@2.0.64'
-  - 'prettier@3.10.1'
   - 'rolldown@1.2.19'
   - 'rollup@4.68.3'
   - 'glob@14.0.6'

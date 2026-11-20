@@ -83,7 +83,7 @@ describe('the images of the user guide', () => {
     for (const page of PAGES) {
       const text = readSource(page);
       for (const m of text.matchAll(/<picture>([\s\S]*?)<\/picture>/g)) {
-        // Prettier may put the attributes on lines of their own: only what is there matters.
+        // The formatter may put the attributes on lines of their own: only what is there matters.
         expect(m[1], page).toMatch(
           /<source[^>]*media="\(prefers-color-scheme: dark\)"[^>]*srcset="[^"]+-dark\.png"/,
         );
