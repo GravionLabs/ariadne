@@ -1,0 +1,37 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "sortPackageJson": false,
+  // Every template, Angular's or not, as Prettier's `*.html` override with the angular parser did.
+  "associations": [{ "files": ["**/*.html"], "language": "angular-html" }],
+  "ignorePatterns": [
+    "**/dist",
+    "**/coverage",
+    "**/node_modules",
+    ".angular",
+    "out-tsc",
+    "dist-test",
+    ".vscode-test",
+    "vsix",
+    "test-results",
+    "pnpm-lock.yaml",
+    "CHANGELOG.md",
+    // Prettier never formatted TOML (cliff.toml).
+    "**/*.toml",
+    // What the tools write in the sample library (see samples/library/README.md): not formatted by hand.
+    "samples/library/*/*.saga.yaml",
+    "samples/library/*/*.docs.md",
+    "samples/library/*/generated",
+    // Installed skills and agent settings, owned by their tools.
+    ".claude/**",
+    ".agents/**",
+    "apm.lock.yaml",
+    ".worktrees",
+    // Written by the JSON writer; a test keeps it byte-for-byte equal to the YAML example.
+    "docs/examples/*.saga.json",
+    // The .NET part has its own tools (dotnet format, see CONTRIBUTING.md).
+    "dotnet"
+  ]
+}

@@ -54,7 +54,7 @@ api.src = sagaLink; // fetched by the element: JSON, decided by the content
 
 In Angular, `AriadneSaga` loads the URL with your `HttpClient`, so your interceptors and base URLs apply:
 
-<!-- prettier-ignore -->
+<!-- oxfmt-ignore -->
 ```html
 <ariadne-saga
   url="order.saga.json"

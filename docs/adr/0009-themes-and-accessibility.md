@@ -25,7 +25,7 @@ a screen reader.
 4. **Keyboard and screen readers** rely on f-flow's `withA11y()` layer (one tab stop on the diagram;
    arrows, `Ctrl`+arrows, `Home`/`End`, `Ctrl+A`, `Esc`, `Delete`, `+`/`-`/`0`), which also announces
    selection through a live region. Ariadne adds names (`Decision: Check stock`, `Transition from A to
-B on E`) and a visible focus ring on the flow. Documented in the README.
+   B on E`) and a visible focus ring on the flow. Documented in the README.
 5. **`prefers-reduced-motion`** turns off the animated fit and centring.
 6. **axe-core** runs in the editor specs (jsdom) and fails on serious or critical findings. jsdom has
    no layout, so the colour-contrast rule is off there; contrast is checked by hand (3).

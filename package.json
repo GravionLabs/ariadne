@@ -11,14 +11,14 @@
     "perf": "pnpm -r --workspace-concurrency=1 --if-present run perf",
     "test:ci": "pnpm -r --if-present run test:ci",
     "lint": "eslint . && pnpm typecheck",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "typecheck": "pnpm -r --if-present run typecheck"
   },
   "devDependencies": {
     "angular-eslint": "^22.6.0",
     "eslint": "^10.14.0",
-    "prettier": "^3.10.1",
+    "oxfmt": "0.78.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.2"
   }

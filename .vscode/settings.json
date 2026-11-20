@@ -1,0 +1,7 @@
+{
+  // oxfmt formats on save with the root .oxfmtrc.json (pnpm format does the same from the command line).
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.formatOnSave": true,
+  // The .NET part has its own formatter (dotnet format, see CONTRIBUTING.md).
+  "[csharp]": { "editor.defaultFormatter": "ms-dotnettools.csharp" }
+}
