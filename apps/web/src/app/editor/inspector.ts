@@ -834,8 +834,7 @@ function optional(event: Event): string | undefined {
 
 function withoutUndefinedDelay(timer: Timer): Timer {
   if (timer.delay === undefined) {
-    const { delay, ...rest } = timer;
-    void delay;
+    const { delay: _delay, ...rest } = timer;
     return rest;
   }
   return timer;

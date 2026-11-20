@@ -77,11 +77,11 @@ describe('NoFileStorage', () => {
   it('refuses to read or write files', async () => {
     const storage = new NoFileStorage();
     await expect(storage.open()).rejects.toThrow('handled by the host');
-    await expect(storage.save()).rejects.toThrow();
-    await expect(storage.saveAs()).rejects.toThrow();
-    await expect(storage.openFiles()).rejects.toThrow();
-    await expect(storage.saveFiles()).rejects.toThrow();
-    await expect(storage.exportFile()).rejects.toThrow();
+    await expect(storage.save()).rejects.toThrow('handled by the host');
+    await expect(storage.saveAs()).rejects.toThrow('handled by the host');
+    await expect(storage.openFiles()).rejects.toThrow('handled by the host');
+    await expect(storage.saveFiles()).rejects.toThrow('handled by the host');
+    await expect(storage.exportFile()).rejects.toThrow('handled by the host');
   });
 });
 

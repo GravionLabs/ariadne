@@ -345,7 +345,9 @@ export function generateSaga(diagram: Diagram): GenerateResult {
     const correlation = eventInfo.get(e)?.correlation;
     const at = from ? ` // from ${comment(from.join(', '))}` : '';
     if (correlation && correlation !== DEFAULT_CORRELATION) {
-      const call = /^CorrelateBy/.test(correlation) ? correlation : `CorrelateBy(${correlation})`;
+      const call = correlation.startsWith('CorrelateBy')
+        ? correlation
+        : `CorrelateBy(${correlation})`;
       body.push(`${ctor}Event(() => ${eventProperty.get(e)}, x => x.${call});${at}`);
     } else {
       body.push(`${ctor}Event(() => ${eventProperty.get(e)});${at}`);

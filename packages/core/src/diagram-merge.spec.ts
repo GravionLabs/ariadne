@@ -15,6 +15,7 @@ const cases = rawCases as Case[];
 
 describe('mergeDiagram: the shared cases of docs/specs/diagram-merge.md', () => {
   for (const c of cases) {
+    // oxlint-disable-next-line vitest/valid-title -- `name` is a string (Case); the rule does not read types
     it(c.name, () => {
       const existing = validateDiagramWithNotes(c.existing);
       const { diagram, removed } = mergeDiagram(existing.diagram, validateDiagram(c.incoming), {

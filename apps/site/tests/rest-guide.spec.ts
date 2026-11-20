@@ -10,6 +10,7 @@ const SOURCES = [
   'packages/viewer/demo/index.html',
   'packages/viewer/src/saga-element.spec.ts',
   'apps/viewer-demo/src/app/app.ts',
+  'apps/viewer-demo/src/app/app.html',
   'apps/cli/README.md',
   'docs/specs/diagram-format.md',
   'docs/examples/order.saga.json',

@@ -57,7 +57,7 @@ Other commands:
 
 ```sh
 pnpm test            # unit tests (Vitest)
-pnpm lint            # ESLint
+pnpm lint            # oxlint, ESLint for the templates, the type check
 pnpm format:check    # oxfmt (pnpm format fixes)
 pnpm build           # production build in apps/web/dist/
 ```

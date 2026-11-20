@@ -10,18 +10,7 @@ import { FFlowModule } from '@foblex/flow';
   selector: 'app-inline-edit',
   imports: [FFlowModule],
   host: { '(pointerdown)': '$event.stopPropagation()', '(dblclick)': '$event.stopPropagation()' },
-  template: `<input
-    #field
-    fDragBlocker
-    type="text"
-    autocomplete="off"
-    [attr.aria-label]="label()"
-    [attr.list]="list() || null"
-    [placeholder]="placeholder()"
-    [value]="value()"
-    (keydown)="onKeydown($event)"
-    (blur)="commit()"
-  />`,
+  templateUrl: './inline-edit.html',
   styles: `
     :host {
       display: block;

@@ -84,6 +84,7 @@
         '@angular-devkit/{/,}**',
         '@schematics/angular',
         'angular-eslint',
+        '@angular-eslint/{/,}**',
         'zone.js',
         'typescript',
       ],
@@ -115,6 +116,13 @@
       matchPackageNames: ['tree-sitter-c-sharp', 'web-tree-sitter'],
     },
     {
+      // Pinned to exact versions and raised together: the Angular rules run as an alpha JS plugin of
+      // oxlint, and `pnpm lint` (the lint probe) shows when an update stops reporting one (ADR 0006 of
+      // GravionLabs/skills).
+      groupName: 'oxc',
+      matchPackageNames: ['oxlint', 'oxlint-tsgolint', 'oxfmt'],
+    },
+    {
       groupName: 'build and test tooling',
       matchPackageNames: [
         'vitest',
@@ -123,7 +131,6 @@
         'rollup-plugin-dts',
         'eslint',
         'typescript-eslint',
-        'oxfmt',
         'jsdom',
         'axe-core',
         'fast-check',

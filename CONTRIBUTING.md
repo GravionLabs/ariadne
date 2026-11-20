@@ -43,14 +43,14 @@ The [README](README.md#project-layout) describes each of them. `dotnet/` is not 
 
 Run these from the root; they run across the workspace.
 
-| Command          | What it does                                |
-| ---------------- | ------------------------------------------- |
-| `pnpm build`     | builds every package and app                |
-| `pnpm test`      | unit tests of every package and app         |
-| `pnpm lint`      | ESLint, then `pnpm typecheck`               |
-| `pnpm typecheck` | TypeScript in every package, specs included |
-| `pnpm format`    | oxfmt, fixing files (`format:check` checks) |
-| `pnpm start`     | the web app on http://localhost:4200        |
+| Command          | What it does                                                      |
+| ---------------- | ----------------------------------------------------------------- |
+| `pnpm build`     | builds every package and app                                      |
+| `pnpm test`      | unit tests of every package and app                               |
+| `pnpm lint`      | oxlint, ESLint (templates), the lint probe, then `pnpm typecheck` |
+| `pnpm typecheck` | TypeScript in every package, specs included                       |
+| `pnpm format`    | oxfmt, fixing files (`format:check` checks)                       |
+| `pnpm start`     | the web app on http://localhost:4200                              |
 
 One package: `pnpm --filter <name> <script>`, e.g. `pnpm --filter @ariadne/core test`.
 
@@ -99,7 +99,7 @@ scripts above do not cover it; run these from the root:
 
 Versions of NuGet packages are stated once, in `dotnet/Directory.Packages.props`, and locked in `packages.lock.json`
 (commit the lock file when a version changes). The `.NET` job of CI runs these commands on a pull request that
-touches `dotnet/`, `docs/specs/saga.schema.json` or `samples/library`, and always on `main`. oxfmt and ESLint
+touches `dotnet/`, `docs/specs/saga.schema.json` or `samples/library`, and always on `main`. oxfmt, oxlint and ESLint
 ignore the folder; `.editorconfig` holds the C# rules. The tests target net10.0: with only a newer SDK installed,
 run them with `DOTNET_ROLL_FORWARD=Major`.
 
@@ -168,7 +168,13 @@ that the body closes an issue that is ready (`Closes #<issue>`, not labelled `ne
 
 ## Code style
 
-oxfmt, ESLint and the type check of every package, specs included, run in CI (`pnpm format:check`, `pnpm lint`). Beyond that, write code that
+oxfmt, oxlint, ESLint and the type check of every package, specs included, run in CI (`pnpm format:check`, `pnpm lint`). oxlint
+(`.oxlintrc.json`) lints every `.ts` and `.js` file, type-aware, with the Angular class rules of `@angular-eslint/eslint-plugin`
+loaded as a JS plugin; ESLint (`eslint.config.mjs`) lints only the Angular templates, because oxlint cannot parse them. So a
+component keeps its template in a `.html` file: an inline `template:` outside a spec is a lint error. `lint-probe/` holds a
+component and a template that break known rules; `node lint-probe/check.mjs` (part of `pnpm lint`) fails when oxlint or ESLint
+stops reporting one, for example after an update of the JS plugin. A rule that is off or lowered says why in `.oxlintrc.json`;
+an `oxlint-disable-next-line` comment names its reason too (ADR 0006 of GravionLabs/skills). Beyond that, write code that
 reads like the code around it: same naming, same comment density, same idioms.
 
 ## Dependencies

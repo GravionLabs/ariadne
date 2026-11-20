@@ -1,0 +1,4 @@
+# Formatting-only commits, ignored by git blame (git config blame.ignoreRevsFile .git-blame-ignore-revs)
+
+# style: oxfmt replaces Prettier (#598) (#599)
+72bac9d6471422ed50cc2cf27d6575a6ba8dd825

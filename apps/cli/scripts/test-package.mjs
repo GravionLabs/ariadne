@@ -40,7 +40,7 @@ try {
   if (manifest.private) problems.push('the package is private');
   const deps = Object.keys(manifest.dependencies ?? {});
   if (deps.join() !== '@resvg/resvg-js')
-    problems.push(`dependencies should be only @resvg/resvg-js, are ${deps}`);
+    problems.push(`dependencies should be only @resvg/resvg-js, are ${deps.join(', ')}`);
   for (const file of [
     'dist/ariadne.mjs',
     'dist/tree-sitter-c_sharp.wasm',

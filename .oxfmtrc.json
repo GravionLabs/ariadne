@@ -31,6 +31,8 @@
     ".worktrees",
     // Written by the JSON writer; a test keeps it byte-for-byte equal to the YAML example.
     "docs/examples/*.saga.json",
+    // The lint probe's template breaks rules on purpose; formatting would rewrite the broken binding.
+    "lint-probe/probe.html",
     // The .NET part has its own tools (dotnet format, see CONTRIBUTING.md).
     "dotnet"
   ]

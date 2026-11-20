@@ -18,7 +18,7 @@ beforeAll(async () => {
 /** Generates C# for `diagram` and reads it back. */
 async function roundTrip(diagram: Diagram): Promise<Diagram> {
   const { files } = generateSaga(diagram);
-  const { sagas } = await importSagas(files, parser);
+  const { sagas } = importSagas(files, parser);
   expect(sagas).toHaveLength(1);
   return sagas[0].diagram;
 }

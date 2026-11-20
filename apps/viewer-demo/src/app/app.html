@@ -1,0 +1,22 @@
+<h1>&lt;ariadne-saga&gt; in Angular</h1>
+<ariadne-saga
+  style="display: block; height: 480px"
+  url="order.saga.yaml"
+  [features]="['walkthrough', 'messages', 'problems']"
+  [path]="path()"
+  pathView="both"
+  (selected)="selected.set(describe($event))"
+  (pathResolved)="resolved.set($event)"
+/>
+<h2>A saga fetched as JSON</h2>
+<ariadne-saga
+  style="display: block; height: 320px"
+  url="order.saga.json"
+  credentials="same-origin"
+  [headers]="{ 'X-Demo': 'viewer' }"
+/>
+<p>Selected: {{ selected() }}</p>
+<p>
+  Path: {{ resolved()?.transitions?.length ?? 0 }} step(s)
+  <button type="button" (click)="advance()">Next event</button>
+</p>

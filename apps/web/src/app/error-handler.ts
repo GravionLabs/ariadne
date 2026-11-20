@@ -50,5 +50,5 @@ function messageOf(error: unknown): string {
 
 /** Browsers report this when a resize observer needs another frame; nothing is wrong. */
 function isBenign(error: unknown): boolean {
-  return /^ResizeObserver loop/.test(messageOf(error));
+  return messageOf(error).startsWith('ResizeObserver loop');
 }

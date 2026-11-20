@@ -338,7 +338,7 @@ async function generateCommand(args: readonly string[], io: Io): Promise<number>
 async function readSagas(files: readonly string[], io: Io): Promise<ImportResult> {
   const sources: SourceFile[] = [];
   for (const path of files) sources.push({ path, content: await read(io, path) });
-  const result = await importSagas(sources, await io.csharpParser());
+  const result = importSagas(sources, await io.csharpParser());
   for (const w of result.warnings) io.stderr(`${w.path}:${w.line}: warning: ${w.message}\n`);
   return result;
 }

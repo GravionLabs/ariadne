@@ -58,7 +58,8 @@
       "label": "pnpm: lint",
       "type": "shell",
       "command": "pnpm lint",
-      "problemMatcher": "$eslint-stylish"
+      // oxlint, ESLint and tsc in one run: the editor shows oxlint's and ESLint's findings itself.
+      "problemMatcher": "$tsc"
     }
   ]
 }
