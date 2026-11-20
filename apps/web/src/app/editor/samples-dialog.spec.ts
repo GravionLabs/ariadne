@@ -39,21 +39,21 @@ describe('SamplesDialog', () => {
 
   it('is closed until opened, and is named by its heading', () => {
     expect(dialog().hasAttribute('open')).toBe(false);
-    open();
+    void open();
     expect(dialog().hasAttribute('open')).toBe(true);
     const title = el.querySelector(`#${dialog().getAttribute('aria-labelledby')}`);
     expect(title?.textContent).toBe('Samples');
   });
 
   it('shows the tour at once, and the library when it has been loaded', async () => {
-    open();
+    void open();
     expect(headings()).toEqual(['Start with a tour']);
     await libraryLoaded();
     expect(headings()).toEqual(['Start with a tour', 'Real-world sagas']);
   });
 
   it('offers the samples in two groups, each a list with a heading', async () => {
-    open();
+    void open();
     await libraryLoaded();
     const groups = [...el.querySelectorAll<HTMLElement>('section.samples')];
     // Each group is named by its heading, so a screen reader announces it when entering it.
@@ -75,7 +75,7 @@ describe('SamplesDialog', () => {
   });
 
   it('shows each sample as a button with its title and its description', async () => {
-    open();
+    void open();
     await libraryLoaded();
     for (const button of el.querySelectorAll<HTMLButtonElement>('.sample')) {
       expect(button.type).toBe('button');

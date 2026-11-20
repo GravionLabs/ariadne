@@ -78,7 +78,10 @@ describe('Code navigation', () => {
       return first?.command?.title === 'Ariadne: Open saga diagram' && first;
     });
     assert.strictEqual(lens.command?.command, 'ariadne.openDiagram');
-    assert.strictEqual((lens.command?.arguments?.[0] as vscode.Uri).fsPath, diagram.fsPath);
+    assert.strictEqual(
+      (lens.command?.arguments?.[0] as vscode.Uri | undefined)?.fsPath,
+      diagram.fsPath,
+    );
 
     await vscode.commands.executeCommand(lens.command!.command, ...lens.command!.arguments!);
     const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;

@@ -223,7 +223,7 @@ describe('ariadne export', () => {
       await t.run('export', 'sagas/order.saga.yaml', '--format', 'png', '-o', 'order.png'),
     ).toBe(0);
     const png = t.disk.get('order.png') as Uint8Array;
-    expect([...png.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(Array.from(png.slice(0, 8))).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     // Width and height are in the IHDR chunk, big-endian.
     const view = new DataView(png.buffer, png.byteOffset);
     const svg = setup(files);

@@ -104,7 +104,7 @@ describe('the samples', () => {
     for (const sample of SAMPLES.filter((s) => s.group === 'library')) {
       expect(sample.title, sample.id).toMatch(/\S/);
       expect(sample.description, sample.id).toMatch(/^[A-Z].*[.]$/);
-      expect(sample.description, sample.id).not.toMatch(/[`*\[\]]/);
+      expect(sample.description, sample.id).not.toMatch(/[`*[\]]/);
     }
   });
 });

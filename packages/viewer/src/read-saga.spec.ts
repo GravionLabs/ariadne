@@ -92,7 +92,7 @@ describe('fetchSaga', () => {
       vi.fn(async () => Promise.reject(new DOMException('x', 'AbortError'))),
     );
     abort.abort();
-    await expect(fetchSaga('/x', abort.signal)).rejects.toThrow();
+    await expect(fetchSaga('/x', abort.signal)).rejects.toMatchObject({ name: 'AbortError' });
   });
 });
 

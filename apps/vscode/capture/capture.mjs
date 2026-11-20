@@ -203,12 +203,6 @@ async function saveCode(window) {
 
 const hideSidebar = (window) => command(window, 'View: Toggle Primary Side Bar Visibility');
 
-const clean = async (window) => {
-  await window.keyboard.press('Escape');
-  await command(window, 'View: Close All Editors');
-  await command(window, 'View: Close Panel').catch(() => {});
-};
-
 /** The captures: a name and what to do in the window before it is taken. */
 const captures = {
   async 'editor-and-code'(window) {

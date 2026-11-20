@@ -41,7 +41,9 @@ try {
   );
   const problems = [];
   if (manifest.dependencies && Object.keys(manifest.dependencies).length) {
-    problems.push(`dependencies should be bundled, found ${Object.keys(manifest.dependencies)}`);
+    problems.push(
+      `dependencies should be bundled, found ${Object.keys(manifest.dependencies).join(', ')}`,
+    );
   }
   if (JSON.stringify(manifest).includes('workspace:')) problems.push('a workspace: reference');
   if (manifest.private) problems.push('the package is private');
@@ -74,7 +76,7 @@ const js = readFileSync(entry, 'utf8');
 assert.match(js, /ɵɵngDeclareComponent/);
 assert.ok(js.includes('from "@ariadne/viewer"'));
 assert.ok(existsSync(new URL('./index.d.ts', entry)));
-assert.ok(existsSync(new URL(import.meta.resolve('@ariadne/viewer').replace(/index\.js$/, 'index.d.ts'))));
+assert.ok(existsSync(new URL(import.meta.resolve('@ariadne/viewer').replace(/index\\.js$/, 'index.d.ts'))));
 
 // 3. In a DOM the element shows a saga; the one-file bundle does the same.
 const yaml = 'version: 3\\nname: Light\\nnodes:\\n  - { id: s, type: start, name: Off }\\n  - { id: e, type: end, name: On }\\nedges:\\n  - { id: x, source: s, target: e, kind: forward, event: Flipped }\\n';

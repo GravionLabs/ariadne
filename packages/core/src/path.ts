@@ -286,6 +286,7 @@ export function parsePathSteps(text: string): ParsedPathSteps {
       if (typeof field === 'object' && !(field instanceof Date)) {
         return { error: `Step ${i + 1}: \`${key}\` must be text.` };
       }
+      // oxlint-disable-next-line typescript/no-base-to-string -- objects returned above: a Date or a YAML scalar is left
       step[key] = field instanceof Date ? field.toISOString() : String(field);
     }
     steps.push(step);

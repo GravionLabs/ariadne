@@ -36,7 +36,7 @@ describe('NewDiagramDialog', () => {
 
   it('is closed until opened', () => {
     expect(dialog().hasAttribute('open')).toBe(false);
-    open();
+    void open();
     expect(dialog().hasAttribute('open')).toBe(true);
   });
 
@@ -77,7 +77,7 @@ describe('NewDiagramDialog', () => {
     type('input', 'Old');
     dialog().close();
     await first;
-    open();
+    void open();
     expect(field<HTMLInputElement>('input').value).toBe('');
     expect(submit().disabled).toBe(true);
   });

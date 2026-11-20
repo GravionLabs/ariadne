@@ -86,7 +86,7 @@ describe('renderExport', () => {
   it('writes a PNG: a real image at twice the size', async () => {
     const out = await renderExport(diagram, 'png', '/w/order.saga.yaml', rasterise);
     const bytes = out.content as Uint8Array;
-    expect([...bytes.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(Array.from(bytes.slice(0, 8))).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     const svg = (await renderExport(diagram, 'svg', '/w/order.saga.yaml', rasterise))
       .content as string;
     const width = Number(/<svg [^>]*width="(\d+)"/.exec(svg)![1]);

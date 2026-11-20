@@ -109,7 +109,7 @@ describe('path view', () => {
   it('emphasises the states visited and the transitions taken, and fades the rest', async () => {
     const element = await open();
     element.path = events('OrderSubmitted', 'StockReserved');
-    expect(marked(element, 'visited').sort()).toEqual(['reserving', 'start']);
+    expect(new Set(marked(element, 'visited'))).toEqual(new Set(['reserving', 'start']));
     expect(marked(element, 'taken')).toEqual(expect.arrayContaining(['e1', 'e2']));
     expect(marked(element, 'taken')).not.toContain('e3');
     expect(node(element, 'cancelled').hasAttribute('data-path')).toBe(false);

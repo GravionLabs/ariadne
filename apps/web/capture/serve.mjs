@@ -18,7 +18,8 @@ const types = {
   '.json': 'application/json',
 };
 
-createServer(async (req, res) => {
+/** Answers one request; every error ends as a 404, so the promise never rejects. */
+async function respond(req, res) {
   try {
     let path = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
     if (path.endsWith('/')) path += 'index.html';
@@ -31,4 +32,8 @@ createServer(async (req, res) => {
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('Not found');
   }
-}).listen(port, () => console.log(`Serving ${root} on http://localhost:${port}`));
+}
+
+createServer((req, res) => void respond(req, res)).listen(port, () =>
+  console.log(`Serving ${root} on http://localhost:${port}`),
+);
