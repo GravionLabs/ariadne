@@ -10,7 +10,7 @@
     "test": "pnpm -r --if-present run test",
     "perf": "pnpm -r --workspace-concurrency=1 --if-present run perf",
     "test:ci": "pnpm -r --if-present run test:ci",
-    "lint": "oxlint && eslint \"**/*.html\" && pnpm typecheck",
+    "lint": "oxlint && eslint \"**/*.html\" && node lint-probe/check.mjs && pnpm typecheck",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "typecheck": "pnpm -r --if-present run typecheck"

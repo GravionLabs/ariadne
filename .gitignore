@@ -57,6 +57,9 @@ apps/vscode/capture/failures
 # VitePress (apps/site)
 .vitepress/cache
 
+# The config the lint probe writes for its own oxlint run (lint-probe/check.mjs)
+lint-probe/.oxlintrc.probe.json
+
 # git worktrees
 .worktrees/
 
