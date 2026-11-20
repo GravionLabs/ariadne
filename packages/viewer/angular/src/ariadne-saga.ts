@@ -39,6 +39,8 @@ import type {
  */
 @Component({
   selector: 'ariadne-saga',
+  // No markup of its own: the custom element is the host; an empty .html would only add a resource to the package.
+  // oxlint-disable-next-line @angular-eslint/component-max-inline-declarations
   template: '',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
