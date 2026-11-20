@@ -95,7 +95,7 @@ export type IconName = keyof typeof PATHS;
 @Component({
   selector: 'app-icon',
   host: { 'aria-hidden': 'true' },
-  template: `<svg viewBox="0 0 24 24" fill="currentColor"><path [attr.d]="path()" /></svg>`,
+  templateUrl: './icon.html',
   styles: `
     :host {
       display: inline-flex;
