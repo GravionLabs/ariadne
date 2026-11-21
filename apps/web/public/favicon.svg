@@ -1,11 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#6366f1"/>
-      <stop offset="1" stop-color="#8b5cf6"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3730a3"/>
+      <stop offset="1" stop-color="#1a1740"/>
     </linearGradient>
   </defs>
-  <rect width="32" height="32" rx="8" fill="url(#g)"/>
-  <!-- Material "timeline" glyph, as in the app's brand mark -->
-  <path fill="#fff" transform="translate(4 4) scale(1)" d="M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z"/>
+
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- the golden thread: the path of the saga -->
+  <path d="M 124 388 H 256 V 256 H 388 V 186" fill="none" stroke="#fbbf24" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- initial state -->
+  <circle cx="124" cy="388" r="50" fill="#34d399"/>
+
+  <!-- a state -->
+  <rect x="198" y="198" width="116" height="116" rx="29" fill="#ffffff"/>
+
+  <!-- final state, a double ring -->
+  <circle cx="388" cy="124" r="54" fill="none" stroke="#fb7185" stroke-width="19"/>
+  <circle cx="388" cy="124" r="24" fill="#fb7185"/>
 </svg>
