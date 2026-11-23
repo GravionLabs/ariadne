@@ -15,6 +15,6 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "vitepress": "^1.6.4",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }
