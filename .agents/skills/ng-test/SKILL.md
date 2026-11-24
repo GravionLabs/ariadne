@@ -10,6 +10,8 @@ description: 'Angular test rules with Vitest and TestBed (components, signals, m
 
 ## Test Runner
 
+The project's test command: the `test` key of `.agents/config.json`, run by `implementation`'s `scripts/Invoke-Tests.ps1`; the list below is the default.
+
 - **Framework**: Vitest for Angular v21+ (replaces Karma/Jasmine); Jest for Angular v20 and earlier
 - **Run all**: `<pm> test` (package manager from `detect-techstack`); projects using the CLI builder without a config file run `ng test`
 - **Run single**: `npx vitest run <path>`, or `ng test --include <path>` with the CLI builder

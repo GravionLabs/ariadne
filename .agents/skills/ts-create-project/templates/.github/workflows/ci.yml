@@ -18,7 +18,7 @@ jobs:
     with:
       node-version: '26'
       package-manager: npm
-      # The template has no lint script; set true after setup-biome-husky.
+      # The template has no lint script; set true after setup-oxc-husky.
       run-lint: false
     secrets:
       npm-token: ${{ secrets.NPM_TOKEN }}

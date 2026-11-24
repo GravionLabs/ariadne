@@ -11,6 +11,8 @@ description: >
 
 ## Test Runner
 
+The project's test command: the `test` key of `.agents/config.json`, run by `implementation`'s `scripts/Invoke-Tests.ps1`; the list below is the default.
+
 - **Framework**: Vitest (`globals: true`, `environment: node`)
 - **Config**: `vitest.config.ts` at project root
 - **Run all**: `<pm> test` (package manager from `detect-techstack`)

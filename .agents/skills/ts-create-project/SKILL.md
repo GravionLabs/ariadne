@@ -25,6 +25,7 @@ Scaffold a TypeScript/Node.js project with a production-ready baseline. Paths to
    ```
 
    It creates the directory, copies the templates, patches `package.json`, installs dependencies and initializes git.
+
 3. **CI:** copy `templates/.github/workflows/ci.yml` into the project. It calls the `GravionLabs/ci` reusable Node workflow, which runs the `build` and `test` scripts (`run-lint: false` until a `lint` script exists); if the project publishes, confirm the `NPM_TOKEN` secret is configured.
 4. **Verify:**
 
@@ -32,7 +33,8 @@ Scaffold a TypeScript/Node.js project with a production-ready baseline. Paths to
    npm run build   # tsc — no errors
    npm test        # vitest run — all tests pass
    ```
-5. **Next steps:** set up linting and formatting with `setup-biome-husky`; migrate to pnpm with `ts-pnpm-workflow`
+
+5. **Next steps:** set up linting and formatting with `setup-oxc-husky`; migrate to pnpm with `ts-pnpm-workflow`
 
 Parameters: `-ProjectName` (required), `-ProjectType` (app/library/cli), `-PackageManager` (npm/pnpm), `-OutputDirectory`
 

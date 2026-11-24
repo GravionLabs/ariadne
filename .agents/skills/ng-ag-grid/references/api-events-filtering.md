@@ -10,6 +10,7 @@ Prefer `(gridReady)="onGridReady($event)"` and store `event.api` (`GridApi`). Al
 api.setGridOption('rowData', newData);
 api.updateGridOptions({ rowData: newData, defaultColDef: { flex: 2 } }); // atomic
 ```
+
 Options marked `[Initial]` (e.g. `rowModelType`, `treeData`, `masterDetail`) cannot be updated — re-create the grid.
 
 ## Events
