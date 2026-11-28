@@ -40,6 +40,9 @@ foreach ($f in $files) {
   Copy-Item (Join-Path $TemplatesDir $f) (Join-Path $TargetDir $f)
 }
 Copy-Item (Join-Path $TemplatesDir 'src/index.ts') (Join-Path $TargetDir 'src/index.ts')
+if ($PackageManager -eq 'pnpm') {
+  Copy-Item (Join-Path $TemplatesDir 'pnpm-workspace.yaml') (Join-Path $TargetDir 'pnpm-workspace.yaml')
+}
 
 # Patch package name
 $safeName = $ProjectName.ToLower() -replace '[^a-z0-9@/.-]', '-'
@@ -84,7 +87,7 @@ try {
   Write-Host "Initializing git repository..." -ForegroundColor Cyan
   git init -q
   Write-Host "Done! Run 'npm run dev' to start development." -ForegroundColor Green
-  Write-Host "Next steps: set up code quality with 'setup-biome-husky', add CI with 'create-node-workflow'" -ForegroundColor DarkGray
+  Write-Host "Next steps: set up code quality with 'setup-oxc-husky', add CI with 'create-node-workflow'" -ForegroundColor DarkGray
 } finally {
   Pop-Location
 }

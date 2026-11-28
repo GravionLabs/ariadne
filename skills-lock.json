@@ -1,78 +1,88 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "angular-developer": {
       "source": "angular/skills",
       "ref": "d422d3c17e27c9860f3df91b6e617ad80970ba05",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "computedHash": "9b78fec217d3f9e585b0eff7c7a64fefc61b3f1d15d15e7df4e44180d76d90bb"
+      "computedHash": "c3fe0b393345c673eb7e1c329727728e1dc7716ddfa9a2bd97b67e7f4e974222",
+      "commit": "d422d3c17e27c9860f3df91b6e617ad80970ba05"
     },
     "ng-ag-grid": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ng/ng-ag-grid/SKILL.md",
-      "computedHash": "ff8b97d4819708c763023febf91f91e54be9cb13c513b07574fec44494fbf78a"
+      "computedHash": "508d0f2c5301c02fdb46a5d949464ac155d3ad9099b68ba1f14e674ea9942312",
+      "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
     },
     "ng-create-project": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ng/ng-create-project/SKILL.md",
-      "computedHash": "67df10035792e5922a6dbf6ceedbcbc8301e4fd1123add0ecac2a6ff5f641837"
+      "computedHash": "0458631d6d2e4b7e1cc50ef41b67764a9336c417b9512d092d0de84658eda70a",
+      "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
     },
     "ng-implementation": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ng/ng-implementation/SKILL.md",
-      "computedHash": "85a29910bff1ecf0e6682fec3e2b45d699dc10a78b3928a1a33d575095fb990d"
+      "computedHash": "bec2df8813bced37a441339125472de8a595b89e24f25bd9f1ad381520931adc",
+      "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
     },
     "ng-test": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ng/ng-test/SKILL.md",
-      "computedHash": "7ba5808a17eee597c7515d34b0945d0a1ad1980cd0ccdf0bb44dcd6779c41687"
+      "computedHash": "8a4ecc0d4e80e99f15f1177ba0f2df8fbd1b200aa920700632d1043ef8b0e072",
+      "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
     },
     "setup-biome-husky": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ts/setup-biome-husky/SKILL.md",
-      "computedHash": "311459e49a6f9466da1316713f1988a51a6cd38ce07956c158d859be6f86efba"
+      "computedHash": ""
     },
     "setup-prettier-eslint-husky": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ts/setup-prettier-eslint-husky/SKILL.md",
-      "computedHash": "6be8c158f26dd9f52c552316ef6db8cd0be4eaaca3b8b86bbf2c2ffb9011257a"
+      "computedHash": ""
     },
     "ts-create-project": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ts/ts-create-project/SKILL.md",
-      "computedHash": "418c5189f6d154ad095b166312d9abf6c65a0980165ff8e6231cebffab13f147"
+      "computedHash": "b28c6a76a8448d9f765b2fcfc4053b3e4d8d6c2881a7591442c3bc09ea0b6aef",
+      "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
     },
     "ts-implementation": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ts/ts-implementation/SKILL.md",
-      "computedHash": "96b4618023f923c0a1b53cdc60c1afbc968ee55d93aa9ceb3437a2a8e2dc0edc"
+      "computedHash": "71de1dabc2518e15a7f0115c803b2f4ce5215db07b1a89da1d729dea8bab184f",
+      "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
     },
     "ts-mcp-server-generator": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ts/ts-mcp-server-generator/SKILL.md",
-      "computedHash": "4cb504abc1f17371c8c000bde030f94a507915de6712d0236a879039ec464716"
+      "computedHash": "7cd708f415d5fe82de30370f8103cee7c6d266b2a116ef43df957a1cc7f7c307",
+      "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
     },
     "ts-pnpm-workflow": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ts/ts-pnpm-workflow/SKILL.md",
-      "computedHash": "1abffb3ce3a8628993b91cf8b4984b17d764084de3fab03f0b3a4e601a37cecb"
+      "computedHash": "c8b48b662a18c9d65dec804977e83a74362e01f8361138ccd25acb0cf82f4b74",
+      "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
     },
     "ts-test": {
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ts/ts-test/SKILL.md",
-      "computedHash": "b365b581d42dd26ee00339f61b8cad32c9d7e338b63103669ec40384c9372653"
+      "computedHash": "c6fa77250e0189cecaebbf34d5afb3cb35e624e04521e4b0dd021139a9e576f1",
+      "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
     }
   }
 }

@@ -16,6 +16,7 @@ export class StatusCellRenderer implements ICellRendererAngularComp {
 }
 // ColDef: { field: 'status', cellRenderer: StatusCellRenderer, cellRendererParams: { currency: 'EUR' } }
 ```
+
 Custom params arrive on `params` in `agInit` (type them by extending `ICellRendererParams`).
 
 Per-row choice: `cellRendererSelector: p => p.node.group ? undefined : { component: X, params: {...} }` — return `undefined` for default rendering; skip group nodes.

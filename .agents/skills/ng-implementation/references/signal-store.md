@@ -17,6 +17,7 @@ Scaffold NgRx Signal Store for Angular feature state.
      withHooks({ onInit(store) {...} })
    );
    ```
+
 4. For async: use `rxMethod` or `patchState` with loading/error state fields
 5. Register in component or feature providers as needed
 

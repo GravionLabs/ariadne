@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Scaffold a new Angular 21+ application using the Angular CLI with strict TypeScript, Vitest, and ESLint/Prettier.
+  Scaffold a new Angular 21+ application using the Angular CLI with strict TypeScript, Vitest, oxlint/oxfmt and ESLint for templates.
 
 .PARAMETER ProjectName
   Name for the Angular project (directory and package name).
@@ -14,8 +14,8 @@
 .PARAMETER SkipVitest
   Do not set up Vitest (Vitest with the template config is installed by default).
 
-.PARAMETER SkipEslint
-  Do not set up ESLint + Prettier + Husky via Setup-CodeQuality.ps1 (set up by default).
+.PARAMETER SkipLint
+  Do not set up oxlint + oxfmt + ESLint for templates + Husky via Setup-Oxc.ps1 (set up by default). Alias: -SkipEslint.
 
 .PARAMETER OutputDirectory
   Directory in which the project folder is created. Default: current directory.
@@ -25,7 +25,7 @@ param(
   [string]$SelectorPrefix = 'app',
   [ValidateSet('app', 'workspace')][string]$ProjectType = 'app',
   [switch]$SkipVitest,
-  [switch]$SkipEslint,
+  [Alias('SkipEslint')][switch]$SkipLint,
   [string]$OutputDirectory = '.'
 )
 
@@ -43,7 +43,7 @@ Write-Host "Scaffolding Angular project: $ProjectName" -ForegroundColor Cyan
 # Run ng new
 $ngArgs = @(
   'new', $ProjectName,
-  '--style', 'scss',
+  '--style', 'css',
   '--ssr', 'false',
   '--skip-tests'  # we'll set up Vitest separately
 )
@@ -80,19 +80,19 @@ try {
     Write-Host "Vitest configured (test script updated)" -ForegroundColor Green
   }
 
-  # Set up ESLint + Prettier + Husky
-  if (-not $SkipEslint) {
-    Write-Host "Setting up ESLint + Prettier + Husky..." -ForegroundColor Cyan
+  # Set up oxlint + oxfmt + ESLint for templates + Husky (ADR 0006 of GravionLabs/skills)
+  if (-not $SkipLint) {
+    Write-Host "Setting up oxlint + oxfmt + Husky..." -ForegroundColor Cyan
     # installed: a sibling skill (skills-manage ng brings it along); in GravionLabs/skills: skills/ts/
     $candidates = @(
-      (Join-Path $ScriptDir '../../setup-prettier-eslint-husky/scripts/Setup-CodeQuality.ps1'),
-      (Join-Path $ScriptDir '../../../ts/setup-prettier-eslint-husky/scripts/Setup-CodeQuality.ps1')
+      (Join-Path $ScriptDir '../../setup-oxc-husky/scripts/Setup-Oxc.ps1'),
+      (Join-Path $ScriptDir '../../../ts/setup-oxc-husky/scripts/Setup-Oxc.ps1')
     )
     $setupScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
     if ($setupScript) {
       & pwsh $setupScript -ProjectType angular -SelectorPrefix $SelectorPrefix
     } else {
-      Write-Warning "Setup-CodeQuality.ps1 not found at '$setupScript' — run the setup-prettier-eslint-husky skill manually."
+      Write-Warning "Setup-Oxc.ps1 not found — run the setup-oxc-husky skill manually."
     }
   }
 

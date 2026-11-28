@@ -34,6 +34,7 @@ See `templates/examples/resource-prompt-registration.ts` for resources + prompts
 See `templates/examples/transport-config.ts` for transport + env validation.
 
 Test with MCP Inspector:
+
 ```powershell
 npx @modelcontextprotocol/inspector node dist/index.js
 ```

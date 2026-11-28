@@ -23,6 +23,7 @@ const columnTypes: Record<string, ColTypeDef> = {
   },
 };
 ```
+
 Bind with `[columnTypes]` and `type: 'currency'` on the ColDef.
 
 ## Value hooks
@@ -50,6 +51,7 @@ onGridReady(e: GridReadyEvent<Product>) { this.#api = e.api; }
 onCellValueChanged(e: CellValueChangedEvent<Product>) { this.#service.save(e.data); }
 getRowId = (p: GetRowIdParams<Product>) => String(p.data.id);
 ```
+
 `getRowId` is required for `applyTransaction`, SSRM row refresh and selection that survives data updates.
 
 `@ViewChild('grid') grid!: AgGridAngular<Product>` gives a typed `grid.api`.
