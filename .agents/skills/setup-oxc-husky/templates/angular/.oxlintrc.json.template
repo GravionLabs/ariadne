@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "vitest"],
+  "jsPlugins": ["@angular-eslint/eslint-plugin"],
+  "categories": { "correctness": "error" },
+  "options": { "typeAware": true },
+  "ignorePatterns": ["**/dist", "**/coverage", "**/node_modules", ".angular/**", "out-tsc/**", "lint-probe/**"],
+  "rules": {
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "warn",
+    "typescript/consistent-type-imports": "warn",
+    "typescript/no-floating-promises": "error",
+    "prefer-template": "warn",
+    "vitest/no-focused-tests": "error",
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "@angular-eslint/contextual-lifecycle": "error",
+    "@angular-eslint/no-empty-lifecycle-method": "error",
+    "@angular-eslint/no-input-rename": "error",
+    "@angular-eslint/no-inputs-metadata-property": "error",
+    "@angular-eslint/no-output-native": "error",
+    "@angular-eslint/no-output-on-prefix": "error",
+    "@angular-eslint/no-output-rename": "error",
+    "@angular-eslint/no-outputs-metadata-property": "error",
+    "@angular-eslint/prefer-inject": "error",
+    "@angular-eslint/prefer-on-push-component-change-detection": "error",
+    "@angular-eslint/prefer-standalone": "error",
+    "@angular-eslint/use-pipe-transform-interface": "error",
+    "@angular-eslint/use-lifecycle-interface": "warn",
+    "@angular-eslint/component-max-inline-declarations": ["error", { "template": 0, "styles": 1000, "animations": 1000 }],
+    "@angular-eslint/component-selector": ["error", { "type": "element", "prefix": "app", "style": "kebab-case" }],
+    "@angular-eslint/directive-selector": ["error", { "type": "attribute", "prefix": "app", "style": "camelCase" }]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.spec.ts"],
+      "rules": { "@angular-eslint/component-max-inline-declarations": "off" }
+    }
+  ]
+}
