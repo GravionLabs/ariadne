@@ -27,8 +27,8 @@
       "source": "GravionLabs/skills",
       "sourceType": "github",
       "skillPath": "skills/ng/ng-implementation/SKILL.md",
-      "computedHash": "bec2df8813bced37a441339125472de8a595b89e24f25bd9f1ad381520931adc",
-      "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
+      "computedHash": "47fdc15829e4ae6a4dac035906d1be7aff2950cf37ef58837cbbe59a92f4329b",
+      "commit": "c0325be2338d69e7a26d293012918aa1a9c0e213"
     },
     "ng-test": {
       "source": "GravionLabs/skills",
@@ -37,17 +37,12 @@
       "computedHash": "8a4ecc0d4e80e99f15f1177ba0f2df8fbd1b200aa920700632d1043ef8b0e072",
       "commit": "474afe4b24896933bd05fa4aad3df6103356b9ac"
     },
-    "setup-biome-husky": {
+    "setup-oxc-husky": {
       "source": "GravionLabs/skills",
+      "commit": "c0325be2338d69e7a26d293012918aa1a9c0e213",
       "sourceType": "github",
-      "skillPath": "skills/ts/setup-biome-husky/SKILL.md",
-      "computedHash": ""
-    },
-    "setup-prettier-eslint-husky": {
-      "source": "GravionLabs/skills",
-      "sourceType": "github",
-      "skillPath": "skills/ts/setup-prettier-eslint-husky/SKILL.md",
-      "computedHash": ""
+      "skillPath": "skills/ts/setup-oxc-husky/SKILL.md",
+      "computedHash": "9a66692a27d91abb8e4abc7483ead85542732eac72139665439cebfc474a7cfc"
     },
     "ts-create-project": {
       "source": "GravionLabs/skills",

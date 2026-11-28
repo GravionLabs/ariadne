@@ -1,0 +1,3 @@
+# Install no package version younger than 7 days (minutes; needs pnpm 10.16 or later)
+minimumReleaseAge: 10080
+# minimumReleaseAgeExclude: [<package>]  # only for a security fix, with the reason
